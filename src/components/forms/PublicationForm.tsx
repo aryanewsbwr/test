@@ -250,18 +250,9 @@ export default function PublicationForm({
 
       setIsNewMode(false);
       const saved = data.publication || pubToSave;
-      setSelectedPub(saved);
+      loadPublication(saved);
 
-      setPubList(prev => {
-        const idx = prev.findIndex(p => p.publica_id === saved.publica_id);
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = saved;
-          return updated;
-        } else {
-          return [...prev, saved];
-        }
-      });
+      setPubList(prev => [saved, ...prev.filter(p => p.publica_id !== saved.publica_id)]);
 
       if (onSave) {
         onSave(saved);

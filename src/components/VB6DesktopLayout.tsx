@@ -684,6 +684,11 @@ export default function VB6DesktopLayout() {
             hawkers={hawkers}
             regions={regions}
             onSelectCustomer={(c) => setSelectedCust(c)}
+            onSaveCustomer={(savedCust) => {
+              fetchCustomers(custSearch, 1);
+              setSelectedCust(savedCust as Customer);
+              setStatusMessage(`Customer #${savedCust.customer_id} (${savedCust.name_eng}) saved.`);
+            }}
           />
         )}
 
@@ -704,6 +709,7 @@ export default function VB6DesktopLayout() {
             rates={rates}
             ratechanges={ratechanges}
             onSave={(savedPub) => {
+              setPublications(prev => [savedPub, ...prev.filter(p => p.publica_id !== savedPub.publica_id)]);
               fetch('/api/publications?with_rates=true')
                 .then(r => r.json())
                 .then(data => { if (data.publications) setPublications(data.publications); })
@@ -711,6 +717,7 @@ export default function VB6DesktopLayout() {
               setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
             }}
             onDelete={(pubId) => {
+              setPublications(prev => prev.filter(p => p.publica_id !== pubId));
               fetch('/api/publications?with_rates=true')
                 .then(r => r.json())
                 .then(data => { if (data.publications) setPublications(data.publications); })

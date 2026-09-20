@@ -102,7 +102,7 @@ export default function CustomerForm({
     if (!isFindOpen) return;
     const timer = setTimeout(() => {
       setIsSearching(true);
-      fetch(`/api/customers?search=${encodeURIComponent(searchQuery)}&page=1&limit=25`)
+      fetch(`/api/customers?search=${encodeURIComponent(searchQuery)}&page=1&limit=50&order=desc`)
         .then(r => r.json())
         .then(data => {
           setSearchResults(data.customers || []);
@@ -342,20 +342,31 @@ export default function CustomerForm({
 
     try {
       // Save directly to backend API (Supabase)
-      await fetch('/api/customers', {
+      const res = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedCust)
       });
-    } catch (e) {
-      console.warn('API save fallback:', e);
-    }
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
 
-    if (onSaveCustomer) {
-      onSaveCustomer(updatedCust, subscriptions);
+      const savedCust = data.customer || updatedCust;
+      if (savedCust.customer_id) {
+        setSelectedCustId(savedCust.customer_id);
+      }
+
+      // Prepend to search results so it is immediately visible in the find list
+      setSearchResults(prev => [savedCust, ...prev.filter(c => c.customer_id !== savedCust.customer_id)]);
+
+      if (onSaveCustomer) {
+        onSaveCustomer(savedCust, subscriptions);
+      }
+      setStatus(`Customer #${savedCust.customer_id} - ${savedCust.name_eng} saved successfully!`);
+    } catch (e: any) {
+      console.warn('API save error:', e);
+      setStatus(`Error saving customer: ${e.message || e}`);
     }
-    setStatus(`Customer #${selectedCustId || 'New'} - ${nameEng} saved successfully in Supabase!`);
-    setTimeout(() => setStatus(''), 3000);
+    setTimeout(() => setStatus(''), 3500);
   };
 
   return (

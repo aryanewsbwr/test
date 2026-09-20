@@ -24,11 +24,43 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') || '').trim().toLowerCase();
     const statusFilter = (searchParams.get('status') || 'all').trim().toLowerCase();
     const withRates = searchParams.get('with_rates') !== 'false';
+    const order = (searchParams.get('order') || 'desc').toLowerCase();
 
-    const pubs = loadJson('publications.json');
+    let pubs = loadJson('publications.json');
     const rates = loadJson('rates.json');
     const ratechanges = loadJson('ratechanges.json');
     const pubdis = loadJson('publicationdis.json');
+
+    // Sync any missing publications from Supabase
+    try {
+      const { data: sbPubs } = await supabase.from('publication').select('*');
+      if (sbPubs && sbPubs.length > 0) {
+        const localPubIds = new Set(pubs.map((p: any) => p.publica_id));
+        let added = false;
+        for (const sp of sbPubs) {
+          const pid = Number(sp.publication_id);
+          if (!localPubIds.has(pid)) {
+            pubs.unshift({
+              publica_id: pid,
+              public_name: sp.name || `Publication #${pid}`,
+              pub_hindi: '',
+              type_p: sp.frequency || 'Daily',
+              publish_id: 1,
+              abrv: (sp.name || '').slice(0, 4).toUpperCase(),
+              circulation: 'Morning',
+              duration: 'Daily',
+              magzine_day: null,
+              magzine_month: null,
+              chr_del: 0
+            });
+            added = true;
+          }
+        }
+        if (added) {
+          saveJson('publications.json', pubs);
+        }
+      }
+    } catch (_) {}
 
     const todayIso = new Date().toISOString().split('T')[0];
 
@@ -70,6 +102,12 @@ export async function GET(request: NextRequest) {
         p.publica_id?.toString() === search ||
         p.abrv?.toLowerCase().includes(search)
       );
+    }
+
+    if (order === 'desc') {
+      filtered.sort((a: any, b: any) => b.publica_id - a.publica_id);
+    } else if (order === 'asc') {
+      filtered.sort((a: any, b: any) => a.publica_id - b.publica_id);
     }
 
     return NextResponse.json({
@@ -263,7 +301,7 @@ export async function POST(request: NextRequest) {
       if (isUpdate) {
         updatedPubList = updatedPubList.map((p: any) => p.publica_id === finalPubId ? { ...p, ...pubRecord } : p);
       } else {
-        updatedPubList.push(pubRecord);
+        updatedPubList.unshift(pubRecord);
       }
       saveJson('publications.json', updatedPubList);
     } catch (fErr) {}

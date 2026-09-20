@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const regionId = searchParams.get('region_id');
+    const order = (searchParams.get('order') || (search ? 'asc' : 'desc')).toLowerCase();
+    const isAscending = order === 'asc';
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('region_id', parseInt(regionId, 10));
     }
 
-    query = query.order('customer_id', { ascending: true }).range(from, to);
+    query = query.order('customer_id', { ascending: isAscending }).range(from, to);
 
     const { data, count, error } = await query;
 
@@ -132,8 +134,19 @@ export async function POST(request: NextRequest) {
     const isUpdate = finalId > 0 && localCusts.some(c => c.customer_id === finalId);
 
     if (!isUpdate) {
-      const maxId = localCusts.reduce((max, c) => Math.max(max, c.customer_id || 0), 0);
-      finalId = maxId + 1;
+      let maxSb = 0;
+      try {
+        const { data: maxRow } = await supabase
+          .from('customer')
+          .select('customer_id')
+          .order('customer_id', { ascending: false })
+          .limit(1);
+        if (maxRow && maxRow.length > 0 && maxRow[0].customer_id) {
+          maxSb = Number(maxRow[0].customer_id);
+        }
+      } catch (_) {}
+      const maxLocal = localCusts.reduce((max, c) => Math.max(max, c.customer_id || 0), 0);
+      finalId = Math.max(maxLocal, maxSb) + 1;
     }
 
     const cleanSecDep = isNaN(Number(security_deposit)) ? 0 : Number(security_deposit);
@@ -168,9 +181,11 @@ export async function POST(request: NextRequest) {
         due_amount: Number(dueamount || 0)
       };
       if (isUpdate) {
-        await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId);
+        const { error: sbErr } = await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId);
+        if (sbErr) console.error('Supabase customer update error:', sbErr);
       } else {
-        await supabase.from('customer').insert([supabaseCustomerRecord]);
+        const { error: sbErr } = await supabase.from('customer').insert([supabaseCustomerRecord]);
+        if (sbErr) console.error('Supabase customer insert error:', sbErr);
       }
     } catch (dbErr) {
       console.warn('Supabase customer save warning:', dbErr);
