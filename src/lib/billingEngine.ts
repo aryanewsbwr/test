@@ -185,13 +185,18 @@ export function calculateBilling({
     return 5.0; // Standard fallback
   };
 
-  // Holiday check: Occasion date matches targetDate and publica_id matches or is null
-  const isHoliday = (publicaId: number, targetDateIso: string): boolean => {
+  // Holiday check: Daily newspapers skip on general (pub=0) and pub-specific holidays.
+  // Periodicals ONLY skip if holiday explicitly specifies that exact publication_id.
+  const isHoliday = (publicaId: number, targetDateIso: string, isDaily: boolean = true): boolean => {
     return holidays.some(h => {
       const hIso = parseLegacyDateToIso(h.oc_date || h.Oc_Date || h.dated || h.Dated);
       if (!hIso) return false;
       const hPub = h.publication_id || h.publica_id || h.Publica_id;
-      return hIso === targetDateIso && (!hPub || hPub === 0 || hPub === publicaId);
+      if (isDaily) {
+        return hIso === targetDateIso && (!hPub || hPub === 0 || hPub === publicaId);
+      } else {
+        return hIso === targetDateIso && hPub === publicaId;
+      }
     });
   };
 
@@ -351,7 +356,7 @@ export function calculateBilling({
           if (legacyDayOfWeek !== magzineDay) continue;
           if (targetDateIso < sDateIso) continue;
           if (cDateIso && targetDateIso >= cDateIso) continue;
-          if (isHoliday(pubId, targetDateIso)) continue;
+          if (isHoliday(pubId, targetDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso)) continue;
 
           const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
@@ -394,8 +399,10 @@ export function calculateBilling({
 
       // Add line items for each rate
       let snoCounter = 1;
+      let subPaperTotal = 0;
       Array.from(rateDaysMap.entries()).forEach(([rate, daysOrCopies]) => {
         const lineAmt = Math.round(rate * qty * daysOrCopies * 100) / 100;
+        subPaperTotal += lineAmt;
         customerPaperTotal += lineAmt;
         custBreakup.push({
           customer_id: custId,
@@ -425,6 +432,18 @@ export function calculateBilling({
         });
       });
 
+      // Discount Priority: Subscription-level % (cd.dis) strictly overrides Customer-level % (cust.discount).
+      // They NEVER combine or stack.
+      const subDisRaw = cd.dis !== undefined && cd.dis !== null ? cd.dis : (cd.discount_percent !== undefined ? cd.discount_percent : cd.Dis);
+      const subDisPercent = Number(subDisRaw || 0);
+      const custDisPercent = Number(cust.discount !== undefined ? cust.discount : (cust.dis || cust.Dis || 0));
+      const applicableDisPercent = subDisPercent > 0 ? subDisPercent : custDisPercent;
+
+      if (applicableDisPercent > 0 && subPaperTotal > 0) {
+        const subDisAmt = Math.round((subPaperTotal * (applicableDisPercent / 100)) * 100) / 100;
+        customerDiscountTotal += subDisAmt;
+      }
+
       // Delivery Charges per Subscription
       const dely = Number(cd.delivery_charge !== undefined ? cd.delivery_charge : (cd.dely || cd.Dely || 0));
       if (dely > 0 && (!cDateIso || cDateIso > monthStartIso)) {
@@ -443,16 +462,14 @@ export function calculateBilling({
       }
     }
 
-    // Customer Discount
-    const disPercent = Number(cust.discount || cust.dis || cust.Dis || 0);
-    if (disPercent > 0 && customerPaperTotal > 0) {
-      customerDiscountTotal = Math.round((customerPaperTotal * (disPercent / 100)) * 100) / 100;
+    // Customer Discount Total Line in Breakup
+    if (customerDiscountTotal > 0) {
       custBreakup.push({
         customer_id: custId,
         name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
         customer_hindi: cust.name_hindi || cust.Name_hindi || '',
         sort_order: 3,
-        item: `Discount (${disPercent}%)`,
+        item: `Total Discount`,
         rate: null,
         qty: null,
         days_or_copies: null,
