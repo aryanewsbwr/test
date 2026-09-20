@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Publication, Rate, RateChange, Publisher } from '@/lib/types';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { cleanOrTransliterateHindi, transliterateToHindiAsync } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 
 interface PublicationFormProps {
@@ -167,14 +167,24 @@ export default function PublicationForm({
     }, 50);
   };
 
-  // Auto-transliterate Hindi when English name is typed
+  const pubNameDebounce = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-transliterate Hindi when English name is typed (debounced for accuracy)
   const handleNameChange = (newName: string) => {
-    const autoHindi = cleanOrTransliterateHindi(undefined, newName);
     setSelectedPub(prev => ({
       ...prev,
-      public_name: newName,
-      pub_hindi: autoHindi || prev.pub_hindi
+      public_name: newName
     }));
+
+    if (pubNameDebounce.current) clearTimeout(pubNameDebounce.current);
+    pubNameDebounce.current = setTimeout(async () => {
+      if (!newName.trim()) return;
+      const autoHindi = await transliterateToHindiAsync(newName);
+      setSelectedPub(prev => ({
+        ...prev,
+        pub_hindi: autoHindi || prev.pub_hindi
+      }));
+    }, 300);
   };
 
   // Keyboard shortcut listener (F1 to copy Sunday rate, F10 to select Del Charges, F12 to unselect)
@@ -401,13 +411,28 @@ export default function PublicationForm({
 
           {/* Pub. Name Hindi */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Pub. Name Hindi</label>
-          <input 
-            type="text" 
-            value={selectedPub.pub_hindi || ''} 
-            onChange={(e) => setSelectedPub({ ...selectedPub, pub_hindi: e.target.value })}
-            className="col-span-8 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-blue-900 text-xs shadow-inner outline-none focus:border-[#0A246A]"
-            placeholder="हिंदी नाम"
-          />
+          <div className="col-span-8 flex items-center gap-1">
+            <input 
+              type="text" 
+              value={selectedPub.pub_hindi || ''} 
+              onChange={(e) => setSelectedPub({ ...selectedPub, pub_hindi: e.target.value })}
+              className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-blue-900 text-xs shadow-inner outline-none focus:border-[#0A246A]"
+              placeholder="हिंदी नाम"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                if (selectedPub.public_name) {
+                  const autoHindi = await transliterateToHindiAsync(selectedPub.public_name);
+                  setSelectedPub(prev => ({ ...prev, pub_hindi: autoHindi }));
+                }
+              }}
+              className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900 cursor-pointer"
+              title="Translate to Hindi"
+            >
+              अ/A
+            </button>
+          </div>
 
           {/* Abbreviation */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Abrevation</label>

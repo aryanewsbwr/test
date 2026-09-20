@@ -49,6 +49,7 @@ import RateMatrixForm from './forms/RateMatrixForm';
 import CollectionAgentForm from './forms/CollectionAgentForm';
 import UserPermissionsForm from './forms/UserPermissionsForm';
 import CounterSaleForm from './forms/CounterSaleForm';
+import RetailSalePermanentForm from './forms/RetailSalePermanentForm';
 import PeriodForm from './forms/PeriodForm';
 import ReportsForm from './forms/ReportsForm';
 import BackupRestoreModal from './forms/BackupRestoreModal';
@@ -124,6 +125,7 @@ export default function VB6DesktopLayout() {
   const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
   const [isUserPermOpen, setIsUserPermOpen] = useState(false);
   const [isCounterSaleOpen, setIsCounterSaleOpen] = useState(false);
+  const [isRetailSalePermanentOpen, setIsRetailSalePermanentOpen] = useState(false);
   const [backupModalMode, setBackupModalMode] = useState<'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward' | null>(null);
 
   // New Vacation Hold Form State
@@ -381,7 +383,7 @@ export default function VB6DesktopLayout() {
               <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Counter Sale
               </button>
-              <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setIsRetailSalePermanentOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Retail Sale To Permanent Customer
               </button>
               <button onClick={() => { setActiveWindow('discontinue'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
@@ -885,7 +887,7 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 15. Modal: Counter & Walk-in Cash Sale Entry */}
+        {/* 15a. Modal: Counter & Walk-in Cash Sale Entry */}
         {isCounterSaleOpen && (
           <CounterSaleForm 
             isOpen={isCounterSaleOpen}
@@ -893,6 +895,18 @@ export default function VB6DesktopLayout() {
             publications={publications}
             rates={rates}
             ratechanges={ratechanges}
+          />
+        )}
+
+        {/* 15b. Modal: Retail Sale to Permanent Customer */}
+        {isRetailSalePermanentOpen && (
+          <RetailSalePermanentForm 
+            isOpen={isRetailSalePermanentOpen}
+            onClose={() => setIsRetailSalePermanentOpen(false)}
+            publications={publications}
+            rates={rates}
+            ratechanges={ratechanges}
+            customers={customerList}
           />
         )}
 

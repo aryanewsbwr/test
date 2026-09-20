@@ -263,6 +263,54 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'mohammad': 'मोहम्मद',
   'khan': 'खान',
   'ali': 'अली',
+  'sumit': 'सुमित',
+  'rohit': 'रोहित',
+  'mohit': 'मोहित',
+  'rahul': 'राहुल',
+  'manoj': 'मनोज',
+  'pramod': 'प्रमोद',
+  'pradeep': 'प्रदीप',
+  'kuldeep': 'कुलदीप',
+  'naveen': 'नवीन',
+  'praveen': 'प्रवीण',
+  'govind': 'गोविंद',
+  'shyam': 'श्याम',
+  'laxman': 'लक्ष्मण',
+  'bharat': 'भरत',
+  'hanuman': 'हनुमान',
+  'ganesh': 'गणेश',
+  'patel': 'पटेल',
+  'bhatia': 'भाटिया',
+  'malhotra': 'मल्होत्रा',
+  'kapoor': 'कपूर',
+  'khanna': 'खन्ना',
+  'mehta': 'मेहता',
+  'dadhich': 'दाधीच',
+  'solanki': 'सोलंकी',
+  'purohit': 'पुरोहित',
+  'ojha': 'ओझा',
+  'bissa': 'बिस्सा',
+  'chhangani': 'छंगाणी',
+  'kalla': 'कल्ला',
+  'vyas': 'व्यास',
+  'modi': 'मोदी',
+  'swami': 'स्वामी',
+  'giri': 'गिरी',
+  'goswami': 'गोस्वामी',
+  'bikaner': 'बीकानेर',
+  'ward': 'वार्ड',
+  'purani': 'पुरानी',
+  'basti': 'बस्ती',
+  'gangashahar': 'गंगाशहर',
+  'bhinasar': 'भीनासर',
+  'kote': 'कोट',
+  'kotegate': 'कोटगेट',
+  'gogagate': 'गोगागेट',
+  'ranibazar': 'रानीबाजार',
+  'sadulganj': 'सादुलगंज',
+  'lalgarh': 'लालगढ़',
+  'jnv': 'जेएनवी',
+  'pawanpuri': 'पवनपुरी',
 
   // Business, Places & Address Terms
   'hotel': 'होटल',
@@ -516,17 +564,29 @@ export function englishToHindiPhonetic(str: string): string {
  */
 function transliterateSingleWord(w: string): string {
   if (!w) return '';
-  if (HINDI_DICTIONARY[w]) return HINDI_DICTIONARY[w];
+  const lower = w.toLowerCase();
+  if (HINDI_DICTIONARY[lower]) return HINDI_DICTIONARY[lower];
 
-  let res = w
+  // Specific common endings in Indian names
+  if (lower.endsWith('singh')) return transliterateSingleWord(lower.slice(0, -5)) + ' सिंह';
+  if (lower.endsWith('kumar')) return transliterateSingleWord(lower.slice(0, -5)) + ' कुमार';
+  if (lower.endsWith('lal')) return transliterateSingleWord(lower.slice(0, -3)) + ' लाल';
+  if (lower.endsWith('chand')) return transliterateSingleWord(lower.slice(0, -5)) + ' चंद';
+  if (lower.endsWith('prasad')) return transliterateSingleWord(lower.slice(0, -6)) + ' प्रसाद';
+
+  let res = lower
     .replace(/shh/g, 'ष्')
     .replace(/sh/g, 'श')
     .replace(/chh/g, 'छ')
     .replace(/ch/g, 'च')
+    .replace(/tth/g, 'ठ')
     .replace(/thh/g, 'ठ')
     .replace(/th/g, 'थ')
+    .replace(/ddh/g, 'ढ')
     .replace(/dhh/g, 'ढ')
     .replace(/dh/g, 'ध')
+    .replace(/tt/g, 'ट')
+    .replace(/dd/g, 'ड')
     .replace(/bh/g, 'भ')
     .replace(/kh/g, 'ख')
     .replace(/gh/g, 'घ')
@@ -534,7 +594,6 @@ function transliterateSingleWord(w: string): string {
     .replace(/jh/g, 'झ')
     .replace(/ndra/g, 'न्द्र')
     .replace(/ndr/g, 'न्द्र')
-    .replace(/endra/g, 'ेन्द्र')
     .replace(/endra/g, 'ेन्द्र')
     .replace(/dra/g, 'द्र')
     .replace(/tra/g, 'त्र')
@@ -556,7 +615,7 @@ function transliterateSingleWord(w: string): string {
     .replace(/k/g, 'क')
     .replace(/g/g, 'ग')
     .replace(/j/g, 'ज')
-    .replace(/t/g, 'ट')
+    .replace(/t/g, 'त')
     .replace(/d/g, 'द')
     .replace(/n/g, 'न')
     .replace(/p/g, 'प')
@@ -577,12 +636,20 @@ function transliterateSingleWord(w: string): string {
     .replace(/e/g, 'े')
     .replace(/o/g, 'ो');
 
-  // Fix initial matra to initial vowel
-  if (res.startsWith('ा')) res = 'आ' + res.slice(1);
-  else if (res.startsWith('ि') || res.startsWith('ी')) res = 'इ' + res.slice(1);
-  else if (res.startsWith('ु') || res.startsWith('ू')) res = 'उ' + res.slice(1);
-  else if (res.startsWith('े') || res.startsWith('ै')) res = 'ए' + res.slice(1);
-  else if (res.startsWith('ो') || res.startsWith('ौ')) res = 'ओ' + res.slice(1);
+  // Fix initial vowel when word starts with a matra
+  if (lower.startsWith('aa')) {
+    res = 'आ' + res.slice(1);
+  } else if (res.startsWith('ा')) {
+    res = 'अ' + res.slice(1);
+  } else if (res.startsWith('ि') || res.startsWith('ी')) {
+    res = (lower.startsWith('ee') || lower.startsWith('ii')) ? ('ई' + res.slice(1)) : ('इ' + res.slice(1));
+  } else if (res.startsWith('ु') || res.startsWith('ू')) {
+    res = (lower.startsWith('oo') || lower.startsWith('uu')) ? ('ऊ' + res.slice(1)) : ('उ' + res.slice(1));
+  } else if (res.startsWith('े') || res.startsWith('ै')) {
+    res = (lower.startsWith('ai') || lower.startsWith('ay')) ? ('ऐ' + res.slice(1)) : ('ए' + res.slice(1));
+  } else if (res.startsWith('ो') || res.startsWith('ौ')) {
+    res = (lower.startsWith('au') || lower.startsWith('av')) ? ('औ' + res.slice(1)) : ('ओ' + res.slice(1));
+  }
 
   return res;
 }
@@ -621,4 +688,29 @@ export function cleanOrTransliterateHindi(rawHindi: string | undefined | null, e
   }
 
   return rawHindi || '';
+}
+
+/**
+ * Asynchronous transliteration helper: calls /api/transliterate (with Google Input Tools + fallback)
+ * or falls back to offline phonetic engine if offline or server-side.
+ */
+export async function transliterateToHindiAsync(englishText: string): Promise<string> {
+  if (!englishText || !englishText.trim()) return '';
+  const clean = englishText.trim();
+
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch(`/api/transliterate?text=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.text) {
+          return data.text;
+        }
+      }
+    } catch {
+      // network error or offline -> fallback
+    }
+  }
+
+  return cleanOrTransliterateHindi('', clean);
 }

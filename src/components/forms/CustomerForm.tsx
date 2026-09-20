@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
-import { cleanOrTransliterateHindi, englishToHindiPhonetic } from '@/lib/transliteration';
+import { cleanOrTransliterateHindi, englishToHindiPhonetic, transliterateToHindiAsync } from '@/lib/transliteration';
 
 interface Props {
   isOpen?: boolean;
@@ -55,6 +55,10 @@ export default function CustomerForm({
   const [isSusha05, setIsSusha05] = useState<boolean>(true);
   const [isSelf, setIsSelf] = useState<boolean>(true);
   const [isGovtSupply, setIsGovtSupply] = useState<boolean>(false);
+  const [isNameHindiManual, setIsNameHindiManual] = useState(false);
+  const [isAddHindiManual, setIsAddHindiManual] = useState(false);
+  const nameDebounceTimer = React.useRef<NodeJS.Timeout | null>(null);
+  const addDebounceTimer = React.useRef<NodeJS.Timeout | null>(null);
 
   // Subscriptions Table
   const [subscriptions, setSubscriptions] = useState<CustomerDetail[]>([]);
@@ -192,22 +196,51 @@ export default function CustomerForm({
 
   const handleNameEngChange = (val: string) => {
     setNameEng(val);
-    const converted = cleanOrTransliterateHindi('', val);
-    setNameHindi(converted);
+    if (!isNameHindiManual) {
+      if (nameDebounceTimer.current) clearTimeout(nameDebounceTimer.current);
+      nameDebounceTimer.current = setTimeout(async () => {
+        if (!val.trim()) {
+          setNameHindi('');
+          return;
+        }
+        const converted = await transliterateToHindiAsync(val);
+        setNameHindi(converted);
+      }, 300);
+    }
   };
 
   const handleAdd1Change = (val: string) => {
     setAdd1(val);
-    const converted = cleanOrTransliterateHindi('', val);
-    setHindiAdd(converted);
+    if (!isAddHindiManual) {
+      if (addDebounceTimer.current) clearTimeout(addDebounceTimer.current);
+      addDebounceTimer.current = setTimeout(async () => {
+        if (!val.trim()) {
+          setHindiAdd('');
+          return;
+        }
+        const converted = await transliterateToHindiAsync(val);
+        setHindiAdd(converted);
+      }, 300);
+    }
   };
 
-  const handleHindiFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: 'name' | 'add') => {
+  const handleHindiFieldKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>, field: 'name' | 'add') => {
     if (e.key === ' ' || e.key === 'Enter') {
-      if (field === 'name') {
-        setNameHindi(cleanOrTransliterateHindi('', nameHindi));
-      } else {
-        setHindiAdd(cleanOrTransliterateHindi('', hindiAdd));
+      const currentText = field === 'name' ? nameHindi : hindiAdd;
+      const tokens = currentText.split(/(\s+)/);
+      const lastToken = tokens[tokens.length - 1];
+      if (lastToken && /[a-zA-Z]/.test(lastToken)) {
+        e.preventDefault();
+        const converted = await transliterateToHindiAsync(lastToken);
+        tokens[tokens.length - 1] = converted + (e.key === ' ' ? ' ' : '');
+        const updated = tokens.join('');
+        if (field === 'name') {
+          setNameHindi(updated);
+          setIsNameHindiManual(true);
+        } else {
+          setHindiAdd(updated);
+          setIsAddHindiManual(true);
+        }
       }
     }
   };
@@ -415,15 +448,22 @@ export default function CustomerForm({
                 <input 
                   type="text" 
                   value={nameHindi}
-                  onChange={(e) => setNameHindi(e.target.value)}
+                  onChange={(e) => {
+                    setNameHindi(e.target.value);
+                    setIsNameHindiManual(true);
+                  }}
                   onKeyDown={(e) => handleHindiFieldKeyDown(e, 'name')}
                   placeholder="हिंदी नाम (ऑटो-ट्रांसलेट)..."
                   className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-indigo-900 shadow-inner"
                 />
                 <button 
                   type="button" 
-                  onClick={() => setNameHindi(cleanOrTransliterateHindi('', nameEng))}
-                  className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900"
+                  onClick={async () => {
+                    const converted = await transliterateToHindiAsync(nameEng);
+                    setNameHindi(converted);
+                    setIsNameHindiManual(false);
+                  }}
+                  className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900 cursor-pointer"
                   title="Translate to Hindi"
                 >
                   अ/A
@@ -448,15 +488,22 @@ export default function CustomerForm({
                 <input 
                   type="text" 
                   value={hindiAdd}
-                  onChange={(e) => setHindiAdd(e.target.value)}
+                  onChange={(e) => {
+                    setHindiAdd(e.target.value);
+                    setIsAddHindiManual(true);
+                  }}
                   onKeyDown={(e) => handleHindiFieldKeyDown(e, 'add')}
                   placeholder="हिंदी पता..."
                   className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
                 />
                 <button 
                   type="button" 
-                  onClick={() => setHindiAdd(cleanOrTransliterateHindi('', add1))}
-                  className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900"
+                  onClick={async () => {
+                    const converted = await transliterateToHindiAsync(add1);
+                    setHindiAdd(converted);
+                    setIsAddHindiManual(false);
+                  }}
+                  className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900 cursor-pointer"
                   title="Translate to Hindi"
                 >
                   अ/A
