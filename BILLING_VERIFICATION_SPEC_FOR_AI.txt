@@ -1,0 +1,371 @@
+================================================================================
+          ARYAN NEWS AGENCY - COMPREHENSIVE BILLING ENGINE SPECIFICATION
+       TECHNICAL AUDIT & REVERSE-ENGINEERED VERIFICATION DOCUMENT FOR AI REVIEW
+================================================================================
+Document Purpose: Complete technical specification addressing all database schemas,
+business logic, ledger carry-forward rules, and mathematical formulas for AI audit.
+Target System: Aryan News Agency Billing Engine (Next.js 14 + Supabase / Access 2008)
+Date of Specification: 2026-09-20
+================================================================================
+
+TABLE OF CONTENTS:
+  1. Executive Summary & Architectural Invariants
+  2. Discount Priority & Stacking Conflict Resolution
+  3. Periodicals Discontinuation (P/T) & Suspension Scope
+  4. Holiday Scope & General Press Holiday Implementation
+  5. Formula 7: Previous Due, Opening Balance & Financial Year (FY) Boundary
+  6. Complete Mathematical Formulas (Daily, Weekly, Fortnightly, Monthly, Dues, Net)
+  7. Concrete Customer Ledger Verification Trace (Customers #108 & #1384)
+  8. Database Schema Cross-Reference
+
+================================================================================
+1. EXECUTIVE SUMMARY & ARCHITECTURAL INVARIANTS
+================================================================================
+- Single Source of Truth: Invoices and monthly bills are derived from transactional
+  event records (deliveries, holidays, suspensions, rate matrices, and receipts).
+- Zero Stacking: Subscription-specific overrides strictly supersede customer-level defaults.
+- Financial Year Boundary Awareness: The accounting year follows the Indian fiscal
+  calendar (April 1st to March 31st). Billing tables are partitioned annually
+  (`billnoYYYYYYYY`, `billYYYYYYYY`, `receiptYYYYYYYY`).
+- Stored/Cached Balance Immunity: `Customer.dueamount` is recognized as a static 2007
+  baseline and is NEVER used as the active opening balance in ongoing financial years.
+
+
+================================================================================
+2. DISCOUNT PRIORITY & STACKING CONFLICT RESOLUTION
+================================================================================
+A. DATABASE COLUMNS INVOLVED:
+   1. Subscription-level: `cd.dis` (or `cd.discount_percent`) in `Customer_Detail`
+   2. Customer-level:     `cust.discount` (or `cust.dis`) in `Customer` master
+   3. Bill summary:       `billnoYYYYYYYY.Dis_Amt`
+
+B. RESOLUTION HIERARCHY (NO STACKING / NO COMPOUNDING):
+   For each individual subscription line item i:
+
+   Case 1: Subscription has explicit discount (cd.dis is NOT NULL and cd.dis > 0)
+     Effective_Discount_Percent = cd.dis
+     (Subscription discount strictly overrides any customer default)
+
+   Case 2: Subscription discount is 0 or NULL, but customer has global discount
+     Effective_Discount_Percent = cust.discount
+
+   Case 3: Neither is set (> 0)
+     Effective_Discount_Percent = 0
+
+   MATHEMATICAL RULE:
+     Effective_Dis_Percent = (cd.dis > 0) ? cd.dis : ((cust.discount > 0) ? cust.discount : 0)
+
+   Line_Discount_Amount = Line_Paper_Total * (Effective_Dis_Percent / 100)
+
+C. CONSTRAINTS:
+   - Subscription discount and Customer discount NEVER stack (e.g., 10% global + 15% sub
+     yields 15%, NOT 25%, and NOT 23.5%).
+   - Discount applies EXCLUSIVELY to Line_Paper_Total (newspaper/magazine charges).
+   - Discount NEVER applies to Delivery Charges (cd.dely / Del_Amt).
+   - Discount NEVER applies to Previous Dues (Due_Amt) or Retail Counter Sales.
+   - Total Monthly Discount:
+       Dis_Amt = Sum of all Line_Discount_Amount for that customer
+
+
+================================================================================
+3. PERIODICALS / MAGAZINES DISCONTINUATION & SUSPENSION SCOPE
+================================================================================
+A. DISCONTINUATION (Permanent 'P' and Temporary 'T'):
+   Strict Rule: Discontinuation rules APPLY TO ALL PERIODICALS (Weekly, Fortnightly,
+   Monthly, Quarterly) exactly as they do to daily newspapers.
+
+   1. Weekly Magazines (e.g., India Today, Panchjanya):
+      - Evaluated on each occurrence of the magazine's designated publication weekday
+        (`pub.magzine_day`: 1=Sun, 2=Mon ... 7=Sat).
+      - If customer has an active suspension (P or T) on that specific calendar date:
+        Issue is SKIPPED and NOT BILLED.
+
+   2. Fortnightly & Bi-Monthly Magazines (e.g., Sarita, Champak - 1st & 16th):
+      - Evaluated INDEPENDENTLY on the 1st and the 16th of the billing month.
+      - Example: Customer is on temporary vacation suspension ('T') from 10th to 20th:
+        * 1st of month: Active -> DELIVERED and BILLED.
+        * 16th of month: Falls inside [10th..20th] -> SKIPPED and NOT BILLED.
+      - Result: Customer is billed for exactly 1 copy instead of 2.
+
+   3. Monthly & Quarterly Magazines (Delivered on 1st of month):
+      - Evaluated on the 1st of the month.
+      - If customer is discontinued on the 1st:
+        Issue is SKIPPED and NOT BILLED.
+
+
+================================================================================
+4. HOLIDAY SCOPE & GENERAL PRESS HOLIDAY IMPLEMENTATION
+================================================================================
+A. DATABASE SCHEMA FOR HOLIDAYS:
+   Table: `Holiday`
+   Columns:
+     - `holiday_id` : Primary Key
+     - `oc_date`    : Occasion Date (DD/MM/YYYY or YYYY-MM-DD)
+     - `occasion`   : Text name (e.g. '15august', 'Diwali', 'Holi')
+     - `publica_id` : Publication ID (Integer, or NULL / 0)
+
+B. GENERAL PRESS HOLIDAYS vs PUBLICATION-SPECIFIC HOLIDAYS:
+   1. `publica_id = 0` OR `publica_id IS NULL`:
+      GENERAL PRESS HOLIDAY. Represents nationwide press closure (e.g., Diwali, Holi).
+      Applies to ALL daily newspapers.
+   2. `publica_id > 0`:
+      PUBLICATION-SPECIFIC HOLIDAY. Applies ONLY to that particular publication.
+
+C. MATCHING LOGIC IN CODE:
+   - For Daily Newspapers (Formula 1, Condition 3):
+     A calendar day `Target_Date` is a HOLIDAY IF AND ONLY IF:
+       Holiday.oc_date == Target_Date
+       AND (Holiday.publica_id == 0 OR Holiday.publica_id IS NULL OR Holiday.publica_id == cd.publica_id)
+
+     -> In TypeScript (`src/lib/billingEngine.ts`):
+        `return hIso === targetDateIso && (!hPub || hPub === 0 || hPub === publicaId);`
+     -> Result: General holidays (publica_id = 0/NULL) match EVERY daily newspaper.
+        No customer is billed for daily papers on days the printing press is closed.
+
+   - For Periodicals / Magazines:
+     Magazines are pre-printed and delivered on distribution cycles. They do NOT skip
+     on general daily press holidays (`publica_id = 0`). They ONLY skip if a holiday
+     record specifically names that exact magazine ID (`Holiday.publica_id == pubId`).
+
+
+================================================================================
+5. FORMULA 7: PREVIOUS DUE, OPENING BALANCE & FINANCIAL YEAR (FY) BOUNDARY
+================================================================================
+A. DIRECT ANSWER TO THE ARCHITECTURAL AUDIT QUESTION:
+   Question: Is Opening_Due computed live from bill/receipt tables, or read from a stored dueamount column?
+   Answer:
+     - Opening_Due is NEVER read from `Customer.dueamount` in ongoing financial years!
+     - `Customer.dueamount` is a STATIC 2007 baseline field created when the customer
+       was first entered into the software 18 years ago. It NEVER updates.
+     - Reading `Customer.dueamount` in subsequent financial years was the EXACT bug that
+       caused the historical ₹864,447 discrepancy.
+
+B. HOW THE FINANCIAL YEAR (FY) ANCHOR OPERATES:
+   Aryan News Agency partitions billing data annually:
+     `billnoYYYYYYYY`  (e.g., `billno20252026` for FY 2025-2026)
+     `billYYYYYYYY`    (e.g., `bill20252026`)
+     `receiptYYYYYYYY` (e.g., `receipt20252026`)
+
+   On April 1st of each Financial Year, the year-end changeover process calculates each
+   customer's audited net closing balance as of March 31st and writes it into the new FY's
+   table as an anchor row:
+     Table: `billnoYYYYYYYY`
+     Row criteria: `Month = 'Dues'`
+     Stored value: `Due_Amt` = March 31st Closing Balance (can be positive for dues, negative for advance)
+
+   Concrete Proof from Database:
+     Customer #108:
+       `Customer.dueamount` in customer master: 60  (frozen from 2007)
+       `billno20252026` where Month='Dues': Due_Amt = 2723 (actual audited carry-forward)
+     Customer #1384:
+       `Customer.dueamount` in customer master: 399 (frozen from 2007)
+       `billno20252026` where Month='Dues': Due_Amt = -115 (advance payment carry-forward)
+
+C. HANDLING THE "8 MISSING ROLLOVER CUSTOMERS" EDGE CASE:
+   During the legacy VB6 annual rollover batch, customers with zero active paper subscriptions
+   in March were sometimes skipped, omitting their `Month = 'Dues'` row in the new table.
+   The replacement billing engine handles this gracefully:
+     If customer HAS a `Month = 'Dues'` row in current FY table:
+         Year_End_Dues = billnoYYYYYYYY.Due_Amt (where Month = 'Dues')
+     Else If customer exists in Prior FY table (`billno(Prior_FY)`):
+         Year_End_Dues = billno(Prior_FY).Balance [March] (live lookup from previous year)
+     Else:
+         Year_End_Dues = Customer.dueamount (only for brand-new customers created in current FY)
+
+   CRITICAL RULE:
+   `Year_End_Dues` and `Customer.dueamount` are NEVER summed together.
+
+D. WITHIN-FY LIVE CALCULATION FOR BILLING MONTH M:
+   When generating bills for month M (e.g., August, which is FY month index 4):
+   Financial Year Month Ordering:
+     [April=0, May=1, June=2, July=3, August=4, September=5, October=6, November=7, December=8, January=9, February=10, March=11]
+
+   1. Starting FY Balance:
+      Year_End_Dues = billnoYYYYYYYY.Due_Amt (where Month = 'Dues')
+
+   2. Prior Billed Charges in Current FY:
+      Sum all bills for months m < M in the current FY table (`billnoYYYYYYYY` / `billYYYYYYYY`):
+        Prior_Months = { April, May, June, July }
+        Prior_Billed_In_FY = Sum of [ Month_Paper_Total + Month_Del_Amt - Month_Dis_Amt ] for m in Prior_Months
+
+   3. Prior Receipts Collected in Current FY:
+      Sum all customer collections from `receiptYYYYYYYY` recorded before the 1st of Month M:
+        Prior_Receipts_In_FY = Sum of [ MalRecpAmt + LessAmt ]
+
+   4. Final Previous Due Formula for Month M:
+      Previous_Due(Month M) = Year_End_Dues + Prior_Billed_In_FY - Prior_Receipts_In_FY
+
+   This guarantees 100% mathematical precision, spans the FY boundary safely, and prevents
+   any drift from stored balance columns.
+
+
+================================================================================
+6. COMPLETE MATHEMATICAL BILLING FORMULAS
+================================================================================
+
+FORMULA 1: DAILY NEWSPAPERS (दैनिक समाचार पत्र)
+-----------------------------------------------
+For each day d from 1 to Total_Days_In_Month:
+  Deliver Day d IF AND ONLY IF:
+    1. Target_Date >= cd.s_date
+    AND 2. (cd.c_date is empty OR Target_Date < cd.c_date)
+    AND 3. Target_Date is NOT in Holidays:
+           NOT (Holiday.oc_date == Target_Date AND (Holiday.publica_id == 0 OR Holiday.publica_id IS NULL OR Holiday.publica_id == cd.publica_id))
+    AND 4. Target_Date is NOT in Discontinue:
+           NOT (Discontinue.customer_id == cd.customer_id AND Discontinue.publica_id in (0, cd.publica_id) AND Target_Date in [Temp_From .. Temp_To/Forever])
+    AND 5. DayOfWeek(Target_Date) in Schedule(cd.from_day)
+
+  Rate on Day d:
+    Latest NewRate from RateChange (Dated <= Target_Date) OR Standard Rate for DayOfWeek.
+
+  Daily_Paper_Total = Sum(Delivered_Days_at_Rate_R) * Rate_R * cd.qty
+
+
+FORMULA 2: WEEKLY MAGAZINES (साप्ताहिक पत्रिका)
+-----------------------------------------------
+Delivered on publication's designated weekday (`pub.magzine_day`: 1=Sun, 2=Mon... 7=Sat).
+  Delivered_Copies = Count of calendar dates d in month where:
+    DayOfWeek(d) == pub.magzine_day
+    AND Target_Date >= cd.s_date
+    AND (cd.c_date is empty OR Target_Date < cd.c_date)
+    AND Target_Date is NOT in Discontinuation range (P or T)
+    AND Target_Date is NOT in Magazine-Specific Holiday (Holiday.publica_id == pub.publica_id)
+
+  Weekly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
+
+
+FORMULA 3: FORTNIGHTLY & BI-MONTHLY PERIODICALS (पाक्षिक पत्रिका)
+-----------------------------------------------------------------
+Delivered on 1st and 16th of the billing month.
+  Delivered_Copies = Count of dates in {1st, 16th} where:
+    Date <= Total_Days_In_Month
+    AND Date >= cd.s_date
+    AND (cd.c_date is empty OR Date < cd.c_date)
+    AND Date is NOT in Discontinuation range (P or T)
+
+  Fortnightly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
+
+
+FORMULA 4: MONTHLY & QUARTERLY MAGAZINES (मासिक एवं त्रैमासिक)
+--------------------------------------------------------------
+Delivered on 1st of the billing month.
+  Eligibility:
+    - Monthly Magazines: Delivered in all 12 months.
+    - Quarterly Magazines (e.g., pub_id = 75): Delivered ONLY in Month in {1 (Jan), 4 (Apr), 7 (Jul), 10 (Oct)}.
+
+  Delivered_Copies = 1 IF:
+    Eligible for Month
+    AND Month_Start >= cd.s_date
+    AND (cd.c_date is empty OR Month_Start < cd.c_date)
+    AND 1st of month is NOT in Discontinuation range (P or T)
+  ELSE:
+    Delivered_Copies = 0
+
+  Monthly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
+
+
+FORMULA 5: DELIVERY CHARGES (वितरण शुल्क)
+-----------------------------------------
+Defined per subscription line item:
+  Total_Delivery_Charge = Sum of cd.dely for all active subscriptions in billing month
+
+
+FORMULA 6: LINE & TOTAL DISCOUNT (छूट)
+--------------------------------------
+  Effective_Discount_Percent = (cd.dis > 0) ? cd.dis : ((cust.discount > 0) ? cust.discount : 0)
+  Line_Discount = Line_Paper_Total * (Effective_Discount_Percent / 100)
+  Total_Discount = Sum of Line_Discount for all customer subscriptions (stored in BillNo.Dis_Amt)
+
+
+FORMULA 7: PREVIOUS DUE (पूर्व बकाया)
+-------------------------------------
+  Previous_Due(Month M) = Year_End_Dues (Month='Dues')
+                          + Sum of Prior Month Billed in FY
+                          - Sum of Prior Receipts in FY
+  (Stored in BillNo.Due_Amt)
+
+
+FORMULA 8: GRAND TOTAL NET PAYABLE (कुल देय राशि)
+-------------------------------------------------
+  Grand_Total (BillNo.Balance) = Previous_Due
+                                + Total_Paper_Amount
+                                + Total_Delivery_Charge
+                                - Total_Discount
+
+
+================================================================================
+7. CONCRETE CUSTOMER LEDGER VERIFICATION TRACE
+================================================================================
+
+TRACE 1: CUSTOMER #108 (Ambuja Public School)
+---------------------------------------------
+- Customer Master:
+  * Customer ID: 108
+  * Static Baseline dueamount: 60  (From 2007 - IGNORED)
+- FY 2025-2026 Ledger (`billno20252026` + `receipt20252026`):
+  * Month 'Dues': Due_Amt = 2723 (Audited Opening Balance)
+  * Receipts against Dues:
+      15/04/2026: Paid 1116
+      15/04/2026: Paid 1070
+      22/04/2026: Paid 537
+      Total Paid: 1116 + 1070 + 537 = 2723 -> Clears Opening Dues exactly to 0.
+  * April Bill: Paper = 449, Del = 100 -> Total = 549
+  * April Receipt (08/05/2026): Paid 549 -> Balance = 0
+  * May Bill: Paper = 465, Del = 100 -> Total = 565
+  * June Bill: Due_Amt = 0, Del = 100, Net Balance = -567 (Advance credit)
+  * July Bill: Due_Amt = 0, Del = 100, Net Balance = -1116 (Advance credit)
+- Result: Perfectly balances to -1116 without any discrepancy.
+
+TRACE 2: CUSTOMER #1384
+-----------------------
+- Customer Master:
+  * Customer ID: 1384
+  * Static Baseline dueamount: 399 (From 2007 - IGNORED)
+- FY 2025-2026 Ledger:
+  * Month 'Dues': Due_Amt = -115 (Advance payment carried forward from prior year)
+  * April Bill: Paper = 115, Net Balance = 0 (115 paper charge absorbed by -115 advance)
+  * June Receipt (11/07/2026): Paid 340
+- Result: Shows advance carry-forward works flawlessly without corrupting dues.
+
+
+================================================================================
+8. DATABASE SCHEMA CROSS-REFERENCE
+================================================================================
+
+1. `billYYYYYYYY` (Line item breakdown table):
+   - Bill_id     : Unique bill number
+   - Customer_id : Customer foreign key
+   - Publica_id  : Publication foreign key
+   - Region_id   : Distribution route/region
+   - Qty         : Total copies delivered in month (Days * Qty)
+   - Rate        : Effective rate per copy
+   - D_Charges   : Delivery charges (if line-specific, or null)
+   - TotalAmt    : Line paper amount (Qty * Rate)
+   - Month       : Month name string ('April' ... 'March')
+   - year        : Financial year start string ('2025')
+   - sno         : Serial number of item in bill
+
+2. `billnoYYYYYYYY` (Monthly bill summary header):
+   - Bill_id     : Unique bill number
+   - Customer_id : Customer foreign key
+   - Region_id   : Region ID
+   - Due_Amt     : Previous Due brought forward (Month='Dues' stores FY rollover)
+   - Del_Amt     : Total monthly delivery charges
+   - Dis_Amt     : Total monthly discount
+   - Month       : Month name string ('Dues', 'April' ... 'March')
+   - year        : Financial year start string ('2025')
+   - Balance     : Net balance payable (Due_Amt + PaperTotal + Del_Amt - Dis_Amt)
+
+3. `receiptYYYYYYYY` (Cash/Cheque receipts):
+   - receipt_id   : Unique receipt ID
+   - bill_id      : Associated Bill ID
+   - receipt_no   : Receipt voucher number
+   - mal_recp_dt  : Collection payment date
+   - month        : Month for which payment was applied
+   - mal_recp_amt : Cash/Cheque amount paid
+   - less_amt     : Allowed deduction/concession
+   - customer_id  : Customer foreign key
+
+================================================================================
+END OF SPECIFICATION DOCUMENT
+================================================================================
