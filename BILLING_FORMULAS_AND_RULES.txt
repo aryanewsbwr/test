@@ -1,0 +1,213 @@
+================================================================================
+          ARYAN NEWS AGENCY - AUTHENTIC BILLING FORMULAS & BUSINESS RULES
+                    REVERSE-ENGINEERED FROM 2008 VB6 SYSTEM
+================================================================================
+
+--------------------------------------------------------------------------------
+1. DISCOUNT PRIORITY & CONFLICT RESOLUTION
+--------------------------------------------------------------------------------
+Sources of Discount in Database:
+  A. Subscription-level discount: cd.dis (or cd.discount_percent) in Customer_Detail
+  B. Customer-level discount:     cust.discount (or cust.dis) in Customer Master
+
+PRIORITY RULE:
+  Subscription-level discount (cd.dis) STRICTLY OVERRIDES Customer-level discount (cust.discount).
+  They NEVER stack, combine, or compound.
+
+Formula for Line Item Discount:
+  If (cd.dis is set and cd.dis > 0):
+      Effective_Discount_Percent = cd.dis
+  Else if (cust.discount is set and cust.discount > 0):
+      Effective_Discount_Percent = cust.discount
+  Else:
+      Effective_Discount_Percent = 0
+
+  Line_Discount_Amount = Line_Paper_Total * (Effective_Discount_Percent / 100)
+
+Total Bill Discount (Dis_Amt in BillNo):
+  Total_Discount_Amount = Sum of all Line_Discount_Amount for that customer
+
+CRITICAL CONSTRAINTS:
+  - Discounts apply ONLY to the Paper Total (newspaper/magazine charges).
+  - Discounts NEVER apply to Delivery Charges (cd.dely / Del_Amt).
+  - Discounts NEVER apply to Previous Dues (Due_Amt) or Retail Counter Sales.
+  - Example: If a customer has cust.discount = 10%, but their Times of India subscription
+    has cd.dis = 15%, the discount applied on Times of India is 15% (NOT 25%, NOT 23.5%).
+
+
+--------------------------------------------------------------------------------
+2. PERIODICALS / MAGAZINES DISCONTINUATION & HOLIDAY RULES
+--------------------------------------------------------------------------------
+A. DISCONTINUATION (Permanent 'P' and Temporary 'T' Suspensions):
+   YES - Discontinuation rules strictly apply to ALL periodicals (Weekly, Fortnightly,
+   Monthly, Quarterly) just like daily newspapers.
+
+   - Weekly Magazines:
+     Checked on each occurrence of the magazine's designated publication weekday (MagzineDay).
+     If the customer has an active discontinuation (P or T) on that date, the issue is
+     skipped and NOT billed.
+
+   - Fortnightly & Bi-Monthly Magazines (Published on 1st and 16th of each month):
+     Evaluated separately on the 1st and 16th of the month.
+     Example: If a customer is under temporary suspension ('T') from 10th to 20th of the month:
+       - 1st issue: DELIVERED and BILLED.
+       - 16th issue: SKIPPED and NOT BILLED.
+     Customer is never overbilled.
+
+   - Monthly & Quarterly Magazines (Published on 1st of each month):
+     Evaluated on the 1st of the month.
+     If customer has an active discontinuation on the 1st, the issue is skipped and NOT billed.
+
+B. HOLIDAYS (Press Holidays):
+   - Daily Newspapers:
+     Skip delivery on official press holidays (Holi, Diwali, Independence Day, etc.)
+     recorded in the Holiday table. Customers are not billed for these days.
+   - Periodicals / Magazines:
+     Do NOT skip on general daily press holidays.
+     Magazines are pre-printed and delivered on their release schedule. A daily newspaper
+     press holiday does not cancel magazine issues.
+
+
+--------------------------------------------------------------------------------
+3. EXACT MATHEMATICAL BILLING FORMULAS
+--------------------------------------------------------------------------------
+
+FORMULA 1: DAILY NEWSPAPERS (दैनिक समाचार पत्र)
+-----------------------------------------------
+For each calendar day (d = 1 to Total_Days_In_Month):
+
+  Delivery Condition (Day is delivered IF AND ONLY IF):
+    1. Target_Date >= cd.s_date  (Subscription start date)
+    AND
+    2. (cd.c_date is empty OR Target_Date < cd.c_date)  (Subscription close date)
+    AND
+    3. Target_Date is NOT in Holidays for this publication
+    AND
+    4. Target_Date is NOT in Discontinuation range (P or T) for this customer & publication
+    AND
+    5. DayOfWeek(Target_Date) matches cd.from_day delivery schedule (e.g. 1-7 for Daily)
+
+  Rate Determination on Day d:
+    If RateChange entry exists for this publication with Dated <= Target_Date:
+        Rate(d) = Latest NewRate from RateChange
+    Else:
+        Rate(d) = Standard Rate for this DayOfWeek from Rate table
+
+  Line_Paper_Total = Sum(Delivered_Days at Rate_R) * Rate_R * cd.qty
+
+
+FORMULA 2: WEEKLY MAGAZINES (साप्ताहिक पत्रिका)
+-----------------------------------------------
+Delivered on the publication's designated weekday (pub.magzine_day: 1=Sun, 2=Mon... 7=Sat).
+
+  Delivered_Copies = Count of days in month where:
+    DayOfWeek(d) == pub.magzine_day
+    AND Target_Date >= cd.s_date
+    AND (cd.c_date is empty OR Target_Date < cd.c_date)
+    AND Target_Date is NOT in Discontinuation range (P or T)
+
+  Weekly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
+
+
+FORMULA 3: FORTNIGHTLY & BI-MONTHLY PERIODICALS (पाक्षिक पत्रिका)
+-----------------------------------------------------------------
+Delivered on the 1st and 16th of the billing month:
+
+  Delivered_Copies = Count of dates in {1st, 16th} where:
+    Date <= Total_Days_In_Month
+    AND Date >= cd.s_date
+    AND (cd.c_date is empty OR Date < cd.c_date)
+    AND Date is NOT in Discontinuation range (P or T)
+
+  Fortnightly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
+
+
+FORMULA 4: MONTHLY & QUARTERLY MAGAZINES (मासिक एवं त्रैमासिक)
+--------------------------------------------------------------
+Delivered on the 1st of the billing month:
+
+  Eligibility Check:
+    - Monthly Magazines: Delivered every month.
+    - Quarterly Magazines (e.g. pub_id = 75): Delivered only in months 1 (Jan), 4 (Apr), 7 (Jul), 10 (Oct).
+
+  Delivered_Copies = 1 IF:
+    Eligible for this month
+    AND Month_Start >= cd.s_date
+    AND (cd.c_date is empty OR Month_Start < cd.c_date)
+    AND 1st of month is NOT in Discontinuation range (P or T)
+  ELSE:
+    Delivered_Copies = 0
+
+  Monthly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
+
+
+FORMULA 5: DELIVERY CHARGES (वितरण शुल्क)
+-----------------------------------------
+Delivery charge is defined per subscription line item (cd.dely / cd.delivery_charge):
+
+  Total_Delivery_Charge = Sum of cd.dely for all active subscriptions of the customer
+  (Active = subscription was alive during the billing month)
+
+
+FORMULA 6: TOTAL DISCOUNT (छूट)
+-------------------------------
+Calculated line-by-line across all subscriptions of the customer:
+
+  Total_Discount = Sum of [ Subscription_Paper_Total * (Effective_Discount_Percent / 100) ]
+  (Stored in BillNo.Dis_Amt)
+
+
+FORMULA 7: PREVIOUS DUE (पूर्व बकाया राशि - LEDGER BRING-FORWARD)
+----------------------------------------------------------------
+Calculated from the beginning of historical records up to prior month:
+
+  Opening_Due     = cust.dueamount  (Customer opening balance)
+  Total_Billed    = Sum of (Prior Months' Paper_Total + Prior Months' Del_Amt)
+  Total_Receipts  = Sum of (All Receipts paid by customer: MalRecpAmt + LessAmt)
+
+  Previous_Due    = Opening_Due + Total_Billed - Total_Receipts
+  (Stored in BillNo.Due_Amt)
+
+
+FORMULA 8: GRAND TOTAL / NET BALANCE PAYABLE (कुल देय राशि)
+-----------------------------------------------------------
+Total amount payable by the customer for the bill:
+
+  Grand_Total (BillNo.Balance) = Previous_Due
+                                + Total_Paper_Amount
+                                + Total_Delivery_Charge
+                                - Total_Discount
+
+
+================================================================================
+4. DATABASE SCHEMA MAPPING REFERENCE
+================================================================================
+
+Table: billYYYYYYYY (Line items breakdown)
+  - Bill_id     : Unique bill number
+  - Customer_id : Customer ID
+  - Publica_id  : Publication ID
+  - Region_id   : Customer's Region ID
+  - Qty         : Total copies delivered in month (Days * Qty)
+  - Rate        : Effective rate per copy
+  - D_Charges   : Delivery charges (null or amount)
+  - TotalAmt    : Qty * Rate (Paper amount for this line)
+  - Month       : Month name (e.g. 'April', 'December')
+  - year        : Start year of financial year (e.g. '2025')
+  - sno         : Serial number of line item in bill
+
+Table: billnoYYYYYYYY (Bill summary header)
+  - Bill_id     : Unique bill number
+  - Customer_id : Customer ID
+  - Region_id   : Customer's Region ID
+  - Due_Amt     : Previous due brought forward (or null if 0)
+  - Del_Amt     : Total delivery charges for month (or null if 0)
+  - Dis_Amt     : Total discount given for month (or null if 0)
+  - Month       : Month name
+  - year        : Start year of financial year
+  - Balance     : Final net payable amount (Due_Amt + PaperTotal + Del_Amt - Dis_Amt)
+
+================================================================================
+Generated on: 2026-09-20
+System: Aryan News Agency Next.js 14 & Supabase Enterprise Suite
+================================================================================
