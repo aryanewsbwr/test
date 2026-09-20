@@ -141,6 +141,9 @@ export function calculateBilling({
     if (rid) regMap.set(rid, r);
   }
 
+  // Track any missing rates loudly instead of silently using fallback
+  const missingRateWarnings: Array<{ publica_id: number; date: string; day_of_week: number; message: string }> = [];
+
   // Rate lookup function: ratechange table takes priority over standard rate table
   const getEffectiveRate = (publicaId: number, dayOfWeek: number, targetDateIso: string): number => {
     // 1. Check ratechanges: rc.Publica_id = publica_id AND (rc.Dayofweek = dayOfWeek OR rc.Dayofweek = 0) AND rc.Dated <= targetDateIso ORDER BY rc.Dated DESC LIMIT 1
@@ -188,7 +191,15 @@ export function calculateBilling({
       if (val !== undefined && val !== null && val > 0) return Number(val);
     }
 
-    return 5.0; // Standard fallback
+    const warnMsg = `[BillingEngine WARN] Missing rate for publication #${publicaId} on date ${targetDateIso} (DayOfWeek: ${dayOfWeek}). Returning 0.00.`;
+    console.warn(warnMsg);
+    missingRateWarnings.push({
+      publica_id: publicaId,
+      date: targetDateIso,
+      day_of_week: dayOfWeek,
+      message: warnMsg
+    });
+    return 0.0;
   };
 
   // Holiday check: Daily newspapers skip on general (pub=0) and pub-specific holidays.
@@ -207,6 +218,7 @@ export function calculateBilling({
   };
 
   // Discontinue check: checks active suspension / permanent stop
+  // Authoritative column is `temp_from` (verified directly against database schema)
   const isDiscontinued = (custId: number, publicaId: number, targetDateIso: string): boolean => {
     return discontinues.some(d => {
       const dCust = d.customer_id || d.Customer_id;
@@ -215,7 +227,7 @@ export function calculateBilling({
       const dPub = d.publica_id || d.Publica_id;
       if (dPub && dPub !== 0 && dPub !== publicaId) return false;
 
-      const tempFrom = parseLegacyDateToIso(d.temp_from || d.Temp_From || d.entry_date || d.EntryDate);
+      const tempFrom = parseLegacyDateToIso(d.temp_from || d.Temp_From);
       if (!tempFrom) return false;
 
       const isPerm = (d.temp_perma || d.Temp_Perma || 'P').toUpperCase().startsWith('P');
@@ -661,6 +673,7 @@ export function calculateBilling({
     total_bills: generatedBills.length,
     grand_total: Math.round(grandTotalBilling * 100) / 100,
     bills: generatedBills,
-    breakup_lines: allBreakupLines
+    breakup_lines: allBreakupLines,
+    missing_rate_warnings: missingRateWarnings
   };
 }
