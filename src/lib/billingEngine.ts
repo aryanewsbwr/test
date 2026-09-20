@@ -85,6 +85,7 @@ export function calculateBilling({
   holidays = [],
   discontinues = [],
   bills = [],
+  billHeaders = [],
   receipts = [],
   regions = []
 }: {
@@ -98,7 +99,8 @@ export function calculateBilling({
   publications: any[];
   holidays: any[];
   discontinues: any[];
-  bills: any[];
+  bills?: any[];
+  billHeaders?: any[];
   receipts: any[];
   regions: any[];
 }) {
@@ -286,28 +288,54 @@ export function calculateBilling({
   // Step B: Prior Billed charges in the CURRENT FY (strictly prior to target billing month)
   const priorBilledInFyMap = new Map<number, number>();
 
-  for (const b of bills) {
+  const allHeaders = (billHeaders && billHeaders.length > 0) ? billHeaders : bills;
+  for (const b of allHeaders) {
     const cid = b.customer_id || b.Customer_id;
     const bMonth = (b.month || b.Month || '').toLowerCase().trim();
-    const mIdx = FY_MONTH_ORDER[bMonth];
-
     if (bMonth === 'dues') {
       const val = Number(b.due_amt !== undefined ? b.due_amt : (b.Due_Amt || 0));
       yearEndDuesMap.set(cid, val);
-    } else if (mIdx !== undefined && mIdx < targetFyIndex) {
-      // Prior month in this FY
-      const delAmt = Number(b.del_amt !== undefined ? b.del_amt : (b.Del_Amt || b.dely || b.Dely || 0));
-      const disAmt = Number(b.dis_amt !== undefined ? b.dis_amt : (b.Dis_Amt || 0));
-      let monthPaper = 0;
-      if (b.totalamt !== undefined || b.TotalAmt !== undefined) {
-        monthPaper = Number(b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
-      } else if (b.balance !== undefined || b.Balance !== undefined) {
-        const bal = Number(b.balance !== undefined ? b.balance : b.Balance);
-        const due = Number(b.due_amt !== undefined ? b.due_amt : (b.Due_Amt || 0));
-        monthPaper = bal - due - delAmt + disAmt;
+    }
+  }
+
+  // If separate line items exist in bills (TotalAmt), sum them by customer for prior months:
+  const hasLineItems = bills.some(b => b.totalamt !== undefined || b.TotalAmt !== undefined);
+  if (hasLineItems) {
+    for (const b of bills) {
+      const cid = b.customer_id || b.Customer_id;
+      const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[bMonth];
+      if (mIdx !== undefined && mIdx < targetFyIndex && (b.totalamt !== undefined || b.TotalAmt !== undefined)) {
+        const lineAmt = Number(b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
+        priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + lineAmt);
       }
-      const netMonthCharge = monthPaper + delAmt - disAmt;
-      priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + netMonthCharge);
+    }
+    // Add delivery and subtract discount from allHeaders for prior months
+    for (const b of allHeaders) {
+      const cid = b.customer_id || b.Customer_id;
+      const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[bMonth];
+      if (mIdx !== undefined && mIdx < targetFyIndex) {
+        const delAmt = Number(b.del_amt !== undefined ? b.del_amt : (b.Del_Amt || 0));
+        const disAmt = Number(b.dis_amt !== undefined ? b.dis_amt : (b.Dis_Amt || 0));
+        priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + delAmt - disAmt);
+      }
+    }
+  } else {
+    // If only bill headers were passed (bills === allHeaders)
+    for (const b of allHeaders) {
+      const cid = b.customer_id || b.Customer_id;
+      const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[bMonth];
+      if (mIdx !== undefined && mIdx < targetFyIndex && bMonth !== 'dues') {
+        const delAmt = Number(b.del_amt !== undefined ? b.del_amt : (b.Del_Amt || 0));
+        const disAmt = Number(b.dis_amt !== undefined ? b.dis_amt : (b.Dis_Amt || 0));
+        let monthPaper = 0;
+        if (b.paper_amt !== undefined || b.Paper_Amt !== undefined) {
+          monthPaper = Number(b.paper_amt !== undefined ? b.paper_amt : b.Paper_Amt);
+        }
+        priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + monthPaper + delAmt - disAmt);
+      }
     }
   }
 
@@ -318,14 +346,16 @@ export function calculateBilling({
     const rMonth = (r.month || r.Month || '').toLowerCase().trim();
     const mIdx = FY_MONTH_ORDER[rMonth];
 
+    const recDate = parseLegacyDateToIso(r.mal_recp_dt || r.MalRecpDt || r.bill_date || r.BillDate);
+    // In legacy ledger: receipt is prior if its voucher date is before target month start,
+    // OR if its associated month is strictly prior to target month and voucher date is not after target month
     let isPrior = false;
     if (mIdx !== undefined && mIdx < targetFyIndex) {
-      isPrior = true;
-    } else {
-      const recDate = parseLegacyDateToIso(r.mal_recp_dt || r.MalRecpDt || r.bill_date || r.BillDate);
-      if (recDate && recDate < monthStartIso) {
+      if (!recDate || recDate <= monthEndIso) {
         isPrior = true;
       }
+    } else if (recDate && recDate < monthStartIso) {
+      isPrior = true;
     }
 
     if (isPrior) {
@@ -500,9 +530,9 @@ export function calculateBilling({
         customerDiscountTotal += subDisAmt;
       }
 
-      // Delivery Charges per Subscription
+      // Delivery Charges per Subscription: only if subscription was active during the month
       const dely = Number(cd.delivery_charge !== undefined ? cd.delivery_charge : (cd.dely || cd.Dely || 0));
-      if (dely > 0 && (!cDateIso || cDateIso > monthStartIso)) {
+      if (dely > 0 && sDateIso <= monthEndIso && (!cDateIso || cDateIso >= monthStartIso)) {
         customerDeliveryTotal += dely;
         custBreakup.push({
           customer_id: custId,
