@@ -258,25 +258,77 @@ export function calculateBilling({
     subsByCust.get(cid)!.push(s);
   }
 
+  const FY_MONTH_ORDER: Record<string, number> = {
+    'dues': -1,
+    'april': 0, 'apr': 0,
+    'may': 1,
+    'june': 2, 'jun': 2,
+    'july': 3, 'jul': 3,
+    'august': 4, 'aug': 4,
+    'september': 5, 'sep': 5,
+    'october': 6, 'oct': 6,
+    'november': 7, 'nov': 7,
+    'december': 8, 'dec': 8,
+    'january': 9, 'jan': 9,
+    'february': 10, 'feb': 10,
+    'march': 11, 'mar': 11
+  };
+
+  const targetFyIndex = FY_MONTH_ORDER[standardMonthName.toLowerCase()] ?? 4;
+
   // Pre-index prior bills and receipts for Previous Due calculation
-  const duesByCust = new Map<number, number>();
+  // Step A: Year-End Opening Balance from Month = 'Dues'
+  const yearEndDuesMap = new Map<number, number>();
+  // Step B: Prior Billed charges in the CURRENT FY (strictly prior to target billing month)
+  const priorBilledInFyMap = new Map<number, number>();
+
   for (const b of bills) {
     const cid = b.customer_id || b.Customer_id;
-    const prev = duesByCust.get(cid) || 0;
-    const bMonth = b.month || b.Month || '';
-    const dueAmt = (bMonth.toLowerCase() === 'dues') ? (b.due_amt || b.Due_Amt || 0) : 0;
-    const totalAmt = (bMonth.toLowerCase() !== 'dues') ? (b.totalamt || b.TotalAmt || b.balance || b.Balance || 0) : 0;
-    const delAmt = b.dely || b.del_amt || b.Del_Amt || b.Dely || 0;
-    duesByCust.set(cid, prev + dueAmt + totalAmt + delAmt);
+    const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+    const mIdx = FY_MONTH_ORDER[bMonth];
+
+    if (bMonth === 'dues') {
+      const val = Number(b.due_amt !== undefined ? b.due_amt : (b.Due_Amt || 0));
+      yearEndDuesMap.set(cid, val);
+    } else if (mIdx !== undefined && mIdx < targetFyIndex) {
+      // Prior month in this FY
+      const delAmt = Number(b.del_amt !== undefined ? b.del_amt : (b.Del_Amt || b.dely || b.Dely || 0));
+      const disAmt = Number(b.dis_amt !== undefined ? b.dis_amt : (b.Dis_Amt || 0));
+      let monthPaper = 0;
+      if (b.totalamt !== undefined || b.TotalAmt !== undefined) {
+        monthPaper = Number(b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
+      } else if (b.balance !== undefined || b.Balance !== undefined) {
+        const bal = Number(b.balance !== undefined ? b.balance : b.Balance);
+        const due = Number(b.due_amt !== undefined ? b.due_amt : (b.Due_Amt || 0));
+        monthPaper = bal - due - delAmt + disAmt;
+      }
+      const netMonthCharge = monthPaper + delAmt - disAmt;
+      priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + netMonthCharge);
+    }
   }
 
-  const receiptsByCust = new Map<number, number>();
+  // Step C: Prior Receipts in the CURRENT FY (strictly prior to target billing month)
+  const priorReceiptsInFyMap = new Map<number, number>();
   for (const r of receipts) {
     const cid = r.customer_id || r.Customer_id;
-    const prev = receiptsByCust.get(cid) || 0;
-    const recpAmt = r.mal_recp_amt || r.MalRecpAmt || r.bill_amt || r.BillAmt || 0;
-    const lessAmt = r.less_amt || r.LessAmt || 0;
-    receiptsByCust.set(cid, prev + recpAmt + lessAmt);
+    const rMonth = (r.month || r.Month || '').toLowerCase().trim();
+    const mIdx = FY_MONTH_ORDER[rMonth];
+
+    let isPrior = false;
+    if (mIdx !== undefined && mIdx < targetFyIndex) {
+      isPrior = true;
+    } else {
+      const recDate = parseLegacyDateToIso(r.mal_recp_dt || r.MalRecpDt || r.bill_date || r.BillDate);
+      if (recDate && recDate < monthStartIso) {
+        isPrior = true;
+      }
+    }
+
+    if (isPrior) {
+      const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+      const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+      priorReceiptsInFyMap.set(cid, (priorReceiptsInFyMap.get(cid) || 0) + recpAmt + lessAmt);
+    }
   }
 
   const generatedBills: CustomerMonthlyBill[] = [];
@@ -480,10 +532,16 @@ export function calculateBilling({
     // =========================================================================
     // 2. PREVIOUS DUE (Sort_order 4)
     // =========================================================================
-    const initialDue = Number(cust.dueamount || cust.Dueamount || 0);
-    const billedHistory = duesByCust.get(custId) || 0;
-    const paidHistory = receiptsByCust.get(custId) || 0;
-    const previousDue = Math.round((initialDue + billedHistory - paidHistory) * 100) / 100;
+    // Prior financial year carry-forward anchor (Month = 'Dues' in current FY table).
+    // If not found (new customer created this FY), fallback to cust.dueamount.
+    // NEVER sum both cust.dueamount and Year_End_Dues together!
+    const yearEndOpeningDue = yearEndDuesMap.has(custId)
+      ? yearEndDuesMap.get(custId)!
+      : Number(cust.dueamount || cust.Dueamount || 0);
+
+    const priorBilledInFy = priorBilledInFyMap.get(custId) || 0;
+    const priorPaidInFy = priorReceiptsInFyMap.get(custId) || 0;
+    const previousDue = Math.round((yearEndOpeningDue + priorBilledInFy - priorPaidInFy) * 100) / 100;
 
     if (previousDue !== 0) {
       custBreakup.push({

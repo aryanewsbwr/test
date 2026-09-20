@@ -58,14 +58,23 @@ A. DISCONTINUATION (Permanent 'P' and Temporary 'T' Suspensions):
      Evaluated on the 1st of the month.
      If customer has an active discontinuation on the 1st, the issue is skipped and NOT billed.
 
-B. HOLIDAYS (Press Holidays):
-   - Daily Newspapers:
-     Skip delivery on official press holidays (Holi, Diwali, Independence Day, etc.)
-     recorded in the Holiday table. Customers are not billed for these days.
-   - Periodicals / Magazines:
-     Do NOT skip on general daily press holidays.
-     Magazines are pre-printed and delivered on their release schedule. A daily newspaper
-     press holiday does not cancel magazine issues.
+B. HOLIDAY SCOPE & GENERAL PRESS HOLIDAYS:
+   In table `Holiday`:
+     - `publica_id = 0` OR `publica_id IS NULL`: GENERAL PRESS HOLIDAY (Applies to ALL daily newspapers)
+     - `publica_id > 0`: PUBLICATION-SPECIFIC HOLIDAY (Applies only to that publication_id)
+
+   Matching Logic:
+     - Daily Newspapers (Condition 3 of Formula 1):
+       A daily newspaper skips delivery IF:
+         Holiday.oc_date = Target_Date
+         AND (Holiday.publica_id = 0 OR Holiday.publica_id IS NULL OR Holiday.publica_id = cd.publica_id)
+       Result: General holidays like Diwali, Holi, Independence Day (publica_id = 0/NULL)
+       automatically apply to EVERY daily newspaper. No customer is billed for these days.
+
+     - Periodicals / Magazines (Weekly, Fortnightly, Monthly, Quarterly):
+       Magazines are pre-printed and delivered on a release schedule. They do NOT skip on
+       general daily press holidays (publica_id = 0). They ONLY skip if a holiday is
+       explicitly recorded with Holiday.publica_id matching that specific magazine ID.
 
 
 --------------------------------------------------------------------------------
@@ -82,6 +91,8 @@ For each calendar day (d = 1 to Total_Days_In_Month):
     2. (cd.c_date is empty OR Target_Date < cd.c_date)  (Subscription close date)
     AND
     3. Target_Date is NOT in Holidays for this publication
+       Where Holiday Match Condition is:
+         Holiday.oc_date = Target_Date AND (Holiday.publica_id = 0 OR Holiday.publica_id IS NULL OR Holiday.publica_id = cd.publica_id)
     AND
     4. Target_Date is NOT in Discontinuation range (P or T) for this customer & publication
     AND
@@ -105,6 +116,7 @@ Delivered on the publication's designated weekday (pub.magzine_day: 1=Sun, 2=Mon
     AND Target_Date >= cd.s_date
     AND (cd.c_date is empty OR Target_Date < cd.c_date)
     AND Target_Date is NOT in Discontinuation range (P or T)
+    AND Target_Date is NOT in Specific Holiday for this magazine (Holiday.publica_id = pub.publica_id)
 
   Weekly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
 
@@ -127,11 +139,11 @@ FORMULA 4: MONTHLY & QUARTERLY MAGAZINES (मासिक एवं त्रै
 Delivered on the 1st of the billing month:
 
   Eligibility Check:
-    - Monthly Magazines: Delivered every month.
+    - Monthly Magazines: Delivered every month (12 issues/year).
     - Quarterly Magazines (e.g. pub_id = 75): Delivered only in months 1 (Jan), 4 (Apr), 7 (Jul), 10 (Oct).
 
   Delivered_Copies = 1 IF:
-    Eligible for this month
+    Eligible for this month (Monthly OR Quarterly month match)
     AND Month_Start >= cd.s_date
     AND (cd.c_date is empty OR Month_Start < cd.c_date)
     AND 1st of month is NOT in Discontinuation range (P or T)
@@ -157,16 +169,52 @@ Calculated line-by-line across all subscriptions of the customer:
   (Stored in BillNo.Dis_Amt)
 
 
-FORMULA 7: PREVIOUS DUE (पूर्व बकाया राशि - LEDGER BRING-FORWARD)
-----------------------------------------------------------------
-Calculated from the beginning of historical records up to prior month:
+FORMULA 7: PREVIOUS DUE (पूर्व बकाया राशि - LEDGER RESOLUTION & FY BOUNDARY)
+----------------------------------------------------------------------------
+Direct Answer to Architecture Question:
+  Is Opening_Due computed live or read from a stored dueamount column?
+  --> ANSWER: Opening_Due is NEVER read from `Customer.dueamount` in ongoing years!
+      `Customer.dueamount` is a static historical field from 2007 (initial system setup).
+      Reading `Customer.dueamount` in later years was the EXACT cause of the ₹864,447 discrepancy!
 
-  Opening_Due     = cust.dueamount  (Customer opening balance)
-  Total_Billed    = Sum of (Prior Months' Paper_Total + Prior Months' Del_Amt)
-  Total_Receipts  = Sum of (All Receipts paid by customer: MalRecpAmt + LessAmt)
+The True Financial Year (FY) Ledger Architecture:
+  Aryan News Agency stores transaction data in annual per-Financial-Year tables:
+    - Bill Summary Headers : billnoYYYYYYYY  (e.g., billno20252026)
+    - Bill Line Items      : billYYYYYYYY    (e.g., bill20252026)
+    - Customer Receipts    : receiptYYYYYYYY (e.g., receipt20252026)
 
-  Previous_Due    = Opening_Due + Total_Billed - Total_Receipts
-  (Stored in BillNo.Due_Amt)
+Step A: Starting Opening Balance for the Financial Year (Year_End_Dues)
+  On April 1st of each Financial Year, the year-end rollover freezes each customer's
+  closing balance from March 31st of the preceding year into a special anchor row:
+    Table: billnoYYYYYYYY
+    Condition: Month = 'Dues'
+    Year_End_Dues = billnoYYYYYYYY.Due_Amt  (where Month = 'Dues')
+
+  Fallback for Missed Customers (Edge Case):
+    If a customer has no Month='Dues' row in current FY (e.g., the 8 inactive customers
+    missed during the VB6 rollover batch):
+      Year_End_Dues = billno(Prior_FY).Balance [March]
+      (If customer was newly created this year: Year_End_Dues = cust.dueamount)
+
+Step B: Prior Monthly Billings Within Current Financial Year
+  For billing month M (e.g., August), sum only prior billed months of the CURRENT FY table:
+    Prior_Months = {m in FY sequence | m < M} (e.g. April, May, June, July)
+
+    Prior_Billed_In_FY = Sum of [ Month_Paper_Total + Month_Del_Amt - Month_Dis_Amt ]
+    (or derived from billnoYYYYYYYY: Sum of [ Balance - Due_Amt ] for m in Prior_Months)
+
+Step C: Prior Receipts Within Current Financial Year
+  Sum all receipts paid by the customer in `receiptYYYYYYYY` prior to month M:
+    Prior_Receipts_In_FY = Sum of [ MalRecpAmt + LessAmt ]
+    (where receipt date < 1st of billing month M)
+
+Step D: Final Previous Due Formula
+  Previous_Due(Month M) = Year_End_Dues
+                          + Prior_Billed_In_FY
+                          - Prior_Receipts_In_FY
+
+  (Stored in BillNo.Due_Amt for month M)
+  Crucial Rule: Year_End_Dues and cust.dueamount are NEVER added together.
 
 
 FORMULA 8: GRAND TOTAL / NET BALANCE PAYABLE (कुल देय राशि)
@@ -203,9 +251,20 @@ Table: billnoYYYYYYYY (Bill summary header)
   - Due_Amt     : Previous due brought forward (or null if 0)
   - Del_Amt     : Total delivery charges for month (or null if 0)
   - Dis_Amt     : Total discount given for month (or null if 0)
-  - Month       : Month name
+  - Month       : Month name ('Dues', 'April', ... 'March')
   - year        : Start year of financial year
   - Balance     : Final net payable amount (Due_Amt + PaperTotal + Del_Amt - Dis_Amt)
+
+Table: receiptYYYYYYYY (Customer payment collections)
+  - receipt_id   : Receipt ID
+  - bill_id      : Associated Bill ID
+  - receipt_no   : Receipt number
+  - bill_date    : Date bill was printed/issued
+  - mal_recp_dt  : Actual collection/payment date
+  - month        : Month of bill against which receipt is posted
+  - mal_recp_amt : Payment amount received
+  - less_amt     : Concession / discount / round-off allowance
+  - customer_id  : Customer ID
 
 ================================================================================
 Generated on: 2026-09-20
