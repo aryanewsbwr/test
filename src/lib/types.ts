@@ -27,6 +27,7 @@ export interface Publication {
   chr_del?: number;
   pub_hindi?: string;
   is_closed?: boolean;
+  is_permanent?: boolean;
   closed_from?: string | null;
   closed_to?: string | null;
   current_rates?: Record<number, number> | null;

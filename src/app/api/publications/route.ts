@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
       const disc = pubdis.find((d: any) => (d.publica_id || d.Publica_id) === p.publica_id);
       const toDate = disc ? (disc.to_date || disc.ToDate) : null;
       const fromDate = disc ? (disc.from_date || disc.FromDate) : null;
-      const isClosed = !!(disc && (toDate >= todayIso || toDate >= '2025-01-01'));
+      const isPermanent = !!(disc && (disc.is_permanent || toDate >= '2090-01-01' || toDate === '2099-12-31' || toDate === 'Permanent'));
+      const isClosed = !!(disc && (toDate >= todayIso || toDate >= '2025-01-01' || isPermanent));
 
       return {
         ...p,
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
         current_rates: effectiveRates,
         today_rate: effectiveRates ? effectiveRates[new Date().getDay() + 1] : 5.0,
         is_closed: isClosed,
+        is_permanent: isPermanent,
         closed_from: isClosed ? fromDate : null,
         closed_to: isClosed ? toDate : null
       };
@@ -57,6 +59,8 @@ export async function GET(request: NextRequest) {
       filtered = filtered.filter((p: any) => !p.is_closed);
     } else if (statusFilter === 'closed') {
       filtered = filtered.filter((p: any) => p.is_closed);
+    } else if (statusFilter === 'permanent') {
+      filtered = filtered.filter((p: any) => p.is_permanent);
     }
 
     if (search) {
@@ -72,6 +76,7 @@ export async function GET(request: NextRequest) {
       total: filtered.length,
       active_count: enriched.filter((p: any) => !p.is_closed).length,
       closed_count: enriched.filter((p: any) => p.is_closed).length,
+      permanent_count: enriched.filter((p: any) => p.is_permanent).length,
       publications: filtered
     });
   } catch (error: any) {
@@ -97,6 +102,7 @@ export async function POST(request: NextRequest) {
       chr_del = 0,
       rates: customRates,
       is_closed = false,
+      is_permanent = false,
       closed_from,
       closed_to
     } = body;
@@ -192,9 +198,9 @@ export async function POST(request: NextRequest) {
     // 3. Handle Closed / Discontinue status in publicationdis
     try {
       let pdis = loadJson('publicationdis.json');
-      if (is_closed) {
+      if (is_closed || is_permanent) {
         const fromD = closed_from || todayIso;
-        const toD = closed_to || '2050-03-31';
+        const toD = is_permanent ? '2099-12-31' : (closed_to || '2050-03-31');
 
         await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);
         await supabase.from('publicationdis').insert([{
@@ -204,7 +210,15 @@ export async function POST(request: NextRequest) {
         }]);
 
         pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== finalPubId);
-        pdis.push({ publica_id: finalPubId, from_date: fromD, to_date: toD });
+        pdis.push({ 
+          publica_id: finalPubId, 
+          Publica_id: finalPubId, 
+          from_date: fromD, 
+          FromDate: fromD, 
+          to_date: toD, 
+          ToDate: toD,
+          is_permanent: !!is_permanent 
+        });
         saveJson('publicationdis.json', pdis);
       } else {
         await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);

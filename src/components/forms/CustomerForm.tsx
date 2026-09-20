@@ -46,7 +46,7 @@ export default function CustomerForm({
   const [add1, setAdd1] = useState('');
   const [hindiAdd, setHindiAdd] = useState('');
   const [phone, setPhone] = useState('');
-  const [regionId, setRegionId] = useState<number>(regions[0]?.region_id || 1);
+  const [regionId, setRegionId] = useState<number>(0);
   const [securityDeposit, setSecurityDeposit] = useState<number>(0);
   const [dueAmount, setDueAmount] = useState<number>(0);
   const [priority, setPriority] = useState<number>(1);
@@ -120,7 +120,7 @@ export default function CustomerForm({
     setAdd1('');
     setHindiAdd('');
     setPhone('');
-    setRegionId(regions[0]?.region_id || 1);
+    setRegionId(0);
     setSecurityDeposit(0);
     setDueAmount(0);
     setPriority(1);
@@ -456,10 +456,11 @@ export default function CustomerForm({
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Region</label>
               <select 
-                value={regionId}
-                onChange={(e) => setRegionId(Number(e.target.value))}
+                value={regionId || ''}
+                onChange={(e) => setRegionId(Number(e.target.value) || 0)}
                 className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800"
               >
+                <option value="">-- Select Region --</option>
                 {regions.map(r => (
                   <option key={r.region_id} value={r.region_id}>{r.region_name}</option>
                 ))}

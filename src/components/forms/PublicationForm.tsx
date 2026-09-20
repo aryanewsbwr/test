@@ -39,18 +39,20 @@ export default function PublicationForm({
     public_name: '',
     pub_hindi: '',
     abrv: '',
-    publish_id: 1,
-    type_p: 'Daily',
-    circulation: 'Morning',
-    duration: 'Daily',
+    publish_id: 0,
+    type_p: '',
+    circulation: '',
+    duration: '',
     chr_del: 0,
     is_closed: false,
+    is_permanent: false,
     closed_from: null,
     closed_to: null
   });
 
   const [isNewMode, setIsNewMode] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
+  const [isPermanent, setIsPermanent] = useState(false);
   const [closedFrom, setClosedFrom] = useState('');
   const [closedTo, setClosedTo] = useState('');
 
@@ -58,10 +60,10 @@ export default function PublicationForm({
     1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0
   });
 
-  const [publishingDay, setPublishingDay] = useState('Sunday');
+  const [publishingDay, setPublishingDay] = useState('');
   const [delChargesChecked, setDelChargesChecked] = useState(false);
   const [isFindOpen, setIsFindOpen] = useState(false);
-  const [findTab, setFindTab] = useState<'all' | 'active' | 'closed'>('all');
+  const [findTab, setFindTab] = useState<'all' | 'active' | 'closed' | 'permanent'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [msg, setMsg] = useState('');
   const [selectedDayRow, setSelectedDayRow] = useState<number>(1);
@@ -75,21 +77,24 @@ export default function PublicationForm({
       public_name: '',
       pub_hindi: '',
       abrv: '',
-      publish_id: publishers[0]?.publish_id || 1,
-      type_p: 'Daily',
-      circulation: 'Morning',
-      duration: 'Daily',
+      publish_id: 0,
+      type_p: '',
+      circulation: '',
+      duration: '',
       chr_del: 0,
       is_closed: false,
+      is_permanent: false,
       closed_from: null,
       closed_to: null
     });
     setWeekdayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
+    setPublishingDay('');
     setDelChargesChecked(false);
     setIsClosed(false);
+    setIsPermanent(false);
     setClosedFrom('');
     setClosedTo('');
-    setMsg('');
+    setMsg('Form cleared to blank.');
     setSearchTerm('');
     setIsFindOpen(false);
     setTimeout(() => {
@@ -100,16 +105,22 @@ export default function PublicationForm({
   const loadPublication = (p: Publication) => {
     setIsNewMode(false);
     const hindiName = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
+    const isPerm = Boolean(p.is_permanent || p.closed_to === '2099-12-31' || (p.closed_to && p.closed_to >= '2090-01-01'));
+    const isClsd = Boolean(p.is_closed || isPerm);
+
     setSelectedPub({
       ...p,
       pub_hindi: hindiName,
-      type_p: p.type_p || 'Daily',
-      circulation: p.circulation || 'Morning',
-      duration: p.duration || 'Daily',
-      publish_id: p.publish_id || 1,
+      type_p: p.type_p || '',
+      circulation: p.circulation || '',
+      duration: p.duration || '',
+      publish_id: p.publish_id || 0,
+      is_closed: isClsd,
+      is_permanent: isPerm
     });
     setDelChargesChecked(!!p.chr_del);
-    setIsClosed(!!p.is_closed);
+    setIsClosed(isClsd);
+    setIsPermanent(isPerm);
     setClosedFrom(p.closed_from || '');
     setClosedTo(p.closed_to || '');
 
@@ -125,21 +136,24 @@ export default function PublicationForm({
       public_name: '',
       pub_hindi: '',
       abrv: '',
-      publish_id: publishers[0]?.publish_id || 1,
-      type_p: 'Daily',
-      circulation: 'Morning',
-      duration: 'Daily',
+      publish_id: 0,
+      type_p: '',
+      circulation: '',
+      duration: '',
       chr_del: 0,
       is_closed: false,
+      is_permanent: false,
       closed_from: null,
       closed_to: null
     });
     setWeekdayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
+    setPublishingDay('');
     setDelChargesChecked(false);
     setIsClosed(false);
+    setIsPermanent(false);
     setClosedFrom('');
     setClosedTo('');
-    setMsg('NEW PUBLICATION MODE: Enter Name, Hindi, and 7-day rates. Click Save to assign new ID.');
+    setMsg('NEW PUBLICATION MODE: Enter Name, Publisher, Type, and Rates. Click Save to assign new ID.');
     setTimeout(() => {
       nameInputRef.current?.focus();
     }, 50);
@@ -187,10 +201,10 @@ export default function PublicationForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [weekdayRates, selectedPub, isNewMode, isClosed, closedFrom, closedTo]);
+  }, [weekdayRates, selectedPub, isNewMode, isClosed, isPermanent, closedFrom, closedTo]);
 
   const copySundayRate = () => {
-    const sun = weekdayRates[1] || 5.0;
+    const sun = weekdayRates[1] || 0;
     const updated: Record<number, number> = {};
     WEEKDAYS.forEach(d => { updated[d.id] = sun; });
     setWeekdayRates(updated);
@@ -211,9 +225,10 @@ export default function PublicationForm({
       is_new: isNewMode || selectedPub.publica_id === 0,
       chr_del: delChargesChecked ? 1 : 0,
       rates: weekdayRates,
-      is_closed: isClosed,
-      closed_from: isClosed ? (closedFrom || todayStr) : null,
-      closed_to: isClosed ? (closedTo || '2050-03-31') : null
+      is_closed: isClosed || isPermanent,
+      is_permanent: isPermanent,
+      closed_from: (isClosed || isPermanent) ? (closedFrom || todayStr) : null,
+      closed_to: isPermanent ? '2099-12-31' : (isClosed ? (closedTo || '2050-03-31') : null)
     };
 
     try {
@@ -266,10 +281,11 @@ export default function PublicationForm({
     }
   };
 
-  // Filtered publications for Find Modal with Active / Closed Tabs
+  // Filtered publications for Find Modal with Active / Closed / Permanent Tabs
   const filtered = publications.filter(p => {
-    if (findTab === 'active' && p.is_closed) return false;
-    if (findTab === 'closed' && !p.is_closed) return false;
+    if (findTab === 'active' && (p.is_closed || p.is_permanent)) return false;
+    if (findTab === 'closed' && (!p.is_closed || p.is_permanent)) return false;
+    if (findTab === 'permanent' && !p.is_permanent) return false;
 
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
@@ -281,8 +297,9 @@ export default function PublicationForm({
     );
   });
 
-  const activeCount = publications.filter(p => !p.is_closed).length;
-  const closedCount = publications.filter(p => p.is_closed).length;
+  const activeCount = publications.filter(p => !p.is_closed && !p.is_permanent).length;
+  const closedCount = publications.filter(p => p.is_closed && !p.is_permanent).length;
+  const permanentCount = publications.filter(p => p.is_permanent).length;
 
   return (
     <div className="relative w-[760px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
@@ -321,9 +338,13 @@ export default function PublicationForm({
               <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-400 font-bold text-[11px] rounded-xs shadow-xs">
                 ✨ Entering New Publication
               </span>
+            ) : isPermanent ? (
+              <span className="px-2.5 py-0.5 bg-red-700 text-white border border-red-900 font-bold text-[11px] rounded-xs shadow-xs flex items-center gap-1">
+                🔴 PERMANENTLY CLOSED (स्थाई रूप से बंद)
+              </span>
             ) : isClosed ? (
-              <span className="px-2.5 py-0.5 bg-red-100 text-red-800 border border-red-400 font-bold text-[11px] rounded-xs shadow-xs flex items-center gap-1">
-                🔴 CLOSED / DISCONTINUED (प्रकाशन बंद)
+              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-400 font-bold text-[11px] rounded-xs shadow-xs flex items-center gap-1">
+                🟠 TEMPORARILY CLOSED (अस्थाई बंद)
               </span>
             ) : (
               <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold text-[11px] rounded-xs shadow-xs flex items-center gap-1">
@@ -376,10 +397,11 @@ export default function PublicationForm({
           {/* Publisher */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Publisher</label>
           <select 
-            value={selectedPub.publish_id || 1} 
-            onChange={(e) => setSelectedPub({ ...selectedPub, publish_id: Number(e.target.value) })}
+            value={selectedPub.publish_id || ''} 
+            onChange={(e) => setSelectedPub({ ...selectedPub, publish_id: Number(e.target.value) || 0 })}
             className="col-span-8 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none focus:border-[#0A246A]"
           >
+            <option value="">-- Select Publisher --</option>
             {publishers.map(p => (
               <option key={p.publish_id} value={p.publish_id}>{p.name}</option>
             ))}
@@ -388,10 +410,11 @@ export default function PublicationForm({
           {/* Type */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Type</label>
           <select 
-            value={selectedPub.type_p || 'Daily'} 
+            value={selectedPub.type_p || ''} 
             onChange={(e) => setSelectedPub({ ...selectedPub, type_p: e.target.value })}
             className="col-span-8 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none focus:border-[#0A246A]"
           >
+            <option value="">-- Select Type --</option>
             <option value="Daily">Daily (दैनिक)</option>
             <option value="Weekly">Weekly (साप्ताहिक)</option>
             <option value="Monthly">Monthly (मासिक)</option>
@@ -405,7 +428,8 @@ export default function PublicationForm({
             <input 
               type="number"
               step="0.05"
-              value={weekdayRates[1] ?? 5.0} 
+              value={weekdayRates[1] ? weekdayRates[1] : (weekdayRates[1] === 0 ? '0' : '')} 
+              placeholder="0.00"
               onChange={(e) => {
                 const val = parseFloat(e.target.value) || 0;
                 setWeekdayRates({ ...weekdayRates, 1: val });
@@ -414,10 +438,11 @@ export default function PublicationForm({
             />
             <label className="text-[#800000] font-bold text-xs pl-2">Duration</label>
             <select 
-              value={selectedPub.duration || 'Daily'} 
+              value={selectedPub.duration || ''} 
               onChange={(e) => setSelectedPub({ ...selectedPub, duration: e.target.value })}
               className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none"
             >
+              <option value="">-- Select Duration --</option>
               <option value="Daily">Daily</option>
               <option value="Weekly">Weekly</option>
               <option value="Monthly">Monthly</option>
@@ -428,10 +453,11 @@ export default function PublicationForm({
           {/* Publishing Day */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Publishing Day</label>
           <select 
-            value={publishingDay}
+            value={publishingDay || ''}
             onChange={(e) => setPublishingDay(e.target.value)}
             className="col-span-8 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none"
           >
+            <option value="">-- Select Publishing Day --</option>
             <option value="Sunday">Sunday</option>
             <option value="Monday">Monday</option>
             <option value="Tuesday">Tuesday</option>
@@ -444,48 +470,110 @@ export default function PublicationForm({
           {/* Circulation */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Circulation</label>
           <select 
-            value={selectedPub.circulation || 'Morning'} 
+            value={selectedPub.circulation || ''} 
             onChange={(e) => setSelectedPub({ ...selectedPub, circulation: e.target.value })}
             className="col-span-8 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none"
           >
+            <option value="">-- Select Circulation --</option>
             <option value="Morning">Morning (प्रातःकालीन)</option>
             <option value="Evening">Evening (सायंकालीन)</option>
             <option value="As Per Norm">As Per Norm (नियम अनुसार)</option>
           </select>
 
-          {/* Closed / Discontinued Status Toggle */}
-          <div className="col-span-12 bg-white/90 border border-[#800000]/30 p-2 rounded-xs my-0.5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-            <label className="flex items-center gap-2 cursor-pointer font-bold text-red-900 text-xs">
-              <input 
-                type="checkbox" 
-                checked={isClosed} 
-                onChange={(e) => {
-                  setIsClosed(e.target.checked);
-                  if (e.target.checked) {
-                    if (!closedFrom) setClosedFrom(new Date().toISOString().split('T')[0]);
-                    if (!closedTo) setClosedTo('2050-03-31');
-                  }
-                }} 
-                className="cursor-pointer"
-              />
-              <span>🚫 Discontinue / Closed Publication (प्रकाशन बंद)</span>
-            </label>
+          {/* Closed / Discontinued / Permanent Close Status Section */}
+          <div className="col-span-12 bg-white/95 border border-[#800000]/30 p-2 rounded-xs my-0.5 shadow-xs space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer font-bold text-amber-900 text-xs">
+                  <input 
+                    type="checkbox" 
+                    checked={isClosed && !isPermanent} 
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      if (checked) {
+                        setIsClosed(true);
+                        setIsPermanent(false);
+                        if (!closedFrom) setClosedFrom(new Date().toISOString().split('T')[0]);
+                        if (!closedTo || closedTo === '2099-12-31') setClosedTo('2050-03-31');
+                      } else {
+                        if (!isPermanent) {
+                          setIsClosed(false);
+                          setClosedFrom('');
+                          setClosedTo('');
+                        }
+                      }
+                    }} 
+                    className="cursor-pointer"
+                  />
+                  <span>🟠 Temporary Close (अस्थाई बंद)</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer font-extrabold text-red-700 bg-red-50 px-2 py-0.5 border border-red-300 rounded-xs text-xs hover:bg-red-100">
+                  <input 
+                    type="checkbox" 
+                    checked={isPermanent} 
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsPermanent(checked);
+                      if (checked) {
+                        setIsClosed(true);
+                        if (!closedFrom) setClosedFrom(new Date().toISOString().split('T')[0]);
+                        setClosedTo('2099-12-31');
+                      } else {
+                        setIsClosed(false);
+                        setClosedFrom('');
+                        setClosedTo('');
+                      }
+                    }} 
+                    className="cursor-pointer accent-red-700"
+                  />
+                  <span>🔴 Permanently Close (स्थाई रूप से बंद)</span>
+                </label>
+              </div>
+
+              {(isClosed || isPermanent) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsClosed(false);
+                    setIsPermanent(false);
+                    setClosedFrom('');
+                    setClosedTo('');
+                    setMsg('Publication reopened (चालू की गई). Click Save/Update to commit.');
+                  }}
+                  className="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xs shadow-xs cursor-pointer"
+                >
+                  ✅ Reopen Publication (पुनः चालू करें)
+                </button>
+              )}
+            </div>
+
             {isClosed && (
-              <div className="flex items-center gap-2 font-bold text-slate-800 text-xs">
-                <span>Closed From:</span>
-                <input 
-                  type="date" 
-                  value={closedFrom} 
-                  onChange={(e) => setClosedFrom(e.target.value)} 
-                  className="px-1.5 py-0.5 border border-slate-400 bg-white text-xs font-mono font-bold text-blue-900"
-                />
-                <span>To:</span>
-                <input 
-                  type="date" 
-                  value={closedTo} 
-                  onChange={(e) => setClosedTo(e.target.value)} 
-                  className="px-1.5 py-0.5 border border-slate-400 bg-white text-xs font-mono font-bold text-blue-900"
-                />
+              <div className="flex items-center gap-3 font-bold text-slate-800 text-xs pt-1 border-t border-slate-200">
+                <div className="flex items-center gap-1.5">
+                  <span>Closed From:</span>
+                  <input 
+                    type="date" 
+                    value={closedFrom} 
+                    onChange={(e) => setClosedFrom(e.target.value)} 
+                    className="px-1.5 py-0.5 border border-slate-400 bg-white text-xs font-mono font-bold text-blue-900"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span>To:</span>
+                  {isPermanent ? (
+                    <span className="px-2 py-0.5 bg-red-700 text-white font-mono font-bold text-xs rounded-xs">
+                      2099-12-31 (Permanent / स्थाई)
+                    </span>
+                  ) : (
+                    <input 
+                      type="date" 
+                      value={closedTo} 
+                      onChange={(e) => setClosedTo(e.target.value)} 
+                      className="px-1.5 py-0.5 border border-slate-400 bg-white text-xs font-mono font-bold text-blue-900"
+                    />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -518,7 +606,8 @@ export default function PublicationForm({
                       <input 
                         type="number"
                         step="0.25"
-                        value={weekdayRates[d.id] ?? d.defaultRate}
+                        value={weekdayRates[d.id] ? weekdayRates[d.id] : (weekdayRates[d.id] === 0 ? '0' : '')}
+                        placeholder="0.00"
                         onChange={(e) => setWeekdayRates({ ...weekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
                         className={`w-full text-center text-xs font-bold outline-none ${selectedDayRow === d.id ? 'bg-[#316AC5] text-white' : 'bg-transparent text-black'}`}
                       />
@@ -667,28 +756,35 @@ export default function PublicationForm({
                 />
               </div>
 
-              {/* Status Filter Tabs (All, Active, Closed) */}
+              {/* Status Filter Tabs (All, Active, Temp Closed, Permanently Closed) */}
               <div className="flex items-center gap-1 border-b border-slate-300 pb-1">
                 <button
                   type="button"
                   onClick={() => setFindTab('all')}
-                  className={`px-3 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'all' ? 'bg-white border-slate-400 border-b-white text-blue-900 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
+                  className={`px-2.5 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'all' ? 'bg-white border-slate-400 border-b-white text-blue-900 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
                 >
-                  All Publications ({publications.length})
+                  All ({publications.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setFindTab('active')}
-                  className={`px-3 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'active' ? 'bg-white border-slate-400 border-b-white text-emerald-800 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
+                  className={`px-2.5 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'active' ? 'bg-white border-slate-400 border-b-white text-emerald-800 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
                 >
                   🟢 Active ({activeCount})
                 </button>
                 <button
                   type="button"
                   onClick={() => setFindTab('closed')}
-                  className={`px-3 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'closed' ? 'bg-white border-slate-400 border-b-white text-red-700 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
+                  className={`px-2.5 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'closed' ? 'bg-white border-slate-400 border-b-white text-amber-800 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
                 >
-                  🔴 Closed / Discontinued ({closedCount})
+                  🟠 Temp Closed ({closedCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFindTab('permanent')}
+                  className={`px-2.5 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'permanent' ? 'bg-white border-slate-400 border-b-white text-red-700 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
+                >
+                  🔴 Perm Closed ({permanentCount})
                 </button>
               </div>
               
@@ -712,22 +808,29 @@ export default function PublicationForm({
                           loadPublication(p);
                           setIsFindOpen(false);
                         }}
-                        className={`cursor-pointer border-b hover:bg-blue-100 ${p.is_closed ? 'bg-red-50/40 text-red-950' : 'text-slate-900'}`}
+                        className={`cursor-pointer border-b hover:bg-blue-100 ${p.is_permanent ? 'bg-red-50/70 text-red-950' : p.is_closed ? 'bg-amber-50/60 text-amber-950' : 'text-slate-900'}`}
                       >
                         <td className="p-1.5 border-r font-mono text-blue-900 font-bold">#{p.publica_id}</td>
                         <td className="p-1.5 border-r font-bold">{p.public_name}</td>
                         <td className="p-1.5 border-r font-bold text-blue-800">{cleanOrTransliterateHindi(p.pub_hindi, p.public_name) || '-'}</td>
                         <td className="p-1.5 border-r">{p.type_p || 'Daily'}</td>
                         <td className="p-1.5 text-center">
-                          {p.is_closed ? (
+                          {p.is_permanent ? (
                             <span 
-                              className="px-2 py-0.5 bg-red-100 text-red-700 border border-red-300 rounded-xs font-bold text-[10px] inline-block"
+                              className="px-1.5 py-0.5 bg-red-700 text-white rounded-xs font-bold text-[10px] inline-block shadow-2xs"
+                              title="Permanently closed"
+                            >
+                              🔴 Perm Closed
+                            </span>
+                          ) : p.is_closed ? (
+                            <span 
+                              className="px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-xs font-bold text-[10px] inline-block"
                               title={`Closed from ${p.closed_from || '-'} to ${p.closed_to || '-'}`}
                             >
-                              🔴 Closed
+                              🟠 Temp Closed
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xs font-bold text-[10px] inline-block">
+                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xs font-bold text-[10px] inline-block">
                               🟢 Active
                             </span>
                           )}
@@ -749,7 +852,7 @@ export default function PublicationForm({
             {/* Modal Bottom Close */}
             <div className="p-2 border-t bg-[#ECE9D8] flex justify-between items-center">
               <div className="text-[11px] text-slate-600 font-bold">
-                Showing {filtered.length} publications ({activeCount} active, {closedCount} closed)
+                Showing {filtered.length} publications ({activeCount} active, {closedCount} temp closed, {permanentCount} perm closed)
               </div>
               <button 
                 onClick={() => setIsFindOpen(false)}
