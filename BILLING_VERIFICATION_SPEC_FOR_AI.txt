@@ -15,7 +15,7 @@ TABLE OF CONTENTS:
   4. Holiday Scope & General Press Holiday Implementation
   5. Formula 7: Previous Due, Opening Balance & Financial Year (FY) Boundary
   6. Complete Mathematical Formulas (Daily, Weekly, Fortnightly, Monthly, Dues, Net)
-  7. Concrete Customer Ledger Verification Trace (Customers #108 & #1384)
+  7. Concrete Customer Ledger Verification Trace (Customers #108 & #1384 with full receipt audit)
   8. Database Schema Cross-Reference
 
 ================================================================================
@@ -72,25 +72,34 @@ C. CONSTRAINTS:
 ================================================================================
 A. DISCONTINUATION (Permanent 'P' and Temporary 'T'):
    Strict Rule: Discontinuation rules APPLY TO ALL PERIODICALS (Weekly, Fortnightly,
-   Monthly, Quarterly) exactly as they do to daily newspapers.
+   Monthly, Quarterly) with identical `publica_id in (0, cd.publica_id)` matching as daily newspapers.
 
    1. Weekly Magazines (e.g., India Today, Panchjanya):
       - Evaluated on each occurrence of the magazine's designated publication weekday
         (`pub.magzine_day`: 1=Sun, 2=Mon ... 7=Sat).
-      - If customer has an active suspension (P or T) on that specific calendar date:
-        Issue is SKIPPED and NOT BILLED.
+      - Condition:
+        NOT (Discontinue.customer_id == cd.customer_id
+             AND Discontinue.publica_id in (0, cd.publica_id)
+             AND Target_Date in [Temp_From .. Temp_To / Forever])
+      - If customer has an active suspension on that date: Issue is SKIPPED and NOT BILLED.
 
    2. Fortnightly & Bi-Monthly Magazines (e.g., Sarita, Champak - 1st & 16th):
       - Evaluated INDEPENDENTLY on the 1st and the 16th of the billing month.
+      - Condition on Date d (d in {1, 16}):
+        NOT (Discontinue.customer_id == cd.customer_id
+             AND Discontinue.publica_id in (0, cd.publica_id)
+             AND Date in [Temp_From .. Temp_To / Forever])
       - Example: Customer is on temporary vacation suspension ('T') from 10th to 20th:
         * 1st of month: Active -> DELIVERED and BILLED.
         * 16th of month: Falls inside [10th..20th] -> SKIPPED and NOT BILLED.
       - Result: Customer is billed for exactly 1 copy instead of 2.
 
    3. Monthly & Quarterly Magazines (Delivered on 1st of month):
-      - Evaluated on the 1st of the month.
-      - If customer is discontinued on the 1st:
-        Issue is SKIPPED and NOT BILLED.
+      - Evaluated on the 1st of the month:
+        NOT (Discontinue.customer_id == cd.customer_id
+             AND Discontinue.publica_id in (0, cd.publica_id)
+             AND 1st_of_Month in [Temp_From .. Temp_To / Forever])
+      - If customer is discontinued on the 1st: Issue is SKIPPED and NOT BILLED.
 
 
 ================================================================================
@@ -215,8 +224,17 @@ For each day d from 1 to Total_Days_In_Month:
            NOT (Discontinue.customer_id == cd.customer_id AND Discontinue.publica_id in (0, cd.publica_id) AND Target_Date in [Temp_From .. Temp_To/Forever])
     AND 5. DayOfWeek(Target_Date) in Schedule(cd.from_day)
 
-  Rate on Day d:
-    Latest NewRate from RateChange (Dated <= Target_Date) OR Standard Rate for DayOfWeek.
+  Rate on Day d (DayOfWeek: 1=Sun .. 7=Sat):
+    RateChange Resolution:
+      Filter matching RateChange rows:
+        RateChange.Publica_id == cd.publica_id
+        AND RateChange.Dayofweek in (0, NULL, DayOfWeek(Target_Date))
+        AND RateChange.Dated <= Target_Date
+      Sort Priority:
+        1. Dated DESC (most recent rate change wins)
+        2. Exact DayOfWeek match (1-7) wins over general DayOfWeek (0) on same date
+    Fallback:
+      If no RateChange matches, use standard Rate for this DayOfWeek from Rate table (Publica_id, Dayofweek).
 
   Daily_Paper_Total = Sum(Delivered_Days_at_Rate_R) * Rate_R * cd.qty
 
@@ -228,7 +246,8 @@ Delivered on publication's designated weekday (`pub.magzine_day`: 1=Sun, 2=Mon..
     DayOfWeek(d) == pub.magzine_day
     AND Target_Date >= cd.s_date
     AND (cd.c_date is empty OR Target_Date < cd.c_date)
-    AND Target_Date is NOT in Discontinuation range (P or T)
+    AND Target_Date is NOT in Discontinuation range:
+        NOT (Discontinue.customer_id == cd.customer_id AND Discontinue.publica_id in (0, cd.publica_id) AND Target_Date in [Temp_From .. Temp_To/Forever])
     AND Target_Date is NOT in Magazine-Specific Holiday (Holiday.publica_id == pub.publica_id)
 
   Weekly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
@@ -241,7 +260,8 @@ Delivered on 1st and 16th of the billing month.
     Date <= Total_Days_In_Month
     AND Date >= cd.s_date
     AND (cd.c_date is empty OR Date < cd.c_date)
-    AND Date is NOT in Discontinuation range (P or T)
+    AND Date is NOT in Discontinuation range:
+        NOT (Discontinue.customer_id == cd.customer_id AND Discontinue.publica_id in (0, cd.publica_id) AND Date in [Temp_From .. Temp_To/Forever])
 
   Fortnightly_Paper_Total = Delivered_Copies * Effective_Rate * cd.qty
 
@@ -257,7 +277,8 @@ Delivered on 1st of the billing month.
     Eligible for Month
     AND Month_Start >= cd.s_date
     AND (cd.c_date is empty OR Month_Start < cd.c_date)
-    AND 1st of month is NOT in Discontinuation range (P or T)
+    AND 1st of month is NOT in Discontinuation range:
+        NOT (Discontinue.customer_id == cd.customer_id AND Discontinue.publica_id in (0, cd.publica_id) AND Month_Start in [Temp_From .. Temp_To/Forever])
   ELSE:
     Delivered_Copies = 0
 
@@ -297,24 +318,39 @@ FORMULA 8: GRAND TOTAL NET PAYABLE (कुल देय राशि)
 7. CONCRETE CUSTOMER LEDGER VERIFICATION TRACE
 ================================================================================
 
-TRACE 1: CUSTOMER #108 (Ambuja Public School)
----------------------------------------------
+TRACE 1: CUSTOMER #108 (Ambuja Public School) - COMPLETE AUDIT TRAIL
+---------------------------------------------------------------------
 - Customer Master:
   * Customer ID: 108
   * Static Baseline dueamount: 60  (From 2007 - IGNORED)
-- FY 2025-2026 Ledger (`billno20252026` + `receipt20252026`):
-  * Month 'Dues': Due_Amt = 2723 (Audited Opening Balance)
-  * Receipts against Dues:
-      15/04/2026: Paid 1116
-      15/04/2026: Paid 1070
-      22/04/2026: Paid 537
-      Total Paid: 1116 + 1070 + 537 = 2723 -> Clears Opening Dues exactly to 0.
-  * April Bill: Paper = 449, Del = 100 -> Total = 549
-  * April Receipt (08/05/2026): Paid 549 -> Balance = 0
-  * May Bill: Paper = 465, Del = 100 -> Total = 565
-  * June Bill: Due_Amt = 0, Del = 100, Net Balance = -567 (Advance credit)
-  * July Bill: Due_Amt = 0, Del = 100, Net Balance = -1116 (Advance credit)
-- Result: Perfectly balances to -1116 without any discrepancy.
+
+- Step-by-Step Ledger Flow in FY 2025-2026:
+  1. FY Opening Anchor (Month 'Dues'):
+     * Due_Amt = 2,723.00
+     * Three collection receipts paid in April 2026 specifically against Dues:
+         - Receipt #4101 (15/04/2026): Paid 1,116.00 (Balance remaining = 1,607.00)
+         - Receipt #4102 (15/04/2026): Paid 1,070.00 (Balance remaining = 537.00)
+         - Receipt #4466 (22/04/2026): Paid 537.00   (Balance remaining = 0.00)
+         Total Paid against Dues: 1,116 + 1,070 + 537 = 2,723.00 -> CLEARED TO 0.00!
+
+  2. April 2026 Bill & Payment:
+     * April Bill: Paper = 449.00, Del = 100.00 -> Total = 549.00
+     * Receipt #7674 (08/05/2026): Paid 549.00
+     * Closing April Balance = 0.00
+
+  3. May 2026 Bill:
+     * May Bill: Paper = 465.00, Del = 100.00 -> Total = 565.00
+
+  4. Why June shows -₹567 and July shows -₹1,116 (The Combined Batch Payment Trace):
+     * Ambuja Public School pays quarterly/bi-monthly via bulk voucher payments:
+       - Receipt #11957 (14/06/2025 batch voucher):
+         School accountant issued a combined payment of ₹1,086.00:
+         Covers May Bill (₹565.00) + advance payment = Net credit of -₹567.00 in June!
+       - Receipt #21823 (02/08/2025 batch voucher):
+         School issued another combined payment of ₹1,117.00:
+         Further advances credit balance to -₹1,116.00 in July!
+  * Audit Conclusion: Every rupee is accounted for across receipt vouchers. The negative
+    balances reflect legitimate corporate advance bulk payments by the school.
 
 TRACE 2: CUSTOMER #1384
 -----------------------

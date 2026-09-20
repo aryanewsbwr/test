@@ -158,7 +158,11 @@ export function calculateBilling({
       matchingChanges.sort((a, b) => {
         const dA = parseLegacyDateToIso(a.Dated || a.dated) || '';
         const dB = parseLegacyDateToIso(b.Dated || b.dated) || '';
-        return dB.localeCompare(dA);
+        if (dB !== dA) return dB.localeCompare(dA);
+        // On same date, exact DayOfWeek match (1-7) takes priority over general DayOfWeek (0)
+        const dayA = a.Dayofweek !== undefined ? a.Dayofweek : a.dayofweek;
+        const dayB = b.Dayofweek !== undefined ? b.Dayofweek : b.dayofweek;
+        return (dayB === dayOfWeek ? 1 : 0) - (dayA === dayOfWeek ? 1 : 0);
       });
       const top = matchingChanges[0];
       return top.NewRate !== undefined ? top.NewRate : (top.new_rate !== undefined ? top.new_rate : (top.newrate || 0));
