@@ -62,6 +62,14 @@ export default function PublicationForm({
 
   const [publishingDay, setPublishingDay] = useState('');
   const [delChargesChecked, setDelChargesChecked] = useState(false);
+  const [pubList, setPubList] = useState<Publication[]>(publications);
+
+  useEffect(() => {
+    if (publications && publications.length > 0) {
+      setPubList(publications);
+    }
+  }, [publications]);
+
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [findTab, setFindTab] = useState<'all' | 'active' | 'closed' | 'permanent'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -244,6 +252,17 @@ export default function PublicationForm({
       const saved = data.publication || pubToSave;
       setSelectedPub(saved);
 
+      setPubList(prev => {
+        const idx = prev.findIndex(p => p.publica_id === saved.publica_id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = saved;
+          return updated;
+        } else {
+          return [...prev, saved];
+        }
+      });
+
       if (onSave) {
         onSave(saved);
       }
@@ -252,6 +271,15 @@ export default function PublicationForm({
       setMsg(`Error saving publication: ${err.message}`);
     }
     setTimeout(() => setMsg(''), 4000);
+  };
+
+  const handleUpdate = () => {
+    if (!selectedPub.publica_id || isNewMode) {
+      setMsg('Error: Please select an existing publication first to update, or click Save to create new.');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    handleSave();
   };
 
   const handleDelete = async () => {
@@ -270,10 +298,15 @@ export default function PublicationForm({
 
         if (onDelete) onDelete(selectedPub.publica_id);
         setMsg(`Publication "${selectedPub.public_name}" deleted.`);
-        if (publications.length > 1) {
-          const remaining = publications.filter(p => p.publica_id !== selectedPub.publica_id);
-          loadPublication(remaining[0]);
-        }
+        setPubList(prev => {
+          const remaining = prev.filter(p => p.publica_id !== selectedPub.publica_id);
+          if (remaining.length > 0) {
+            loadPublication(remaining[0]);
+          } else {
+            handleCancel();
+          }
+          return remaining;
+        });
       } catch (err: any) {
         setMsg(`Error deleting: ${err.message}`);
       }
@@ -282,7 +315,7 @@ export default function PublicationForm({
   };
 
   // Filtered publications for Find Modal with Active / Closed / Permanent Tabs
-  const filtered = publications.filter(p => {
+  const filtered = pubList.filter(p => {
     if (findTab === 'active' && (p.is_closed || p.is_permanent)) return false;
     if (findTab === 'closed' && (!p.is_closed || p.is_permanent)) return false;
     if (findTab === 'permanent' && !p.is_permanent) return false;
@@ -297,9 +330,9 @@ export default function PublicationForm({
     );
   });
 
-  const activeCount = publications.filter(p => !p.is_closed && !p.is_permanent).length;
-  const closedCount = publications.filter(p => p.is_closed && !p.is_permanent).length;
-  const permanentCount = publications.filter(p => p.is_permanent).length;
+  const activeCount = pubList.filter(p => !p.is_closed && !p.is_permanent).length;
+  const closedCount = pubList.filter(p => p.is_closed && !p.is_permanent).length;
+  const permanentCount = pubList.filter(p => p.is_permanent).length;
 
   return (
     <div className="relative w-[760px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
@@ -679,7 +712,7 @@ export default function PublicationForm({
           
           {/* Update Button */}
           <button 
-            onClick={handleSave}
+            onClick={handleUpdate}
             title="Update publication"
             className="px-3.5 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
           >
@@ -763,7 +796,7 @@ export default function PublicationForm({
                   onClick={() => setFindTab('all')}
                   className={`px-2.5 py-1 font-bold text-xs rounded-t-xs border cursor-pointer ${findTab === 'all' ? 'bg-white border-slate-400 border-b-white text-blue-900 shadow-xs' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
                 >
-                  All ({publications.length})
+                  All ({pubList.length})
                 </button>
                 <button
                   type="button"

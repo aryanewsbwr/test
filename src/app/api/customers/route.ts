@@ -153,12 +153,24 @@ export async function POST(request: NextRequest) {
       ...rest
     };
 
-    // 1. Save to Supabase
+    // 1. Save to Supabase matching exact schema
     try {
+      const supabaseCustomerRecord = {
+        customer_id: finalId,
+        name_eng: name_eng.trim(),
+        name_hindi: hindi,
+        add1: add1 || '',
+        hindi_add: hindiAddress,
+        phone: phone || '',
+        priority: Number(priority || 1),
+        region_id: parseInt(region_id, 10) || 1,
+        security_deposit: cleanSecDep,
+        due_amount: Number(dueamount || 0)
+      };
       if (isUpdate) {
-        await supabase.from('customer').update(record).eq('customer_id', finalId);
+        await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId);
       } else {
-        await supabase.from('customer').insert([record]);
+        await supabase.from('customer').insert([supabaseCustomerRecord]);
       }
     } catch (dbErr) {
       console.warn('Supabase customer save warning:', dbErr);

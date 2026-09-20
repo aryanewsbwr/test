@@ -77,12 +77,19 @@ export async function POST(request: NextRequest) {
       commission_rate: Number(commission_rate || 0)
     };
 
-    // 1. Save to Supabase
+    // 1. Save to Supabase matching exact schema
     try {
+      const supabaseHawkerRecord = {
+        hawker_id: finalHawkerId,
+        name: name.trim(),
+        phone: mobile || phone || '',
+        area: address || city || 'BEAWAR',
+        commission_rate: Number(commission_rate || 0)
+      };
       if (isUpdate) {
-        await supabase.from('hawker').update(record).eq('hawker_id', finalHawkerId);
+        await supabase.from('hawker').update(supabaseHawkerRecord).eq('hawker_id', finalHawkerId);
       } else {
-        await supabase.from('hawker').insert([record]);
+        await supabase.from('hawker').insert([supabaseHawkerRecord]);
       }
     } catch (dbErr) {
       console.warn('Supabase hawker save warning:', dbErr);

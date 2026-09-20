@@ -55,10 +55,19 @@ export async function POST(request: NextRequest) {
     };
 
     try {
+      const supabaseRecord = {
+        publish_id: finalId,
+        name: name.trim(),
+        address: address || '',
+        city: city || '',
+        phone: phone || '',
+        mobile: mobile || '',
+        category: category || 'Newspaper'
+      };
       if (isUpdate) {
-        await supabase.from('publisher').update(record).eq('publish_id', finalId);
+        await supabase.from('publisher').update(supabaseRecord).eq('publish_id', finalId);
       } else {
-        await supabase.from('publisher').insert([record]);
+        await supabase.from('publisher').insert([supabaseRecord]);
       }
     } catch (dbErr) {
       console.warn('Supabase publisher warning:', dbErr);

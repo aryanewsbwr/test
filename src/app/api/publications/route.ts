@@ -118,31 +118,50 @@ export async function POST(request: NextRequest) {
     const isUpdate = !is_new && finalPubId > 0 && pubList.some((p: any) => p.publica_id === finalPubId);
 
     if (!isUpdate) {
-      // Assign new unique ID
-      const maxId = pubList.reduce((max: number, p: any) => Math.max(max, p.publica_id || 0), 0);
-      finalPubId = maxId + 1;
+      // Assign new unique ID checking both JSON and Supabase
+      const maxJson = pubList.reduce((max: number, p: any) => Math.max(max, p.publica_id || 0), 0);
+      let maxSb = 0;
+      try {
+        const { data: sbMax } = await supabase.from('publication').select('publication_id').order('publication_id', { ascending: false }).limit(1);
+        if (sbMax && sbMax.length > 0 && sbMax[0].publication_id) {
+          maxSb = Number(sbMax[0].publication_id);
+        }
+      } catch (_) {}
+      finalPubId = Math.max(maxJson, maxSb) + 1;
     }
 
     const pubRecord = {
       publica_id: finalPubId,
       public_name: public_name.trim(),
       pub_hindi: hindiName,
-      type_p,
+      type_p: type_p || 'Daily',
       publish_id: parseInt(publish_id, 10) || 1,
       abrv: abrv || public_name.slice(0, 4).toUpperCase(),
-      circulation,
-      duration,
+      circulation: circulation || 'Morning',
+      duration: duration || 'Daily',
       magzine_day: magzine_day ? parseInt(magzine_day, 10) : null,
       magzine_month: magzine_month ? parseInt(magzine_month, 10) : null,
       chr_del: chr_del ? 1 : 0
     };
 
-    // 1. Save to Supabase publication table
+    // 1. Save to Supabase publication table matching its exact schema
     try {
-      if (isUpdate) {
-        await supabase.from('publication').update(pubRecord).eq('publica_id', finalPubId);
-      } else {
-        await supabase.from('publication').insert([pubRecord]);
+      const primaryRate = customRates && customRates[1] ? Number(customRates[1]) : 0;
+      const supabasePubRecord = {
+        publication_id: finalPubId,
+        name: public_name.trim(),
+        language: hindiName ? 'Hindi' : 'English',
+        frequency: type_p || duration || 'Daily',
+        publisher: String(publish_id || 1),
+        buying_price: primaryRate,
+        selling_price: primaryRate
+      };
+
+      const { error: sbPubErr } = await supabase
+        .from('publication')
+        .upsert(supabasePubRecord, { onConflict: 'publication_id' });
+      if (sbPubErr) {
+        console.error('Supabase publication upsert error:', sbPubErr);
       }
     } catch (dbErr) {
       console.warn('Supabase publication save warning:', dbErr);
@@ -150,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     const todayIso = new Date().toISOString().split('T')[0];
 
-    // 2. Save 7-day rates
+    // 2. Save 7-day rates in Supabase and local cache
     if (customRates && typeof customRates === 'object') {
       const rateRows = Object.entries(customRates).map(([day, rate]) => ({
         Publica_id: finalPubId,
@@ -159,7 +178,9 @@ export async function POST(request: NextRequest) {
       }));
 
       try {
-        await supabase.from('rate').upsert(rateRows, { onConflict: 'Publica_id,Dayofweek' });
+        await supabase.from('rate').delete().eq('Publica_id', finalPubId);
+        const { error: sbRateErr } = await supabase.from('rate').insert(rateRows);
+        if (sbRateErr) console.error('Supabase rate insert error:', sbRateErr);
       } catch (rErr) {
         console.warn('Supabase rate upsert warning:', rErr);
       }
@@ -177,25 +198,31 @@ export async function POST(request: NextRequest) {
         }
       } catch (fErr) {}
 
-      // If new publication or price update, also log in ratechange table for current date
+      // Log in Supabase ratechange table
       try {
         const rateChangeRows = Object.entries(customRates).map(([day, rate]) => ({
-          publica_id: finalPubId,
-          dated: todayIso,
-          dayofweek: parseInt(day, 10),
-          new_rate: Number(rate)
+          Publica_id: finalPubId,
+          OldRate: Number(rate),
+          NewRate: Number(rate),
+          Dated: todayIso,
+          Dayofweek: parseInt(day, 10)
         }));
         await supabase.from('ratechange').insert(rateChangeRows);
 
         let curRateChanges = loadJson('ratechanges.json');
-        rateChangeRows.forEach(rc => curRateChanges.push(rc));
+        rateChangeRows.forEach(rc => curRateChanges.push({
+          publica_id: rc.Publica_id,
+          dated: rc.Dated,
+          dayofweek: rc.Dayofweek,
+          new_rate: rc.NewRate
+        }));
         saveJson('ratechanges.json', curRateChanges);
       } catch (rcErr) {
         console.warn('Ratechange record warning:', rcErr);
       }
     }
 
-    // 3. Handle Closed / Discontinue status in publicationdis
+    // 3. Handle Closed / Discontinue status in Supabase publicationdis
     try {
       let pdis = loadJson('publicationdis.json');
       if (is_closed || is_permanent) {
@@ -203,11 +230,12 @@ export async function POST(request: NextRequest) {
         const toD = is_permanent ? '2099-12-31' : (closed_to || '2050-03-31');
 
         await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);
-        await supabase.from('publicationdis').insert([{
+        const { error: pdErr } = await supabase.from('publicationdis').insert([{
           Publica_id: finalPubId,
           FromDate: fromD,
           ToDate: toD
         }]);
+        if (pdErr) console.error('Supabase publicationdis insert error:', pdErr);
 
         pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== finalPubId);
         pdis.push({ 
@@ -243,8 +271,9 @@ export async function POST(request: NextRequest) {
     const fullRecord = {
       ...pubRecord,
       is_closed: !!is_closed,
+      is_permanent: !!is_permanent,
       closed_from: is_closed ? (closed_from || todayIso) : null,
-      closed_to: is_closed ? (closed_to || '2050-03-31') : null,
+      closed_to: is_permanent ? '2099-12-31' : (is_closed ? (closed_to || '2050-03-31') : null),
       current_rates: customRates
     };
 
@@ -269,11 +298,11 @@ export async function DELETE(request: NextRequest) {
 
     const pubId = parseInt(pubIdStr, 10);
 
-    // 1. Delete from Supabase
+    // 1. Delete from Supabase matching exact table schemas
     try {
-      await supabase.from('publication').delete().eq('publica_id', pubId);
-      await supabase.from('rate').delete().eq('publica_id', pubId);
-      await supabase.from('ratechange').delete().eq('publica_id', pubId);
+      await supabase.from('publication').delete().eq('publication_id', pubId);
+      await supabase.from('rate').delete().eq('Publica_id', pubId);
+      await supabase.from('ratechange').delete().eq('Publica_id', pubId);
       await supabase.from('publicationdis').delete().eq('Publica_id', pubId);
     } catch (dbErr) {
       console.warn('Supabase delete warning:', dbErr);
