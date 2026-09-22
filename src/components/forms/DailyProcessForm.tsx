@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Hawker, Publication } from '@/lib/types';
-import { getLegacyDayOfWeek } from '@/lib/calculations';
+import { getLegacyDayOfWeek } from '@/lib/rateEngine';
 
 interface DailyProcessFormProps {
   onClose: () => void;

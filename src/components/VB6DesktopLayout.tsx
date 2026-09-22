@@ -30,8 +30,7 @@ import {
   Layers,
   Settings
 } from 'lucide-react';
-import { Customer, Publication, Hawker, Publisher, Region, Rate, RateChange, Holiday, Discontinue, PaymentReceipt, BillHeader, CustomerDetail } from '@/lib/types';
-import { getRateForDate, calculateCustomerMonthlyBill, getLegacyDayOfWeek } from '@/lib/calculations';
+import { Customer, Publication, Hawker, Publisher, Region, Rate, RateChange, Holiday, Discontinue, PaymentReceipt, CustomerDetail } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 
@@ -106,17 +105,6 @@ export default function VB6DesktopLayout() {
   // Publication Rates Form State
   const [selectedPub, setSelectedPub] = useState<Publication | null>(null);
   const [editingRates, setEditingRates] = useState<Record<number, number>>({ 1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0 });
-
-  // Daily Process State
-  const [processDate, setProcessDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [processHawkerId, setProcessHawkerId] = useState<string>('all');
-  const [processResults, setProcessResults] = useState<any[]>([]);
-
-  // Billing Form State
-  const [billingMonth, setBillingMonth] = useState('August');
-  const [billingYear, setBillingYear] = useState(2026);
-  const [generatedBills, setGeneratedBills] = useState<BillHeader[]>([]);
-  const [isBillingRunning, setIsBillingRunning] = useState(false);
 
   // New Modal States for Full 2008 Master Set
   const [isPeriodOpen, setIsPeriodOpen] = useState(true);
@@ -242,64 +230,6 @@ export default function VB6DesktopLayout() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editingRates]);
-
-  // Run Daily Process Calculation
-  const handleRunDailyProcess = () => {
-    setStatusMessage(`Running daily morning supply calculation for date ${processDate}...`);
-    const dateObj = new Date(processDate);
-    const dayOfWeek = getLegacyDayOfWeek(dateObj);
-
-    // Group subscriptions by hawker and publication
-    const results = [
-      { hawker_id: 1, hawker_name: 'MOHAN JI', publica_name: 'DAINIK BHASKAR', copies: 245, circulation: 'Morning' },
-      { hawker_id: 1, hawker_name: 'MOHAN JI', publica_name: 'RAJASTHAN PATRIKA', copies: 180, circulation: 'Morning' },
-      { hawker_id: 1, hawker_name: 'MOHAN JI', publica_name: 'THE TIMES OF INDIA', copies: 65, circulation: 'Morning' },
-      { hawker_id: 2, hawker_name: 'Pintu', publica_name: 'DAINIK BHASKAR', copies: 195, circulation: 'Morning' },
-      { hawker_id: 2, hawker_name: 'Pintu', publica_name: 'RAJASTHAN PATRIKA', copies: 140, circulation: 'Morning' },
-      { hawker_id: 3, hawker_name: 'Bhagwati Prasad', publica_name: 'DAINIK BHASKAR', copies: 310, circulation: 'Morning' },
-      { hawker_id: 3, hawker_name: 'Bhagwati Prasad', publica_name: 'RAJASTHAN PATRIKA', copies: 275, circulation: 'Morning' },
-    ];
-
-    setProcessResults(results);
-    setStatusMessage(`Daily distribution calculated for ${processDate} (Day #${dayOfWeek} ${LEGACY_DAYS.find(d => d.id === dayOfWeek)?.name}).`);
-  };
-
-  // Run Batch Billing
-  const handleRunBatchBilling = () => {
-    setIsBillingRunning(true);
-    setStatusMessage(`Running monthly billing calculation for ${billingMonth} ${billingYear}...`);
-    
-    setTimeout(() => {
-      const results: BillHeader[] = [];
-      const sample = customerList.slice(0, 50);
-
-      sample.forEach(c => {
-        const dummySub = {
-          sno: 1,
-          customer_id: c.customer_id,
-          publica_id: 4,
-          qty: 1,
-          from_day: '1-7',
-          dely: c.delivery || 0
-        };
-        const { billHeader } = calculateCustomerMonthlyBill(
-          c,
-          [dummySub],
-          rates,
-          ratechanges,
-          holidays,
-          discontinues,
-          billingMonth,
-          billingYear
-        );
-        results.push(billHeader);
-      });
-
-      setGeneratedBills(results);
-      setIsBillingRunning(false);
-      setStatusMessage(`Successfully generated ${results.length} bills for ${billingMonth} ${billingYear}.`);
-    }, 500);
-  };
 
   return (
     <div className="flex flex-col h-screen w-full select-none bg-[#3A6EA5] font-tahoma overflow-hidden">

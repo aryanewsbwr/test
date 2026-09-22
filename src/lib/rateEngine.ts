@@ -1,6 +1,13 @@
 import { Rate, RateChange } from './types';
 
 /**
+ * Legacy Day of Week: 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat
+ */
+export function getLegacyDayOfWeek(date: Date): number {
+  return date.getDay() + 1;
+}
+
+/**
  * Returns a 7-day rate map { 1: Sun, 2: Mon, ..., 7: Sat } for a given publication,
  * automatically resolving rate changes up to the given target date (defaults to today).
  */
@@ -11,13 +18,13 @@ export function getEffectiveWeekdayRates(
   ratechanges: RateChange[] = []
 ): Record<number, number> {
   const result: Record<number, number> = {
-    1: 5.0, // Sunday
-    2: 5.0, // Monday
-    3: 5.0, // Tuesday
-    4: 5.0, // Wednesday
-    5: 5.0, // Thursday
-    6: 5.0, // Friday
-    7: 5.0  // Saturday
+    1: 0, // Sunday
+    2: 0, // Monday
+    3: 0, // Tuesday
+    4: 0, // Wednesday
+    5: 0, // Thursday
+    6: 0, // Friday
+    7: 0  // Saturday
   };
 
   // 1. Seed with base rates from rate table
@@ -77,5 +84,5 @@ export function getSingleEffectiveRate(
   ratechanges: RateChange[] = []
 ): number {
   const map = getEffectiveWeekdayRates(publicaId, targetDateIso, rates, ratechanges);
-  return map[dayOfWeek] || 5.0;
+  return map[dayOfWeek] || 0;
 }
