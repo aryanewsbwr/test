@@ -488,6 +488,7 @@ export function calculateBilling({
         for (const pDateIso of periodDates) {
           if (pDateIso < sDateIso) continue;
           if (cDateIso && pDateIso >= cDateIso) continue;
+          if (isHoliday(pubId, pDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, pDateIso)) continue;
 
           const rate = getEffectiveRate(pubId, 1, pDateIso);
@@ -501,8 +502,8 @@ export function calculateBilling({
         const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
         const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
-        if (isQuarterlyAllowed && sDateIso <= monthEndIso && (!cDateIso || cDateIso > monthStartIso)) {
-          if (!isDiscontinued(custId, pubId, pDateIso)) {
+        if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
+          if (!isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso)) {
             const rate = getEffectiveRate(pubId, 1, pDateIso);
             if (rate > 0) {
               rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
