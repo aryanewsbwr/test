@@ -6,67 +6,67 @@
   },
   {
     "publica_id": 1,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 1,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 1,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 1,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 1,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 1,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 2,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 1
   },
   {
     "publica_id": 2,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 2,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 2,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 2,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 2,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 2,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
@@ -141,107 +141,107 @@
   },
   {
     "publica_id": 6,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 1
   },
   {
     "publica_id": 7,
-    "rate": 8,
+    "rate": 8.0,
     "dayofweek": 1
   },
   {
     "publica_id": 8,
-    "rate": 8,
+    "rate": 8.0,
     "dayofweek": 1
   },
   {
     "publica_id": 9,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 1
   },
   {
     "publica_id": 10,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 11,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 2
   },
   {
     "publica_id": 12,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 12,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 12,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 12,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 12,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 12,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 12,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 7
   },
   {
     "publica_id": 13,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 14,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 15,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 1
   },
   {
     "publica_id": 16,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 17,
-    "rate": 18,
+    "rate": 18.0,
     "dayofweek": 2
   },
   {
     "publica_id": 18,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 2
   },
   {
     "publica_id": 19,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 19,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
@@ -256,7 +256,7 @@
   },
   {
     "publica_id": 19,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
@@ -266,42 +266,42 @@
   },
   {
     "publica_id": 19,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 20,
-    "rate": 0,
+    "rate": 0.0,
     "dayofweek": 1
   },
   {
     "publica_id": 20,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 20,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 20,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 20,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
     "publica_id": 20,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 20,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
@@ -341,62 +341,62 @@
   },
   {
     "publica_id": 22,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 23,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 2
   },
   {
     "publica_id": 24,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 2
   },
   {
     "publica_id": 89,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 26,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 2
   },
   {
     "publica_id": 27,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 1
   },
   {
     "publica_id": 28,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 2
   },
   {
     "publica_id": 29,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 1
   },
   {
     "publica_id": 30,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 2
   },
   {
     "publica_id": 31,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 2
   },
   {
     "publica_id": 32,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 33,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
@@ -406,242 +406,242 @@
   },
   {
     "publica_id": 35,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 2
   },
   {
     "publica_id": 36,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 2
   },
   {
     "publica_id": 37,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 2
   },
   {
     "publica_id": 38,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 2
   },
   {
     "publica_id": 39,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 2
   },
   {
     "publica_id": 40,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 41,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 42,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 3
   },
   {
     "publica_id": 43,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 44,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 45,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 3
   },
   {
     "publica_id": 46,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 47,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 48,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 49,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 3
   },
   {
     "publica_id": 50,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 51,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 52,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 53,
-    "rate": 13,
+    "rate": 13.0,
     "dayofweek": 3
   },
   {
     "publica_id": 54,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 55,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 56,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 57,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 58,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 59,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 60,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 61,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 62,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 3
   },
   {
     "publica_id": 63,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 64,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 65,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 66,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 67,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 68,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 69,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 70,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 71,
-    "rate": 27,
+    "rate": 27.0,
     "dayofweek": 3
   },
   {
     "publica_id": 72,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 73,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 74,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 75,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 4
   },
   {
     "publica_id": 76,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 76,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 76,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 76,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 76,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 76,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 76,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
@@ -681,37 +681,37 @@
   },
   {
     "publica_id": 78,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 78,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 2
   },
   {
     "publica_id": 78,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 3
   },
   {
     "publica_id": 78,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 4
   },
   {
     "publica_id": 78,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 5
   },
   {
     "publica_id": 78,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 6
   },
   {
     "publica_id": 78,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 7
   },
   {
@@ -721,37 +721,37 @@
   },
   {
     "publica_id": 79,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 79,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 79,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 79,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
     "publica_id": 79,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 79,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 80,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 1
   },
   {
@@ -786,1067 +786,1067 @@
   },
   {
     "publica_id": 81,
-    "rate": 8,
+    "rate": 8.0,
     "dayofweek": 1
   },
   {
     "publica_id": 81,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 2
   },
   {
     "publica_id": 81,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 3
   },
   {
     "publica_id": 81,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 4
   },
   {
     "publica_id": 81,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 5
   },
   {
     "publica_id": 81,
-    "rate": 4,
+    "rate": 4.0,
     "dayofweek": 6
   },
   {
     "publica_id": 81,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 7
   },
   {
     "publica_id": 82,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 82,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 82,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 82,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 82,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 82,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 82,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 83,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 84,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 85,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 86,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 87,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 3
   },
   {
     "publica_id": 88,
-    "rate": 8,
+    "rate": 8.0,
     "dayofweek": 1
   },
   {
     "publica_id": 90,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 6
   },
   {
     "publica_id": 91,
-    "rate": 196,
+    "rate": 196.0,
     "dayofweek": 6
   },
   {
     "publica_id": 92,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 93,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 94,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 95,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 6
   },
   {
     "publica_id": 96,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 97,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 6
   },
   {
     "publica_id": 98,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 99,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 100,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 101,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 6
   },
   {
     "publica_id": 102,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 6
   },
   {
     "publica_id": 103,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 6
   },
   {
     "publica_id": 104,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 6
   },
   {
     "publica_id": 105,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 6
   },
   {
     "publica_id": 106,
-    "rate": 120,
+    "rate": 120.0,
     "dayofweek": 6
   },
   {
     "publica_id": 107,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 6
   },
   {
     "publica_id": 108,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 109,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 110,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 111,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 112,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 113,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 114,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 115,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 116,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 117,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 1
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 118,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 119,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 120,
-    "rate": 170,
+    "rate": 170.0,
     "dayofweek": 6
   },
   {
     "publica_id": 121,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 122,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 123,
-    "rate": 115,
+    "rate": 115.0,
     "dayofweek": 6
   },
   {
     "publica_id": 124,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 1
   },
   {
     "publica_id": 125,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 126,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 127,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 128,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 6
   },
   {
     "publica_id": 129,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 130,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 131,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 132,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 133,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 134,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 135,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 136,
-    "rate": 0,
+    "rate": 0.0,
     "dayofweek": 1
   },
   {
     "publica_id": 136,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 136,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 136,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 136,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 136,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 136,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 137,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 141,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 3
   },
   {
     "publica_id": 139,
-    "rate": 175,
+    "rate": 175.0,
     "dayofweek": 6
   },
   {
     "publica_id": 140,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 142,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 3
   },
   {
     "publica_id": 143,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 2
   },
   {
     "publica_id": 144,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 7
   },
   {
     "publica_id": 145,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 146,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 147,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 148,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 149,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 150,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 3
   },
   {
     "publica_id": 151,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 152,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 153,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 154,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 155,
-    "rate": 300,
+    "rate": 300.0,
     "dayofweek": 6
   },
   {
     "publica_id": 156,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 157,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 6
   },
   {
     "publica_id": 158,
-    "rate": 73,
+    "rate": 73.0,
     "dayofweek": 6
   },
   {
     "publica_id": 159,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 160,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 161,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 162,
-    "rate": 51,
+    "rate": 51.0,
     "dayofweek": 3
   },
   {
     "publica_id": 163,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 164,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 6
   },
   {
     "publica_id": 165,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 6
   },
   {
     "publica_id": 166,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 6
   },
   {
     "publica_id": 167,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 168,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 2
   },
   {
     "publica_id": 169,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 170,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 3
   },
   {
     "publica_id": 171,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 1
   },
   {
     "publica_id": 172,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 173,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 174,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 1
   },
   {
     "publica_id": 175,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 1
   },
   {
     "publica_id": 176,
-    "rate": 80,
+    "rate": 80.0,
     "dayofweek": 1
   },
   {
     "publica_id": 177,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 178,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 179,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 180,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 2
   },
   {
     "publica_id": 181,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 182,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 183,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 184,
-    "rate": 1,
+    "rate": 1.0,
     "dayofweek": 6
   },
   {
     "publica_id": 185,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 186,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 187,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 188,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 189,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 1
   },
   {
     "publica_id": 190,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 191,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 192,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 193,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 194,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 195,
-    "rate": 130,
+    "rate": 130.0,
     "dayofweek": 6
   },
   {
     "publica_id": 196,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 197,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 2
   },
   {
     "publica_id": 198,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 199,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 6
   },
   {
     "publica_id": 200,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 2
   },
   {
     "publica_id": 201,
-    "rate": 237,
+    "rate": 237.0,
     "dayofweek": 6
   },
   {
     "publica_id": 202,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 203,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 204,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 205,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 2
   },
   {
     "publica_id": 206,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 207,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 208,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 6
   },
   {
     "publica_id": 209,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 210,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 2
   },
   {
     "publica_id": 211,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 212,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 213,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 214,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 4
   },
   {
     "publica_id": 215,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 3
   },
   {
     "publica_id": 216,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 2
   },
   {
     "publica_id": 217,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 2
   },
   {
     "publica_id": 218,
-    "rate": 1,
+    "rate": 1.0,
     "dayofweek": 6
   },
   {
     "publica_id": 219,
-    "rate": 0,
+    "rate": 0.0,
     "dayofweek": 1
   },
   {
     "publica_id": 219,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 219,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 219,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 219,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 219,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 219,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 220,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 3
   },
   {
     "publica_id": 221,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 222,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 223,
-    "rate": 70,
+    "rate": 70.0,
     "dayofweek": 3
   },
   {
     "publica_id": 224,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 225,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 3
   },
   {
     "publica_id": 226,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 227,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 3
   },
   {
     "publica_id": 228,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 229,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 6
   },
   {
     "publica_id": 230,
-    "rate": 70,
+    "rate": 70.0,
     "dayofweek": 3
   },
   {
     "publica_id": 231,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 232,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 2
   },
   {
     "publica_id": 233,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 234,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 235,
-    "rate": 350,
+    "rate": 350.0,
     "dayofweek": 6
   },
   {
     "publica_id": 236,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 3
   },
   {
     "publica_id": 237,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 2
   },
   {
     "publica_id": 238,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 6
   },
   {
     "publica_id": 239,
-    "rate": 170,
+    "rate": 170.0,
     "dayofweek": 6
   },
   {
     "publica_id": 240,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 241,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 242,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 243,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 244,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 2
   },
   {
     "publica_id": 245,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 246,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 247,
-    "rate": 16,
+    "rate": 16.0,
     "dayofweek": 3
   },
   {
     "publica_id": 248,
-    "rate": 180,
+    "rate": 180.0,
     "dayofweek": 6
   },
   {
     "publica_id": 249,
-    "rate": 110,
+    "rate": 110.0,
     "dayofweek": 6
   },
   {
     "publica_id": 250,
-    "rate": 165,
+    "rate": 165.0,
     "dayofweek": 6
   },
   {
     "publica_id": 251,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 6
   },
   {
     "publica_id": 252,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 253,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 6
   },
   {
     "publica_id": 254,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 6
   },
   {
     "publica_id": 255,
-    "rate": 190,
+    "rate": 190.0,
     "dayofweek": 6
   },
   {
     "publica_id": 256,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 6
   },
   {
     "publica_id": 257,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 258,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 259,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 1
   },
   {
     "publica_id": 260,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 261,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 262,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 2
   },
   {
     "publica_id": 263,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 264,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 4
   },
   {
     "publica_id": 265,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
@@ -1886,697 +1886,697 @@
   },
   {
     "publica_id": 267,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 268,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 1
   },
   {
     "publica_id": 269,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 4
   },
   {
     "publica_id": 270,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 3
   },
   {
     "publica_id": 271,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 6
   },
   {
     "publica_id": 272,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 2
   },
   {
     "publica_id": 273,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 274,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 275,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 1
   },
   {
     "publica_id": 276,
-    "rate": 36,
+    "rate": 36.0,
     "dayofweek": 3
   },
   {
     "publica_id": 277,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 278,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 279,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 2
   },
   {
     "publica_id": 280,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 281,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 282,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 6
   },
   {
     "publica_id": 283,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 284,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 285,
-    "rate": 180,
+    "rate": 180.0,
     "dayofweek": 6
   },
   {
     "publica_id": 286,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 287,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 288,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 289,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 290,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 291,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 292,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 293,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 294,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 295,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 296,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 297,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 298,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 299,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 300,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 301,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 6
   },
   {
     "publica_id": 302,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 6
   },
   {
     "publica_id": 303,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 304,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 305,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 6
   },
   {
     "publica_id": 306,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 307,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 308,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 309,
-    "rate": 275,
+    "rate": 275.0,
     "dayofweek": 6
   },
   {
     "publica_id": 310,
-    "rate": 1,
+    "rate": 1.0,
     "dayofweek": 6
   },
   {
     "publica_id": 311,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 1
   },
   {
     "publica_id": 312,
-    "rate": 130,
+    "rate": 130.0,
     "dayofweek": 3
   },
   {
     "publica_id": 313,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 314,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 315,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 6
   },
   {
     "publica_id": 316,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 6
   },
   {
     "publica_id": 317,
-    "rate": 33,
+    "rate": 33.0,
     "dayofweek": 3
   },
   {
     "publica_id": 318,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 319,
-    "rate": 260,
+    "rate": 260.0,
     "dayofweek": 6
   },
   {
     "publica_id": 320,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 321,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 322,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 323,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 324,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 325,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 326,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 327,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 328,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 1
   },
   {
     "publica_id": 329,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 330,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 331,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 1
   },
   {
     "publica_id": 332,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 333,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 334,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 1
   },
   {
     "publica_id": 335,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 336,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 337,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 338,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 339,
-    "rate": 7,
+    "rate": 7.0,
     "dayofweek": 1
   },
   {
     "publica_id": 340,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 2
   },
   {
     "publica_id": 341,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 342,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 343,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 3
   },
   {
     "publica_id": 344,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 345,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 346,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 347,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 348,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 349,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 350,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 351,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 352,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 353,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 354,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 355,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 6
   },
   {
     "publica_id": 356,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 6
   },
   {
     "publica_id": 357,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 358,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 359,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 360,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 361,
-    "rate": 45,
+    "rate": 45.0,
     "dayofweek": 3
   },
   {
     "publica_id": 362,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 363,
-    "rate": 175,
+    "rate": 175.0,
     "dayofweek": 1
   },
   {
     "publica_id": 364,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 365,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 366,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 367,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 368,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 6
   },
   {
     "publica_id": 369,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 370,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 3
   },
   {
     "publica_id": 371,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 372,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 373,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 374,
-    "rate": 7,
+    "rate": 7.0,
     "dayofweek": 1
   },
   {
     "publica_id": 375,
-    "rate": 65,
+    "rate": 65.0,
     "dayofweek": 3
   },
   {
     "publica_id": 376,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 377,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 378,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 6
   },
   {
     "publica_id": 379,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 3
   },
   {
     "publica_id": 380,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 381,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 382,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 383,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 1
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 384,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 1
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 385,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 386,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 387,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
@@ -2651,17 +2651,17 @@
   },
   {
     "publica_id": 390,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 391,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 392,
-    "rate": 85,
+    "rate": 85.0,
     "dayofweek": 3
   },
   {
@@ -2701,22 +2701,22 @@
   },
   {
     "publica_id": 394,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 395,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 2
   },
   {
     "publica_id": 396,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 397,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
@@ -2756,817 +2756,852 @@
   },
   {
     "publica_id": 399,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 400,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 401,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 402,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 6
   },
   {
     "publica_id": 403,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 404,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 405,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 406,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 3
   },
   {
     "publica_id": 407,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 408,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 409,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 410,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 411,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 412,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 1
   },
   {
     "publica_id": 413,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 414,
-    "rate": 90,
+    "rate": 90.0,
     "dayofweek": 3
   },
   {
     "publica_id": 415,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 2
   },
   {
     "publica_id": 416,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 6
   },
   {
     "publica_id": 417,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 418,
-    "rate": 7,
+    "rate": 7.0,
     "dayofweek": 1
   },
   {
     "publica_id": 419,
-    "rate": 12,
+    "rate": 12.0,
     "dayofweek": 2
   },
   {
     "publica_id": 420,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 421,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 422,
-    "rate": 110,
+    "rate": 110.0,
     "dayofweek": 3
   },
   {
     "publica_id": 423,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 424,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 425,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 426,
-    "rate": 175,
+    "rate": 175.0,
     "dayofweek": 3
   },
   {
     "publica_id": 427,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 428,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 429,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 430,
-    "rate": 95,
+    "rate": 95.0,
     "dayofweek": 3
   },
   {
     "publica_id": 431,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 6
   },
   {
     "publica_id": 432,
-    "rate": 6,
+    "rate": 6.0,
     "dayofweek": 6
   },
   {
     "publica_id": 433,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 434,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 435,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 3
   },
   {
     "publica_id": 436,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 437,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 438,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 439,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 440,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 441,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 442,
-    "rate": 15,
+    "rate": 15.0,
     "dayofweek": 3
   },
   {
     "publica_id": 443,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 444,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 445,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 446,
-    "rate": 300,
+    "rate": 300.0,
     "dayofweek": 6
   },
   {
     "publica_id": 447,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 448,
-    "rate": 120,
+    "rate": 120.0,
     "dayofweek": 3
   },
   {
     "publica_id": 449,
-    "rate": 250,
+    "rate": 250.0,
     "dayofweek": 3
   },
   {
     "publica_id": 450,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 451,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 452,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 453,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 454,
-    "rate": 25,
+    "rate": 25.0,
     "dayofweek": 6
   },
   {
     "publica_id": 455,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 6
   },
   {
     "publica_id": 456,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 6
   },
   {
     "publica_id": 457,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 6
   },
   {
     "publica_id": 458,
-    "rate": 80,
+    "rate": 80.0,
     "dayofweek": 6
   },
   {
     "publica_id": 459,
-    "rate": 80,
+    "rate": 80.0,
     "dayofweek": 6
   },
   {
     "publica_id": 460,
-    "rate": 80,
+    "rate": 80.0,
     "dayofweek": 6
   },
   {
     "publica_id": 461,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 462,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 463,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 464,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 465,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 466,
-    "rate": 1,
+    "rate": 1.0,
     "dayofweek": 6
   },
   {
     "publica_id": 467,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 468,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 6
   },
   {
     "publica_id": 469,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 470,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 471,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 472,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 473,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 0
   },
   {
     "publica_id": 474,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 475,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 476,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 1
   },
   {
     "publica_id": 477,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 1
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 2
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 3
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 4
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 5
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 6
   },
   {
     "publica_id": 478,
-    "rate": 2,
+    "rate": 2.0,
     "dayofweek": 7
   },
   {
     "publica_id": 479,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 480,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 481,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 482,
-    "rate": 300,
+    "rate": 300.0,
     "dayofweek": 3
   },
   {
     "publica_id": 483,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 484,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 1
   },
   {
     "publica_id": 485,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 486,
-    "rate": 60,
+    "rate": 60.0,
     "dayofweek": 3
   },
   {
     "publica_id": 487,
-    "rate": 120,
+    "rate": 120.0,
     "dayofweek": 3
   },
   {
     "publica_id": 488,
-    "rate": 250,
+    "rate": 250.0,
     "dayofweek": 3
   },
   {
     "publica_id": 489,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 490,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 6
   },
   {
     "publica_id": 491,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 492,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 493,
-    "rate": 20,
+    "rate": 20.0,
     "dayofweek": 3
   },
   {
     "publica_id": 494,
-    "rate": 35,
+    "rate": 35.0,
     "dayofweek": 3
   },
   {
     "publica_id": 495,
-    "rate": 449,
+    "rate": 449.0,
     "dayofweek": 3
   },
   {
     "publica_id": 496,
-    "rate": 499,
+    "rate": 499.0,
     "dayofweek": 3
   },
   {
     "publica_id": 497,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 6
   },
   {
     "publica_id": 498,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 499,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 500,
-    "rate": 499,
+    "rate": 499.0,
     "dayofweek": 6
   },
   {
     "publica_id": 501,
-    "rate": 125,
+    "rate": 125.0,
     "dayofweek": 3
   },
   {
     "publica_id": 502,
-    "rate": 70,
+    "rate": 70.0,
     "dayofweek": 3
   },
   {
     "publica_id": 503,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 504,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 505,
-    "rate": 70,
+    "rate": 70.0,
     "dayofweek": 3
   },
   {
     "publica_id": 506,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 507,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 508,
-    "rate": 150,
+    "rate": 150.0,
     "dayofweek": 3
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 1
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 2
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 3
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 4
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 5
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 6
   },
   {
     "publica_id": 509,
-    "rate": 3,
+    "rate": 3.0,
     "dayofweek": 7
   },
   {
     "publica_id": 510,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 6
   },
   {
     "publica_id": 511,
-    "rate": 100,
+    "rate": 100.0,
     "dayofweek": 3
   },
   {
     "publica_id": 512,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 1
   },
   {
     "publica_id": 513,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 1
   },
   {
     "publica_id": 514,
-    "rate": 250,
+    "rate": 250.0,
     "dayofweek": 6
   },
   {
     "publica_id": 515,
-    "rate": 30,
+    "rate": 30.0,
     "dayofweek": 3
   },
   {
     "publica_id": 516,
-    "rate": 99,
+    "rate": 99.0,
     "dayofweek": 3
   },
   {
     "publica_id": 517,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 518,
-    "rate": 300,
+    "rate": 300.0,
     "dayofweek": 3
   },
   {
     "publica_id": 519,
-    "rate": 300,
+    "rate": 300.0,
     "dayofweek": 3
   },
   {
     "publica_id": 520,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 521,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 522,
-    "rate": 40,
+    "rate": 40.0,
     "dayofweek": 3
   },
   {
     "publica_id": 523,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 3
   },
   {
     "publica_id": 524,
-    "rate": 10,
+    "rate": 10.0,
     "dayofweek": 1
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 1
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 2
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 3
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 4
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 5
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 6
   },
   {
     "publica_id": 525,
-    "rate": 5,
+    "rate": 5.0,
     "dayofweek": 7
   },
   {
     "publica_id": 526,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
   },
   {
     "publica_id": 527,
-    "rate": 500,
+    "rate": 500.0,
     "dayofweek": 3
   },
   {
     "publica_id": 528,
-    "rate": 300,
+    "rate": 300.0,
     "dayofweek": 3
   },
   {
     "publica_id": 529,
-    "rate": 200,
+    "rate": 200.0,
     "dayofweek": 3
   },
   {
     "publica_id": 530,
-    "rate": 75,
+    "rate": 75.0,
     "dayofweek": 4
   },
   {
     "publica_id": 531,
-    "rate": 50,
+    "rate": 50.0,
     "dayofweek": 3
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 1
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 2
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 3
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 4
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 5
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 6
+  },
+  {
+    "publica_id": 532,
+    "rate": 3.0,
+    "dayofweek": 7
   }
 ]

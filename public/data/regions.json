@@ -145,7 +145,7 @@
   },
   {
     "region_id": 38,
-    "region_name": "1"
+    "region_name": 1
   },
   {
     "region_id": 39,
@@ -329,7 +329,7 @@
   },
   {
     "region_id": 84,
-    "region_name": "3"
+    "region_name": 3
   },
   {
     "region_id": 85,
@@ -478,5 +478,9 @@
   {
     "region_id": 121,
     "region_name": "Df"
+  },
+  {
+    "region_id": 122,
+    "region_name": "Mr2"
   }
 ]
