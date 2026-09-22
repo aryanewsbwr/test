@@ -50,11 +50,17 @@ async function getPublicationDiscontinues(): Promise<any[]> {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
-  // Query authoritative customer_detailback
-  const { data: backSubs } = await supabase
-    .from('customer_detailback')
-    .select('*')
-    .in('Customer_id', customerIds);
+  // Query authoritative customer_detailback in safe chunks of 200
+  const CHUNK_SIZE = 200;
+  const backSubs: any[] = [];
+  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+    const { data } = await supabase
+      .from('customer_detailback')
+      .select('*')
+      .in('Customer_id', chunk);
+    if (data) backSubs.push(...data);
+  }
 
   const parseD = (d: any, t: any) => {
     if (!d) return 0;
@@ -65,7 +71,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   };
 
   const subsByCust = new Map<number, any[]>();
-  for (const row of backSubs || []) {
+  for (const row of backSubs) {
     const cid = row.Customer_id || row.customer_id;
     if (!subsByCust.has(cid)) subsByCust.set(cid, []);
     subsByCust.get(cid)!.push(row);
@@ -88,11 +94,14 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   // Fallback to customer_detail if any customer had no records in customer_detailback
   const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
   if (missingCustIds.length > 0) {
-    const { data: cdSubs } = await supabase
-      .from('customer_detail')
-      .select('*')
-      .in('customer_id', missingCustIds);
-    if (cdSubs) result.push(...cdSubs);
+    for (let i = 0; i < missingCustIds.length; i += CHUNK_SIZE) {
+      const chunk = missingCustIds.slice(i, i + CHUNK_SIZE);
+      const { data: cdSubs } = await supabase
+        .from('customer_detail')
+        .select('*')
+        .in('customer_id', chunk);
+      if (cdSubs) result.push(...cdSubs);
+    }
   }
 
   return result;
@@ -100,20 +109,34 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], receipts: [] };
+  const CHUNK_SIZE = 200;
+  const allBills: any[] = [];
+  const allReceipts: any[] = [];
+
   if (fySuffix === '20262027') {
-    const [{ data: bData }, { data: rData }] = await Promise.all([
-      supabase.from('bill').select('*').in('customer_id', customerIds).eq('financial_year', '2026-2027'),
-      supabase.from('receipt').select('*').in('customer_id', customerIds).eq('financial_year', '2026-2027')
-    ]);
-    return { bills: bData || [], receipts: rData || [] };
+    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+      const [{ data: bData }, { data: rData }] = await Promise.all([
+        supabase.from('bill').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027'),
+        supabase.from('receipt').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027')
+      ]);
+      if (bData) allBills.push(...bData);
+      if (rData) allReceipts.push(...rData);
+    }
+    return { bills: allBills, receipts: allReceipts };
   } else {
     try {
-      const [{ data: bData }, { data: rData }] = await Promise.all([
-        supabase.from(`billno${fySuffix}`).select('*').in('Customer_id', customerIds),
-        supabase.from(`receipt${fySuffix}`).select('*').in('Customer_id', customerIds)
-      ]);
-      if (bData && bData.length > 0) {
-        return { bills: bData, receipts: rData || [] };
+      for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+        const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+        const [{ data: bData }, { data: rData }] = await Promise.all([
+          supabase.from(`billno${fySuffix}`).select('*').in('Customer_id', chunk),
+          supabase.from(`receipt${fySuffix}`).select('*').in('Customer_id', chunk)
+        ]);
+        if (bData) allBills.push(...bData);
+        if (rData) allReceipts.push(...rData);
+      }
+      if (allBills.length > 0) {
+        return { bills: allBills, receipts: allReceipts };
       }
     } catch (e) {
       // fallback to cached
@@ -296,11 +319,22 @@ export async function POST(request: NextRequest) {
 
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
 
-    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, { data: dbBatchRetail }] = await Promise.all([
+    const fetchRetailSales = async (custIds: number[]) => {
+      const allRetail: any[] = [];
+      const CHUNK_SIZE = 200;
+      for (let i = 0; i < custIds.length; i += CHUNK_SIZE) {
+        const chunk = custIds.slice(i, i + CHUNK_SIZE);
+        const { data } = await supabase.from(retailTableName).select('*').in('Customer_id', chunk);
+        if (data) allRetail.push(...data);
+      }
+      return allRetail;
+    };
+
+    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
-      supabase.from(retailTableName).select('*').in('Customer_id', targetCustIds)
+      fetchRetailSales(targetCustIds)
     ]);
 
     const result = calculateBilling({
