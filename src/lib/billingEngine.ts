@@ -35,8 +35,10 @@ export interface CustomerMonthlyBill {
   region_id: number;
   region_name: string;
   month: string;
-  year: string | number;
-  previous_due: number;
+  year: number;
+  opening_balance_this_bill: number;
+  current_month_charges: number;
+  previous_due: number; // Retained for compatibility (= opening_balance_this_bill)
   paper_amount: number;
   delivery_amount: number;
   discount_amount: number;
@@ -604,9 +606,11 @@ export function calculateBilling({
     }
 
     // =========================================================================
-    // 3. GRAND TOTAL (Sort_order 9)
+    // 3. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
-    const totalPayable = Math.round((previousDue + customerPaperTotal + customerDeliveryTotal - customerDiscountTotal) * 100) / 100;
+    const openingBalanceThisBill = previousDue;
+    const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal - customerDiscountTotal) * 100) / 100;
+    const totalPayable = Math.round((openingBalanceThisBill + currentMonthCharges) * 100) / 100;
 
     // Only generate bill if customer has active papers or outstanding dues
     if (totalPayable === 0 && customerPaperTotal === 0 && custBreakup.length === 0) {
@@ -627,16 +631,19 @@ export function calculateBilling({
 
     const reg = regMap.get(custRegionId);
 
+    // In billnoYYYYYYYY:
+    // - Due_Amt is NULL for monthly bills (only populated in the FY anchor row Month='Dues')
+    // - Balance stores the carried-forward opening balance (deficit = negative, advance = positive)
     const dbBillnoItem = {
       Bill_id: nextBillId,
       Customer_id: custId,
       Region_id: custRegionId,
-      Due_Amt: previousDue !== 0 ? previousDue : null,
+      Due_Amt: null,
       Del_Amt: customerDeliveryTotal > 0 ? customerDeliveryTotal : null,
       Dis_Amt: customerDiscountTotal > 0 ? customerDiscountTotal : null,
       Month: standardMonthName,
       year: String(startYear),
-      Balance: totalPayable
+      Balance: openingBalanceThisBill !== 0 ? -openingBalanceThisBill : 0
     };
 
     const billObj: CustomerMonthlyBill = {
@@ -648,7 +655,9 @@ export function calculateBilling({
       region_name: reg ? (reg.name || reg.region_name || reg.Region_name) : `Region #${custRegionId}`,
       month: standardMonthName,
       year: startYear,
-      previous_due: previousDue,
+      opening_balance_this_bill: openingBalanceThisBill,
+      current_month_charges: currentMonthCharges,
+      previous_due: openingBalanceThisBill,
       paper_amount: customerPaperTotal,
       delivery_amount: customerDeliveryTotal,
       discount_amount: customerDiscountTotal,
