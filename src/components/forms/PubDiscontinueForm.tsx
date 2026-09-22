@@ -7,11 +7,14 @@ import { supabase } from '@/lib/supabaseClient';
 interface PubDiscontinueFormProps {
   onClose: () => void;
   publications?: Publication[];
+  mode?: 'discontinue' | 'supplement';
 }
 
-export default function PubDiscontinueForm({ onClose, publications = [] }: PubDiscontinueFormProps) {
+export default function PubDiscontinueForm({ onClose, publications = [], mode = 'discontinue' }: PubDiscontinueFormProps) {
+  const isSupplement = mode === 'supplement';
   const [pubList, setPubList] = useState<Publication[]>([]);
   const [selectedPub, setSelectedPub] = useState('');
+  const [supplementName, setSupplementName] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [msg, setMsg] = useState('');
@@ -69,7 +72,7 @@ export default function PubDiscontinueForm({ onClose, publications = [] }: PubDi
         {/* Header */}
         <div className="text-center pb-2">
           <h1 className="text-xl font-black text-[#800000] tracking-wide" style={{ fontFamily: 'Georgia, serif' }}>
-            PUBLICATIONS DISCONTINUE
+            {isSupplement ? 'PUBLICATIONS SUPPLEMENT' : 'PUBLICATIONS DISCONTINUE'}
           </h1>
         </div>
 
@@ -89,27 +92,54 @@ export default function PubDiscontinueForm({ onClose, publications = [] }: PubDi
             </select>
           </div>
 
-          <div className="flex items-center gap-3">
-            <label className="w-32 font-bold text-[#800000] text-right">From</label>
-            <input 
-              type="text" 
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              placeholder="//"
-              className="w-36 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-mono font-bold text-black outline-none text-center"
-            />
-          </div>
+          {isSupplement ? (
+            <>
+              <div className="flex items-center gap-3">
+                <label className="w-32 font-bold text-[#800000] text-right">Supplement Name</label>
+                <input 
+                  type="text" 
+                  value={supplementName}
+                  onChange={(e) => setSupplementName(e.target.value)}
+                  placeholder="e.g. Rasrang / Parivar"
+                  className="flex-1 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="w-32 font-bold text-[#800000] text-right">Date</label>
+                <input 
+                  type="text" 
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  placeholder="DD/MM/YYYY"
+                  className="w-36 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-mono font-bold text-black outline-none text-center"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <label className="w-32 font-bold text-[#800000] text-right">From</label>
+                <input 
+                  type="text" 
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  placeholder="//"
+                  className="w-36 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-mono font-bold text-black outline-none text-center"
+                />
+              </div>
 
-          <div className="flex items-center gap-3">
-            <label className="w-32 font-bold text-[#800000] text-right">To</label>
-            <input 
-              type="text" 
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              placeholder="//"
-              className="w-36 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-mono font-bold text-black outline-none text-center"
-            />
-          </div>
+              <div className="flex items-center gap-3">
+                <label className="w-32 font-bold text-[#800000] text-right">To</label>
+                <input 
+                  type="text" 
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  placeholder="//"
+                  className="w-36 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-mono font-bold text-black outline-none text-center"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {msg && (

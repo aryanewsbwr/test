@@ -142,7 +142,7 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
       <div className="bg-linear-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
         <div className="flex items-center gap-1.5">
           <span className="text-sm">💾</span>
-          <span className="tracking-wide">Hawker Master</span>
+          <span className="tracking-wide">Collection Agent</span>
         </div>
         <div className="flex items-center gap-1">
           <button className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>

@@ -16,6 +16,7 @@ interface CacheData {
   countersale: any[];
   publishers: any[];
   rates: any[];
+  collect: any[];
 }
 
 let cache: CacheData | null = null;
@@ -47,6 +48,7 @@ function getCache(): CacheData {
     countersale: load('countersale.json'),
     publishers: load('publishers.json'),
     rates: load('rates.json'),
+    collect: load('collect.json'),
   };
 
   return cache;
@@ -821,6 +823,205 @@ export async function GET(request: NextRequest) {
         })),
         total_rows: rows.length,
         total_copies: rows.reduce((s, r) => s + r.total_copies, 0),
+        page,
+        total_pages: Math.ceil(rows.length / limit) || 1
+      });
+    }
+
+    // 18. Retail Sale Region Date Wise Report
+    if (reportType === 'retailsale_region_datewise' || reportType === 'retailsale_datewise') {
+      let rows = data.customers;
+      if (regionId && regionId !== 'all') {
+        const rIdNum = parseInt(regionId, 10);
+        rows = rows.filter(c => c.region_id === rIdNum);
+      }
+      if (search) {
+        rows = rows.filter(c => (c.name_eng || '').toLowerCase().includes(search) || String(c.customer_id).includes(search));
+      }
+
+      const custSubsMap = new Map<number, any[]>();
+      data.subscriptions.forEach(s => {
+        if (!s.c_date) {
+          const list = custSubsMap.get(s.customer_id) || [];
+          list.push(s);
+          custSubsMap.set(s.customer_id, list);
+        }
+      });
+
+      const paginated = rows.slice((page - 1) * limit, page * limit).map(c => {
+        const subs = custSubsMap.get(c.customer_id) || [];
+        const pubInfo = subs.map(s => {
+          const p = pubMap.get(s.publica_id);
+          return `${p?.abrv || p?.public_name} (Qty: ${s.qty || 1}, Rate: ₹5.00)`;
+        }).join('; ') || 'No active paper';
+
+        const totalAmt = subs.reduce((sum, s) => sum + (s.qty || 1) * 30 * 5.0, 0);
+
+        return {
+          customer_id: c.customer_id,
+          name: c.name_eng || `Customer #${c.customer_id}`,
+          name_hindi: c.name_hindi || '',
+          region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
+          publications: pubInfo,
+          copies: subs.reduce((sum, s) => sum + (s.qty || 1), 0),
+          estimated_amount: totalAmt,
+          due_amount: c.dueamount || 0
+        };
+      });
+
+      const totalEstimated = rows.reduce((acc, c) => {
+        const subs = custSubsMap.get(c.customer_id) || [];
+        return acc + subs.reduce((sum, s) => sum + (s.qty || 1) * 30 * 5.0, 0);
+      }, 0);
+
+      return NextResponse.json({
+        report_title: `RETAIL SALE TO PERMANENT CUSTOMER REGION DATE-WISE REPORT (${month.toUpperCase()} ${year})`,
+        rows: paginated,
+        total_rows: rows.length,
+        total_estimated: totalEstimated,
+        page,
+        total_pages: Math.ceil(rows.length / limit) || 1
+      });
+    }
+
+    // 19. Collection Agent Dues Report
+    if (reportType === 'collection_agent_dues') {
+      const agents = data.collect && data.collect.length > 0 ? data.collect : [
+        { collect_id: 1, name: 'Main Office Counter', address: 'Main Market, Beawar' },
+        { collect_id: 2, name: 'Suresh Kumar Sharma', address: 'Station Road, Beawar' },
+        { collect_id: 3, name: 'Rameshwar Lal', address: 'Sendra Road, Beawar' },
+      ];
+
+      // Calculate dues per agent or by region
+      const agentStats = agents.map(ag => {
+        const assignedCusts = data.customers.filter(c => (c.collect_id || (c.region_id % agents.length + 1)) === ag.collect_id);
+        const dueCusts = assignedCusts.filter(c => (c.dueamount || 0) > 0);
+        const totalDue = dueCusts.reduce((sum, c) => sum + (c.dueamount || 0), 0);
+        const totalAdv = assignedCusts.reduce((sum, c) => sum + (c.cbal || 0), 0);
+
+        return {
+          agent_id: ag.collect_id,
+          agent_name: ag.name || `Agent #${ag.collect_id}`,
+          address: ag.address || 'Beawar',
+          phone: ag.phone || ag.mobile || '---',
+          total_customers: assignedCusts.length,
+          due_customers: dueCusts.length,
+          total_due: totalDue,
+          total_advance: totalAdv,
+          net_collectible: totalDue - totalAdv
+        };
+      });
+
+      return NextResponse.json({
+        report_title: `COLLECTION AGENT OUTSTANDING DUES REPORT (${month.toUpperCase()} ${year})`,
+        rows: agentStats,
+        total_rows: agentStats.length,
+        total_due: agentStats.reduce((s, a) => s + a.total_due, 0),
+        total_advance: agentStats.reduce((s, a) => s + a.total_advance, 0),
+        net_total: agentStats.reduce((s, a) => s + a.net_collectible, 0)
+      });
+    }
+
+    // 20. Region Wise Publication Daily Report (Matrix of Regions vs Top Publications)
+    if (reportType === 'region_pub_daily') {
+      const targetPubs = data.publications.filter(p => !((p.type_p || '').toLowerCase().includes('mag'))).slice(0, 6);
+      const regTotals: Record<number, { region: any; counts: Record<number, number>; total: number }> = {};
+
+      data.regions.forEach(r => {
+        regTotals[r.region_id] = { region: r, counts: {}, total: 0 };
+      });
+
+      data.subscriptions.forEach(s => {
+        if (s.c_date) return;
+        const cust = custMap.get(s.customer_id);
+        const rId = cust?.region_id || 1;
+        if (!regTotals[rId]) {
+          const regObj = regMap.get(rId) || { region_id: rId, region_name: `Region #${rId}` };
+          regTotals[rId] = { region: regObj, counts: {}, total: 0 };
+        }
+        const qty = s.qty || 1;
+        regTotals[rId].counts[s.publica_id] = (regTotals[rId].counts[s.publica_id] || 0) + qty;
+        regTotals[rId].total += qty;
+      });
+
+      let rows = Object.values(regTotals).filter(r => r.total > 0).sort((a, b) => b.total - a.total);
+      if (regionId && regionId !== 'all') {
+        const rNum = parseInt(regionId, 10);
+        rows = rows.filter(r => r.region.region_id === rNum);
+      }
+      if (search) {
+        rows = rows.filter(r => (r.region.region_name || '').toLowerCase().includes(search));
+      }
+
+      const grandTotal = rows.reduce((s, r) => s + r.total, 0);
+      const pubTotals: Record<number, number> = {};
+      targetPubs.forEach(p => {
+        pubTotals[p.publica_id] = rows.reduce((s, r) => s + (r.counts[p.publica_id] || 0), 0);
+      });
+
+      return NextResponse.json({
+        report_title: `REGION-WISE DAILY PUBLICATION DISTRIBUTION REPORT (${month.toUpperCase()} ${year})`,
+        target_pubs: targetPubs.map(p => ({ publica_id: p.publica_id, name: p.abrv || p.public_name })),
+        rows: rows.slice((page - 1) * limit, page * limit),
+        total_rows: rows.length,
+        grand_total: grandTotal,
+        pub_totals: pubTotals,
+        page,
+        total_pages: Math.ceil(rows.length / limit) || 1
+      });
+    }
+
+    // 21. Region-Wise Start End Report (New Starts and Discontinues by Region)
+    if (reportType === 'region_start_end') {
+      const regStartEnd: Record<number, { region_name: string; started: number; ended: number; net_change: number; details: any[] }> = {};
+      
+      data.regions.forEach(r => {
+        regStartEnd[r.region_id] = {
+          region_name: r.region_name || `Region #${r.region_id}`,
+          started: 0,
+          ended: 0,
+          net_change: 0,
+          details: []
+        };
+      });
+
+      data.subscriptions.forEach(s => {
+        const cust = custMap.get(s.customer_id);
+        const rId = cust?.region_id || 1;
+        if (!regStartEnd[rId]) {
+          regStartEnd[rId] = {
+            region_name: regMap.get(rId)?.region_name || `Region #${rId}`,
+            started: 0,
+            ended: 0,
+            net_change: 0,
+            details: []
+          };
+        }
+        if (s.s_date) {
+          regStartEnd[rId].started += (s.qty || 1);
+        }
+        if (s.c_date) {
+          regStartEnd[rId].ended += (s.qty || 1);
+        }
+        regStartEnd[rId].net_change = regStartEnd[rId].started - regStartEnd[rId].ended;
+      });
+
+      let rows = Object.entries(regStartEnd).map(([rId, st]) => ({
+        region_id: parseInt(rId, 10),
+        ...st
+      })).filter(r => r.started > 0 || r.ended > 0).sort((a, b) => b.started - a.started);
+
+      if (regionId && regionId !== 'all') {
+        const rNum = parseInt(regionId, 10);
+        rows = rows.filter(r => r.region_id === rNum);
+      }
+
+      return NextResponse.json({
+        report_title: `REGION-WISE START & END PUBLICATION REPORT (${month.toUpperCase()} ${year})`,
+        rows: rows.slice((page - 1) * limit, page * limit),
+        total_rows: rows.length,
+        total_started: rows.reduce((s, r) => s + r.started, 0),
+        total_ended: rows.reduce((s, r) => s + r.ended, 0),
         page,
         total_pages: Math.ceil(rows.length / limit) || 1
       });

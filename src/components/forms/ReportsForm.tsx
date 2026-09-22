@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Printer, RefreshCw, Search, Download, ZoomIn, ZoomOut, 
-  ChevronLeft, ChevronRight, FileText, X, Filter, Calendar 
+  ChevronLeft, ChevronRight, FileText, X, Filter, Calendar,
+  ArrowLeft, Eye, SlidersHorizontal, CheckSquare
 } from 'lucide-react';
+import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
 interface ReportsFormProps {
   onClose: () => void;
@@ -14,6 +16,39 @@ interface ReportsFormProps {
   initialPub?: number | string;
 }
 
+const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?: boolean; hasHawker?: boolean; hasPub?: boolean; hasPeriod?: boolean; hasCustId?: boolean }> = {
+  bill_print_region: { title: 'Region Wise Bill Printing', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
+  bill_print_single: { title: 'Single Bill Printing', category: 'Bill Printing', hasCustId: true, hasPeriod: true },
+  hawker_daily_qty: { title: 'Daily Quantity of Newspaper', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true, hasPeriod: true },
+  hawker_magazine_qty: { title: 'Quantity of Magazine', category: 'Hawker Wise Report', hasHawker: true, hasPeriod: true },
+  dues_ledger: { title: 'Customer Outstanding Dues Ledger', category: 'Outstanding Report', hasRegion: true },
+  previous_dues_wise: { title: 'Previous Dues Wise Report', category: 'Outstanding Report', hasRegion: true },
+  due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report' },
+  collection_agent_dues: { title: 'Collection Agent Dues Report', category: 'Outstanding Report', hasPeriod: true },
+  cust_detail_month: { title: 'Customer Detail / Month Register', category: 'Customer', hasRegion: true, hasPeriod: true },
+  cust_pub_starting: { title: 'Customer Publication Starting', category: 'Customer', hasPub: true, hasHawker: true },
+  circ_type_pub: { title: 'Circulation Type Publication Report', category: 'Customer' },
+  cust_choose_pub: { title: 'Customer Wise Choose Publication', category: 'Customer', hasPub: true },
+  discontinue_datewise: { title: 'Discontinue Date Wise', category: 'Discontinue', hasPeriod: true },
+  discontinue_hawkerwise: { title: 'Discontinue Hawker Wise With Address', category: 'Discontinue', hasHawker: true },
+  purchase_datewise: { title: 'Purchase Date Wise Report', category: 'Purchase', hasPeriod: true },
+  purchase_publisherwise: { title: 'Purchase Publisher Wise', category: 'Purchase' },
+  countersale_datewise: { title: 'Counter Sale Date Wise', category: 'Counter Sale', hasPeriod: true },
+  countersale_pubwise: { title: 'Counter Sale Publication Wise', category: 'Counter Sale', hasPub: true },
+  retailsale_region_datewise: { title: 'Retail Sale Region Date Wise Report', category: 'Retail Customer Sale To Permanent', hasRegion: true, hasPeriod: true },
+  receipt_nowise: { title: 'Receipt Number Wise Report', category: 'Reciept', hasPeriod: true },
+  receipt_realamt: { title: 'Actual Amount Receipt Report', category: 'Reciept', hasPeriod: true },
+  hawker_cust_priority: { title: "Hawker's Customer Priority", category: "Hawker's Customer Priority", hasHawker: true },
+  sticker_printing: { title: 'Sticker Printing', category: 'Sticker Printing', hasRegion: true },
+  consolidated_sale: { title: 'Consolidated Sale Report', category: 'Sale', hasPeriod: true },
+  daily_sale: { title: 'Daily / Periodic Sale Report', category: 'Sale', hasPeriod: true },
+  region_pub_daily: { title: 'Region Wise Publication Report', category: 'Publication Daily Report', hasRegion: true, hasPeriod: true },
+  region_start_end: { title: 'Region-Wise Start End Report', category: 'Publication Daily Report', hasRegion: true, hasPeriod: true },
+  hawker_report_datewise: { title: 'Hawker Report Datewise', category: 'Hawker Report Datewise', hasPeriod: true },
+  collection_hawker_datewise: { title: 'Collection Hawker Datewise', category: 'Collection Hawker Datewise', hasHawker: true, hasPeriod: true },
+  collection_datewise: { title: 'Collection Datewise', category: 'Collection Datewise', hasPeriod: true },
+};
+
 export default function ReportsForm({ 
   onClose, 
   initialReport = 'hawker_daily_qty',
@@ -21,13 +56,14 @@ export default function ReportsForm({
   initialHawker = 'all',
   initialPub = 'all'
 }: ReportsFormProps) {
+  const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
   const [activeReport, setActiveReport] = useState<string>(initialReport);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Filters
+  // Filters / Parameters
   const [regions, setRegions] = useState<any[]>([]);
   const [hawkers, setHawkers] = useState<any[]>([]);
   const [publications, setPublications] = useState<any[]>([]);
@@ -36,6 +72,8 @@ export default function ReportsForm({
   const [selectedPub, setSelectedPub] = useState<string>(String(initialPub));
   const [selectedMonth, setSelectedMonth] = useState<string>('August');
   const [selectedYear, setSelectedYear] = useState<string>('2026');
+  const [targetCustId, setTargetCustId] = useState<string>('');
+  const [outputDest, setOutputDest] = useState<'preview' | 'direct_print'>('preview');
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -46,6 +84,7 @@ export default function ReportsForm({
     if (initialReport) {
       setActiveReport(initialReport);
       setCurrentPage(1);
+      setViewMode('criteria');
     }
   }, [initialReport]);
 
@@ -68,8 +107,8 @@ export default function ReportsForm({
         month: selectedMonth,
         year: selectedYear,
         page: String(currentPage),
-        limit: '50',
-        search: searchQuery
+        limit: activeReport.includes('bill_print') ? '20' : '50',
+        search: targetCustId || searchQuery
       });
 
       const res = await fetch(`/api/reports?${params.toString()}`);
@@ -83,14 +122,27 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId]);
 
   useEffect(() => {
-    fetchReport();
-  }, [fetchReport]);
+    if (viewMode === 'preview') {
+      fetchReport();
+    }
+  }, [viewMode, fetchReport]);
 
   const now = new Date();
   const printDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
+
+  const handleShowPreview = () => {
+    if (outputDest === 'direct_print') {
+      setViewMode('preview');
+      setTimeout(() => {
+        window.print();
+      }, 800);
+    } else {
+      setViewMode('preview');
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -118,14 +170,216 @@ export default function ReportsForm({
     document.body.removeChild(link);
   };
 
+  const currentMeta = REPORT_INFO[activeReport] || { 
+    title: activeReport.replace(/_/g, ' ').toUpperCase(), 
+    category: 'General Report',
+    hasRegion: true,
+    hasPeriod: true
+  };
+
+  // =========================================================================
+  // VIEW 1: AUTHENTIC VB6 REPORT CRITERIA SELECTION DIALOG (screenshot_14.jpg)
+  // =========================================================================
+  if (viewMode === 'criteria') {
+    return (
+      <div className="w-[540px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none text-xs">
+        
+        {/* VB6 Dialog Titlebar */}
+        <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold">
+          <div className="flex items-center gap-1.5">
+            <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
+            <span className="tracking-wide">{currentMeta.title}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
+            <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
+            <button onClick={onClose} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
+          </div>
+        </div>
+
+        {/* Form Body */}
+        <div className="p-6 bg-[#ECE9D8] space-y-4">
+          
+          {/* Header Banner */}
+          <div className="text-center pb-2 border-b border-[#808080]">
+            <h1 className="text-lg font-black text-[#800000] tracking-wide uppercase font-serif">
+              {currentMeta.title}
+            </h1>
+            <p className="text-[11px] text-slate-700 font-sans font-bold">
+              {currentMeta.category} • Aryan News Agency [Beawar]
+            </p>
+          </div>
+
+          {/* Criteria Inputs Box */}
+          <div className="space-y-3 bg-[#F0EEE2] p-4 border border-[#808080] shadow-inner text-xs">
+            
+            {/* Region Dropdown */}
+            {(currentMeta.hasRegion || activeReport === 'bill_print_region' || activeReport === 'retailsale_region_datewise') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Region</label>
+                <select 
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
+                >
+                  <option value="all">-- All Regions --</option>
+                  {regions.map(r => (
+                    <option key={r.region_id} value={r.region_id}>{r.region_name} (#{r.region_id})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Hawker Dropdown */}
+            {(currentMeta.hasHawker || activeReport.includes('hawker')) && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Hawker</label>
+                <select 
+                  value={selectedHawker}
+                  onChange={(e) => setSelectedHawker(e.target.value)}
+                  className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
+                >
+                  <option value="all">-- All Hawkers --</option>
+                  {hawkers.filter(h => h.name).slice(0, 100).map(h => (
+                    <option key={h.hawker_id} value={h.hawker_id}>{h.name} (#{h.hawker_id})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Publication Dropdown */}
+            {(currentMeta.hasPub || activeReport === 'cust_choose_pub' || activeReport === 'cust_pub_starting' || activeReport === 'countersale_pubwise') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Publication</label>
+                <select 
+                  value={selectedPub}
+                  onChange={(e) => setSelectedPub(e.target.value)}
+                  className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
+                >
+                  <option value="all">-- All Publications --</option>
+                  {publications.map(p => (
+                    <option key={p.publica_id} value={p.publica_id}>{p.public_name || p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Customer ID Filter for Single Bill Printing */}
+            {(currentMeta.hasCustId || activeReport === 'bill_print_single') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#800000] shrink-0">Customer ID</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. 24669 or Name"
+                  value={targetCustId}
+                  onChange={(e) => setTargetCustId(e.target.value)}
+                  className="w-48 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold font-mono outline-none"
+                />
+              </div>
+            )}
+
+            {/* Period (Month & Year) */}
+            {(currentMeta.hasPeriod !== false) && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Period</label>
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
+                  >
+                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <select 
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold font-mono outline-none"
+                  >
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2027">2027</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Output Mode Radio Buttons */}
+            <div className="pt-2 border-t border-[#808080] flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-700">Output Mode:</span>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="outputMode" 
+                    checked={outputDest === 'preview'} 
+                    onChange={() => setOutputDest('preview')} 
+                  />
+                  <span>Crystal Report Preview</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="outputMode" 
+                    checked={outputDest === 'direct_print'} 
+                    onChange={() => setOutputDest('direct_print')} 
+                  />
+                  <span>Direct Print</span>
+                </label>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Classic Slanted / Beveled VB6 Action Buttons */}
+          <div className="flex items-center justify-center gap-3 pt-3 border-t border-[#808080]">
+            <button 
+              onClick={handleShowPreview}
+              className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                🔍 <u>S</u>how Preview
+              </span>
+            </button>
+            <button 
+              onClick={() => {
+                setViewMode('preview');
+                setTimeout(() => window.print(), 800);
+              }}
+              className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                🖨️ Direct <u>P</u>rint
+              </span>
+            </button>
+            <button 
+              onClick={onClose}
+              className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
+            >
+              <span className="transform skew-x-12 text-red-800 flex items-center gap-1">
+                🛑 E<u>x</u>it
+              </span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: AUTHENTIC CRYSTAL REPORTS 8.5/9.0 VIEWER (frmMultiPgPreview)
+  // =========================================================================
   return (
-    <div className="relative w-[1020px] h-[720px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
+    <div className="max-w-[1040px] w-full max-h-[88vh] h-[88vh] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
       
       {/* 1. Crystal Reports Classic Title Bar */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold">
+      <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
-          <span>Crystal Report Viewer - Aryan News Agency [Beawar]</span>
+          <span>Crystal Report Viewer - Aryan News Agency [Beawar] - [{currentMeta.title}]</span>
         </div>
         <div className="flex items-center gap-1">
           <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
@@ -134,18 +388,30 @@ export default function ReportsForm({
         </div>
       </div>
 
-      {/* 2. Top Toolbar with All 16 Report Selectors */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] p-1.5 flex items-center justify-between font-bold gap-2 flex-wrap">
+      {/* 2. Top Toolbar with All 16 Report Selectors & Parameters Button */}
+      <div className="bg-[#ECE9D8] border-b border-[#808080] p-1 flex items-center justify-between font-bold gap-2 flex-wrap shrink-0">
         
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Main 16 Reports Dropdown */}
+          {/* Back to Parameters Button */}
+          <button 
+            onClick={() => setViewMode('criteria')}
+            className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-[#808080] flex items-center gap-1 cursor-pointer font-bold text-[#000080]"
+            title="Open Parameters Selection Dialog"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Parameters</span>
+          </button>
+
+          <div className="h-4 w-[1px] bg-[#808080]"></div>
+
+          {/* Quick Switch Report Dropdown */}
           <select 
             value={activeReport}
             onChange={(e) => {
               setActiveReport(e.target.value);
               setCurrentPage(1);
             }}
-            className="px-2 py-0.5 border border-[#808080] bg-white font-bold text-black outline-none text-xs max-w-[320px]"
+            className="px-2 py-0.5 border border-[#808080] bg-white font-bold text-black outline-none text-xs max-w-[280px]"
           >
             <optgroup label="1. Customer Reports">
               <option value="cust_detail_month">Customer Detail / Month Register</option>
@@ -180,10 +446,15 @@ export default function ReportsForm({
               <option value="dues_ledger">Customer Outstanding Dues Ledger</option>
               <option value="previous_dues_wise">Previous Dues Wise Report</option>
               <option value="due_region_summary">Due Region Wise Summary</option>
+              <option value="collection_agent_dues">Collection Agent Dues Report</option>
             </optgroup>
             <optgroup label="9. Sale Reports">
               <option value="consolidated_sale">Consolidated Sale Report</option>
               <option value="daily_sale">Daily / Periodic Sale Report</option>
+            </optgroup>
+            <optgroup label="10. Publication Daily Report">
+              <option value="region_pub_daily">Region Wise Publication Report</option>
+              <option value="region_start_end">Region-Wise Start End Report</option>
             </optgroup>
             <optgroup label="11. Bill Printing">
               <option value="bill_print_region">Region Wise Bill Printing</option>
@@ -193,6 +464,7 @@ export default function ReportsForm({
               <option value="hawker_cust_priority">Hawker&apos;s Customer Priority</option>
               <option value="sticker_printing">Sticker Printing</option>
               <option value="hawker_report_datewise">Hawker Report Datewise</option>
+              <option value="collection_hawker_datewise">Collection Hawker Datewise</option>
               <option value="collection_datewise">Collection Datewise</option>
             </optgroup>
           </select>
@@ -268,90 +540,44 @@ export default function ReportsForm({
 
       </div>
 
-      {/* 3. Filter Bar (Contextual depending on active report) */}
-      <div className="bg-[#F0EEE2] border-b border-[#808080] px-2 py-1 flex items-center gap-3 text-xs flex-wrap font-sans">
+      {/* 3. Filter Bar */}
+      <div className="bg-[#F0EEE2] border-b border-[#808080] px-2 py-1 flex items-center gap-3 text-xs flex-wrap font-sans shrink-0">
         
-        {/* Region Filter */}
-        <div className="flex items-center gap-1">
-          <span className="font-bold text-slate-700">Region:</span>
-          <select 
-            value={selectedRegion}
-            onChange={(e) => { setSelectedRegion(e.target.value); setCurrentPage(1); }}
-            className="px-1 py-0.5 border border-[#808080] bg-white text-[11px] max-w-[140px]"
-          >
-            <option value="all">All Regions</option>
-            {regions.map(r => (
-              <option key={r.region_id} value={r.region_id}>{r.region_name} (#{r.region_id})</option>
-            ))}
-          </select>
+        {/* Active Criteria Badge */}
+        <div className="flex items-center gap-1 font-bold text-slate-700">
+          <span>Period:</span>
+          <span className="bg-white px-1.5 py-0.5 border border-[#808080] font-mono text-[#000080]">
+            {selectedMonth} {selectedYear}
+          </span>
         </div>
 
-        {/* Hawker Filter */}
-        {(activeReport.includes('hawker') || activeReport === 'cust_pub_starting' || activeReport === 'cust_choose_pub') && (
-          <div className="flex items-center gap-1">
-            <span className="font-bold text-slate-700">Hawker:</span>
-            <select 
-              value={selectedHawker}
-              onChange={(e) => { setSelectedHawker(e.target.value); setCurrentPage(1); }}
-              className="px-1 py-0.5 border border-[#808080] bg-white text-[11px] max-w-[150px]"
-            >
-              <option value="all">All Hawkers</option>
-              {hawkers.filter(h => h.name).slice(0, 80).map(h => (
-                <option key={h.hawker_id} value={h.hawker_id}>{h.name} (#{h.hawker_id})</option>
-              ))}
-            </select>
+        {selectedRegion !== 'all' && (
+          <div className="flex items-center gap-1 font-bold text-slate-700">
+            <span>Region:</span>
+            <span className="bg-white px-1.5 py-0.5 border border-[#808080] text-emerald-800">
+              {regions.find(r => String(r.region_id) === String(selectedRegion))?.region_name || `#${selectedRegion}`}
+            </span>
           </div>
         )}
 
-        {/* Publication Filter */}
-        {(activeReport === 'cust_choose_pub' || activeReport === 'cust_pub_starting' || activeReport === 'countersale_pubwise') && (
-          <div className="flex items-center gap-1">
-            <span className="font-bold text-slate-700">Publication:</span>
-            <select 
-              value={selectedPub}
-              onChange={(e) => { setSelectedPub(e.target.value); setCurrentPage(1); }}
-              className="px-1 py-0.5 border border-[#808080] bg-white text-[11px] max-w-[160px]"
-            >
-              <option value="all">All Publications</option>
-              {publications.slice(0, 50).map(p => (
-                <option key={p.publica_id} value={p.publica_id}>{p.abrv || p.public_name}</option>
-              ))}
-            </select>
+        {selectedHawker !== 'all' && (
+          <div className="flex items-center gap-1 font-bold text-slate-700">
+            <span>Hawker:</span>
+            <span className="bg-white px-1.5 py-0.5 border border-[#808080] text-blue-900">
+              {hawkers.find(h => String(h.hawker_id) === String(selectedHawker))?.name || `#${selectedHawker}`}
+            </span>
           </div>
         )}
-
-        {/* Month & Year Filter */}
-        <div className="flex items-center gap-1">
-          <span className="font-bold text-slate-700">Period:</span>
-          <select 
-            value={selectedMonth}
-            onChange={(e) => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
-            className="px-1 py-0.5 border border-[#808080] bg-white text-[11px]"
-          >
-            {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-          <select 
-            value={selectedYear}
-            onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
-            className="px-1 py-0.5 border border-[#808080] bg-white text-[11px]"
-          >
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2027">2027</option>
-          </select>
-        </div>
 
         {/* Live Search */}
         <div className="flex items-center gap-1 ml-auto">
           <Search className="w-3.5 h-3.5 text-slate-500" />
           <input 
-            type="text"
-            placeholder="Search report..."
+            type="text" 
+            placeholder="Search within report..."
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="px-1.5 py-0.5 border border-[#808080] bg-white text-[11px] w-36 outline-none"
+            className="px-1.5 py-0.5 border border-[#808080] bg-white text-[11px] w-44 outline-none"
           />
         </div>
 
@@ -374,7 +600,7 @@ export default function ReportsForm({
             <h1 className="text-xl font-black tracking-wider uppercase">ARYAN NEWS AGENCY</h1>
             <p className="text-[11px] text-slate-700 font-sans font-bold">Main Market, Near Clock Tower, Beawar (Raj.) - 305901 • Ph: 01462-250000</p>
             <h2 className="text-sm font-black text-[#000080] underline tracking-wide uppercase pt-1 font-sans">
-              {reportData?.report_title || 'CRYSTAL REPORT VIEWER'}
+              {reportData?.report_title || currentMeta.title}
             </h2>
             <div className="flex justify-between text-[10px] font-sans font-bold text-slate-600 pt-1">
               <span>Date: {printDateStr}</span>
@@ -396,7 +622,151 @@ export default function ReportsForm({
             <div className="pt-3 font-sans">
               
               {/* ========================================================================= */}
-              {/* REPORT 1 & 7: HAWKER DAILY QUANTITY OF NEWSPAPER / MAGAZINE MATRIX */}
+              {/* REPORT 1: AUTHENTIC 2-PART DOT-MATRIX BILL PRINTING (media_1790089831645.png) */}
+              {/* ========================================================================= */}
+              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
+                <div className="space-y-6 font-mono text-black">
+                  {reportData.rows.map((b: any, bIdx: number) => {
+                    const displayHindiName = cleanOrTransliterateHindi(b.customer_hindi, b.customer_name);
+                    return (
+                      <div key={bIdx} className="border-2 border-black p-4 bg-white space-y-3 shadow-xs">
+                        
+                        {/* PART 1: CUSTOMER INVOICE (ग्राहक बिल) */}
+                        <div className="border-b-2 border-dashed border-black pb-3 space-y-2">
+                          <div className="flex justify-between items-start border-b border-black pb-2">
+                            <div>
+                              <h2 className="text-lg font-black tracking-wide uppercase font-serif">ARYAN NEWS AGENCY</h2>
+                              <p className="text-[11px] text-slate-800">Main Market, Near Clock Tower, Beawar (Raj.) - 305901</p>
+                              <p className="text-[11px] font-bold">Ph: 01462-250000 • Newspaper & Magazine Distributors</p>
+                            </div>
+                            <div className="text-right border border-black p-1 bg-slate-50 min-w-[210px]">
+                              <div className="font-bold text-xs">BILL NO: {b.bill_no}</div>
+                              <div className="text-[11px]">Date: {b.bill_date}</div>
+                              <div className="text-[11px] font-bold text-blue-900">Period: {b.month} {b.year}</div>
+                            </div>
+                          </div>
+
+                          {/* Customer Details Box */}
+                          <div className="grid grid-cols-2 gap-2 border border-black p-2 bg-slate-50/50 text-[11px]">
+                            <div>
+                              <div><strong>Cust ID:</strong> #{b.customer_id}</div>
+                              <div className="text-sm font-black">
+                                <strong>Name:</strong> {b.customer_name}
+                              </div>
+                              <div className="text-xs font-bold text-blue-950 font-sans">
+                                <strong>नाम (हिंदी):</strong> {displayHindiName}
+                              </div>
+                              <div><strong>Address:</strong> {b.address}</div>
+                            </div>
+                            <div className="text-right">
+                              <div><strong>Delivery Region:</strong> {b.region_name} (#{b.region_id})</div>
+                              <div><strong>Contact:</strong> {b.phone || '---'}</div>
+                              <div><strong>Bill Due Date:</strong> 10th {b.month} {b.year}</div>
+                            </div>
+                          </div>
+
+                          {/* Itemized Table */}
+                          <table className="w-full text-xs border-collapse border border-black">
+                            <thead>
+                              <tr className="bg-slate-100 border-b border-black font-bold">
+                                <th className="p-1 border-r border-black text-center w-8">#</th>
+                                <th className="p-1 border-r border-black text-left">Publication / Newspaper</th>
+                                <th className="p-1 border-r border-black text-center w-20">Shift</th>
+                                <th className="p-1 border-r border-black text-center w-12">Qty</th>
+                                <th className="p-1 border-r border-black text-center w-12">Days</th>
+                                <th className="p-1 border-r border-black text-right w-16">Rate (₹)</th>
+                                <th className="p-1 text-right font-black w-24">Amount (₹)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {b.items.map((item: any) => (
+                                <tr key={item.sno} className="border-b border-slate-300 text-[11px]">
+                                  <td className="p-1 border-r border-slate-300 text-center">{item.sno}</td>
+                                  <td className="p-1 border-r border-slate-300 font-bold">{item.pub_name}</td>
+                                  <td className="p-1 border-r border-slate-300 text-center">{item.circulation}</td>
+                                  <td className="p-1 border-r border-slate-300 text-center font-bold">{item.qty}</td>
+                                  <td className="p-1 border-r border-slate-300 text-center">{item.days}</td>
+                                  <td className="p-1 border-r border-slate-300 text-right">₹{Number(item.rate).toFixed(2)}</td>
+                                  <td className="p-1 text-right font-bold">₹{Number(item.amount).toFixed(2)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+
+                          {/* Financial Summary */}
+                          <div className="flex justify-end pt-1">
+                            <div className="w-80 border-2 border-black divide-y divide-black text-xs">
+                              <div className="flex justify-between p-1">
+                                <span>Newspaper / Mag Amount:</span>
+                                <span className="font-bold">₹{Number(b.paper_amount).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between p-1">
+                                <span>Delivery / Line Charges:</span>
+                                <span className="font-bold">₹{Number(b.delivery_charge).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between p-1 bg-slate-100 font-bold">
+                                <span>Current Month Bill (चालू माह):</span>
+                                <span>₹{Number(b.current_bill).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between p-1 font-bold">
+                                <span className="text-red-900">Previous Balance / Due (बकाया):</span>
+                                <span className="text-red-900">₹{Number(b.previous_due).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between p-1.5 bg-slate-200 font-black text-sm border-t-2 border-black">
+                                <span className="uppercase">NET PAYABLE (कुल देय):</span>
+                                <span>₹{Number(b.net_payable).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Payment Instructions */}
+                          <div className="border-t border-black pt-1 flex justify-between items-center text-[10px] text-slate-700 font-sans">
+                            <span>* कृपया बिल का भुगतान 10 तारीख से पूर्व करें। समय पर भुगतान कर नियमित सेवा का अवसर देवें।</span>
+                            <span className="font-bold font-serif">For Aryan News Agency</span>
+                          </div>
+                        </div>
+
+                        {/* TEAR-OFF CUT LINE */}
+                        <div className="relative my-2 text-center select-none">
+                          <div className="border-t-2 border-dashed border-black w-full absolute top-1/2"></div>
+                          <span className="relative bg-white px-3 font-bold text-[10px] text-slate-700 tracking-widest uppercase">
+                            ✂ Tear Here (कार्यालय वसूली पर्ची / Office Collection Counterfoil) ✂
+                          </span>
+                        </div>
+
+                        {/* PART 2: OFFICE COLLECTION COUNTERFOIL */}
+                        <div className="border border-black p-2 bg-slate-50 text-xs space-y-1 font-mono">
+                          <div className="flex justify-between items-center border-b border-black pb-1">
+                            <span className="font-black font-serif text-sm">ARYAN NEWS AGENCY - OFFICE COUNTERFOIL</span>
+                            <span className="font-bold">BILL: {b.bill_no} | Period: {b.month} {b.year}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                            <div>
+                              <div><strong>Cust ID:</strong> #{b.customer_id}</div>
+                              <div className="font-bold"><strong>Customer:</strong> {b.customer_name}</div>
+                              <div className="text-xs font-bold text-blue-950 font-sans"><strong>नाम:</strong> {displayHindiName}</div>
+                            </div>
+                            <div className="text-right">
+                              <div><strong>Delivery Region:</strong> {b.region_name} (#{b.region_id})</div>
+                              <div className="text-sm font-black mt-1">
+                                <strong>TOTAL DUE:</strong> ₹{Number(b.net_payable).toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-slate-300 text-[10px] text-slate-600 font-sans">
+                            <span>Receiver Signature: _______________________</span>
+                            <span>Date of Payment: _____ / _____ / 2026</span>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 2: HAWKER DAILY QUANTITY OF NEWSPAPER / MAGAZINE MATRIX */}
               {/* ========================================================================= */}
               {(activeReport === 'hawker_daily_qty' || activeReport === 'hawker_magazine_qty') && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -429,7 +799,6 @@ export default function ReportsForm({
                         </td>
                       </tr>
                     ))}
-                    {/* Grand Total Summary Row */}
                     <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
                       <td colSpan={2} className="p-1.5 text-left uppercase border-r border-black">
                         Total Distribution Copies:
@@ -448,7 +817,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 2: CUSTOMER OUTSTANDING DUES LEDGER & PREVIOUS DUES */}
+              {/* REPORT 3: CUSTOMER OUTSTANDING DUES LEDGER */}
               {/* ========================================================================= */}
               {(activeReport === 'dues_ledger' || activeReport === 'previous_dues_wise' || activeReport === 'advance_list') && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -467,7 +836,10 @@ export default function ReportsForm({
                     {reportData.rows.map((c: any) => (
                       <tr key={c.customer_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
                         <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{c.customer_id}</td>
-                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{c.name}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">
+                          <div>{c.name}</div>
+                          {c.name_hindi && <div className="text-[10px] text-slate-600 font-sans">{cleanOrTransliterateHindi(c.name_hindi, c.name)}</div>}
+                        </td>
                         <td className="p-1 border-r border-slate-300 text-slate-700 truncate max-w-[220px]">{c.address}</td>
                         <td className="p-1 border-r border-slate-300 text-center text-slate-600 text-[10px]">{c.region_name}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono text-red-900 font-bold">
@@ -500,7 +872,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 3: DUE REGION WISE SUMMARY */}
+              {/* REPORT 4: DUE REGION WISE SUMMARY */}
               {/* ========================================================================= */}
               {activeReport === 'due_region_summary' && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -548,7 +920,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 4: CUSTOMER DETAIL / MONTH REGISTER */}
+              {/* REPORT 5: CUSTOMER DETAIL / MONTH REGISTER */}
               {/* ========================================================================= */}
               {activeReport === 'cust_detail_month' && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -566,7 +938,10 @@ export default function ReportsForm({
                     {reportData.rows.map((c: any) => (
                       <tr key={c.customer_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
                         <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{c.customer_id}</td>
-                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{c.name}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">
+                          <div>{c.name}</div>
+                          {c.name_hindi && <div className="text-[10px] text-slate-600 font-sans">{cleanOrTransliterateHindi(c.name_hindi, c.name)}</div>}
+                        </td>
                         <td className="p-1 border-r border-slate-300 text-slate-700 truncate max-w-[200px]">{c.address}</td>
                         <td className="p-1 border-r border-slate-300 text-slate-900 font-medium">{c.publications}</td>
                         <td className="p-1 border-r border-slate-300 text-slate-700">{c.hawkers}</td>
@@ -580,7 +955,169 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 5: CUSTOMER PUBLICATION STARTING */}
+              {/* REPORT 6: RETAIL SALE REGION DATE WISE REPORT */}
+              {/* ========================================================================= */}
+              {activeReport === 'retailsale_region_datewise' && (
+                <table className="w-full text-xs border-collapse border border-black">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1 text-center border-r border-black w-14">Cust ID</th>
+                      <th className="p-1 text-left border-r border-black">Customer Name</th>
+                      <th className="p-1 text-left border-r border-black">Region</th>
+                      <th className="p-1 text-left border-r border-black">Newspaper Subscriptions</th>
+                      <th className="p-1 text-center border-r border-black w-16">Copies</th>
+                      <th className="p-1 text-right border-r border-black w-24">Monthly Est (₹)</th>
+                      <th className="p-1 text-right font-black w-24">Due Amt (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((r: any) => (
+                      <tr key={r.customer_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{r.customer_id}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">
+                          <div>{r.name}</div>
+                          {r.name_hindi && <div className="text-[10px] text-slate-600 font-sans">{cleanOrTransliterateHindi(r.name_hindi, r.name)}</div>}
+                        </td>
+                        <td className="p-1 border-r border-slate-300 text-slate-700">{r.region_name}</td>
+                        <td className="p-1 border-r border-slate-300 text-slate-900">{r.publications}</td>
+                        <td className="p-1 border-r border-slate-300 text-center font-mono font-bold">{r.copies}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono font-bold text-emerald-900">₹{Number(r.estimated_amount).toFixed(2)}</td>
+                        <td className="p-1 text-right font-mono font-bold text-red-900">₹{Number(r.due_amount).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                      <td colSpan={5} className="p-1.5 text-left uppercase border-r border-black">Total Estimated Monthly Revenue:</td>
+                      <td className="p-1.5 text-right font-mono text-sm text-emerald-900 border-r border-black">₹{Number(reportData.total_estimated || 0).toFixed(2)}</td>
+                      <td className="p-1.5 text-right font-mono">---</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 7: COLLECTION AGENT DUES REPORT */}
+              {/* ========================================================================= */}
+              {activeReport === 'collection_agent_dues' && (
+                <table className="w-full text-xs border-collapse border border-black">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1.5 text-center border-r border-black w-14">Agent ID</th>
+                      <th className="p-1.5 text-left border-r border-black">Collection Agent Name</th>
+                      <th className="p-1.5 text-left border-r border-black">Address</th>
+                      <th className="p-1.5 text-right border-r border-black w-24">Customers</th>
+                      <th className="p-1.5 text-right border-r border-black w-24">Due Cust</th>
+                      <th className="p-1.5 text-right border-r border-black w-28">Total Dues (₹)</th>
+                      <th className="p-1.5 text-right font-black w-28">Net Collectible (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((a: any) => (
+                      <tr key={a.agent_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1.5 text-center border-r border-slate-300 font-mono font-bold">#{a.agent_id}</td>
+                        <td className="p-1.5 border-r border-slate-300 font-bold text-blue-950">{a.agent_name}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-slate-700">{a.address}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-right font-mono">{a.total_customers}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-right font-mono text-red-800">{a.due_customers}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-right font-mono font-bold text-red-900">₹{Number(a.total_due).toFixed(2)}</td>
+                        <td className="p-1.5 text-right font-mono font-black text-blue-900">₹{Number(a.net_collectible).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                      <td colSpan={5} className="p-1.5 text-left uppercase border-r border-black">Grand Total:</td>
+                      <td className="p-1.5 text-right font-mono text-red-900 border-r border-black">₹{Number(reportData.total_due || 0).toFixed(2)}</td>
+                      <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.net_total || 0).toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 8: REGION WISE PUBLICATION DAILY DISTRIBUTION MATRIX */}
+              {/* ========================================================================= */}
+              {activeReport === 'region_pub_daily' && (
+                <table className="w-full text-xs border-collapse border border-black">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1 text-center border-r border-black w-12">Reg ID</th>
+                      <th className="p-1 text-left border-r border-black">Delivery Region Name</th>
+                      {(reportData.target_pubs || []).map((tp: any) => (
+                        <th key={tp.publica_id} className="p-1 text-right border-r border-black">
+                          {tp.name}
+                        </th>
+                      ))}
+                      <th className="p-1 text-right font-black w-24">Total Copies</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((r: any) => (
+                      <tr key={r.region.region_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1 text-center border-r border-slate-300 font-mono">#{r.region.region_id}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{r.region.region_name}</td>
+                        {(reportData.target_pubs || []).map((tp: any) => (
+                          <td key={tp.publica_id} className="p-1 border-r border-slate-300 text-right font-mono">
+                            {r.counts[tp.publica_id] || '-'}
+                          </td>
+                        ))}
+                        <td className="p-1 text-right font-mono font-black text-slate-900 bg-slate-50">
+                          {r.total}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                      <td colSpan={2} className="p-1.5 text-left uppercase border-r border-black">Total Distribution:</td>
+                      {(reportData.target_pubs || []).map((tp: any) => (
+                        <td key={tp.publica_id} className="p-1.5 text-right font-mono border-r border-black">
+                          {reportData.pub_totals?.[tp.publica_id] || 0}
+                        </td>
+                      ))}
+                      <td className="p-1.5 text-right font-mono text-sm text-blue-900">{reportData.grand_total}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 9: REGION-WISE START END REPORT */}
+              {/* ========================================================================= */}
+              {activeReport === 'region_start_end' && (
+                <table className="w-full text-xs border-collapse border border-black">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1.5 text-center border-r border-black w-14">Reg ID</th>
+                      <th className="p-1.5 text-left border-r border-black">Region Name</th>
+                      <th className="p-1.5 text-right border-r border-black w-28">New Subscriptions Started</th>
+                      <th className="p-1.5 text-right border-r border-black w-28">Discontinued / Closed</th>
+                      <th className="p-1.5 text-right font-black w-28">Net Circulation Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((r: any) => (
+                      <tr key={r.region_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1.5 text-center border-r border-slate-300 font-mono font-bold">#{r.region_id}</td>
+                        <td className="p-1.5 border-r border-slate-300 font-bold text-blue-950">{r.region_name}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-right font-mono font-bold text-emerald-800">+{r.started}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-right font-mono font-bold text-red-800">-{r.ended}</td>
+                        <td className="p-1.5 text-right font-mono font-black text-blue-900">
+                          {r.net_change >= 0 ? `+${r.net_change}` : `${r.net_change}`}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                      <td colSpan={2} className="p-1.5 text-left uppercase border-r border-black">Total Net Change:</td>
+                      <td className="p-1.5 text-right font-mono text-emerald-900 border-r border-black">+{reportData.total_started}</td>
+                      <td className="p-1.5 text-right font-mono text-red-900 border-r border-black">-{reportData.total_ended}</td>
+                      <td className="p-1.5 text-right font-mono text-sm text-blue-900">
+                        {reportData.total_started - reportData.total_ended >= 0 
+                          ? `+${reportData.total_started - reportData.total_ended}` 
+                          : `${reportData.total_started - reportData.total_ended}`}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 10: CUSTOMER PUBLICATION STARTING */}
               {/* ========================================================================= */}
               {activeReport === 'cust_pub_starting' && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -612,7 +1149,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 6: CIRCULATION TYPE PUBLICATION REPORT */}
+              {/* REPORT 11: CIRCULATION TYPE PUBLICATION REPORT */}
               {/* ========================================================================= */}
               {activeReport === 'circ_type_pub' && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -638,7 +1175,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 7: CUSTOMER CHOOSE PUBLICATION */}
+              {/* REPORT 12: CUSTOMER CHOOSE PUBLICATION */}
               {/* ========================================================================= */}
               {activeReport === 'cust_choose_pub' && (
                 <div>
@@ -654,7 +1191,8 @@ export default function ReportsForm({
                         <th className="p-1 text-left border-r border-black">Address</th>
                         <th className="p-1 text-left border-r border-black">Region</th>
                         <th className="p-1 text-left border-r border-black">Hawker</th>
-                        <th className="p-1 text-center font-black w-14">Qty</th>
+                        <th className="p-1 text-center border-r border-black w-14">Qty</th>
+                        <th className="p-1 text-center w-24">Since</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -662,10 +1200,11 @@ export default function ReportsForm({
                         <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
                           <td className="p-1 text-center border-r border-slate-300 font-mono">#{r.customer_id}</td>
                           <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{r.name}</td>
-                          <td className="p-1 border-r border-slate-300 text-slate-700 truncate max-w-[200px]">{r.address}</td>
+                          <td className="p-1 border-r border-slate-300 text-slate-700">{r.address}</td>
                           <td className="p-1 border-r border-slate-300 text-slate-600">{r.region_name}</td>
                           <td className="p-1 border-r border-slate-300">{r.hawker_name}</td>
-                          <td className="p-1 text-center font-mono font-bold">{r.qty}</td>
+                          <td className="p-1 border-r border-slate-300 text-center font-mono font-bold">{r.qty}</td>
+                          <td className="p-1 text-center font-mono">{r.start_date}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -674,7 +1213,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 8: DISCONTINUE REPORTS */}
+              {/* REPORT 13: DISCONTINUE REPORTS */}
               {/* ========================================================================= */}
               {(activeReport === 'discontinue_datewise' || activeReport === 'discontinue_hawkerwise') && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -683,10 +1222,10 @@ export default function ReportsForm({
                       <th className="p-1 text-center border-r border-black w-14">Cust ID</th>
                       <th className="p-1 text-left border-r border-black">Customer Name</th>
                       <th className="p-1 text-left border-r border-black">Address</th>
-                      <th className="p-1 text-left border-r border-black">Publication</th>
+                      <th className="p-1 text-left border-r border-black">Publication Stopped</th>
                       <th className="p-1 text-center border-r border-black w-24">From Date</th>
                       <th className="p-1 text-center border-r border-black w-24">To Date</th>
-                      <th className="p-1 text-center font-black">Type</th>
+                      <th className="p-1 text-center w-24">Hold Type</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -694,11 +1233,11 @@ export default function ReportsForm({
                       <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
                         <td className="p-1 text-center border-r border-slate-300 font-mono">#{d.customer_id}</td>
                         <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{d.customer_name}</td>
-                        <td className="p-1 border-r border-slate-300 text-slate-700 truncate max-w-[200px]">{d.address}</td>
-                        <td className="p-1 border-r border-slate-300 font-medium">{d.publication}</td>
-                        <td className="p-1 border-r border-slate-300 text-center font-mono">{d.from_date}</td>
-                        <td className="p-1 border-r border-slate-300 text-center font-mono">{d.to_date}</td>
-                        <td className="p-1 text-center font-bold text-red-900">{d.type}</td>
+                        <td className="p-1 border-r border-slate-300 text-slate-700">{d.address}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold">{d.publication}</td>
+                        <td className="p-1 border-r border-slate-300 text-center font-mono">{d.from_date || '---'}</td>
+                        <td className="p-1 border-r border-slate-300 text-center font-mono">{d.to_date || 'Permanent'}</td>
+                        <td className="p-1 text-center font-bold text-rose-800">{d.type}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -706,7 +1245,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 9: RECEIPT REPORTS */}
+              {/* REPORT 14: RECEIPT NUMBER WISE & ACTUAL AMOUNT */}
               {/* ========================================================================= */}
               {(activeReport === 'receipt_nowise' || activeReport === 'receipt_realamt') && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -715,11 +1254,12 @@ export default function ReportsForm({
                       <th className="p-1 text-center border-r border-black w-20">Receipt No</th>
                       <th className="p-1 text-center border-r border-black w-14">Cust ID</th>
                       <th className="p-1 text-left border-r border-black">Customer Name</th>
-                      <th className="p-1 text-center border-r border-black w-24">Date</th>
-                      <th className="p-1 text-right border-r border-black w-20">Due (₹)</th>
+                      <th className="p-1 text-center border-r border-black w-24">Receipt Date</th>
+                      <th className="p-1 text-right border-r border-black w-20">Due Amt</th>
                       <th className="p-1 text-right border-r border-black w-24">Received (₹)</th>
-                      <th className="p-1 text-right border-r border-black w-20">Discount (₹)</th>
-                      <th className="p-1 text-center">Mode</th>
+                      <th className="p-1 text-right border-r border-black w-16">Less Amt</th>
+                      <th className="p-1 text-right border-r border-black w-20">Balance</th>
+                      <th className="p-1 text-center w-16">Mode</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -731,44 +1271,47 @@ export default function ReportsForm({
                         <td className="p-1 border-r border-slate-300 text-center font-mono">{r.bill_date}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono">₹{Number(r.due_amt).toFixed(2)}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono font-bold text-emerald-800">₹{Number(r.received_amt).toFixed(2)}</td>
-                        <td className="p-1 border-r border-slate-300 text-right font-mono text-slate-500">₹{Number(r.less_amt).toFixed(2)}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">₹{Number(r.less_amt).toFixed(2)}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">₹{Number(r.balance).toFixed(2)}</td>
                         <td className="p-1 text-center font-bold">{r.payment_mode}</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
-                      <td colSpan={5} className="p-1.5 text-left uppercase border-r border-black">Total Receipts:</td>
-                      <td className="p-1.5 text-right font-mono border-r border-black text-emerald-900">₹{Number(reportData.total_received || 0).toFixed(2)}</td>
-                      <td className="p-1.5 text-right font-mono border-r border-black text-slate-600">₹{Number(reportData.total_discount || 0).toFixed(2)}</td>
-                      <td></td>
+                      <td colSpan={5} className="p-1.5 text-left uppercase border-r border-black">Total Receipts Collected:</td>
+                      <td className="p-1.5 text-right font-mono text-sm text-emerald-900 border-r border-black">₹{Number(reportData.total_received || 0).toFixed(2)}</td>
+                      <td className="p-1.5 text-right font-mono border-r border-black">₹{Number(reportData.total_discount || 0).toFixed(2)}</td>
+                      <td colSpan={2}></td>
                     </tr>
                   </tbody>
                 </table>
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 10: PURCHASE REPORTS */}
+              {/* REPORT 15: PURCHASE DATE WISE & PUBLISHER WISE */}
               {/* ========================================================================= */}
               {(activeReport === 'purchase_datewise' || activeReport === 'purchase_publisherwise') && (
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
                     <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
-                      <th className="p-1.5 text-left border-r border-black">Publisher / Dealer Name</th>
-                      <th className="p-1.5 text-left border-r border-black">City / Contact</th>
-                      <th className="p-1.5 text-right border-r border-black">Daily Copies Received</th>
-                      <th className="p-1.5 text-right font-black">Estimated Monthly Purchase (₹)</th>
+                      <th className="p-1.5 text-left border-r border-black">Publisher / Press Name</th>
+                      <th className="p-1.5 text-left border-r border-black">Contact Person / Phone</th>
+                      <th className="p-1.5 text-left border-r border-black">Station / City</th>
+                      <th className="p-1.5 text-right border-r border-black w-28">Monthly Copies</th>
+                      <th className="p-1.5 text-right font-black w-36">Est. Purchase (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.rows.map((p: any, idx: number) => (
                       <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
                         <td className="p-1.5 border-r border-slate-300 font-bold text-blue-950">{p.name}</td>
-                        <td className="p-1.5 border-r border-slate-300 text-slate-700">{p.city} • {p.contact}</td>
+                        <td className="p-1.5 border-r border-slate-300 text-slate-700">{p.contact}</td>
+                        <td className="p-1.5 border-r border-slate-300">{p.city}</td>
                         <td className="p-1.5 border-r border-slate-300 text-right font-mono font-bold">{p.totalCopies}</td>
-                        <td className="p-1.5 text-right font-mono font-bold text-blue-900">₹{Number(p.totalAmount).toFixed(2)}</td>
+                        <td className="p-1.5 text-right font-mono font-black text-emerald-900">₹{Number(p.totalAmount).toFixed(2)}</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
-                      <td colSpan={2} className="p-1.5 text-left uppercase border-r border-black">Total Purchases:</td>
+                      <td colSpan={3} className="p-1.5 text-left uppercase border-r border-black">Total Newspaper Procurement:</td>
                       <td className="p-1.5 text-right font-mono border-r border-black">{reportData.total_copies}</td>
                       <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.total_amount || 0).toFixed(2)}</td>
                     </tr>
@@ -777,33 +1320,35 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 11: COUNTER SALE REPORTS */}
+              {/* REPORT 16: COUNTER SALE REPORTS */}
               {/* ========================================================================= */}
               {(activeReport === 'countersale_datewise' || activeReport === 'countersale_pubwise') && (
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
                     <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
-                      <th className="p-1.5 text-center border-r border-black w-24">Sale Date</th>
-                      <th className="p-1.5 text-left border-r border-black">Publication</th>
-                      <th className="p-1.5 text-left border-r border-black">Customer / Buyer</th>
-                      <th className="p-1.5 text-center border-r border-black w-14">Qty</th>
-                      <th className="p-1.5 text-right border-r border-black w-20">Rate (₹)</th>
-                      <th className="p-1.5 text-right font-black w-24">Total Amount (₹)</th>
+                      <th className="p-1 text-center border-r border-black w-14">Txn ID</th>
+                      <th className="p-1 text-center border-r border-black w-24">Date</th>
+                      <th className="p-1 text-left border-r border-black">Publication Name</th>
+                      <th className="p-1 text-left border-r border-black">Customer / Counter</th>
+                      <th className="p-1 text-center border-r border-black w-14">Qty</th>
+                      <th className="p-1 text-right border-r border-black w-20">Rate (₹)</th>
+                      <th className="p-1 text-right font-black w-24">Total (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {reportData.rows.map((s: any, idx: number) => (
-                      <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                    {reportData.rows.map((s: any) => (
+                      <tr key={s.id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1 text-center border-r border-slate-300 font-mono">#{s.id}</td>
                         <td className="p-1 text-center border-r border-slate-300 font-mono">{s.sale_date}</td>
                         <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{s.publication}</td>
-                        <td className="p-1 border-r border-slate-300">{s.customer_name}</td>
+                        <td className="p-1 border-r border-slate-300 text-slate-700">{s.customer_name}</td>
                         <td className="p-1 border-r border-slate-300 text-center font-mono font-bold">{s.qty}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono">₹{Number(s.rate).toFixed(2)}</td>
                         <td className="p-1 text-right font-mono font-bold text-emerald-800">₹{Number(s.total_amt).toFixed(2)}</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
-                      <td colSpan={5} className="p-1.5 text-left uppercase border-r border-black">Grand Total Cash Sales:</td>
+                      <td colSpan={6} className="p-1.5 text-left uppercase border-r border-black">Grand Total Cash Sales:</td>
                       <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.total_amount || 0).toFixed(2)}</td>
                     </tr>
                   </tbody>
@@ -811,7 +1356,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 12: HAWKER CUSTOMER PRIORITY REPORT */}
+              {/* REPORT 17: HAWKER CUSTOMER PRIORITY REPORT */}
               {/* ========================================================================= */}
               {activeReport === 'hawker_cust_priority' && (
                 <table className="w-full text-xs border-collapse border border-black">
@@ -839,7 +1384,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 13: STICKER PRINTING LABELS */}
+              {/* REPORT 18: STICKER PRINTING LABELS */}
               {/* ========================================================================= */}
               {activeReport === 'sticker_printing' && (
                 <div className="grid grid-cols-3 gap-3 font-sans">
@@ -858,9 +1403,9 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 14: CONSOLIDATED SALE REPORT */}
+              {/* REPORT 19: CONSOLIDATED & DAILY SALE REPORT */}
               {/* ========================================================================= */}
-              {activeReport === 'consolidated_sale' && (
+              {(activeReport === 'consolidated_sale' || activeReport === 'daily_sale') && (
                 <div className="space-y-4">
                   <table className="w-full text-xs border-collapse border border-black">
                     <thead>
@@ -893,109 +1438,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 15: REGION-WISE & SINGLE BILL PRINTING SLIPS */}
-              {/* ========================================================================= */}
-              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
-                <div className="space-y-6 font-sans">
-                  {reportData.rows.map((b: any, bIdx: number) => (
-                    <div key={bIdx} className="border-2 border-black p-4 bg-white rounded-xs space-y-3 shadow-xs">
-                      
-                      {/* Bill Header */}
-                      <div className="border-b-2 border-black pb-2 flex justify-between items-start">
-                        <div>
-                          <h3 className="font-black text-sm text-blue-950 uppercase">ARYAN NEWS AGENCY</h3>
-                          <p className="text-[10px] text-slate-600">Main Market, Near Clock Tower, Beawar (Raj.)</p>
-                          <p className="text-[10px] font-bold text-slate-800">Phone: 01462-250000</p>
-                        </div>
-                        <div className="text-right font-mono">
-                          <span className="font-bold text-xs bg-slate-100 px-2 py-0.5 border border-black block">{b.bill_no}</span>
-                          <span className="text-[10px] text-slate-600 font-sans block mt-1">Date: {b.bill_date}</span>
-                          <span className="text-[11px] font-bold text-blue-900 font-sans block">Period: {b.month} {b.year}</span>
-                        </div>
-                      </div>
-
-                      {/* Customer Info Box */}
-                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 border border-slate-300 text-xs">
-                        <div>
-                          <span className="text-[10px] text-slate-500 font-bold block">CUSTOMER DETAILS:</span>
-                          <div className="font-black text-blue-950 text-sm">#{b.customer_id} - {b.customer_name}</div>
-                          {b.customer_hindi && <div className="text-xs text-slate-600">{b.customer_hindi}</div>}
-                          <div className="text-slate-700 text-[11px] mt-0.5">{b.address}</div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-500 font-bold block">DELIVERY INFO:</span>
-                          <div className="font-bold text-slate-800">Region: <span className="font-black text-blue-900">{b.region_name} (#{b.region_id})</span></div>
-                          <div className="text-slate-600 text-[11px]">Phone: {b.phone}</div>
-                        </div>
-                      </div>
-
-                      {/* Line Items Table */}
-                      <table className="w-full text-xs border-collapse border border-black">
-                        <thead>
-                          <tr className="bg-slate-200 border-b border-black font-bold text-[11px]">
-                            <th className="p-1 border-r border-black text-center w-8">#</th>
-                            <th className="p-1 border-r border-black text-left">Publication / Newspaper</th>
-                            <th className="p-1 border-r border-black text-center w-20">Circulation</th>
-                            <th className="p-1 border-r border-black text-center w-12">Qty</th>
-                            <th className="p-1 border-r border-black text-center w-12">Days</th>
-                            <th className="p-1 border-r border-black text-right w-16">Rate (₹)</th>
-                            <th className="p-1 text-right font-black w-24">Amount (₹)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {b.items.map((item: any) => (
-                            <tr key={item.sno} className="border-b border-slate-300 text-[11px]">
-                              <td className="p-1 border-r border-slate-300 text-center font-mono">{item.sno}</td>
-                              <td className="p-1 border-r border-slate-300 font-bold text-slate-900">{item.pub_name}</td>
-                              <td className="p-1 border-r border-slate-300 text-center text-slate-600">{item.circulation}</td>
-                              <td className="p-1 border-r border-slate-300 text-center font-mono font-bold">{item.qty}</td>
-                              <td className="p-1 border-r border-slate-300 text-center font-mono">{item.days}</td>
-                              <td className="p-1 border-r border-slate-300 text-right font-mono">₹{Number(item.rate).toFixed(2)}</td>
-                              <td className="p-1 text-right font-mono font-bold text-slate-900">₹{Number(item.amount).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      {/* Financial Summary Breakdown */}
-                      <div className="flex justify-end pt-1">
-                        <div className="w-72 border border-black divide-y divide-black text-xs font-sans">
-                          <div className="flex justify-between p-1">
-                            <span className="font-bold text-slate-700">Newspaper / Mag Amount:</span>
-                            <span className="font-mono font-bold">₹{Number(b.paper_amount).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between p-1">
-                            <span className="font-bold text-slate-700">Delivery / Line Charges:</span>
-                            <span className="font-mono font-bold">₹{Number(b.delivery_charge).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between p-1 bg-slate-50 font-bold">
-                            <span>Current Month Bill:</span>
-                            <span className="font-mono text-blue-900">₹{Number(b.current_bill).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between p-1 font-bold">
-                            <span className="text-red-900">Previous Balance / Due:</span>
-                            <span className="font-mono text-red-900">₹{Number(b.previous_due).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between p-1.5 bg-blue-50 font-black text-sm">
-                            <span className="text-blue-950 uppercase">Net Amount Payable:</span>
-                            <span className="font-mono text-blue-950">₹{Number(b.net_payable).toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Payment Notice */}
-                      <div className="border-t border-dashed border-black pt-2 flex justify-between items-center text-[10px] text-slate-600">
-                        <span>* कृपया बिल का भुगतान 10 तारीख से पूर्व करें। समय पर भुगतान कर नियमित सेवा का अवसर देवें।</span>
-                        <span className="font-bold font-serif text-black">For Aryan News Agency</span>
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ========================================================================= */}
-              {/* REPORT 16: COLLECTION DATEWISE */}
+              {/* REPORT 20: COLLECTION DATEWISE & HAWKER DATEWISE */}
               {/* ========================================================================= */}
               {(activeReport === 'collection_datewise' || activeReport === 'collection_hawker_datewise') && (
                 <table className="w-full text-xs border-collapse border border-black font-sans">
@@ -1031,7 +1474,7 @@ export default function ReportsForm({
               )}
 
               {/* ========================================================================= */}
-              {/* REPORT 17: HAWKER REPORT DATEWISE */}
+              {/* REPORT 21: HAWKER REPORT DATEWISE */}
               {/* ========================================================================= */}
               {activeReport === 'hawker_report_datewise' && (
                 <table className="w-full text-xs border-collapse border border-black font-sans">
@@ -1060,15 +1503,6 @@ export default function ReportsForm({
                     </tr>
                   </tbody>
                 </table>
-              )}
-
-              {/* Default Fallback Table */}
-              {!['hawker_daily_qty', 'hawker_magazine_qty', 'dues_ledger', 'previous_dues_wise', 'advance_list', 'due_region_summary', 'cust_detail_month', 'cust_pub_starting', 'circ_type_pub', 'cust_choose_pub', 'discontinue_datewise', 'discontinue_hawkerwise', 'receipt_nowise', 'receipt_realamt', 'purchase_datewise', 'purchase_publisherwise', 'countersale_datewise', 'countersale_pubwise', 'hawker_cust_priority', 'sticker_printing', 'consolidated_sale', 'bill_print_region', 'bill_print_single', 'collection_datewise', 'collection_hawker_datewise', 'hawker_report_datewise'].includes(activeReport) && (
-                <div className="p-8 text-center text-slate-600 font-sans">
-                  <FileText className="w-10 h-10 mx-auto text-blue-900 mb-2" />
-                  <p className="font-bold">Displaying records for {reportData.report_title}</p>
-                  <p className="text-xs text-slate-500 mt-1">Total {reportData.total_rows} entries processed.</p>
-                </div>
               )}
 
             </div>
