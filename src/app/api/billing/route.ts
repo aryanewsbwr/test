@@ -16,6 +16,7 @@ let cachedDiscontinues: any[] | null = null;
 let cachedBills: any[] | null = null;
 let cachedReceipts: any[] | null = null;
 let cachedRegions: any[] | null = null;
+let cachedPubDis: any[] | null = null;
 
 function loadLocalDatasets() {
   const loadJson = (filename: string) => {
@@ -33,6 +34,94 @@ function loadLocalDatasets() {
   if (!cachedBills) cachedBills = loadJson('all_bills.json');
   if (!cachedReceipts) cachedReceipts = loadJson('all_receipts.json');
   if (!cachedRegions) cachedRegions = loadJson('regions.json');
+}
+
+async function getPublicationDiscontinues(): Promise<any[]> {
+  if (cachedPubDis) return cachedPubDis;
+  try {
+    const { data } = await supabase.from('publicationdis').select('*');
+    if (data && data.length > 0) cachedPubDis = data;
+  } catch (err) {
+    console.error('Failed to fetch publicationdis:', err);
+  }
+  return cachedPubDis || [];
+}
+
+async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
+  if (customerIds.length === 0) return [];
+
+  // Query authoritative customer_detailback
+  const { data: backSubs } = await supabase
+    .from('customer_detailback')
+    .select('*')
+    .in('Customer_id', customerIds);
+
+  const parseD = (d: any, t: any) => {
+    if (!d) return 0;
+    const p = String(d).split('/');
+    if (p.length !== 3) return 0;
+    const tp = String(t || '00:00').split(':');
+    return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]), Number(tp[0]) || 0, Number(tp[1]) || 0).getTime();
+  };
+
+  const subsByCust = new Map<number, any[]>();
+  for (const row of backSubs || []) {
+    const cid = row.Customer_id || row.customer_id;
+    if (!subsByCust.has(cid)) subsByCust.set(cid, []);
+    subsByCust.get(cid)!.push(row);
+  }
+
+  const result: any[] = [];
+  const foundCustIds = new Set<number>();
+
+  subsByCust.forEach((rows, cid) => {
+    foundCustIds.add(cid);
+    let maxTime = 0;
+    for (const r of rows) {
+      const t = parseD(r.Dated, r.PostedTime);
+      if (t > maxTime) maxTime = t;
+    }
+    const latestRows = rows.filter(r => parseD(r.Dated, r.PostedTime) === maxTime);
+    result.push(...latestRows);
+  });
+
+  // Fallback to customer_detail if any customer had no records in customer_detailback
+  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
+  if (missingCustIds.length > 0) {
+    const { data: cdSubs } = await supabase
+      .from('customer_detail')
+      .select('*')
+      .in('customer_id', missingCustIds);
+    if (cdSubs) result.push(...cdSubs);
+  }
+
+  return result;
+}
+
+async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
+  if (customerIds.length === 0) return { bills: [], receipts: [] };
+  if (fySuffix === '20262027') {
+    const [{ data: bData }, { data: rData }] = await Promise.all([
+      supabase.from('bill').select('*').in('customer_id', customerIds).eq('financial_year', '2026-2027'),
+      supabase.from('receipt').select('*').in('customer_id', customerIds).eq('financial_year', '2026-2027')
+    ]);
+    return { bills: bData || [], receipts: rData || [] };
+  } else {
+    try {
+      const [{ data: bData }, { data: rData }] = await Promise.all([
+        supabase.from(`billno${fySuffix}`).select('*').in('Customer_id', customerIds),
+        supabase.from(`receipt${fySuffix}`).select('*').in('Customer_id', customerIds)
+      ]);
+      if (bData && bData.length > 0) {
+        return { bills: bData, receipts: rData || [] };
+      }
+    } catch (e) {
+      // fallback to cached
+    }
+    const bFiltered = (cachedBills || []).filter(b => customerIds.includes(b.customer_id || b.Customer_id));
+    const rFiltered = (cachedReceipts || []).filter(r => customerIds.includes(r.customer_id || r.Customer_id));
+    return { bills: bFiltered, receipts: rFiltered };
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -65,19 +154,12 @@ export async function GET(request: NextRequest) {
       const cid = parseInt(customerIdStr, 10);
       targetCusts = targetCusts.filter(c => (c.customer_id || c.Customer_id) === cid);
 
-      // Query customer_detail directly from Supabase for this customer
-      const { data: dbSingleSubs } = await supabase
-        .from('customer_detail')
-        .select('*')
-        .eq('customer_id', cid);
-      const custSubs = dbSingleSubs || [];
-
-      // Query retailsale directly from Supabase for this customer
-      const { data: dbSingleRetail } = await supabase
-        .from(retailTableName)
-        .select('*')
-        .eq('Customer_id', cid);
-      const custRetail = dbSingleRetail || [];
+      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, { data: dbSingleRetail }] = await Promise.all([
+        fetchSubscriptions([cid]),
+        fetchBillsAndReceipts([cid], fySuffix),
+        getPublicationDiscontinues(),
+        supabase.from(retailTableName).select('*').eq('Customer_id', cid)
+      ]);
 
       const singleResult = calculateBilling({
         monthName: month,
@@ -90,10 +172,11 @@ export async function GET(request: NextRequest) {
         publications: cachedPubs || [],
         holidays: cachedHolidays || [],
         discontinues: cachedDiscontinues || [],
-        bills: cachedBills || [],
-        receipts: cachedReceipts || [],
+        publicationDiscontinues: pubDis,
+        bills: liveCustBills,
+        receipts: liveCustReceipts,
         regions: cachedRegions || [],
-        retailSales: custRetail
+        retailSales: dbSingleRetail || []
       });
 
       const singleBill = singleResult.bills[0] || null;
@@ -132,19 +215,12 @@ export async function GET(request: NextRequest) {
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
     const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
 
-    // Query customer_detail directly from Supabase for this page of customers
-    const { data: dbBatchSubs } = await supabase
-      .from('customer_detail')
-      .select('*')
-      .in('customer_id', paginatedCustIds);
-    const paginatedSubs = dbBatchSubs || [];
-
-    // Query retailsale directly from Supabase for this page of customers
-    const { data: dbBatchRetail } = await supabase
-      .from(retailTableName)
-      .select('*')
-      .in('Customer_id', paginatedCustIds);
-    const paginatedRetail = dbBatchRetail || [];
+    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, { data: dbBatchRetail }] = await Promise.all([
+      fetchSubscriptions(paginatedCustIds),
+      fetchBillsAndReceipts(paginatedCustIds, fySuffix),
+      getPublicationDiscontinues(),
+      supabase.from(retailTableName).select('*').in('Customer_id', paginatedCustIds)
+    ]);
 
     const result = calculateBilling({
       monthName: month,
@@ -157,10 +233,11 @@ export async function GET(request: NextRequest) {
       publications: cachedPubs || [],
       holidays: cachedHolidays || [],
       discontinues: cachedDiscontinues || [],
-      bills: cachedBills || [],
-      receipts: cachedReceipts || [],
+      publicationDiscontinues: pubDis,
+      bills: liveCustBills,
+      receipts: liveCustReceipts,
       regions: cachedRegions || [],
-      retailSales: paginatedRetail
+      retailSales: dbBatchRetail || []
     });
 
     // Strip heavy breakup arrays from list view for maximum speed
@@ -218,18 +295,13 @@ export async function POST(request: NextRequest) {
     const retailTableName = `retailsale${fySuffix}`;
 
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-    const { data: dbBatchSubs } = await supabase
-      .from('customer_detail')
-      .select('*')
-      .in('customer_id', targetCustIds);
-    const targetSubs = dbBatchSubs || [];
 
-    // Query retailsale directly from Supabase for target customers
-    const { data: dbBatchRetail } = await supabase
-      .from(retailTableName)
-      .select('*')
-      .in('Customer_id', targetCustIds);
-    const targetRetail = dbBatchRetail || [];
+    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, { data: dbBatchRetail }] = await Promise.all([
+      fetchSubscriptions(targetCustIds),
+      fetchBillsAndReceipts(targetCustIds, fySuffix),
+      getPublicationDiscontinues(),
+      supabase.from(retailTableName).select('*').in('Customer_id', targetCustIds)
+    ]);
 
     const result = calculateBilling({
       monthName: month,
@@ -242,10 +314,11 @@ export async function POST(request: NextRequest) {
       publications: cachedPubs || [],
       holidays: cachedHolidays || [],
       discontinues: cachedDiscontinues || [],
-      bills: cachedBills || [],
-      receipts: cachedReceipts || [],
+      publicationDiscontinues: pubDis,
+      bills: liveCustBills,
+      receipts: liveCustReceipts,
       regions: cachedRegions || [],
-      retailSales: targetRetail
+      retailSales: dbBatchRetail || []
     });
 
     // If commit to live Supabase DB is requested:
@@ -254,16 +327,6 @@ export async function POST(request: NextRequest) {
     let savedBillItemsCount = 0;
 
     if (commitToDb && supabase) {
-      // Determine fiscal year suffix (e.g. 20252026)
-      let fySuffix = '20252026';
-      const yStr = String(year);
-      if (yStr.length === 8) {
-        fySuffix = yStr;
-      } else {
-        const startY = parseInt(yStr, 10) || 2025;
-        fySuffix = `${startY}${startY + 1}`;
-      }
-
       const billnoTable = `billno${fySuffix}`;
       const billTable = `bill${fySuffix}`;
 

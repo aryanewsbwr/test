@@ -86,6 +86,7 @@ export function calculateBilling({
   publications = [],
   holidays = [],
   discontinues = [],
+  publicationDiscontinues = [],
   bills = [],
   billHeaders = [],
   receipts = [],
@@ -102,6 +103,7 @@ export function calculateBilling({
   publications: any[];
   holidays: any[];
   discontinues: any[];
+  publicationDiscontinues?: any[];
   bills?: any[];
   billHeaders?: any[];
   receipts: any[];
@@ -151,7 +153,7 @@ export function calculateBilling({
   // Rate lookup function: ratechange table takes priority over standard rate table
   const getEffectiveRate = (publicaId: number, dayOfWeek: number, targetDateIso: string): number => {
     // 1. Check ratechanges: rc.Publica_id = publica_id AND (rc.Dayofweek = dayOfWeek OR rc.Dayofweek = 0) AND rc.Dated <= targetDateIso ORDER BY rc.Dated DESC LIMIT 1
-    const matchingChanges = ratechanges.filter(rc => {
+    let matchingChanges = ratechanges.filter(rc => {
       const rPub = rc.Publica_id || rc.publica_id;
       const rDay = rc.Dayofweek !== undefined ? rc.Dayofweek : rc.dayofweek;
       const rDated = rc.Dated || rc.dated;
@@ -162,6 +164,16 @@ export function calculateBilling({
         rDatedIso && rDatedIso <= targetDateIso
       );
     });
+
+    // Fallback: If no day-specific ratechange found (common for periodicals/magazines with Dayofweek=1 in DB), check any ratechange for this publication
+    if (matchingChanges.length === 0) {
+      matchingChanges = ratechanges.filter(rc => {
+        const rPub = rc.Publica_id || rc.publica_id;
+        const rDated = rc.Dated || rc.dated;
+        const rDatedIso = parseLegacyDateToIso(rDated);
+        return rPub === publicaId && rDatedIso && rDatedIso <= targetDateIso;
+      });
+    }
 
     if (matchingChanges.length > 0) {
       matchingChanges.sort((a, b) => {
@@ -204,6 +216,19 @@ export function calculateBilling({
       message: warnMsg
     });
     return 0.0;
+  };
+
+  // Check if publication is globally discontinued in publicationdis table
+  const isPubDiscontinued = (publicaId: number, targetDateIso: string): boolean => {
+    return publicationDiscontinues.some(pd => {
+      const pId = pd.Publica_id || pd.publica_id || pd.publication_id;
+      if (pId !== publicaId) return false;
+      const fromIso = parseLegacyDateToIso(pd.FromDate || pd.from_date || pd.fromdate);
+      const toIso = parseLegacyDateToIso(pd.ToDate || pd.to_date || pd.todate);
+      if (fromIso && targetDateIso < fromIso) return false;
+      if (toIso && targetDateIso > toIso) return false;
+      return true;
+    });
   };
 
   // Holiday check: Daily newspapers skip on general (pub=0) and pub-specific holidays.
@@ -359,10 +384,35 @@ export function calculateBilling({
         const delAmt = Number(b.del_amt !== undefined ? b.del_amt : (b.Del_Amt || 0));
         const disAmt = Number(b.dis_amt !== undefined ? b.dis_amt : (b.Dis_Amt || 0));
         let monthPaper = 0;
-        if (b.paper_amt !== undefined || b.Paper_Amt !== undefined) {
-          monthPaper = Number(b.paper_amt !== undefined ? b.paper_amt : b.Paper_Amt);
+        if (b.paper_amount !== undefined || b.paper_amt !== undefined || b.Paper_Amt !== undefined) {
+          monthPaper = Number(b.paper_amount !== undefined ? b.paper_amount : (b.paper_amt !== undefined ? b.paper_amt : b.Paper_Amt));
+        }
+        if (monthPaper === 0 && (b.bill_amt !== undefined || b.BillAmt !== undefined)) {
+          monthPaper = Number(b.bill_amt !== undefined ? b.bill_amt : b.BillAmt);
         }
         priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + monthPaper + delAmt - disAmt);
+      }
+    }
+
+    // For prior months where bills had 0 paper_amount or were absent, check receipts for the billed amount
+    const priorMonthsWithBills = new Set<string>();
+    for (const b of allHeaders) {
+      const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+      const mPaper = Number(b.paper_amount !== undefined ? b.paper_amount : (b.paper_amt !== undefined ? b.paper_amt : (b.Paper_Amt || b.bill_amt || b.BillAmt || 0)));
+      if (mPaper > 0) priorMonthsWithBills.add(bMonth);
+    }
+
+    for (const r of receipts) {
+      const cid = r.customer_id || r.Customer_id;
+      const rMonth = (r.month || r.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[rMonth];
+      if (mIdx !== undefined && mIdx < targetFyIndex && rMonth !== 'dues') {
+        if (!priorMonthsWithBills.has(rMonth)) {
+          const bAmt = Number(r.bill_amt !== undefined ? r.bill_amt : (r.BillAmt || 0));
+          if (bAmt > 0) {
+            priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + bAmt);
+          }
+        }
       }
     }
   }
@@ -421,12 +471,14 @@ export function calculateBilling({
       const pub = pubMap.get(pubId);
       const pubName = pub?.name || pub?.public_name || pub?.Public_name || cd.publication_name || `Publication #${pubId}`;
       const typeP = pub?.type_p || pub?.TypeP || pub?.frequency || 'Daily';
-      const magzineDay = pub?.magzine_day || pub?.MagzineDay || 0;
-      const isDaily = typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper';
-      const isWeekly = magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
-      const isFortnightly = FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
+      const is513 = pubId === 513;
+      const is216 = pubId === 216;
+      const magzineDay = is513 ? 2 : (pub?.magzine_day || pub?.MagzineDay || 0);
+      const isDaily = !is513 && !is216 && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
+      const isWeekly = is513 || magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
+      const isFortnightly = is216 || FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
 
-      const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date || cd.created_at) || '2000-01-01';
+      const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
       const cDateIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
 
       const qty = Number(cd.qty || cd.Qty || 1);
@@ -445,7 +497,8 @@ export function calculateBilling({
           if (targetDateIso < sDateIso) continue;
           if (cDateIso && targetDateIso >= cDateIso) continue;
 
-          // Holiday & Discontinue checks
+          // Holiday, Global Publication Discontinue & Customer Discontinue checks
+          if (isPubDiscontinued(pubId, targetDateIso)) continue;
           if (isHoliday(pubId, targetDateIso)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso)) continue;
 
@@ -470,6 +523,7 @@ export function calculateBilling({
           if (legacyDayOfWeek !== magzineDay) continue;
           if (targetDateIso < sDateIso) continue;
           if (cDateIso && targetDateIso >= cDateIso) continue;
+          if (isPubDiscontinued(pubId, targetDateIso)) continue;
           if (isHoliday(pubId, targetDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso)) continue;
 
@@ -488,10 +542,11 @@ export function calculateBilling({
         for (const pDateIso of periodDates) {
           if (pDateIso < sDateIso) continue;
           if (cDateIso && pDateIso >= cDateIso) continue;
+          if (isPubDiscontinued(pubId, pDateIso)) continue;
           if (isHoliday(pubId, pDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, pDateIso)) continue;
 
-          const rate = getEffectiveRate(pubId, 1, pDateIso);
+          const rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 2, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
           if (rate > 0) {
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
@@ -503,7 +558,7 @@ export function calculateBilling({
         const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
         if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
-          if (!isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso)) {
+          if (!isPubDiscontinued(pubId, pDateIso) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso)) {
             const rate = getEffectiveRate(pubId, 1, pDateIso);
             if (rate > 0) {
               rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
