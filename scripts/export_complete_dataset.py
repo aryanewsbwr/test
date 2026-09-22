@@ -77,9 +77,7 @@ with open(os.path.join(CSV_DIR, "5.2cust info.csv"), 'r', encoding='utf-8', erro
             "dis": safe_float(r.get('Dis'))
         })
 
-with open(os.path.join(OUT_DIR, "all_subscriptions.json"), 'w', encoding='utf-8') as f:
-    json.dump(all_subs, f, ensure_ascii=False)
-print(f"   Exported {len(all_subs)} subscriptions successfully!")
+# Subscriptions export decommissioned - using live Supabase customer_detail
 
 print("\n3. Exporting ALL 18,382 receipts from 13 payment recipt.csv...")
 all_receipts = []

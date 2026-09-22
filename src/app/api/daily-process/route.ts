@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import { supabase } from '@/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
 
-let cachedSubs: any[] | null = null;
 let cachedPubs: any[] | null = null;
 let cachedHawkers: any[] | null = null;
 
 function loadData() {
-  if (!cachedSubs) {
-    const f = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-    if (fs.existsSync(f)) cachedSubs = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    else cachedSubs = [];
-  }
   if (!cachedPubs) {
     const f = path.join(process.cwd(), 'public', 'data', 'publications.json');
     if (fs.existsSync(f)) cachedPubs = JSON.parse(fs.readFileSync(f, 'utf-8'));
@@ -52,8 +47,18 @@ export async function GET(request: NextRequest) {
     // getDay(): 0=Sun..6=Sat => legacy 1=Sun..7=Sat
     const legacyDay = targetDate.getDay() + 1;
 
+    // Fetch active subscriptions directly from customer_detail in Supabase
+    let query = supabase.from('customer_detail').select('*');
+    if (hawkerIdFilter !== 'all') {
+      query = query.eq('hawker_id', parseInt(hawkerIdFilter, 10));
+    }
+    const { data: dbSubs, error: subErr } = await query;
+    if (subErr) {
+      console.warn('Error querying customer_detail in daily-process:', subErr);
+    }
+
     // Filter active subscriptions on target date
-    const activeSubs = (cachedSubs || []).filter(sub => {
+    const activeSubs = (dbSubs || []).filter((sub: any) => {
       // Must be active (no closure date, or closure date after targetDate)
       if (sub.c_date) {
         // e.g. 04/11/2019 or 2019-11-04

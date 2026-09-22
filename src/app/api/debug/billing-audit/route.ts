@@ -43,20 +43,10 @@ export async function GET(request: NextRequest) {
     const rawBillno = billnoRes.data || [];
     const rawBillItems = billItemsRes.data || [];
     const customer = customerRes.data || [];
-    let subs = subsRes.data || [];
+    const subs = subsRes.data || [];
     const pubs = pubsRes.data || [];
     const holidays = holidaysRes.data || [];
     const discontinues = discontinueRes.data || [];
-
-    // If Supabase customer_detail lacks s_date/c_date, load from authentic all_subscriptions.json
-    const subsJsonPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-    if (fs.existsSync(subsJsonPath)) {
-      const allSubs = JSON.parse(fs.readFileSync(subsJsonPath, 'utf-8'));
-      const custSubs = allSubs.filter((s: any) => (s.customer_id || s.Customer_id) === customerId);
-      if (custSubs.length > 0) {
-        subs = custSubs;
-      }
-    }
 
     // Extract publication IDs
     const pubIds = Array.from(new Set(subs.map((s: any) => s.publication_id || s.publica_id || s.Publica_id).filter(Boolean)));

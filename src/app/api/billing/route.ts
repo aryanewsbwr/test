@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import { supabase } from '@/lib/supabaseClient';
 import { calculateBilling } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mekibdmvpkkujqpfqwyt.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
 let cachedCusts: any[] | null = null;
-let cachedSubs: any[] | null = null;
 let cachedRates: any[] | null = null;
 let cachedRateChanges: any[] | null = null;
 let cachedPubs: any[] | null = null;
@@ -28,7 +25,6 @@ function loadLocalDatasets() {
   };
 
   if (!cachedCusts) cachedCusts = loadJson('all_customers.json');
-  if (!cachedSubs) cachedSubs = loadJson('all_subscriptions.json');
   if (!cachedRates) cachedRates = loadJson('rates.json');
   if (!cachedRateChanges) cachedRateChanges = loadJson('ratechanges.json');
   if (!cachedPubs) cachedPubs = loadJson('publications.json');
@@ -58,12 +54,19 @@ export async function GET(request: NextRequest) {
       const cid = parseInt(customerIdStr, 10);
       targetCusts = targetCusts.filter(c => (c.customer_id || c.Customer_id) === cid);
 
+      // Query customer_detail directly from Supabase for this customer
+      const { data: dbSingleSubs } = await supabase
+        .from('customer_detail')
+        .select('*')
+        .eq('customer_id', cid);
+      const custSubs = dbSingleSubs || [];
+
       const singleResult = calculateBilling({
         monthName: month,
         year: year,
         regionId: 'all',
         customers: targetCusts,
-        subscriptions: cachedSubs || [],
+        subscriptions: custSubs,
         rates: cachedRates || [],
         ratechanges: cachedRateChanges || [],
         publications: cachedPubs || [],
@@ -108,13 +111,21 @@ export async function GET(request: NextRequest) {
     const totalCustCount = targetCusts.length;
     // Paginate target customers for instant response
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
+    const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
+
+    // Query customer_detail directly from Supabase for this page of customers
+    const { data: dbBatchSubs } = await supabase
+      .from('customer_detail')
+      .select('*')
+      .in('customer_id', paginatedCustIds);
+    const paginatedSubs = dbBatchSubs || [];
 
     const result = calculateBilling({
       monthName: month,
       year: year,
       regionId: regionId,
       customers: paginatedCusts,
-      subscriptions: cachedSubs || [],
+      subscriptions: paginatedSubs,
       rates: cachedRates || [],
       ratechanges: cachedRateChanges || [],
       publications: cachedPubs || [],
@@ -167,13 +178,19 @@ export async function POST(request: NextRequest) {
       const rId = parseInt(region_id, 10);
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
     }
+    const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
+    const { data: dbBatchSubs } = await supabase
+      .from('customer_detail')
+      .select('*')
+      .in('customer_id', targetCustIds);
+    const targetSubs = dbBatchSubs || [];
 
     const result = calculateBilling({
       monthName: month,
       year: year,
       regionId: region_id,
       customers: targetCusts,
-      subscriptions: cachedSubs || [],
+      subscriptions: targetSubs,
       rates: cachedRates || [],
       ratechanges: cachedRateChanges || [],
       publications: cachedPubs || [],
@@ -189,7 +206,7 @@ export async function POST(request: NextRequest) {
     let savedBillnoCount = 0;
     let savedBillItemsCount = 0;
 
-    if (commitToDb && SUPABASE_KEY) {
+    if (commitToDb && supabase) {
       // Determine fiscal year suffix (e.g. 20252026)
       let fySuffix = '20252026';
       const yStr = String(year);
@@ -211,16 +228,7 @@ export async function POST(request: NextRequest) {
       const insertBatch = async (tableName: string, rows: any[]) => {
         for (let i = 0; i < rows.length; i += 500) {
           const batch = rows.slice(i, i + 500);
-          await fetch(`${SUPABASE_URL}/rest/v1/${tableName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-              'Prefer': 'resolution=merge-duplicates'
-            },
-            body: JSON.stringify(batch)
-          });
+          await supabase.from(tableName).upsert(batch);
         }
       };
 

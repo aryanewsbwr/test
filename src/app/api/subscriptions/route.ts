@@ -5,7 +5,6 @@ import fs from 'fs';
 
 export const dynamic = 'force-dynamic';
 
-let cachedSubs: any[] | null = null;
 let cachedPubs: any[] | null = null;
 let cachedHawkers: any[] | null = null;
 let cachedDiscontinues: any[] | null = null;
@@ -17,7 +16,6 @@ function loadLocalData() {
     return [];
   };
 
-  if (!cachedSubs) cachedSubs = loadJson('all_subscriptions.json');
   if (!cachedPubs) cachedPubs = loadJson('publications.json');
   if (!cachedHawkers) cachedHawkers = loadJson('hawkers.json');
   if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
@@ -36,8 +34,16 @@ export async function GET(request: NextRequest) {
     const cid = parseInt(customerIdStr, 10);
     loadLocalData();
 
-    // 1. Get Subscriptions from Dataset
-    const subs = (cachedSubs || []).filter(s => (s.customer_id || s.Customer_id) === cid);
+    // 1. Get Subscriptions directly from Supabase customer_detail
+    const { data: dbSubs, error: subsErr } = await supabase
+      .from('customer_detail')
+      .select('*')
+      .eq('customer_id', cid);
+
+    if (subsErr) {
+      console.warn('Error querying customer_detail from Supabase:', subsErr);
+    }
+    const subs = dbSubs || [];
 
     // 2. Find customer discontinues
     const custDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
@@ -183,22 +189,6 @@ export async function DELETE(request: NextRequest) {
       console.warn('Supabase sub delete warning:', dbErr);
     }
 
-    try {
-      loadLocalData();
-      if (cachedSubs) {
-        cachedSubs = cachedSubs.filter((s: any) => {
-          const sCust = s.customer_id || s.Customer_id;
-          const sPub = s.publica_id || s.publication_id || s.Publica_id;
-          const sSno = s.sno || s.SNo;
-          if (sCust !== cid) return true;
-          if (pubId && sPub === pubId) return false;
-          if (sno && sSno === sno) return false;
-          return false;
-        });
-        const f = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-        fs.writeFileSync(f, JSON.stringify(cachedSubs, null, 2), 'utf-8');
-      }
-    } catch (fErr) {}
 
     return NextResponse.json({ success: true, message: 'Subscription removed' });
   } catch (error: any) {
