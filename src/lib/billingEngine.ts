@@ -532,12 +532,10 @@ export function calculateBilling({
         });
       });
 
-      // Discount Priority: Subscription-level % (cd.dis) strictly overrides Customer-level % (cust.discount).
-      // They NEVER combine or stack.
+      // Line-item discount: Subscriptions specify discount percentage in `dis` / `discount_percent` / `Dis`
+      // Customer master table does not have a global discount column
       const subDisRaw = cd.dis !== undefined && cd.dis !== null ? cd.dis : (cd.discount_percent !== undefined ? cd.discount_percent : cd.Dis);
-      const subDisPercent = Number(subDisRaw || 0);
-      const custDisPercent = Number(cust.discount !== undefined ? cust.discount : (cust.dis || cust.Dis || 0));
-      const applicableDisPercent = subDisPercent > 0 ? subDisPercent : custDisPercent;
+      const applicableDisPercent = Number(subDisRaw || 0);
 
       if (applicableDisPercent > 0 && subPaperTotal > 0) {
         const subDisAmt = Math.round((subPaperTotal * (applicableDisPercent / 100)) * 100) / 100;
