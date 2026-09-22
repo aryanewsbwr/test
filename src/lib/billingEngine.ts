@@ -89,7 +89,8 @@ export function calculateBilling({
   bills = [],
   billHeaders = [],
   receipts = [],
-  regions = []
+  regions = [],
+  retailSales = []
 }: {
   monthName: string;
   year: number | string;
@@ -105,6 +106,7 @@ export function calculateBilling({
   billHeaders?: any[];
   receipts: any[];
   regions: any[];
+  retailSales?: any[];
 }) {
   let monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase() || m.toLowerCase().startsWith(monthName.toLowerCase().slice(0, 3)));
   if (monthIdx === -1) monthIdx = 7; // August default
@@ -276,6 +278,18 @@ export function calculateBilling({
       subsByCust.set(cid, []);
     }
     subsByCust.get(cid)!.push(s);
+  }
+
+  // Group retail sales by customer_id
+  const retailSalesByCust = new Map<number, any[]>();
+  for (const rs of retailSales) {
+    const cid = rs.customer_id || rs.Customer_id;
+    if (cid) {
+      if (!retailSalesByCust.has(cid)) {
+        retailSalesByCust.set(cid, []);
+      }
+      retailSalesByCust.get(cid)!.push(rs);
+    }
   }
 
   const FY_MONTH_ORDER: Record<string, number> = {
@@ -560,7 +574,57 @@ export function calculateBilling({
       }
     }
 
+    // =========================================================================
+    // 1B. PROCESS RETAIL / COUNTER SALES TO PERMANENT CUSTOMERS
+    // =========================================================================
+    const custRetailSales = retailSalesByCust.get(custId) || [];
+    let customerRetailTotal = 0;
+
+    for (const rs of custRetailSales) {
+      const vrDate = parseLegacyDateToIso(rs.vr_date || rs.Vr_Date || rs.dated || rs.Dated);
+      // Ensure transaction falls within target billing month
+      if (vrDate && vrDate >= monthStartIso && vrDate <= monthEndIso) {
+        const copies = Number(rs.copies || rs.Copies || 1);
+        const rate = Number(rs.rate || rs.Rate || 0);
+        const amt = Number(rs.amt !== undefined ? rs.amt : (rs.Amt !== undefined ? rs.Amt : copies * rate));
+        const pubId = rs.publica_id || rs.Publica_id;
+        const pub = pubMap.get(pubId);
+        const pubName = pub?.name || pub?.public_name || pub?.Public_name || rs.public_name || `Publication #${pubId}`;
+
+        customerRetailTotal += amt;
+
+        // Add to breakup with sort_order 3 (Retail / Counter Purchase)
+        custBreakup.push({
+          customer_id: custId,
+          name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+          customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+          sort_order: 3,
+          item: `[Retail Sale] ${pubName}`,
+          rate: rate,
+          qty: copies,
+          days_or_copies: copies,
+          amount: amt
+        });
+
+        // Add to db_bill_items with sno: null (matching historical legacy billYYYYYYYY pattern)
+        dbBillItems.push({
+          Bill_id: nextBillId,
+          Customer_id: custId,
+          Publica_id: pubId,
+          Region_id: custRegionId,
+          Qty: copies,
+          Rate: rate,
+          D_Charges: null,
+          TotalAmt: amt,
+          Month: standardMonthName,
+          year: String(startYear),
+          sno: null
+        });
+      }
+    }
+
     // Customer Discount Total Line in Breakup
+    // Note: Discounts strictly apply ONLY to subscription paper totals, never to retail sales or delivery charges
     if (customerDiscountTotal > 0) {
       custBreakup.push({
         customer_id: custId,
@@ -607,11 +671,11 @@ export function calculateBilling({
     // 3. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
     const openingBalanceThisBill = previousDue;
-    const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal - customerDiscountTotal) * 100) / 100;
+    const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal) * 100) / 100;
     const totalPayable = Math.round((openingBalanceThisBill + currentMonthCharges) * 100) / 100;
 
-    // Only generate bill if customer has active papers or outstanding dues
-    if (totalPayable === 0 && customerPaperTotal === 0 && custBreakup.length === 0) {
+    // Only generate bill if customer has active papers, retail sales, or outstanding dues
+    if (totalPayable === 0 && customerPaperTotal === 0 && customerRetailTotal === 0 && custBreakup.length === 0) {
       continue;
     }
 
@@ -659,7 +723,7 @@ export function calculateBilling({
       paper_amount: customerPaperTotal,
       delivery_amount: customerDeliveryTotal,
       discount_amount: customerDiscountTotal,
-      retail_sale_amount: 0,
+      retail_sale_amount: customerRetailTotal,
       total_payable: totalPayable,
       breakup: custBreakup,
       db_bill_items: dbBillItems,

@@ -49,6 +49,17 @@ export async function GET(request: NextRequest) {
 
     let targetCusts = cachedCusts || [];
 
+    // Determine fiscal year suffix (e.g. 20252026)
+    let fySuffix = '20252026';
+    const yStr = String(year);
+    if (yStr.length === 8) {
+      fySuffix = yStr;
+    } else {
+      const startY = parseInt(yStr, 10) || 2025;
+      fySuffix = `${startY}${startY + 1}`;
+    }
+    const retailTableName = `retailsale${fySuffix}`;
+
     // If single customer queried (for Breakup / Slip): Instant calculation
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
@@ -60,6 +71,13 @@ export async function GET(request: NextRequest) {
         .select('*')
         .eq('customer_id', cid);
       const custSubs = dbSingleSubs || [];
+
+      // Query retailsale directly from Supabase for this customer
+      const { data: dbSingleRetail } = await supabase
+        .from(retailTableName)
+        .select('*')
+        .eq('Customer_id', cid);
+      const custRetail = dbSingleRetail || [];
 
       const singleResult = calculateBilling({
         monthName: month,
@@ -74,7 +92,8 @@ export async function GET(request: NextRequest) {
         discontinues: cachedDiscontinues || [],
         bills: cachedBills || [],
         receipts: cachedReceipts || [],
-        regions: cachedRegions || []
+        regions: cachedRegions || [],
+        retailSales: custRetail
       });
 
       const singleBill = singleResult.bills[0] || null;
@@ -120,6 +139,13 @@ export async function GET(request: NextRequest) {
       .in('customer_id', paginatedCustIds);
     const paginatedSubs = dbBatchSubs || [];
 
+    // Query retailsale directly from Supabase for this page of customers
+    const { data: dbBatchRetail } = await supabase
+      .from(retailTableName)
+      .select('*')
+      .in('Customer_id', paginatedCustIds);
+    const paginatedRetail = dbBatchRetail || [];
+
     const result = calculateBilling({
       monthName: month,
       year: year,
@@ -133,7 +159,8 @@ export async function GET(request: NextRequest) {
       discontinues: cachedDiscontinues || [],
       bills: cachedBills || [],
       receipts: cachedReceipts || [],
-      regions: cachedRegions || []
+      regions: cachedRegions || [],
+      retailSales: paginatedRetail
     });
 
     // Strip heavy breakup arrays from list view for maximum speed
@@ -178,12 +205,31 @@ export async function POST(request: NextRequest) {
       const rId = parseInt(region_id, 10);
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
     }
+
+    // Determine fiscal year suffix (e.g. 20252026)
+    let fySuffix = '20252026';
+    const yStr = String(year);
+    if (yStr.length === 8) {
+      fySuffix = yStr;
+    } else {
+      const startY = parseInt(yStr, 10) || 2025;
+      fySuffix = `${startY}${startY + 1}`;
+    }
+    const retailTableName = `retailsale${fySuffix}`;
+
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
     const { data: dbBatchSubs } = await supabase
       .from('customer_detail')
       .select('*')
       .in('customer_id', targetCustIds);
     const targetSubs = dbBatchSubs || [];
+
+    // Query retailsale directly from Supabase for target customers
+    const { data: dbBatchRetail } = await supabase
+      .from(retailTableName)
+      .select('*')
+      .in('Customer_id', targetCustIds);
+    const targetRetail = dbBatchRetail || [];
 
     const result = calculateBilling({
       monthName: month,
@@ -198,7 +244,8 @@ export async function POST(request: NextRequest) {
       discontinues: cachedDiscontinues || [],
       bills: cachedBills || [],
       receipts: cachedReceipts || [],
-      regions: cachedRegions || []
+      regions: cachedRegions || [],
+      retailSales: targetRetail
     });
 
     // If commit to live Supabase DB is requested:
