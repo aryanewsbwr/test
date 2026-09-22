@@ -892,8 +892,178 @@ export default function ReportsForm({
                 </div>
               )}
 
+              {/* ========================================================================= */}
+              {/* REPORT 15: REGION-WISE & SINGLE BILL PRINTING SLIPS */}
+              {/* ========================================================================= */}
+              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
+                <div className="space-y-6 font-sans">
+                  {reportData.rows.map((b: any, bIdx: number) => (
+                    <div key={bIdx} className="border-2 border-black p-4 bg-white rounded-xs space-y-3 shadow-xs">
+                      
+                      {/* Bill Header */}
+                      <div className="border-b-2 border-black pb-2 flex justify-between items-start">
+                        <div>
+                          <h3 className="font-black text-sm text-blue-950 uppercase">ARYAN NEWS AGENCY</h3>
+                          <p className="text-[10px] text-slate-600">Main Market, Near Clock Tower, Beawar (Raj.)</p>
+                          <p className="text-[10px] font-bold text-slate-800">Phone: 01462-250000</p>
+                        </div>
+                        <div className="text-right font-mono">
+                          <span className="font-bold text-xs bg-slate-100 px-2 py-0.5 border border-black block">{b.bill_no}</span>
+                          <span className="text-[10px] text-slate-600 font-sans block mt-1">Date: {b.bill_date}</span>
+                          <span className="text-[11px] font-bold text-blue-900 font-sans block">Period: {b.month} {b.year}</span>
+                        </div>
+                      </div>
+
+                      {/* Customer Info Box */}
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 border border-slate-300 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-500 font-bold block">CUSTOMER DETAILS:</span>
+                          <div className="font-black text-blue-950 text-sm">#{b.customer_id} - {b.customer_name}</div>
+                          {b.customer_hindi && <div className="text-xs text-slate-600">{b.customer_hindi}</div>}
+                          <div className="text-slate-700 text-[11px] mt-0.5">{b.address}</div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-500 font-bold block">DELIVERY INFO:</span>
+                          <div className="font-bold text-slate-800">Region: <span className="font-black text-blue-900">{b.region_name} (#{b.region_id})</span></div>
+                          <div className="text-slate-600 text-[11px]">Phone: {b.phone}</div>
+                        </div>
+                      </div>
+
+                      {/* Line Items Table */}
+                      <table className="w-full text-xs border-collapse border border-black">
+                        <thead>
+                          <tr className="bg-slate-200 border-b border-black font-bold text-[11px]">
+                            <th className="p-1 border-r border-black text-center w-8">#</th>
+                            <th className="p-1 border-r border-black text-left">Publication / Newspaper</th>
+                            <th className="p-1 border-r border-black text-center w-20">Circulation</th>
+                            <th className="p-1 border-r border-black text-center w-12">Qty</th>
+                            <th className="p-1 border-r border-black text-center w-12">Days</th>
+                            <th className="p-1 border-r border-black text-right w-16">Rate (₹)</th>
+                            <th className="p-1 text-right font-black w-24">Amount (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {b.items.map((item: any) => (
+                            <tr key={item.sno} className="border-b border-slate-300 text-[11px]">
+                              <td className="p-1 border-r border-slate-300 text-center font-mono">{item.sno}</td>
+                              <td className="p-1 border-r border-slate-300 font-bold text-slate-900">{item.pub_name}</td>
+                              <td className="p-1 border-r border-slate-300 text-center text-slate-600">{item.circulation}</td>
+                              <td className="p-1 border-r border-slate-300 text-center font-mono font-bold">{item.qty}</td>
+                              <td className="p-1 border-r border-slate-300 text-center font-mono">{item.days}</td>
+                              <td className="p-1 border-r border-slate-300 text-right font-mono">₹{Number(item.rate).toFixed(2)}</td>
+                              <td className="p-1 text-right font-mono font-bold text-slate-900">₹{Number(item.amount).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Financial Summary Breakdown */}
+                      <div className="flex justify-end pt-1">
+                        <div className="w-72 border border-black divide-y divide-black text-xs font-sans">
+                          <div className="flex justify-between p-1">
+                            <span className="font-bold text-slate-700">Newspaper / Mag Amount:</span>
+                            <span className="font-mono font-bold">₹{Number(b.paper_amount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between p-1">
+                            <span className="font-bold text-slate-700">Delivery / Line Charges:</span>
+                            <span className="font-mono font-bold">₹{Number(b.delivery_charge).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between p-1 bg-slate-50 font-bold">
+                            <span>Current Month Bill:</span>
+                            <span className="font-mono text-blue-900">₹{Number(b.current_bill).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between p-1 font-bold">
+                            <span className="text-red-900">Previous Balance / Due:</span>
+                            <span className="font-mono text-red-900">₹{Number(b.previous_due).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between p-1.5 bg-blue-50 font-black text-sm">
+                            <span className="text-blue-950 uppercase">Net Amount Payable:</span>
+                            <span className="font-mono text-blue-950">₹{Number(b.net_payable).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment Notice */}
+                      <div className="border-t border-dashed border-black pt-2 flex justify-between items-center text-[10px] text-slate-600">
+                        <span>* कृपया बिल का भुगतान 10 तारीख से पूर्व करें। समय पर भुगतान कर नियमित सेवा का अवसर देवें।</span>
+                        <span className="font-bold font-serif text-black">For Aryan News Agency</span>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 16: COLLECTION DATEWISE */}
+              {/* ========================================================================= */}
+              {(activeReport === 'collection_datewise' || activeReport === 'collection_hawker_datewise') && (
+                <table className="w-full text-xs border-collapse border border-black font-sans">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1.5 text-center border-r border-black w-24">Receipt No</th>
+                      <th className="p-1.5 text-center border-r border-black w-24">Date</th>
+                      <th className="p-1.5 text-center border-r border-black w-14">Cust ID</th>
+                      <th className="p-1.5 text-left border-r border-black">Customer Name</th>
+                      <th className="p-1.5 text-left border-r border-black">Region</th>
+                      <th className="p-1.5 text-center border-r border-black w-20">Mode</th>
+                      <th className="p-1.5 text-right font-black w-28">Collected Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((r: any, idx: number) => (
+                      <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1 text-center border-r border-slate-300 font-mono font-bold text-blue-900">{r.receipt_no}</td>
+                        <td className="p-1 text-center border-r border-slate-300 font-mono">{r.receipt_date}</td>
+                        <td className="p-1 text-center border-r border-slate-300 font-mono">#{r.customer_id}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{r.customer_name}</td>
+                        <td className="p-1 border-r border-slate-300 text-slate-700">{r.region_name}</td>
+                        <td className="p-1 border-r border-slate-300 text-center font-bold">{r.mode}</td>
+                        <td className="p-1 text-right font-mono font-bold text-emerald-800">₹{Number(r.amount).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                      <td colSpan={6} className="p-1.5 text-left uppercase border-r border-black">Total Collections:</td>
+                      <td className="p-1.5 text-right font-mono text-sm text-emerald-900">₹{Number(reportData.total_amount || 0).toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 17: HAWKER REPORT DATEWISE */}
+              {/* ========================================================================= */}
+              {activeReport === 'hawker_report_datewise' && (
+                <table className="w-full text-xs border-collapse border border-black font-sans">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1.5 text-center border-r border-black w-14">Hawker ID</th>
+                      <th className="p-1.5 text-left border-r border-black">Hawker / Distributor Name</th>
+                      <th className="p-1.5 text-left border-r border-black">Delivery Area / Region</th>
+                      <th className="p-1.5 text-right border-r border-black w-28">Active Customers</th>
+                      <th className="p-1.5 text-right font-black w-28">Daily Copies Delivered</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((r: any, idx: number) => (
+                      <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{r.hawker_id}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{r.hawker_name}</td>
+                        <td className="p-1 border-r border-slate-300 text-slate-700">{r.area}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono font-bold">{r.active_customers}</td>
+                        <td className="p-1 text-right font-mono font-black text-blue-900">{r.total_copies}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                      <td colSpan={4} className="p-1.5 text-left uppercase border-r border-black">Total Distribution:</td>
+                      <td className="p-1.5 text-right font-mono text-sm text-blue-900">{reportData.total_copies}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
               {/* Default Fallback Table */}
-              {!['hawker_daily_qty', 'hawker_magazine_qty', 'dues_ledger', 'previous_dues_wise', 'advance_list', 'due_region_summary', 'cust_detail_month', 'cust_pub_starting', 'circ_type_pub', 'cust_choose_pub', 'discontinue_datewise', 'discontinue_hawkerwise', 'receipt_nowise', 'receipt_realamt', 'purchase_datewise', 'purchase_publisherwise', 'countersale_datewise', 'countersale_pubwise', 'hawker_cust_priority', 'sticker_printing', 'consolidated_sale'].includes(activeReport) && (
+              {!['hawker_daily_qty', 'hawker_magazine_qty', 'dues_ledger', 'previous_dues_wise', 'advance_list', 'due_region_summary', 'cust_detail_month', 'cust_pub_starting', 'circ_type_pub', 'cust_choose_pub', 'discontinue_datewise', 'discontinue_hawkerwise', 'receipt_nowise', 'receipt_realamt', 'purchase_datewise', 'purchase_publisherwise', 'countersale_datewise', 'countersale_pubwise', 'hawker_cust_priority', 'sticker_printing', 'consolidated_sale', 'bill_print_region', 'bill_print_single', 'collection_datewise', 'collection_hawker_datewise', 'hawker_report_datewise'].includes(activeReport) && (
                 <div className="p-8 text-center text-slate-600 font-sans">
                   <FileText className="w-10 h-10 mx-auto text-blue-900 mb-2" />
                   <p className="font-bold">Displaying records for {reportData.report_title}</p>

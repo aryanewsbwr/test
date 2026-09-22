@@ -652,6 +652,180 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 15. Bill Printing: Region Wise & Single Bill Printing
+    if (reportType === 'bill_print_region' || reportType === 'bill_print_single') {
+      let targetCusts = data.customers;
+      if (regionId && regionId !== 'all') {
+        const rNum = parseInt(regionId, 10);
+        targetCusts = targetCusts.filter(c => c.region_id === rNum);
+      }
+      if (search) {
+        targetCusts = targetCusts.filter(c => 
+          (c.name_eng || '').toLowerCase().includes(search) || 
+          String(c.customer_id).includes(search)
+        );
+      }
+
+      // If single bill printing and no specific customer filtered, pick first
+      if (reportType === 'bill_print_single' && targetCusts.length > 1 && !search && regionId === 'all') {
+        targetCusts = targetCusts.slice(0, 1);
+      }
+
+      const monthDaysMap: Record<string, number> = {
+        'january': 31, 'february': 28, 'march': 31, 'april': 30,
+        'may': 31, 'june': 30, 'july': 31, 'august': 31,
+        'september': 30, 'october': 31, 'november': 30, 'december': 31
+      };
+      const daysInMonth = monthDaysMap[month.toLowerCase()] || 31;
+
+      // Group active subscriptions by customer
+      const custSubsMap = new Map<number, any[]>();
+      data.subscriptions.forEach(s => {
+        if (!s.c_date) {
+          const list = custSubsMap.get(s.customer_id) || [];
+          list.push(s);
+          custSubsMap.set(s.customer_id, list);
+        }
+      });
+
+      const bills = targetCusts.slice((page - 1) * limit, page * limit).map(c => {
+        const mySubs = custSubsMap.get(c.customer_id) || [];
+        let paperTotal = 0;
+        let delyTotal = 0;
+
+        const lineItems = mySubs.map((s, sIdx) => {
+          const pub = pubMap.get(s.publica_id);
+          const isMag = (pub?.type_p || '').toLowerCase().includes('mag');
+          const qty = s.qty || 1;
+          const rateVal = 5.0; // Standard legacy weekday rate
+          const days = isMag ? 1 : daysInMonth;
+          const lineAmt = isMag ? 60.0 * qty : days * rateVal * qty;
+          paperTotal += lineAmt;
+          delyTotal += (s.dely || 0);
+
+          return {
+            sno: sIdx + 1,
+            pub_name: pub?.public_name || pub?.name || `Publication #${s.publica_id}`,
+            circulation: s.circulation || 'Morning',
+            qty,
+            days,
+            rate: isMag ? 60.0 : rateVal,
+            amount: lineAmt
+          };
+        });
+
+        const prevDue = c.dueamount || 0;
+        const currentBill = paperTotal + delyTotal;
+        const netPayable = currentBill + prevDue;
+
+        return {
+          bill_no: `BILL-${year}-${String(c.customer_id).padStart(5, '0')}`,
+          bill_date: `${daysInMonth}/${month}/${year}`,
+          customer_id: c.customer_id,
+          customer_name: c.name_eng || `Customer #${c.customer_id}`,
+          customer_hindi: c.name_hindi || '',
+          address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
+          phone: c.phone || '---',
+          region_id: c.region_id,
+          region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
+          month: month,
+          year: year,
+          items: lineItems,
+          delivery_charge: delyTotal,
+          paper_amount: paperTotal,
+          current_bill: currentBill,
+          previous_due: prevDue,
+          advance: c.cbal || 0,
+          net_payable: netPayable
+        };
+      });
+
+      const regTitle = regionId && regionId !== 'all' 
+        ? regMap.get(parseInt(regionId, 10))?.region_name || `Region #${regionId}`
+        : 'ALL REGIONS';
+
+      return NextResponse.json({
+        report_title: reportType === 'bill_print_single' 
+          ? `SINGLE CUSTOMER BILL PRINTING (${month.toUpperCase()} ${year})`
+          : `REGION-WISE BILL PRINTING: ${regTitle} (${month.toUpperCase()} ${year})`,
+        rows: bills,
+        total_rows: targetCusts.length,
+        page,
+        total_pages: Math.ceil(targetCusts.length / limit) || 1
+      });
+    }
+
+    // 16. Collection Datewise & Collection Hawker Datewise
+    if (reportType === 'collection_datewise' || reportType === 'collection_hawker_datewise') {
+      let rcps = data.receipts;
+      if (search) {
+        rcps = rcps.filter(r => 
+          (r.receipt_no || '').toLowerCase().includes(search) || 
+          String(r.customer_id).includes(search)
+        );
+      }
+
+      const rows = rcps.slice((page - 1) * limit, page * limit).map(r => {
+        const c = custMap.get(r.customer_id);
+        return {
+          receipt_no: r.receipt_no || r.manual_rep_no || `REC-${r.receipt_id}`,
+          receipt_date: r.bill_date || r.mal_recp_dt || '2026-08-10',
+          customer_id: r.customer_id,
+          customer_name: c?.name_eng || `Customer #${r.customer_id}`,
+          region_name: regMap.get(c?.region_id)?.region_name || `Region #${c?.region_id || 1}`,
+          amount: r.r_amt || r.mal_recp_amt || 0,
+          mode: r.cash_chq || 'Cash',
+          cheque_no: r.cheque_no || '---'
+        };
+      });
+
+      const totalAmt = rcps.reduce((s, r) => s + (r.r_amt || r.mal_recp_amt || 0), 0);
+
+      return NextResponse.json({
+        report_title: reportType === 'collection_hawker_datewise' ? 'COLLECTION HAWKER DATEWISE REPORT' : 'COLLECTION DATEWISE REPORT',
+        rows,
+        total_rows: rcps.length,
+        total_amount: totalAmt,
+        page,
+        total_pages: Math.ceil(rcps.length / limit) || 1
+      });
+    }
+
+    // 17. Hawker Report Datewise
+    if (reportType === 'hawker_report_datewise') {
+      const hwMapTotals: Record<number, { hawker: any; active_customers: number; total_copies: number }> = {};
+      data.subscriptions.forEach(s => {
+        if (s.c_date) return;
+        const hid = s.hawker_id || 1;
+        if (!hwMapTotals[hid]) {
+          const hw = hwMap.get(hid) || { hawker_id: hid, name: `Hawker #${hid}` };
+          hwMapTotals[hid] = { hawker: hw, active_customers: 0, total_copies: 0 };
+        }
+        hwMapTotals[hid].active_customers += 1;
+        hwMapTotals[hid].total_copies += (s.qty || 1);
+      });
+
+      let rows = Object.values(hwMapTotals).sort((a, b) => b.total_copies - a.total_copies);
+      if (search) {
+        rows = rows.filter(r => (r.hawker.name || '').toLowerCase().includes(search));
+      }
+
+      return NextResponse.json({
+        report_title: `HAWKER REPORT DATEWISE (${month} ${year})`,
+        rows: rows.slice((page - 1) * limit, page * limit).map(r => ({
+          hawker_id: r.hawker.hawker_id,
+          hawker_name: r.hawker.name || `Hawker #${r.hawker.hawker_id}`,
+          active_customers: r.active_customers,
+          total_copies: r.total_copies,
+          area: r.hawker.area || regMap.get(r.hawker.region_id)?.region_name || 'Beawar'
+        })),
+        total_rows: rows.length,
+        total_copies: rows.reduce((s, r) => s + r.total_copies, 0),
+        page,
+        total_pages: Math.ceil(rows.length / limit) || 1
+      });
+    }
+
     // Default Fallback
     return NextResponse.json({
       report_title: 'CRYSTAL REPORT VIEWER - ARYAN NEWS AGENCY',
