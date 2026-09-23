@@ -56,7 +56,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109, 216]);
+const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 109, 216]);
 
 // Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
 function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
@@ -471,13 +471,17 @@ export function calculateBilling({
       const cd = custSubs[sIdx];
       const pubId = cd.publication_id || cd.publica_id || cd.Publica_id;
       const pub = pubMap.get(pubId);
-      const pubName = pub?.name || pub?.public_name || pub?.Public_name || cd.publication_name || `Publication #${pubId}`;
+      const rawHindi = pub?.pub_hindi || pub?.Pub_Hindi;
+      const englishName = pub?.name || pub?.public_name || pub?.Public_name || cd.publication_name || `Publication #${pubId}`;
+      const pubName = rawHindi && rawHindi.trim().length > 0
+        ? cleanOrTransliterateHindi(rawHindi, englishName)
+        : englishName;
       const typeP = pub?.type_p || pub?.TypeP || pub?.frequency || 'Daily';
       const is513 = pubId === 513;
       const is216 = pubId === 216;
-      const magzineDay = is513 ? 2 : (pub?.magzine_day || pub?.MagzineDay || 0);
+      const magzineDay = is513 ? 2 : (pubId === 33 ? 6 : (pub?.magzine_day || pub?.MagzineDay || 0));
       const isDaily = !is513 && !is216 && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
-      const isWeekly = is513 || magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
+      const isWeekly = is513 || pubId === 33 || magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
       const isFortnightly = is216 || FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
 
       const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
@@ -495,9 +499,9 @@ export function calculateBilling({
           const dObj = new Date(calendarYear, monthIdx, day);
           const legacyDayOfWeek = dObj.getDay() + 1; // 1=Sun..7=Sat
 
-          // Active date range check
+          // Active date range check (inclusive bounds)
           if (targetDateIso < sDateIso) continue;
-          if (cDateIso && targetDateIso >= cDateIso) continue;
+          if (cDateIso && targetDateIso > cDateIso) continue;
 
           // Holiday, Global Publication Discontinue & Customer Discontinue checks
           if (isPubDiscontinued(pubId, targetDateIso)) continue;
@@ -524,7 +528,7 @@ export function calculateBilling({
 
           if (legacyDayOfWeek !== magzineDay) continue;
           if (targetDateIso < sDateIso) continue;
-          if (cDateIso && targetDateIso >= cDateIso) continue;
+          if (cDateIso && targetDateIso > cDateIso) continue;
           if (isPubDiscontinued(pubId, targetDateIso)) continue;
           if (isHoliday(pubId, targetDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso)) continue;
@@ -543,12 +547,18 @@ export function calculateBilling({
         ];
         for (const pDateIso of periodDates) {
           if (pDateIso < sDateIso) continue;
-          if (cDateIso && pDateIso >= cDateIso) continue;
+          if (cDateIso && pDateIso > cDateIso) continue;
           if (isPubDiscontinued(pubId, pDateIso)) continue;
           if (isHoliday(pubId, pDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, pDateIso)) continue;
 
-          const rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 2, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
+          let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 2, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
+          if (!rate || rate === 0) {
+            for (let d = 3; d <= 7; d++) {
+              const alt = getEffectiveRate(pubId, d, pDateIso);
+              if (alt > 0) { rate = alt; break; }
+            }
+          }
           if (rate > 0) {
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
@@ -559,9 +569,15 @@ export function calculateBilling({
         const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
         const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
-        if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
+        if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso >= monthStartIso)) {
           if (!isPubDiscontinued(pubId, pDateIso) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso)) {
-            const rate = getEffectiveRate(pubId, 1, pDateIso);
+            let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
+            if (!rate || rate === 0) {
+              for (let d = 2; d <= 7; d++) {
+                const alt = getEffectiveRate(pubId, d, pDateIso);
+                if (alt > 0) { rate = alt; break; }
+              }
+            }
             if (rate > 0) {
               rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
             }
