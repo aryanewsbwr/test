@@ -157,6 +157,81 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   }
 }
 
+async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
+  if (customerIds.length === 0) return [];
+  const load = (file: string) => {
+    try {
+      const p = path.join(process.cwd(), 'public', 'data', file);
+      if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch {
+      return [];
+    }
+    return [];
+  };
+
+  const localSales = load('retailsale.json');
+  const matchingLocal = localSales.filter((s: any) => {
+    const cid = Number(s.Customer_id || s.customer_id);
+    return customerIds.includes(cid);
+  });
+
+  const matchingDb: any[] = [];
+  try {
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+      
+      // 1. Query generic retailsale table
+      try {
+        const { data: genData } = await supabase
+          .from('retailsale')
+          .select('*')
+          .in('customer_id', chunk);
+        if (genData && genData.length > 0) {
+          matchingDb.push(...genData.map(r => ({
+            Retail_id: r.sale_id,
+            Vr_Date: r.vr_date,
+            Customer_id: r.customer_id,
+            Publica_id: r.publica_id,
+            Copies: r.copies,
+            Rate: r.rate,
+            Amt: r.amount,
+            Narr: r.narration
+          })));
+        }
+      } catch {
+        // ignore
+      }
+
+      // 2. Query FY specific table (e.g. retailsale20252026)
+      try {
+        const { data: fyData } = await supabase
+          .from(`retailsale${fySuffix}`)
+          .select('*')
+          .in('Customer_id', chunk);
+        if (fyData && fyData.length > 0) {
+          matchingDb.push(...fyData);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching retail sales from Supabase:', err);
+  }
+
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const item of [...matchingLocal, ...matchingDb]) {
+    const key = `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+  return merged;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -794,17 +869,20 @@ export async function GET(request: NextRequest) {
       let liveBills: any[] = [];
       let liveReceipts: any[] = [];
       let pubDis: any[] = [];
+      let liveRetail: any[] = [];
 
       try {
-        const [subsData, billsReceiptsData, pubDisRes] = await Promise.all([
+        const [subsData, billsReceiptsData, pubDisRes, retailData] = await Promise.all([
           fetchSubscriptions(targetCustIds),
           fetchBillsAndReceipts(targetCustIds, fySuffix),
-          supabase.from('publicationdis').select('*')
+          supabase.from('publicationdis').select('*'),
+          fetchRetailSales(targetCustIds, fySuffix)
         ]);
         custSubs = subsData;
         liveBills = billsReceiptsData.bills;
         liveReceipts = billsReceiptsData.receipts;
         pubDis = (pubDisRes && pubDisRes.data) || [];
+        liveRetail = retailData || [];
       } catch (err) {
         console.error('Error fetching billing dependencies from Supabase:', err);
       }
@@ -828,7 +906,7 @@ export async function GET(request: NextRequest) {
         bills: liveBills,
         receipts: liveReceipts,
         regions: data.regions,
-        retailSales: []
+        retailSales: liveRetail
       });
 
       const monthDaysMap: Record<string, number> = {

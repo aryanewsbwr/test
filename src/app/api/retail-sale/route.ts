@@ -228,20 +228,34 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    // 1. Insert into Supabase table retailsale20252026
+    // 1. Insert into Supabase
     let sbSuccess = false;
     try {
-      const { error: sbErr } = await supabase
-        .from('retailsale20252026')
-        .insert(supabaseRows);
+      // Try generic retailsale table
+      const genRows = items.map(item => {
+        const copies = Number(item.copies || item.qty || 1);
+        const rate = Number(item.rate || 0);
+        const amt = Number(item.amt !== undefined ? item.amt : (copies * rate));
+        return {
+          customer_id: Number(customer_id),
+          publica_id: Number(item.publica_id || item.Publica_id),
+          copies: copies,
+          rate: rate,
+          amount: amt,
+          vr_date: vr_date,
+          narration: item.narr || item.remarks || '',
+          financial_year: '2026-2027'
+        };
+      });
 
-      if (!sbErr) {
-        sbSuccess = true;
-      } else {
-        console.error('Supabase retailsale20252026 insert error:', sbErr);
-      }
+      const { error: genErr } = await supabase.from('retailsale').insert(genRows);
+      if (!genErr) sbSuccess = true;
+
+      // Also try retailsale20252026 if applicable
+      const { error: sbErr } = await supabase.from('retailsale20252026').insert(supabaseRows);
+      if (!sbErr) sbSuccess = true;
     } catch (err) {
-      console.error('Supabase retailsale exception:', err);
+      console.error('Supabase retailsale insert error:', err);
     }
 
     // 2. Save into local JSON file

@@ -18,12 +18,19 @@ let cachedReceipts: any[] | null = null;
 let cachedRegions: any[] | null = null;
 let cachedPubDis: any[] | null = null;
 
+function loadJson(filename: string): any[] {
+  const f = path.join(process.cwd(), 'public', 'data', filename);
+  if (fs.existsSync(f)) {
+    try {
+      return JSON.parse(fs.readFileSync(f, 'utf-8'));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function loadLocalDatasets() {
-  const loadJson = (filename: string) => {
-    const f = path.join(process.cwd(), 'public', 'data', filename);
-    if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf-8'));
-    return [];
-  };
 
   if (!cachedCusts) cachedCusts = loadJson('all_customers.json');
   if (!cachedRates) cachedRates = loadJson('rates.json');
@@ -147,6 +154,71 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   }
 }
 
+async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
+  if (customerIds.length === 0) return [];
+  const localSales = loadJson('retailsale.json');
+  const matchingLocal = localSales.filter((s: any) => {
+    const cid = Number(s.Customer_id || s.customer_id);
+    return customerIds.includes(cid);
+  });
+
+  const matchingDb: any[] = [];
+  try {
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+      
+      // 1. Query generic retailsale table
+      try {
+        const { data: genData } = await supabase
+          .from('retailsale')
+          .select('*')
+          .in('customer_id', chunk);
+        if (genData && genData.length > 0) {
+          matchingDb.push(...genData.map(r => ({
+            Retail_id: r.sale_id,
+            Vr_Date: r.vr_date,
+            Customer_id: r.customer_id,
+            Publica_id: r.publica_id,
+            Copies: r.copies,
+            Rate: r.rate,
+            Amt: r.amount,
+            Narr: r.narration
+          })));
+        }
+      } catch {
+        // ignore
+      }
+
+      // 2. Query FY specific table (e.g. retailsale20252026)
+      try {
+        const { data: fyData } = await supabase
+          .from(`retailsale${fySuffix}`)
+          .select('*')
+          .in('Customer_id', chunk);
+        if (fyData && fyData.length > 0) {
+          matchingDb.push(...fyData);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching retail sales from Supabase:', err);
+  }
+
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const item of [...matchingLocal, ...matchingDb]) {
+    const key = `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+  return merged;
+}
+
 export async function GET(request: NextRequest) {
   try {
     loadLocalDatasets();
@@ -170,18 +242,17 @@ export async function GET(request: NextRequest) {
       const startY = parseInt(yStr, 10) || 2025;
       fySuffix = `${startY}${startY + 1}`;
     }
-    const retailTableName = `retailsale${fySuffix}`;
 
     // If single customer queried (for Breakup / Slip): Instant calculation
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
       targetCusts = targetCusts.filter(c => (c.customer_id || c.Customer_id) === cid);
 
-      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, { data: dbSingleRetail }] = await Promise.all([
+      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail] = await Promise.all([
         fetchSubscriptions([cid]),
         fetchBillsAndReceipts([cid], fySuffix),
         getPublicationDiscontinues(),
-        supabase.from(retailTableName).select('*').eq('Customer_id', cid)
+        fetchRetailSales([cid], fySuffix)
       ]);
 
       const singleResult = calculateBilling({
@@ -199,7 +270,7 @@ export async function GET(request: NextRequest) {
         bills: liveCustBills,
         receipts: liveCustReceipts,
         regions: cachedRegions || [],
-        retailSales: dbSingleRetail || []
+        retailSales: liveRetail || []
       });
 
       const singleBill = singleResult.bills[0] || null;
@@ -238,11 +309,11 @@ export async function GET(request: NextRequest) {
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
     const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
 
-    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, { data: dbBatchRetail }] = await Promise.all([
+    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail] = await Promise.all([
       fetchSubscriptions(paginatedCustIds),
       fetchBillsAndReceipts(paginatedCustIds, fySuffix),
       getPublicationDiscontinues(),
-      supabase.from(retailTableName).select('*').in('Customer_id', paginatedCustIds)
+      fetchRetailSales(paginatedCustIds, fySuffix)
     ]);
 
     const result = calculateBilling({
@@ -315,26 +386,12 @@ export async function POST(request: NextRequest) {
       const startY = parseInt(yStr, 10) || 2025;
       fySuffix = `${startY}${startY + 1}`;
     }
-    const retailTableName = `retailsale${fySuffix}`;
-
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-
-    const fetchRetailSales = async (custIds: number[]) => {
-      const allRetail: any[] = [];
-      const CHUNK_SIZE = 200;
-      for (let i = 0; i < custIds.length; i += CHUNK_SIZE) {
-        const chunk = custIds.slice(i, i + CHUNK_SIZE);
-        const { data } = await supabase.from(retailTableName).select('*').in('Customer_id', chunk);
-        if (data) allRetail.push(...data);
-      }
-      return allRetail;
-    };
-
     const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
-      fetchRetailSales(targetCustIds)
+      fetchRetailSales(targetCustIds, fySuffix)
     ]);
 
     const result = calculateBilling({

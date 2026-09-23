@@ -1,0 +1,10020 @@
+[
+  {
+    "Retail_id": 1116,
+    "retail_id": 1116,
+    "Vr_Date": "2026-08-25",
+    "vr_date": "2026-08-25",
+    "Customer_id": 24669,
+    "customer_id": 24669,
+    "Publica_id": 512,
+    "publica_id": 512,
+    "Copies": 1,
+    "copies": 1,
+    "Rate": 60,
+    "rate": 60,
+    "Amt": 60,
+    "amt": 60,
+    "Narr": "Today Hindi Magazine August Issue",
+    "narr": "Today Hindi Magazine August Issue"
+  },
+  {
+    "Retail_id": 1,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 21,
+    "Copies": 7,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 2,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 5,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 3,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 4,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 4,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 1,
+    "Copies": 7,
+    "Rate": 7,
+    "Amt": 7,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 5,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 80,
+    "Copies": 7,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 6,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 77,
+    "Copies": 7,
+    "Rate": 15,
+    "Amt": 15,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 7,
+    "Vr_Date": "2025-04-06",
+    "Customer_id": 11930,
+    "Publica_id": 12,
+    "Copies": 7,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 8,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 21,
+    "Copies": 49,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 9,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 5,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 10,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 4,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 11,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 1,
+    "Copies": 75,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 12,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 80,
+    "Copies": 7,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 13,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 77,
+    "Copies": 7,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 14,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 12,
+    "Copies": 13,
+    "Rate": 6.5,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 15,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 219,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 16,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 82,
+    "Copies": 7,
+    "Rate": 14,
+    "Amt": 14,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 17,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11930,
+    "Publica_id": 78,
+    "Copies": 7,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 18,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 21,
+    "Copies": 49,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 19,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 5,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 20,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 4,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 21,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 1,
+    "Copies": 75,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 22,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 80,
+    "Copies": 7,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 23,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 77,
+    "Copies": 7,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 24,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 12,
+    "Copies": 13,
+    "Rate": 6.5,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 25,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 219,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 26,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 82,
+    "Copies": 7,
+    "Rate": 14,
+    "Amt": 14,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 27,
+    "Vr_Date": "2025-04-08",
+    "Customer_id": 11930,
+    "Publica_id": 78,
+    "Copies": 7,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 28,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 21,
+    "Copies": 49,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 29,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 5,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 30,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 4,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 31,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 1,
+    "Copies": 75,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 32,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 80,
+    "Copies": 7,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 33,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 77,
+    "Copies": 7,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 34,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 12,
+    "Copies": 13,
+    "Rate": 6.5,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 35,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 219,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 36,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 82,
+    "Copies": 7,
+    "Rate": 14,
+    "Amt": 14,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 37,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 11930,
+    "Publica_id": 78,
+    "Copies": 7,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 38,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 21,
+    "Copies": 49,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 39,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 5,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 40,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 4,
+    "Copies": 55,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 41,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 1,
+    "Copies": 75,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 42,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 80,
+    "Copies": 7,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 43,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 77,
+    "Copies": 7,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 44,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 12,
+    "Copies": 13,
+    "Rate": 6.5,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 45,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 219,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 46,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 82,
+    "Copies": 7,
+    "Rate": 14,
+    "Amt": 14,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 47,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 11930,
+    "Publica_id": 78,
+    "Copies": 7,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 48,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 85,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 49,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 58,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 50,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 400,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 51,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 479,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 52,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 445,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 53,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 481,
+    "Copies": 1,
+    "Rate": 200,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 54,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 30,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 55,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 292,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 56,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 401,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 180,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 57,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 473,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 58,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 407,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 59,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 426,
+    "Copies": 1,
+    "Rate": 175,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 60,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 396,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 300,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 61,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 143,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 62,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 281,
+    "Copies": 2,
+    "Rate": 50,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 63,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 198,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 64,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 390,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 125,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 65,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 408,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 66,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 336,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 250,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 67,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 39,
+    "Copies": 2,
+    "Rate": 200,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 68,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 382,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 69,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 27,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 70,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 487,
+    "Copies": 1,
+    "Rate": 120,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 71,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 171,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 72,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 73,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 67,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 74,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 180,
+    "Copies": 2,
+    "Rate": 125,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 75,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 76,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 69,
+    "Copies": 1,
+    "Rate": 125,
+    "Amt": 125,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 77,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 78,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 417,
+    "Copies": 1,
+    "Rate": 40,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 79,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 80,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 81,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 216,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 82,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 223,
+    "Copies": 3,
+    "Rate": 180,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 83,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 355,
+    "Copies": 11,
+    "Rate": 150,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 84,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 13,
+    "Copies": 2,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 85,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11930,
+    "Publica_id": 466,
+    "Copies": 5,
+    "Rate": 1,
+    "Amt": 99,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 86,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 515,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 87,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 516,
+    "Copies": 3,
+    "Rate": 99,
+    "Amt": 99,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 88,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 517,
+    "Copies": 1,
+    "Rate": 200,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 89,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 518,
+    "Copies": 1,
+    "Rate": 300,
+    "Amt": 300,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 90,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 519,
+    "Copies": 1,
+    "Rate": 300,
+    "Amt": 300,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 91,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 520,
+    "Copies": 1,
+    "Rate": 200,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 92,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 521,
+    "Copies": 2,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 93,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 522,
+    "Copies": 1,
+    "Rate": 40,
+    "Amt": 40,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 94,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 523,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 95,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 11930,
+    "Publica_id": 109,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 96,
+    "Vr_Date": "2025-04-13",
+    "Customer_id": 11930,
+    "Publica_id": 20,
+    "Copies": 28,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 97,
+    "Vr_Date": "2025-04-13",
+    "Customer_id": 11930,
+    "Publica_id": 401,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 98,
+    "Vr_Date": "2025-04-13",
+    "Customer_id": 11930,
+    "Publica_id": 521,
+    "Copies": 2,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 99,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 100,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 101,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 2070,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 102,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 103,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 2573,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 104,
+    "Vr_Date": "2025-04-10",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 105,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 17624,
+    "Publica_id": 21,
+    "Copies": 1,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": "27.03"
+  },
+  {
+    "Retail_id": 106,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 6054,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 107,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 108,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 109,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 1081,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 110,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 111,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 112,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 113,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 6351,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 114,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 6351,
+    "Publica_id": 21,
+    "Copies": 1,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 115,
+    "Vr_Date": "2025-04-09",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 116,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 117,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 17361,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 118,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 119,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 2070,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 120,
+    "Vr_Date": "2025-04-13",
+    "Customer_id": 17953,
+    "Publica_id": 410,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 121,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 24019,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 122,
+    "Vr_Date": "2025-04-11",
+    "Customer_id": 276,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 123,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 124,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 125,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 3352,
+    "Publica_id": 33,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 126,
+    "Vr_Date": "2025-04-12",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 127,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 128,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 3148,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 294,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 130,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 7401,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 131,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 132,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 2182,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 133,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 134,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 134,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 135,
+    "Vr_Date": "2025-04-15",
+    "Customer_id": 134,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 136,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 2148,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 137,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 22937,
+    "Publica_id": 5,
+    "Copies": 25,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 138,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 14878,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 139,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 140,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 5374,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 155,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 10113,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 142,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 5415,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 143,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 15709,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 144,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 495,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 145,
+    "Vr_Date": "2025-04-18",
+    "Customer_id": 15141,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 146,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 11273,
+    "Publica_id": 21,
+    "Copies": 1,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 147,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 433,
+    "Publica_id": 5,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 148,
+    "Vr_Date": "2025-04-07",
+    "Customer_id": 433,
+    "Publica_id": 4,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 149,
+    "Vr_Date": "2025-04-20",
+    "Customer_id": 23454,
+    "Publica_id": 12,
+    "Copies": 2,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 150,
+    "Vr_Date": "2025-04-17",
+    "Customer_id": 5349,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 151,
+    "Vr_Date": "2025-04-21",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 152,
+    "Vr_Date": "2025-04-21",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 153,
+    "Vr_Date": "2025-04-01",
+    "Customer_id": 20372,
+    "Publica_id": 4,
+    "Copies": 37,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 154,
+    "Vr_Date": "2025-04-24",
+    "Customer_id": 24019,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 156,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 3,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 157,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 5,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 158,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 5,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 159,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 160,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 161,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 162,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 621,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 163,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 5,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 164,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 3,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 165,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3841,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 166,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 167,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 4,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 168,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 169,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 170,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 171,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 172,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 173,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 174,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 175,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 176,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 177,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 178,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 179,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 180,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 4536,
+    "Publica_id": 11,
+    "Copies": 2,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 181,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 182,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 183,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 184,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 185,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 186,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 171,
+    "Copies": 4,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 187,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 28,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 188,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 189,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 69,
+    "Copies": 1,
+    "Rate": 125,
+    "Amt": 125,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 190,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 191,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 192,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 68,
+    "Copies": 1,
+    "Rate": 130,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 193,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 62,
+    "Copies": 1,
+    "Rate": 135,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 194,
+    "Vr_Date": "2025-04-26",
+    "Customer_id": 3001,
+    "Publica_id": 221,
+    "Copies": 1,
+    "Rate": 125,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 195,
+    "Vr_Date": "2025-04-28",
+    "Customer_id": 512,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 196,
+    "Vr_Date": "2025-04-28",
+    "Customer_id": 2317,
+    "Publica_id": 12,
+    "Copies": 1,
+    "Rate": 6.5,
+    "Amt": 432,
+    "Narr": "Feb 4-24   March 29-222 April-25-186"
+  },
+  {
+    "Retail_id": 197,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 198,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 199,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 200,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 201,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 2573,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 202,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 7401,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 203,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 2182,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 204,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 205,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 206,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 207,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 208,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 2070,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 209,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 17361,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 210,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 3091,
+    "Publica_id": 4,
+    "Copies": 34,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 211,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 23154,
+    "Publica_id": 4,
+    "Copies": 6,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 212,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 23231,
+    "Publica_id": 5,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 213,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 23648,
+    "Publica_id": 5,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 214,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 2999,
+    "Publica_id": 5,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 215,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 12908,
+    "Publica_id": 4,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 216,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 19781,
+    "Publica_id": 5,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 217,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": "AprilII"
+  },
+  {
+    "Retail_id": 218,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": "AprilII"
+  },
+  {
+    "Retail_id": 219,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": "April II"
+  },
+  {
+    "Retail_id": 220,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 221,
+    "Vr_Date": "2025-05-07",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 222,
+    "Vr_Date": "2025-05-11",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 223,
+    "Vr_Date": "2025-05-11",
+    "Customer_id": 21982,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 224,
+    "Vr_Date": "2025-05-11",
+    "Customer_id": 7552,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 293,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 226,
+    "Vr_Date": "2025-05-14",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 227,
+    "Vr_Date": "2025-05-14",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 228,
+    "Vr_Date": "2025-05-13",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 229,
+    "Vr_Date": "2025-05-13",
+    "Customer_id": 2148,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 230,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 4619,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 231,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 11804,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 232,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 13325,
+    "Publica_id": 5,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 233,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 24065,
+    "Publica_id": 4,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 234,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 4524,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 235,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 23679,
+    "Publica_id": 4,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 236,
+    "Vr_Date": "2025-05-21",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 237,
+    "Vr_Date": "2025-05-21",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 238,
+    "Vr_Date": "2025-05-21",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 239,
+    "Vr_Date": "2025-05-21",
+    "Customer_id": 16994,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 240,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 1145,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 241,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 4205,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 242,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 3547,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 243,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 244,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 5071,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 245,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 246,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 247,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 28,
+    "Copies": 2,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 248,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 249,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 69,
+    "Copies": 1,
+    "Rate": 125,
+    "Amt": 125,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 250,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 68,
+    "Copies": 1,
+    "Rate": 130,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 251,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 171,
+    "Copies": 2,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 252,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 253,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 3001,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 254,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 255,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 256,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 257,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 4536,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 258,
+    "Vr_Date": "2025-05-22",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 259,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 260,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 261,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 262,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 263,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 264,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 265,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 266,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 267,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 268,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 410,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 269,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 270,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 271,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 272,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 273,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 274,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 275,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 276,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 277,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 278,
+    "Vr_Date": "2025-05-23",
+    "Customer_id": 5400,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 279,
+    "Vr_Date": "2025-05-02",
+    "Customer_id": 24076,
+    "Publica_id": 1,
+    "Copies": 1,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 288,
+    "Vr_Date": "2025-05-25",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 281,
+    "Vr_Date": "2025-05-25",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 282,
+    "Vr_Date": "2025-05-25",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 283,
+    "Vr_Date": "2025-05-25",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 284,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 8810,
+    "Publica_id": 21,
+    "Copies": 24,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 285,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 24080,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 286,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 24080,
+    "Publica_id": 4,
+    "Copies": 16,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 287,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 15227,
+    "Publica_id": 5,
+    "Copies": 90,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 289,
+    "Vr_Date": "2025-05-25",
+    "Customer_id": 2999,
+    "Publica_id": 1,
+    "Copies": 2,
+    "Rate": 7,
+    "Amt": 7,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 290,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 23252,
+    "Publica_id": 4,
+    "Copies": 6,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 291,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 1206,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 292,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 1184,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 295,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 296,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 297,
+    "Vr_Date": "2025-05-01",
+    "Customer_id": 20028,
+    "Publica_id": 4,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 298,
+    "Vr_Date": "2025-05-28",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 299,
+    "Vr_Date": "2025-05-28",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 300,
+    "Vr_Date": "2025-05-28",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 301,
+    "Vr_Date": "2025-05-29",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 2,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 302,
+    "Vr_Date": "2025-06-11",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 303,
+    "Vr_Date": "2025-06-11",
+    "Customer_id": 24019,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 304,
+    "Vr_Date": "2025-05-12",
+    "Customer_id": 134,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 305,
+    "Vr_Date": "2025-05-12",
+    "Customer_id": 134,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 306,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 307,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 308,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 8870,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 329,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 21982,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 310,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 311,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 2182,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 312,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 313,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 7401,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 314,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 315,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 134,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 316,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 134,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 317,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 11949,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 318,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 319,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 11143,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 320,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 18033,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 321,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 19875,
+    "Publica_id": 21,
+    "Copies": 5,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 322,
+    "Vr_Date": "2025-06-18",
+    "Customer_id": 21641,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 323,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 21972,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 324,
+    "Vr_Date": "2025-06-13",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 325,
+    "Vr_Date": "2025-06-13",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 326,
+    "Vr_Date": "2025-06-13",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 327,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 17504,
+    "Publica_id": 4,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 328,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 22175,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 330,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 331,
+    "Vr_Date": "2025-06-06",
+    "Customer_id": 8884,
+    "Publica_id": 5,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 332,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 24062,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 333,
+    "Vr_Date": "2025-06-01",
+    "Customer_id": 2596,
+    "Publica_id": 5,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 334,
+    "Vr_Date": "2025-06-03",
+    "Customer_id": 2662,
+    "Publica_id": 12,
+    "Copies": 3,
+    "Rate": 6.5,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 335,
+    "Vr_Date": "2025-06-03",
+    "Customer_id": 2507,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 336,
+    "Vr_Date": "2025-06-16",
+    "Customer_id": 24036,
+    "Publica_id": 77,
+    "Copies": 1,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 337,
+    "Vr_Date": "2025-06-21",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 338,
+    "Vr_Date": "2025-06-21",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 339,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 18103,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 340,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 4943,
+    "Publica_id": 5,
+    "Copies": 9,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 341,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 18033,
+    "Publica_id": 33,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 342,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 9894,
+    "Publica_id": 213,
+    "Copies": 16,
+    "Rate": 250,
+    "Amt": 300,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 382,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 15360,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 344,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 24086,
+    "Publica_id": 512,
+    "Copies": 2,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 345,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 346,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 347,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 348,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 4,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 349,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 350,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 351,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 352,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5071,
+    "Publica_id": 512,
+    "Copies": 4,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 353,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 354,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 355,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 356,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 357,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3841,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 358,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 359,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3841,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 360,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 361,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 362,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 363,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 364,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 365,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 366,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 367,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 368,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 369,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 370,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 371,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 4898,
+    "Publica_id": 213,
+    "Copies": 1,
+    "Rate": 250,
+    "Amt": 300,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 372,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 2882,
+    "Publica_id": 512,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 373,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 374,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 9894,
+    "Publica_id": 221,
+    "Copies": 1,
+    "Rate": 125,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 375,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 9894,
+    "Publica_id": 68,
+    "Copies": 1,
+    "Rate": 130,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 376,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 377,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 3841,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 378,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 3841,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 379,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 380,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 3841,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 381,
+    "Vr_Date": "2025-05-26",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 383,
+    "Vr_Date": "2025-06-25",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 384,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 2148,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 385,
+    "Vr_Date": "2025-06-26",
+    "Customer_id": 1081,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 386,
+    "Vr_Date": "2025-06-27",
+    "Customer_id": 2622,
+    "Publica_id": 5,
+    "Copies": 51,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 387,
+    "Vr_Date": "2025-07-04",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 388,
+    "Vr_Date": "2025-07-04",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 389,
+    "Vr_Date": "2025-07-04",
+    "Customer_id": 11143,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 390,
+    "Vr_Date": "2025-07-08",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 391,
+    "Vr_Date": "2025-07-08",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 392,
+    "Vr_Date": "2025-07-11",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 393,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 15140,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 395,
+    "Vr_Date": "2025-07-03",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 396,
+    "Vr_Date": "2025-07-03",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 397,
+    "Vr_Date": "2025-07-03",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 398,
+    "Vr_Date": "2025-07-13",
+    "Customer_id": 19824,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 399,
+    "Vr_Date": "2025-07-13",
+    "Customer_id": 19824,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 400,
+    "Vr_Date": "2025-07-05",
+    "Customer_id": 4758,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 401,
+    "Vr_Date": "2025-07-05",
+    "Customer_id": 4758,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 402,
+    "Vr_Date": "2025-07-05",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 403,
+    "Vr_Date": "2025-07-05",
+    "Customer_id": 1081,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 404,
+    "Vr_Date": "2025-07-05",
+    "Customer_id": 5071,
+    "Publica_id": 4,
+    "Copies": 25,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 405,
+    "Vr_Date": "2025-07-08",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 406,
+    "Vr_Date": "2025-07-08",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 407,
+    "Vr_Date": "2025-07-09",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 408,
+    "Vr_Date": "2025-07-09",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 409,
+    "Vr_Date": "2025-07-09",
+    "Customer_id": 2182,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 410,
+    "Vr_Date": "2025-07-09",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 411,
+    "Vr_Date": "2025-07-09",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 412,
+    "Vr_Date": "2025-07-11",
+    "Customer_id": 11273,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 413,
+    "Vr_Date": "2025-07-11",
+    "Customer_id": 11273,
+    "Publica_id": 21,
+    "Copies": 1,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 414,
+    "Vr_Date": "2025-07-15",
+    "Customer_id": 21982,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 415,
+    "Vr_Date": "2025-07-08",
+    "Customer_id": 9894,
+    "Publica_id": 213,
+    "Copies": 4,
+    "Rate": 250,
+    "Amt": 300,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 416,
+    "Vr_Date": "2025-07-16",
+    "Customer_id": 9894,
+    "Publica_id": 68,
+    "Copies": 2,
+    "Rate": 130,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 417,
+    "Vr_Date": "2025-07-17",
+    "Customer_id": 7408,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 418,
+    "Vr_Date": "2025-07-17",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 419,
+    "Vr_Date": "2025-07-16",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 420,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 1097,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 421,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 20989,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 422,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 23942,
+    "Publica_id": 5,
+    "Copies": 24,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 423,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 512,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 424,
+    "Vr_Date": "2025-07-10",
+    "Customer_id": 24127,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 425,
+    "Vr_Date": "2025-07-20",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 426,
+    "Vr_Date": "2025-07-20",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 427,
+    "Vr_Date": "2025-07-20",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 428,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 2620,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 429,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 24130,
+    "Publica_id": 512,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 430,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 431,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 432,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 327,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 433,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 4132,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 434,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 435,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3841,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 436,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3841,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 437,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 438,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 439,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 3,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 440,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 441,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 442,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 443,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 444,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 410,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 110,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 445,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 316,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 446,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 447,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 448,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 449,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 450,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 451,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 452,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 453,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 454,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 455,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 456,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 457,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 2,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 458,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 5,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 459,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 3,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 460,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 461,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 462,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 20,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 463,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 464,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 465,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 466,
+    "Vr_Date": "2025-07-24",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 467,
+    "Vr_Date": "2025-07-06",
+    "Customer_id": 857,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 468,
+    "Vr_Date": "2025-07-06",
+    "Customer_id": 857,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 469,
+    "Vr_Date": "2025-07-06",
+    "Customer_id": 857,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 470,
+    "Vr_Date": "2025-07-06",
+    "Customer_id": 857,
+    "Publica_id": 1,
+    "Copies": 2,
+    "Rate": 7,
+    "Amt": 7,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 471,
+    "Vr_Date": "2025-07-25",
+    "Customer_id": 327,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 472,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 5,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 473,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 4,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 474,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 21,
+    "Copies": 7,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 475,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 1,
+    "Copies": 4,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 476,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 1,
+    "Copies": 3,
+    "Rate": 6,
+    "Amt": 7,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 477,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 12,
+    "Copies": 6,
+    "Rate": 6.5,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 478,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 80,
+    "Copies": 2,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 479,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 77,
+    "Copies": 1,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 480,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 13925,
+    "Publica_id": 20,
+    "Copies": 1,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 481,
+    "Vr_Date": "2025-07-30",
+    "Customer_id": 134,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 482,
+    "Vr_Date": "2025-07-30",
+    "Customer_id": 134,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 483,
+    "Vr_Date": "2025-08-10",
+    "Customer_id": 327,
+    "Publica_id": 1,
+    "Copies": 1,
+    "Rate": 7,
+    "Amt": 7,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 484,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 15125,
+    "Publica_id": 5,
+    "Copies": 6,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 485,
+    "Vr_Date": "2025-07-16",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 486,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 487,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 488,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 489,
+    "Vr_Date": "2025-07-01",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 490,
+    "Vr_Date": "2025-08-13",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 491,
+    "Vr_Date": "2025-08-13",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 492,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 2184,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 493,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 14178,
+    "Publica_id": 4,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 494,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 17854,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 495,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 829,
+    "Publica_id": 5,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 496,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 6884,
+    "Publica_id": 77,
+    "Copies": 5,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 497,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 6884,
+    "Publica_id": 77,
+    "Copies": 1,
+    "Rate": 12,
+    "Amt": 15,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 498,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 3547,
+    "Publica_id": 4,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 499,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 2070,
+    "Publica_id": 1,
+    "Copies": 1,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 500,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 2070,
+    "Publica_id": 12,
+    "Copies": 1,
+    "Rate": 6.5,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 501,
+    "Vr_Date": "2025-07-31",
+    "Customer_id": 20767,
+    "Publica_id": 1,
+    "Copies": 1,
+    "Rate": 6,
+    "Amt": 438,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 502,
+    "Vr_Date": "2025-08-18",
+    "Customer_id": 512,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 503,
+    "Vr_Date": "2025-08-18",
+    "Customer_id": 22680,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 20,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 504,
+    "Vr_Date": "2025-08-10",
+    "Customer_id": 134,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 505,
+    "Vr_Date": "2025-08-10",
+    "Customer_id": 134,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 506,
+    "Vr_Date": "2025-08-10",
+    "Customer_id": 18033,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 507,
+    "Vr_Date": "2025-08-10",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 508,
+    "Vr_Date": "2025-08-07",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 509,
+    "Vr_Date": "2025-08-17",
+    "Customer_id": 327,
+    "Publica_id": 1,
+    "Copies": 1,
+    "Rate": 7,
+    "Amt": 7,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 510,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 5522,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 511,
+    "Vr_Date": "2025-08-12",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 512,
+    "Vr_Date": "2025-08-12",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 513,
+    "Vr_Date": "2025-08-13",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 514,
+    "Vr_Date": "2025-08-12",
+    "Customer_id": 15709,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 515,
+    "Vr_Date": "2025-08-12",
+    "Customer_id": 5374,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 516,
+    "Vr_Date": "2025-08-12",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 517,
+    "Vr_Date": "2025-08-12",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 518,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 4523,
+    "Publica_id": 5,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "25-31.07"
+  },
+  {
+    "Retail_id": 519,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 20950,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 520,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 23758,
+    "Publica_id": 213,
+    "Copies": 8,
+    "Rate": 250,
+    "Amt": 300,
+    "Narr": "Dr Kumawat 18Jan25"
+  },
+  {
+    "Retail_id": 521,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 283,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 522,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 283,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 523,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 18348,
+    "Publica_id": 5,
+    "Copies": 7,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 524,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 4524,
+    "Publica_id": 5,
+    "Copies": 11,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 525,
+    "Vr_Date": "2025-08-01",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 526,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 24294,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 527,
+    "Vr_Date": "2025-08-05",
+    "Customer_id": 24294,
+    "Publica_id": 62,
+    "Copies": 1,
+    "Rate": 135,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 528,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 529,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 530,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3102,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 531,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3102,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 532,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 533,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 534,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 535,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 536,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 537,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 538,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 539,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 540,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 541,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 542,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 543,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3841,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 544,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 545,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 546,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 547,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 548,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 549,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 550,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 551,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 552,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 553,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 554,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 555,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 556,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 557,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 558,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 559,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 560,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 561,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 562,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 563,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 564,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 565,
+    "Vr_Date": "2025-08-23",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 566,
+    "Vr_Date": "2025-08-26",
+    "Customer_id": 15175,
+    "Publica_id": 21,
+    "Copies": 1,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 567,
+    "Vr_Date": "2025-08-26",
+    "Customer_id": 4084,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 568,
+    "Vr_Date": "2025-08-27",
+    "Customer_id": 24294,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 569,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 570,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 571,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 572,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5071,
+    "Publica_id": 512,
+    "Copies": 4,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 573,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 574,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 575,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 576,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 577,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 578,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 579,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 580,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 3,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 581,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 582,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 583,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 584,
+    "Vr_Date": "2025-08-28",
+    "Customer_id": 5138,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 585,
+    "Vr_Date": "2025-08-04",
+    "Customer_id": 24286,
+    "Publica_id": 5,
+    "Copies": 27,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "July"
+  },
+  {
+    "Retail_id": 586,
+    "Vr_Date": "2025-09-05",
+    "Customer_id": 11703,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 590,
+    "Vr_Date": "2025-09-15",
+    "Customer_id": 23034,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 589,
+    "Vr_Date": "2025-09-15",
+    "Customer_id": 23034,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 591,
+    "Vr_Date": "2025-09-15",
+    "Customer_id": 11703,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 592,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 593,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 594,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 4729,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 595,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 5349,
+    "Publica_id": 5,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 596,
+    "Vr_Date": "2025-09-10",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 597,
+    "Vr_Date": "2025-09-10",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 598,
+    "Vr_Date": "2025-09-10",
+    "Customer_id": 3352,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 599,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 600,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 601,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 134,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 602,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 134,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 619,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 22748,
+    "Publica_id": 21,
+    "Copies": 3,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 604,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 605,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 606,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 2182,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 607,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 608,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 609,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 610,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 611,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 5374,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 612,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 613,
+    "Vr_Date": "2025-09-11",
+    "Customer_id": 5248,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 614,
+    "Vr_Date": "2025-09-10",
+    "Customer_id": 24152,
+    "Publica_id": 21,
+    "Copies": 5,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 615,
+    "Vr_Date": "2025-09-10",
+    "Customer_id": 24152,
+    "Publica_id": 1,
+    "Copies": 1,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 616,
+    "Vr_Date": "2025-09-10",
+    "Customer_id": 7408,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 617,
+    "Vr_Date": "2025-09-16",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 618,
+    "Vr_Date": "2025-09-16",
+    "Customer_id": 7408,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 620,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 6611,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 621,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3841,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 622,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 623,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 624,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3841,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 625,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 626,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 627,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 628,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 629,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 630,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 631,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 632,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 633,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 634,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 635,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 636,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 637,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 638,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 410,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 639,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 640,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 641,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 642,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 643,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 45,
+    "Amt": 45,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 644,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 645,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 646,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 647,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 648,
+    "Vr_Date": "2025-09-19",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 649,
+    "Vr_Date": "2025-09-01",
+    "Customer_id": 3547,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "29-31.08"
+  },
+  {
+    "Retail_id": 650,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 651,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 652,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 653,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 654,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 655,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 656,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 657,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 658,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 659,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 660,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 1,
+    "Rate": 30,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 661,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 662,
+    "Vr_Date": "2025-09-24",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 663,
+    "Vr_Date": "2025-09-26",
+    "Customer_id": 23889,
+    "Publica_id": 4,
+    "Copies": 220,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "21.01.25 se start"
+  },
+  {
+    "Retail_id": 664,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 303,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 665,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": "30.09"
+  },
+  {
+    "Retail_id": 666,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 667,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 7048,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 668,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 23701,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 669,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 6370,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 670,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 671,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 672,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 495,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 673,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 15709,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 674,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 675,
+    "Vr_Date": "2025-10-05",
+    "Customer_id": 5374,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 676,
+    "Vr_Date": "2025-10-10",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 677,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 678,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 679,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 12340,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 680,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 681,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 19219,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 682,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 683,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 4619,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 684,
+    "Vr_Date": "2025-10-14",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 685,
+    "Vr_Date": "2025-10-14",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 686,
+    "Vr_Date": "2025-10-14",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 687,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 3633,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 688,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 930,
+    "Publica_id": 33,
+    "Copies": 3,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 689,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 690,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 691,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 23559,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 692,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 22705,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 693,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 694,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 695,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 35,
+    "Amt": 30,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 696,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 40,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 697,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 698,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 699,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 700,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 30,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 701,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 702,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 703,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 704,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 705,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 706,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 707,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 3841,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 708,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 709,
+    "Vr_Date": "2025-10-24",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 710,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 1826,
+    "Publica_id": 4,
+    "Copies": 16,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 711,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 712,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 2,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 713,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 714,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 715,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 716,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 717,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5071,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 718,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 719,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 720,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 721,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 722,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 723,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 724,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 725,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 5138,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 726,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 727,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 728,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 1,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 729,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 3841,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 730,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 731,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 732,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 621,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 733,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 2,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 734,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 735,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 736,
+    "Vr_Date": "2025-10-26",
+    "Customer_id": 2148,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 737,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 23694,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 738,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 23694,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 739,
+    "Vr_Date": "2025-10-09",
+    "Customer_id": 6821,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 740,
+    "Vr_Date": "2025-10-17",
+    "Customer_id": 5400,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 741,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 1397,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "30.10 Nafa Late"
+  },
+  {
+    "Retail_id": 742,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 1411,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 743,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 1411,
+    "Publica_id": 214,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 744,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 24080,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 745,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 11273,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 746,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 11273,
+    "Publica_id": 21,
+    "Copies": 1,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 747,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 748,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 749,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 23175,
+    "Publica_id": 13,
+    "Copies": 2,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 750,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 751,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 752,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 753,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 5374,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 754,
+    "Vr_Date": "2025-11-04",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 755,
+    "Vr_Date": "2025-11-06",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 756,
+    "Vr_Date": "2025-11-13",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 757,
+    "Vr_Date": "2025-11-13",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 758,
+    "Vr_Date": "2025-11-13",
+    "Customer_id": 19824,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 759,
+    "Vr_Date": "2025-11-07",
+    "Customer_id": 15709,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 760,
+    "Vr_Date": "2025-11-08",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 761,
+    "Vr_Date": "2025-11-13",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 762,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 20412,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 763,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 6351,
+    "Publica_id": 4,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 764,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 6351,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 765,
+    "Vr_Date": "2025-11-12",
+    "Customer_id": 2148,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 766,
+    "Vr_Date": "2025-11-12",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 767,
+    "Vr_Date": "2025-11-12",
+    "Customer_id": 23904,
+    "Publica_id": 4,
+    "Copies": 8,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "24-31.10"
+  },
+  {
+    "Retail_id": 768,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 23751,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 769,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 14779,
+    "Publica_id": 5,
+    "Copies": 6,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 770,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 5688,
+    "Publica_id": 5,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 771,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 14612,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 772,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 4076,
+    "Publica_id": 5,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 773,
+    "Vr_Date": "2025-11-21",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 774,
+    "Vr_Date": "2025-11-21",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 775,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 19661,
+    "Publica_id": 12,
+    "Copies": 2,
+    "Rate": 12,
+    "Amt": 12,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 776,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 19661,
+    "Publica_id": 12,
+    "Copies": 2,
+    "Rate": 12,
+    "Amt": 6.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 777,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 22994,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 778,
+    "Vr_Date": "2025-11-01",
+    "Customer_id": 12096,
+    "Publica_id": 4,
+    "Copies": 4,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 779,
+    "Vr_Date": "2025-11-21",
+    "Customer_id": 14421,
+    "Publica_id": 4,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 780,
+    "Vr_Date": "2025-11-21",
+    "Customer_id": 512,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 781,
+    "Vr_Date": "2025-11-21",
+    "Customer_id": 24127,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 782,
+    "Vr_Date": "2025-11-22",
+    "Customer_id": 614,
+    "Publica_id": 5,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 783,
+    "Vr_Date": "2025-11-22",
+    "Customer_id": 614,
+    "Publica_id": 4,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 784,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 785,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 786,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 787,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 5,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 788,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 789,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 790,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 791,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 40,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 792,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 793,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 794,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 109,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 795,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 796,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 797,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 798,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 799,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 800,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 801,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 802,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 803,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 4,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 804,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 805,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 806,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 807,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 808,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 809,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 410,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 810,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 811,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 812,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 5138,
+    "Publica_id": 109,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 813,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 814,
+    "Vr_Date": "2025-11-26",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 815,
+    "Vr_Date": "2025-11-29",
+    "Customer_id": 930,
+    "Publica_id": 33,
+    "Copies": 3,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 816,
+    "Vr_Date": "2025-12-01",
+    "Customer_id": 614,
+    "Publica_id": 5,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 817,
+    "Vr_Date": "2025-12-01",
+    "Customer_id": 614,
+    "Publica_id": 4,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 818,
+    "Vr_Date": "2025-12-05",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 819,
+    "Vr_Date": "2025-12-05",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 820,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 13349,
+    "Publica_id": 218,
+    "Copies": 1,
+    "Rate": 1,
+    "Amt": 200,
+    "Narr": "Sonu se le gaye the Nov me"
+  },
+  {
+    "Retail_id": 821,
+    "Vr_Date": "2025-12-13",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 822,
+    "Vr_Date": "2025-12-16",
+    "Customer_id": 2553,
+    "Publica_id": 512,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 823,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 824,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 2620,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 825,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 2236,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 826,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 827,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 828,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 5374,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 829,
+    "Vr_Date": "2025-12-06",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 830,
+    "Vr_Date": "2025-12-01",
+    "Customer_id": 9848,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 831,
+    "Vr_Date": "2025-12-10",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 832,
+    "Vr_Date": "2025-12-10",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 833,
+    "Vr_Date": "2025-12-13",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 834,
+    "Vr_Date": "2025-12-13",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 835,
+    "Vr_Date": "2025-12-13",
+    "Customer_id": 19824,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 836,
+    "Vr_Date": "2025-12-13",
+    "Customer_id": 23413,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 837,
+    "Vr_Date": "2025-12-12",
+    "Customer_id": 4553,
+    "Publica_id": 218,
+    "Copies": 1,
+    "Rate": 1,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 838,
+    "Vr_Date": "2025-12-12",
+    "Customer_id": 15267,
+    "Publica_id": 5,
+    "Copies": 3,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 839,
+    "Vr_Date": "2025-12-20",
+    "Customer_id": 11949,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 840,
+    "Vr_Date": "2025-12-20",
+    "Customer_id": 13633,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 841,
+    "Vr_Date": "2025-12-23",
+    "Customer_id": 19934,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 842,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 24251,
+    "Publica_id": 21,
+    "Copies": 2,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 843,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 24251,
+    "Publica_id": 80,
+    "Copies": 2,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 844,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 845,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 846,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 847,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3841,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 848,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 849,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 850,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 851,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 852,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 853,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 854,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 855,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 856,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 857,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 858,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 859,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 860,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 419,
+    "Copies": 1,
+    "Rate": 35,
+    "Amt": 40,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 861,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 862,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 863,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 864,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 4,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 865,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 412,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 866,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 867,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 868,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 621,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 869,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 870,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 4536,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 871,
+    "Vr_Date": "2025-12-25",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 872,
+    "Vr_Date": "2025-12-24",
+    "Customer_id": 19383,
+    "Publica_id": 5,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 873,
+    "Vr_Date": "2025-12-26",
+    "Customer_id": 19383,
+    "Publica_id": 5,
+    "Copies": 2,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 874,
+    "Vr_Date": "2026-01-07",
+    "Customer_id": 990,
+    "Publica_id": 4,
+    "Copies": 1,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "waiter"
+  },
+  {
+    "Retail_id": 875,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": "DecII"
+  },
+  {
+    "Retail_id": 876,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 877,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 878,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 3739,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 879,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 19824,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 880,
+    "Vr_Date": "2026-01-07",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": "Jan1"
+  },
+  {
+    "Retail_id": 881,
+    "Vr_Date": "2026-01-07",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 882,
+    "Vr_Date": "2026-01-10",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 883,
+    "Vr_Date": "2026-01-10",
+    "Customer_id": 23175,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 884,
+    "Vr_Date": "2026-01-14",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 885,
+    "Vr_Date": "2026-01-14",
+    "Customer_id": 2148,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 886,
+    "Vr_Date": "2026-01-14",
+    "Customer_id": 24576,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 887,
+    "Vr_Date": "2026-01-01",
+    "Customer_id": 18106,
+    "Publica_id": 80,
+    "Copies": 3,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 888,
+    "Vr_Date": "2026-01-16",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 889,
+    "Vr_Date": "2026-01-24",
+    "Customer_id": 18238,
+    "Publica_id": 5,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 890,
+    "Vr_Date": "2026-01-24",
+    "Customer_id": 24560,
+    "Publica_id": 4,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 891,
+    "Vr_Date": "2026-01-24",
+    "Customer_id": 9432,
+    "Publica_id": 21,
+    "Copies": 3,
+    "Rate": 4.5,
+    "Amt": 4.5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 892,
+    "Vr_Date": "2026-01-01",
+    "Customer_id": 22202,
+    "Publica_id": 5,
+    "Copies": 5,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 893,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 894,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 895,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4610,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 896,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3292,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 897,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3292,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 898,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3292,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 899,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4536,
+    "Publica_id": 13,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 900,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4536,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 901,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4536,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 902,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3841,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 903,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3841,
+    "Publica_id": 15,
+    "Copies": 5,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 904,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3841,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 905,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3841,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 906,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3841,
+    "Publica_id": 75,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 907,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 908,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 410,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 909,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 15,
+    "Copies": 5,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 910,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 23,
+    "Copies": 2,
+    "Rate": 65,
+    "Amt": 65,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 911,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 912,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 913,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 914,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 3,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 915,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 513,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 916,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 917,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5138,
+    "Publica_id": 24,
+    "Copies": 1,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 918,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 15,
+    "Copies": 4,
+    "Rate": 35,
+    "Amt": 35,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 919,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 94,
+    "Copies": 1,
+    "Rate": 50,
+    "Amt": 50,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 920,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 33,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 921,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 109,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 922,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 923,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 2,
+    "Rate": 100,
+    "Amt": 100,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 924,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 513,
+    "Copies": 1,
+    "Rate": 100,
+    "Amt": 200,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 925,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 621,
+    "Publica_id": 24,
+    "Copies": 2,
+    "Rate": 55,
+    "Amt": 55,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 926,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5071,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 927,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5071,
+    "Publica_id": 22,
+    "Copies": 1,
+    "Rate": 150,
+    "Amt": 150,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 928,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5071,
+    "Publica_id": 44,
+    "Copies": 1,
+    "Rate": 22,
+    "Amt": 22,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 929,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 146,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 930,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 12829,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 931,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 24244,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 932,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4332,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 933,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4876,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 934,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 8731,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 935,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 13961,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 936,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5325,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 937,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5357,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 938,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5396,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 939,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5400,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 940,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 14814,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 941,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 19526,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 942,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3561,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 943,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3717,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 944,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 12426,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 945,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 1156,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 946,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 1386,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 947,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 1707,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 948,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 1810,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 949,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 20773,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 950,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 23785,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 951,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3352,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 952,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3929,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 953,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 20717,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 954,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 6775,
+    "Publica_id": 33,
+    "Copies": 3,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 955,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 22784,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 956,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 23910,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 957,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 24492,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 958,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 24506,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 959,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 19270,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 960,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 24527,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 961,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 24530,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 962,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 24543,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 963,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 4513,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 964,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 15360,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 965,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 18455,
+    "Publica_id": 33,
+    "Copies": 2,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 966,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 21857,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 967,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 7048,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 968,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 1717,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 969,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 2070,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 970,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 2737,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 971,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5483,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 972,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 6161,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 973,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 7633,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 974,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 10484,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 975,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 11949,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 976,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 15700,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 977,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 17898,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 978,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 18831,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 979,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5206,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 980,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3231,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 981,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 5522,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 982,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 22705,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 983,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 23559,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 984,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 10986,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 985,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 12734,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 986,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 16812,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 987,
+    "Vr_Date": "2026-01-26",
+    "Customer_id": 3633,
+    "Publica_id": 33,
+    "Copies": 1,
+    "Rate": 10,
+    "Amt": 10,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 988,
+    "Vr_Date": "2026-01-28",
+    "Customer_id": 1081,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 989,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 990,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 991,
+    "Vr_Date": "2026-01-06",
+    "Customer_id": 20255,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 992,
+    "Vr_Date": "2026-01-29",
+    "Customer_id": 24616,
+    "Publica_id": 5,
+    "Copies": 632,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": "April2024 to Dec25\r\n"
+  },
+  {
+    "Retail_id": 993,
+    "Vr_Date": "2026-01-29",
+    "Customer_id": 18238,
+    "Publica_id": 4,
+    "Copies": 10,
+    "Rate": 5,
+    "Amt": 5,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 994,
+    "Vr_Date": "2026-01-30",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 995,
+    "Vr_Date": "2025-10-01",
+    "Customer_id": 24429,
+    "Publica_id": 310,
+    "Copies": 1,
+    "Rate": 1,
+    "Amt": 2878,
+    "Narr": "April to Sep"
+  },
+  {
+    "Retail_id": 999,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 1686,
+    "Publica_id": 1,
+    "Copies": 2,
+    "Rate": 6,
+    "Amt": 6,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 998,
+    "Vr_Date": "2026-01-11",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1000,
+    "Vr_Date": "2026-02-11",
+    "Customer_id": 11703,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1001,
+    "Vr_Date": "2026-02-11",
+    "Customer_id": 19824,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1002,
+    "Vr_Date": "2026-02-11",
+    "Customer_id": 3103,
+    "Publica_id": 11,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1003,
+    "Vr_Date": "2026-02-11",
+    "Customer_id": 3103,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1004,
+    "Vr_Date": "2026-02-11",
+    "Customer_id": 21970,
+    "Publica_id": 17,
+    "Copies": 1,
+    "Rate": 75,
+    "Amt": 75,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1005,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 2553,
+    "Publica_id": 512,
+    "Copies": 1,
+    "Rate": 60,
+    "Amt": 60,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1006,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 2273,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1007,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 2148,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1008,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 1081,
+    "Publica_id": 40,
+    "Copies": 1,
+    "Rate": 70,
+    "Amt": 70,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1009,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 1081,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1010,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 12340,
+    "Publica_id": 10,
+    "Copies": 1,
+    "Rate": 80,
+    "Amt": 80,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1011,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 15383,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  },
+  {
+    "Retail_id": 1012,
+    "Vr_Date": "2026-02-13",
+    "Customer_id": 1768,
+    "Publica_id": 49,
+    "Copies": 1,
+    "Rate": 25,
+    "Amt": 25,
+    "Narr": ""
+  }
+]

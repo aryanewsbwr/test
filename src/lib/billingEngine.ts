@@ -649,13 +649,13 @@ export function calculateBilling({
 
         customerRetailTotal += amt;
 
-        // Add to breakup with sort_order 3 (Retail / Counter Purchase)
+        // Add to breakup with sort_order 1 (Paper / Magazine Item) so it appears in itemized line items
         custBreakup.push({
           customer_id: custId,
           name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
           customer_hindi: cust.name_hindi || cust.Name_hindi || '',
-          sort_order: 3,
-          item: `[Retail Sale] ${pubName}`,
+          sort_order: 1,
+          item: `${pubName} (Retail)`,
           rate: rate,
           qty: copies,
           days_or_copies: copies,
@@ -776,7 +776,7 @@ export function calculateBilling({
       opening_balance_this_bill: openingBalanceThisBill,
       current_month_charges: currentMonthCharges,
       previous_due: openingBalanceThisBill,
-      paper_amount: customerPaperTotal,
+      paper_amount: customerPaperTotal + customerRetailTotal,
       delivery_amount: customerDeliveryTotal,
       discount_amount: customerDiscountTotal,
       retail_sale_amount: customerRetailTotal,
