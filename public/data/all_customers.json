@@ -440432,14 +440432,18 @@
     "phone": "",
     "priority": 1,
     "region_id": 120,
-    "dueamount": 100,
-    "cbal": -848,
+    "dueamount": 3206,
+    "cbal": 3206,
     "delivery": 0,
     "discount": 0,
     "security_deposit": 0,
     "is_self": true,
     "paid": "P",
-    "type_cust": -1
+    "type_cust": -1,
+    "opening_balance": 3206,
+    "due_amt": 3206,
+    "c_bal": 3206,
+    "Dueamount": 3206
   },
   {
     "customer_id": 24670,
