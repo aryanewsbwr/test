@@ -136,15 +136,17 @@ export default function RetailSalePermanentForm({
       if (field === 'publica_id') {
         cur.publica_id = Number(value);
         cur.rate = getPubDefaultRate(Number(value));
-        cur.amt = Math.round(cur.copies * cur.rate * 100) / 100;
+        cur.amt = cur.rate; // Rec.Amt per copy defaults to publication rate
       } else if (field === 'copies') {
         cur.copies = Math.max(1, Number(value) || 1);
-        cur.amt = Math.round(cur.copies * cur.rate * 100) / 100;
       } else if (field === 'rate') {
         cur.rate = Number(value) || 0;
-        cur.amt = Math.round(cur.copies * cur.rate * 100) / 100;
+        // If amt was matching previous rate or unset, sync it
+        if (!cur.amt || cur.amt === cur.rate) {
+          cur.amt = cur.rate;
+        }
       } else if (field === 'amt') {
-        cur.amt = Number(value) || 0;
+        cur.amt = Number(value) || 0; // Rec.Amt per copy set by user
       }
       updated[index] = cur;
       return updated;
@@ -226,7 +228,7 @@ export default function RetailSalePermanentForm({
 
       const data = await res.json();
       if (res.ok && data.success) {
-        const total = rows.reduce((s, r) => s + r.amt, 0);
+        const total = rows.reduce((s, r) => s + (Number(r.copies || 1) * Number(r.amt || 0)), 0);
         setStatusMsg({ 
           text: `Record Saved! Retail sale of ₹${total.toFixed(2)} recorded for Customer #${selectedCust.customer_id} (${selectedCust.name_eng}). Added to Monthly Bill.`, 
           isError: false 
@@ -261,7 +263,7 @@ export default function RetailSalePermanentForm({
   if (!isOpen) return null;
 
   const totalCopies = rows.reduce((s, r) => s + Number(r.copies || 0), 0);
-  const totalAmount = rows.reduce((s, r) => s + Number(r.amt || 0), 0);
+  const totalAmount = rows.reduce((s, r) => s + (Number(r.copies || 1) * Number(r.amt || 0)), 0);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 font-sans select-none">
@@ -429,24 +431,32 @@ export default function RetailSalePermanentForm({
                     />
                   </div>
 
-                  {/* Rate */}
+                  {/* Rate (Cover/Printed Rate) */}
                   <div className="col-span-2 p-1 text-right">
                     <input 
                       type="number" 
                       step="0.5"
                       value={row.rate}
                       onChange={(e) => handleUpdateRow(idx, 'rate', e.target.value)}
-                      className="w-full text-right font-mono font-bold bg-transparent outline-none"
+                      className="w-full text-right font-mono font-bold bg-transparent outline-none focus:bg-yellow-100"
+                      title="Rate (MRP/Printed Rate)"
                     />
                   </div>
 
-                  {/* Rec.Amt */}
-                  <div className="col-span-2 p-1 text-right font-mono font-black text-emerald-950 flex items-center justify-end gap-1">
-                    <span>{Number(row.amt).toFixed(2)}</span>
+                  {/* Rec.Amt (Recovery Amount Per Copy) */}
+                  <div className="col-span-2 p-1 text-right flex items-center justify-end gap-1">
+                    <input 
+                      type="number" 
+                      step="0.5"
+                      value={row.amt}
+                      onChange={(e) => handleUpdateRow(idx, 'amt', e.target.value)}
+                      className="w-full text-right font-mono font-black text-emerald-950 bg-transparent outline-none focus:bg-yellow-100"
+                      title="Rec.Amt (Per Copy Recovery Rate charged to customer)"
+                    />
                     {rows.length > 1 && (
                       <button 
                         onClick={() => handleRemoveRow(idx)}
-                        className="text-red-700 hover:text-red-900 font-bold text-xs px-1"
+                        className="text-red-700 hover:text-red-900 font-bold text-xs px-1 cursor-pointer"
                         title="Remove Item"
                       >
                         ✕

@@ -517,9 +517,10 @@ export function sushaToUnicode(text: string): string {
 /**
  * Phonetic transliteration from English to Hindi Unicode
  */
-export function englishToHindiPhonetic(str: string): string {
-  if (!str) return '';
-  const trimmed = str.trim().toLowerCase();
+export function englishToHindiPhonetic(str: any): string {
+  const s = typeof str === 'string' ? str : (str != null ? String(str) : '');
+  if (!s || !s.trim()) return '';
+  const trimmed = s.trim().toLowerCase();
   
   // Check known publications
   if (KNOWN_PUBLICATIONS_HINDI[trimmed]) {
@@ -527,8 +528,8 @@ export function englishToHindiPhonetic(str: string): string {
   }
 
   // Word-by-word transliteration
-  const words = str.split(/(\s+)/);
-  const converted = words.map(w => {
+  const words = s.split(/(\s+)/);
+  const converted = words.map((w: string) => {
     if (/^\s+$/.test(w)) return w;
     const clean = w.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (!clean) return w;
@@ -669,8 +670,13 @@ const KNOWN_PHRASES_MAP: Record<string, string> = {
 /**
  * Master function: Converts Susha 05, Kruti Dev, or English string to clean Unicode Devanagari Hindi
  */
-export function cleanOrTransliterateHindi(rawHindi: string | undefined | null, englishName: string): string {
-  const engLower = (englishName || '').trim().toLowerCase();
+export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): string {
+  const engStr = typeof englishName === 'string' ? englishName : (englishName != null ? String(englishName) : '');
+  const rawHindiStr = typeof rawHindi === 'string' ? rawHindi : (rawHindi != null ? String(rawHindi) : '');
+  const engTrimmed = engStr.trim();
+  const engLower = engTrimmed.toLowerCase();
+  const rawHindiTrimmed = rawHindiStr.trim();
+
   if (KNOWN_PHRASES_MAP[engLower]) {
     return KNOWN_PHRASES_MAP[engLower];
   }
@@ -681,43 +687,43 @@ export function cleanOrTransliterateHindi(rawHindi: string | undefined | null, e
   }
 
   // Specific check for Whatsapp in rawHindi or English
-  if (engLower.includes('whatsapp') || (rawHindi && (rawHindi.includes('vyaaTsePp') || rawHindi.includes('वयाटस')))) {
+  if (engLower.includes('whatsapp') || (rawHindiTrimmed && (rawHindiTrimmed.includes('vyaaTsePp') || rawHindiTrimmed.includes('वयाटस')))) {
     return 'व्हाट्सएप सैम्पल';
   }
 
   // If already contains genuine Unicode Hindi characters
-  if (rawHindi && /[\u0900-\u097F]/.test(rawHindi)) {
-    return rawHindi;
+  if (rawHindiTrimmed && /[\u0900-\u097F]/.test(rawHindiTrimmed)) {
+    return rawHindiTrimmed;
   }
 
   // Check Kruti Dev map
-  if (rawHindi && KRUTI_DEV_MAP[rawHindi.trim()]) {
-    return KRUTI_DEV_MAP[rawHindi.trim()];
+  if (rawHindiTrimmed && KRUTI_DEV_MAP[rawHindiTrimmed]) {
+    return KRUTI_DEV_MAP[rawHindiTrimmed];
   }
 
   // Check Susha font decoding if rawHindi looks like Susha ASCII
-  if (rawHindi && rawHindi.trim().length > 0) {
-    const decoded = sushaToUnicode(rawHindi.trim());
+  if (rawHindiTrimmed && rawHindiTrimmed.length > 0) {
+    const decoded = sushaToUnicode(rawHindiTrimmed);
     if (decoded && /[\u0900-\u097F]/.test(decoded)) {
       return decoded;
     }
   }
 
   // Check English phonetic transliteration
-  if (englishName && englishName.trim().length > 0) {
-    return englishToHindiPhonetic(englishName);
+  if (engTrimmed.length > 0) {
+    return englishToHindiPhonetic(engTrimmed);
   }
 
-  return rawHindi || '';
+  return rawHindiTrimmed || '';
 }
 
 /**
  * Asynchronous transliteration helper: calls /api/transliterate (with Google Input Tools + fallback)
  * or falls back to offline phonetic engine if offline or server-side.
  */
-export async function transliterateToHindiAsync(englishText: string): Promise<string> {
-  if (!englishText || !englishText.trim()) return '';
-  const clean = englishText.trim();
+export async function transliterateToHindiAsync(englishText: any): Promise<string> {
+  const clean = typeof englishText === 'string' ? englishText.trim() : (englishText != null ? String(englishText).trim() : '');
+  if (!clean) return '';
 
   if (typeof window !== 'undefined') {
     try {

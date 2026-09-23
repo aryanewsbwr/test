@@ -20,10 +20,15 @@ function saveJson(filename: string, data: any) {
 export async function GET(request: NextRequest) {
   try {
     const regions = loadJson('regions.json');
-    const decoded = regions.map((r: any) => ({
-      ...r,
-      hindi_name: cleanOrTransliterateHindi(r.hindi_name, r.region_name || r.name)
-    }));
+    const decoded = regions.map((r: any) => {
+      const rName = String(r.region_name || r.name || '');
+      return {
+        ...r,
+        region_name: rName,
+        name: rName,
+        hindi_name: cleanOrTransliterateHindi(r.hindi_name, rName)
+      };
+    });
     return NextResponse.json({ total: decoded.length, regions: decoded });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

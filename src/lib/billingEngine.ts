@@ -641,13 +641,21 @@ export function calculateBilling({
       // Ensure transaction falls within target billing month
       if (vrDate && vrDate >= monthStartIso && vrDate <= monthEndIso) {
         const copies = Number(rs.copies || rs.Copies || 1);
-        const rate = Number(rs.rate || rs.Rate || 0);
-        const amt = Number(rs.amt !== undefined ? rs.amt : (rs.Amt !== undefined ? rs.Amt : copies * rate));
+        // User rule: Rate should be taken from Rec.Amt per copy, NOT from rate column!
+        const recAmtPerCopy = Number(
+          rs.amt !== undefined && rs.amt !== null ? rs.amt : 
+          (rs.Amt !== undefined && rs.Amt !== null ? rs.Amt : 
+          (rs.rec_amt !== undefined && rs.rec_amt !== null ? rs.rec_amt : 
+          (rs.amount !== undefined && rs.amount !== null ? rs.amount : 
+          (rs.rate || rs.Rate || 0))))
+        );
+        const effectiveRate = recAmtPerCopy > 0 ? recAmtPerCopy : Number(rs.rate || rs.Rate || 0);
+        const lineAmt = Math.round(copies * effectiveRate * 100) / 100;
         const pubId = rs.publica_id || rs.Publica_id;
         const pub = pubMap.get(pubId);
         const pubName = pub?.name || pub?.public_name || pub?.Public_name || rs.public_name || `Publication #${pubId}`;
 
-        customerRetailTotal += amt;
+        customerRetailTotal += lineAmt;
 
         // Add to breakup with sort_order 1 (Paper / Magazine Item) so it appears in itemized line items
         custBreakup.push({
@@ -656,10 +664,10 @@ export function calculateBilling({
           customer_hindi: cust.name_hindi || cust.Name_hindi || '',
           sort_order: 1,
           item: `${pubName} (Retail)`,
-          rate: rate,
+          rate: effectiveRate,
           qty: copies,
           days_or_copies: copies,
-          amount: amt
+          amount: lineAmt
         });
 
         // Add to db_bill_items with sno: null (matching historical legacy billYYYYYYYY pattern)
@@ -669,9 +677,9 @@ export function calculateBilling({
           Publica_id: pubId,
           Region_id: custRegionId,
           Qty: copies,
-          Rate: rate,
+          Rate: effectiveRate,
           D_Charges: null,
-          TotalAmt: amt,
+          TotalAmt: lineAmt,
           Month: standardMonthName,
           year: String(startYear),
           sno: null
