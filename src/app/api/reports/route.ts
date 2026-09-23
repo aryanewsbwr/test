@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { supabase } from '@/lib/supabaseClient';
+import { calculateBilling } from '@/lib/billingEngine';
+import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +19,8 @@ interface CacheData {
   countersale: any[];
   publishers: any[];
   rates: any[];
+  ratechanges: any[];
+  holidays: any[];
   collect: any[];
 }
 
@@ -48,10 +53,108 @@ function getCache(): CacheData {
     countersale: load('countersale.json'),
     publishers: load('publishers.json'),
     rates: load('rates.json'),
+    ratechanges: load('ratechanges.json'),
+    holidays: load('holidays.json'),
     collect: load('collect.json'),
   };
 
   return cache;
+}
+
+async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
+  if (customerIds.length === 0) return [];
+
+  const CHUNK_SIZE = 200;
+  const backSubs: any[] = [];
+  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+    const { data } = await supabase
+      .from('customer_detailback')
+      .select('*')
+      .in('Customer_id', chunk);
+    if (data) backSubs.push(...data);
+  }
+
+  const parseD = (d: any, t: any) => {
+    if (!d) return 0;
+    const p = String(d).split('/');
+    if (p.length !== 3) return 0;
+    const tp = String(t || '00:00').split(':');
+    return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]), Number(tp[0]) || 0, Number(tp[1]) || 0).getTime();
+  };
+
+  const subsByCust = new Map<number, any[]>();
+  for (const row of backSubs) {
+    const cid = row.Customer_id || row.customer_id;
+    if (!subsByCust.has(cid)) subsByCust.set(cid, []);
+    subsByCust.get(cid)!.push(row);
+  }
+
+  const result: any[] = [];
+  const foundCustIds = new Set<number>();
+
+  subsByCust.forEach((rows, cid) => {
+    foundCustIds.add(cid);
+    let maxTime = 0;
+    for (const r of rows) {
+      const t = parseD(r.Dated, r.PostedTime);
+      if (t > maxTime) maxTime = t;
+    }
+    const latestRows = rows.filter(r => parseD(r.Dated, r.PostedTime) === maxTime);
+    result.push(...latestRows);
+  });
+
+  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
+  if (missingCustIds.length > 0) {
+    for (let i = 0; i < missingCustIds.length; i += CHUNK_SIZE) {
+      const chunk = missingCustIds.slice(i, i + CHUNK_SIZE);
+      const { data: cdSubs } = await supabase
+        .from('customer_detail')
+        .select('*')
+        .in('customer_id', chunk);
+      if (cdSubs) result.push(...cdSubs);
+    }
+  }
+
+  return result;
+}
+
+async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
+  if (customerIds.length === 0) return { bills: [], receipts: [] };
+  const CHUNK_SIZE = 200;
+  const allBills: any[] = [];
+  const allReceipts: any[] = [];
+
+  if (fySuffix === '20262027') {
+    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+      const [{ data: bData }, { data: rData }] = await Promise.all([
+        supabase.from('bill').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027'),
+        supabase.from('receipt').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027')
+      ]);
+      if (bData) allBills.push(...bData);
+      if (rData) allReceipts.push(...rData);
+    }
+    return { bills: allBills, receipts: allReceipts };
+  } else {
+    try {
+      for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+        const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+        const [{ data: bData }, { data: rData }] = await Promise.all([
+          supabase.from(`billno${fySuffix}`).select('*').in('Customer_id', chunk),
+          supabase.from(`receipt${fySuffix}`).select('*').in('Customer_id', chunk)
+        ]);
+        if (bData) allBills.push(...bData);
+        if (rData) allReceipts.push(...rData);
+      }
+      if (allBills.length > 0) {
+        return { bills: allBills, receipts: allReceipts };
+      }
+    } catch (e) {
+      // fallback
+    }
+    return { bills: [], receipts: [] };
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -654,7 +757,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 15. Bill Printing: Region Wise & Single Bill Printing
+    // 15. Bill Printing: Region Wise & Single Bill Printing (Authentic VB6 Billing Engine)
     if (reportType === 'bill_print_region' || reportType === 'bill_print_single') {
       let targetCusts = data.customers;
       if (regionId && regionId !== 'all') {
@@ -663,7 +766,7 @@ export async function GET(request: NextRequest) {
       }
       if (search) {
         targetCusts = targetCusts.filter(c => 
-          (c.name_eng || '').toLowerCase().includes(search) || 
+          (c.name_eng || '').toLowerCase().includes(search.toLowerCase()) || 
           String(c.customer_id).includes(search)
         );
       }
@@ -673,6 +776,61 @@ export async function GET(request: NextRequest) {
         targetCusts = targetCusts.slice(0, 1);
       }
 
+      const totalMatching = targetCusts.length;
+      const pageCusts = targetCusts.slice((page - 1) * limit, page * limit);
+      const targetCustIds = pageCusts.map(c => c.customer_id);
+
+      // Determine fiscal year suffix (e.g. 20262027)
+      let fySuffix = '20252026';
+      const yStr = String(year);
+      if (yStr.length === 8) {
+        fySuffix = yStr;
+      } else {
+        const startY = parseInt(yStr, 10) || 2026;
+        fySuffix = `${startY}${startY + 1}`;
+      }
+
+      let custSubs: any[] = [];
+      let liveBills: any[] = [];
+      let liveReceipts: any[] = [];
+      let pubDis: any[] = [];
+
+      try {
+        const [subsData, billsReceiptsData, pubDisRes] = await Promise.all([
+          fetchSubscriptions(targetCustIds),
+          fetchBillsAndReceipts(targetCustIds, fySuffix),
+          supabase.from('publicationdis').select('*')
+        ]);
+        custSubs = subsData;
+        liveBills = billsReceiptsData.bills;
+        liveReceipts = billsReceiptsData.receipts;
+        pubDis = (pubDisRes && pubDisRes.data) || [];
+      } catch (err) {
+        console.error('Error fetching billing dependencies from Supabase:', err);
+      }
+
+      if (custSubs.length === 0 && targetCustIds.length > 0) {
+        custSubs = data.subscriptions.filter(s => targetCustIds.includes(s.customer_id));
+      }
+
+      const billingResult = calculateBilling({
+        monthName: month,
+        year: year,
+        regionId: regionId || 'all',
+        customers: pageCusts,
+        subscriptions: custSubs,
+        rates: data.rates,
+        ratechanges: data.ratechanges,
+        publications: data.publications,
+        holidays: data.holidays,
+        discontinues: data.discontinues,
+        publicationDiscontinues: pubDis,
+        bills: liveBills,
+        receipts: liveReceipts,
+        regions: data.regions,
+        retailSales: []
+      });
+
       const monthDaysMap: Record<string, number> = {
         'january': 31, 'february': 28, 'march': 31, 'april': 30,
         'may': 31, 'june': 30, 'july': 31, 'august': 31,
@@ -680,65 +838,39 @@ export async function GET(request: NextRequest) {
       };
       const daysInMonth = monthDaysMap[month.toLowerCase()] || 31;
 
-      // Group active subscriptions by customer
-      const custSubsMap = new Map<number, any[]>();
-      data.subscriptions.forEach(s => {
-        if (!s.c_date) {
-          const list = custSubsMap.get(s.customer_id) || [];
-          list.push(s);
-          custSubsMap.set(s.customer_id, list);
-        }
-      });
-
-      const bills = targetCusts.slice((page - 1) * limit, page * limit).map(c => {
-        const mySubs = custSubsMap.get(c.customer_id) || [];
-        let paperTotal = 0;
-        let delyTotal = 0;
-
-        const lineItems = mySubs.map((s, sIdx) => {
-          const pub = pubMap.get(s.publica_id);
-          const isMag = (pub?.type_p || '').toLowerCase().includes('mag');
-          const qty = s.qty || 1;
-          const rateVal = 5.0; // Standard legacy weekday rate
-          const days = isMag ? 1 : daysInMonth;
-          const lineAmt = isMag ? 60.0 * qty : days * rateVal * qty;
-          paperTotal += lineAmt;
-          delyTotal += (s.dely || 0);
-
-          return {
-            sno: sIdx + 1,
-            pub_name: pub?.public_name || pub?.name || `Publication #${s.publica_id}`,
-            circulation: s.circulation || 'Morning',
-            qty,
-            days,
-            rate: isMag ? 60.0 : rateVal,
-            amount: lineAmt
-          };
-        });
-
-        const prevDue = c.dueamount || 0;
-        const currentBill = paperTotal + delyTotal;
-        const netPayable = currentBill + prevDue;
+      const bills = billingResult.bills.map((b) => {
+        const c = pageCusts.find(cust => cust.customer_id === b.customer_id) || {};
+        const lineItems = (b.breakup || [])
+          .filter(item => item.sort_order === 1)
+          .map((item, idx) => ({
+            sno: idx + 1,
+            pub_name: item.item,
+            circulation: 'Morning',
+            qty: item.qty || 1,
+            days: item.days_or_copies || daysInMonth,
+            rate: item.rate,
+            amount: item.amount
+          }));
 
         return {
-          bill_no: `BILL-${year}-${String(c.customer_id).padStart(5, '0')}`,
+          bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
           bill_date: `${daysInMonth}/${month}/${year}`,
-          customer_id: c.customer_id,
-          customer_name: c.name_eng || `Customer #${c.customer_id}`,
-          customer_hindi: c.name_hindi || '',
+          customer_id: b.customer_id,
+          customer_name: b.name_eng || c.name_eng || `Customer #${b.customer_id}`,
+          customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || c.name_hindi || '', b.name_eng || c.name_eng),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
           phone: c.phone || '---',
-          region_id: c.region_id,
-          region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
+          region_id: b.region_id,
+          region_name: b.region_name || regMap.get(b.region_id)?.region_name || `Region #${b.region_id}`,
           month: month,
           year: year,
           items: lineItems,
-          delivery_charge: delyTotal,
-          paper_amount: paperTotal,
-          current_bill: currentBill,
-          previous_due: prevDue,
+          delivery_charge: b.delivery_amount || 0,
+          paper_amount: b.paper_amount || 0,
+          current_bill: b.current_month_charges || (b.paper_amount + b.delivery_amount),
+          previous_due: b.previous_due || b.opening_balance_this_bill || 0,
           advance: c.cbal || 0,
-          net_payable: netPayable
+          net_payable: b.total_payable || 0
         };
       });
 
@@ -751,9 +883,9 @@ export async function GET(request: NextRequest) {
           ? `SINGLE CUSTOMER BILL PRINTING (${month.toUpperCase()} ${year})`
           : `REGION-WISE BILL PRINTING: ${regTitle} (${month.toUpperCase()} ${year})`,
         rows: bills,
-        total_rows: targetCusts.length,
+        total_rows: totalMatching,
         page,
-        total_pages: Math.ceil(targetCusts.length / limit) || 1
+        total_pages: Math.ceil(totalMatching / limit) || 1
       });
     }
 

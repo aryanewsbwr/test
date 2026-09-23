@@ -14,6 +14,9 @@ interface ReportsFormProps {
   initialRegion?: number | string;
   initialHawker?: number | string;
   initialPub?: number | string;
+  regions?: any[];
+  hawkers?: any[];
+  publications?: any[];
 }
 
 const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?: boolean; hasHawker?: boolean; hasPub?: boolean; hasPeriod?: boolean; hasCustId?: boolean }> = {
@@ -54,7 +57,10 @@ export default function ReportsForm({
   initialReport = 'hawker_daily_qty',
   initialRegion = 'all',
   initialHawker = 'all',
-  initialPub = 'all'
+  initialPub = 'all',
+  regions: propsRegions = [],
+  hawkers: propsHawkers = [],
+  publications: propsPubs = []
 }: ReportsFormProps) {
   const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
   const [activeReport, setActiveReport] = useState<string>(initialReport);
@@ -64,9 +70,9 @@ export default function ReportsForm({
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Filters / Parameters
-  const [regions, setRegions] = useState<any[]>([]);
-  const [hawkers, setHawkers] = useState<any[]>([]);
-  const [publications, setPublications] = useState<any[]>([]);
+  const [regions, setRegions] = useState<any[]>(propsRegions || []);
+  const [hawkers, setHawkers] = useState<any[]>(propsHawkers || []);
+  const [publications, setPublications] = useState<any[]>(propsPubs || []);
   const [selectedRegion, setSelectedRegion] = useState<string>(String(initialRegion));
   const [selectedHawker, setSelectedHawker] = useState<string>(String(initialHawker));
   const [selectedPub, setSelectedPub] = useState<string>(String(initialPub));
@@ -88,12 +94,50 @@ export default function ReportsForm({
     }
   }, [initialReport]);
 
-  // Load Dropdown Metadata
+  // Load Dropdown Metadata with API & Local Fallback
   useEffect(() => {
-    fetch('/data/regions.json').then(r => r.json()).then(d => setRegions(d || [])).catch(() => {});
-    fetch('/data/hawkers.json').then(r => r.json()).then(d => setHawkers(d || [])).catch(() => {});
-    fetch('/data/publications.json').then(r => r.json()).then(d => setPublications(d || [])).catch(() => {});
-  }, []);
+    if (propsRegions && propsRegions.length > 0) {
+      setRegions(propsRegions);
+    } else {
+      fetch('/api/regions')
+        .then(r => r.json())
+        .then(d => {
+          if (d.regions && d.regions.length > 0) setRegions(d.regions);
+          else if (Array.isArray(d)) setRegions(d);
+        })
+        .catch(() => {
+          fetch('/data/regions.json').then(r => r.json()).then(d => setRegions(d || [])).catch(() => {});
+        });
+    }
+
+    if (propsHawkers && propsHawkers.length > 0) {
+      setHawkers(propsHawkers);
+    } else {
+      fetch('/api/hawkers')
+        .then(r => r.json())
+        .then(d => {
+          if (d.hawkers && d.hawkers.length > 0) setHawkers(d.hawkers);
+          else if (Array.isArray(d)) setHawkers(d);
+        })
+        .catch(() => {
+          fetch('/data/hawkers.json').then(r => r.json()).then(d => setHawkers(d || [])).catch(() => {});
+        });
+    }
+
+    if (propsPubs && propsPubs.length > 0) {
+      setPublications(propsPubs);
+    } else {
+      fetch('/api/publications?with_rates=true')
+        .then(r => r.json())
+        .then(d => {
+          if (d.publications && d.publications.length > 0) setPublications(d.publications);
+          else if (Array.isArray(d)) setPublications(d);
+        })
+        .catch(() => {
+          fetch('/data/publications.json').then(r => r.json()).then(d => setPublications(d || [])).catch(() => {});
+        });
+    }
+  }, [propsRegions, propsHawkers, propsPubs]);
 
   // Fetch Report Data from API
   const fetchReport = useCallback(async () => {
@@ -223,9 +267,13 @@ export default function ReportsForm({
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
                   <option value="all">-- All Regions --</option>
-                  {regions.map(r => (
-                    <option key={r.region_id} value={r.region_id}>{r.region_name} (#{r.region_id})</option>
-                  ))}
+                  {[...regions]
+                    .sort((a, b) => String(a.region_name || a.name || '').localeCompare(String(b.region_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
+                    .map(r => (
+                      <option key={r.region_id || r.id} value={r.region_id || r.id}>
+                        {r.region_name || r.name} (#{r.region_id || r.id})
+                      </option>
+                    ))}
                 </select>
               </div>
             )}
@@ -240,9 +288,14 @@ export default function ReportsForm({
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
                   <option value="all">-- All Hawkers --</option>
-                  {hawkers.filter(h => h.name).slice(0, 100).map(h => (
-                    <option key={h.hawker_id} value={h.hawker_id}>{h.name} (#{h.hawker_id})</option>
-                  ))}
+                  {[...hawkers]
+                    .filter(h => h.name || h.hawker_name)
+                    .sort((a, b) => String(a.name || a.hawker_name || '').localeCompare(String(b.name || b.hawker_name || ''), undefined, { numeric: true, sensitivity: 'base' }))
+                    .map(h => (
+                      <option key={h.hawker_id || h.id} value={h.hawker_id || h.id}>
+                        {h.name || h.hawker_name} (#{h.hawker_id || h.id})
+                      </option>
+                    ))}
                 </select>
               </div>
             )}
@@ -257,9 +310,13 @@ export default function ReportsForm({
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
                   <option value="all">-- All Publications --</option>
-                  {publications.map(p => (
-                    <option key={p.publica_id} value={p.publica_id}>{p.public_name || p.name}</option>
-                  ))}
+                  {[...publications]
+                    .sort((a, b) => String(a.public_name || a.name || '').localeCompare(String(b.public_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
+                    .map(p => (
+                      <option key={p.publica_id || p.id} value={p.publica_id || p.id}>
+                        {p.public_name || p.name}
+                      </option>
+                    ))}
                 </select>
               </div>
             )}

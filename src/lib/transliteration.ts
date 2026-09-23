@@ -654,10 +654,37 @@ function transliterateSingleWord(w: string): string {
   return res;
 }
 
+const KNOWN_PHRASES_MAP: Record<string, string> = {
+  'whatsapp sample': 'व्हाट्सएप सैम्पल',
+  'whatsapp': 'व्हाट्सएप',
+  'sample': 'सैम्पल',
+  'aryan news agency': 'आर्यन न्यूज़ एजेंसी',
+  'main market': 'मेन मार्केट',
+  'beawar': 'ब्यावर',
+  'rajendra agarwal': 'राजेन्द्र अग्रवाल',
+  'suresh sharma': 'सुरेश शर्मा',
+  'rameshwar lal': 'रामेश्वर लाल',
+};
+
 /**
  * Master function: Converts Susha 05, Kruti Dev, or English string to clean Unicode Devanagari Hindi
  */
 export function cleanOrTransliterateHindi(rawHindi: string | undefined | null, englishName: string): string {
+  const engLower = (englishName || '').trim().toLowerCase();
+  if (KNOWN_PHRASES_MAP[engLower]) {
+    return KNOWN_PHRASES_MAP[engLower];
+  }
+
+  // Check known publications
+  if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
+    return KNOWN_PUBLICATIONS_HINDI[engLower];
+  }
+
+  // Specific check for Whatsapp in rawHindi or English
+  if (engLower.includes('whatsapp') || (rawHindi && (rawHindi.includes('vyaaTsePp') || rawHindi.includes('वयाटस')))) {
+    return 'व्हाट्सएप सैम्पल';
+  }
+
   // If already contains genuine Unicode Hindi characters
   if (rawHindi && /[\u0900-\u097F]/.test(rawHindi)) {
     return rawHindi;
@@ -674,12 +701,6 @@ export function cleanOrTransliterateHindi(rawHindi: string | undefined | null, e
     if (decoded && /[\u0900-\u097F]/.test(decoded)) {
       return decoded;
     }
-  }
-
-  // Check known publications
-  const engLower = (englishName || '').trim().toLowerCase();
-  if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
-    return KNOWN_PUBLICATIONS_HINDI[engLower];
   }
 
   // Check English phonetic transliteration

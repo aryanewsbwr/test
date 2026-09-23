@@ -142,8 +142,26 @@ export default function VB6DesktopLayout() {
         if (data.length > 0) setSelectedPub(data[0]);
       }).catch(() => {});
     });
-    fetch('/data/regions.json').then(r => r.json()).then(setRegions).catch(() => {});
-    fetch('/data/hawkers.json').then(r => r.json()).then(setHawkers).catch(() => {});
+    fetch('/api/regions')
+      .then(r => r.json())
+      .then(data => {
+        if (data.regions) setRegions(data.regions);
+        else if (Array.isArray(data)) setRegions(data);
+      })
+      .catch(() => {
+        fetch('/data/regions.json').then(r => r.json()).then(setRegions).catch(() => {});
+      });
+
+    fetch('/api/hawkers')
+      .then(r => r.json())
+      .then(data => {
+        if (data.hawkers) setHawkers(data.hawkers);
+        else if (Array.isArray(data)) setHawkers(data);
+      })
+      .catch(() => {
+        fetch('/data/hawkers.json').then(r => r.json()).then(setHawkers).catch(() => {});
+      });
+
     fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
     fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
     fetch('/data/holidays.json').then(r => r.json()).then(setHolidays).catch(() => {});
@@ -789,6 +807,9 @@ export default function VB6DesktopLayout() {
           <ReportsForm 
             initialReport={selectedReportType}
             onClose={() => setActiveWindow(null)} 
+            regions={regions}
+            hawkers={hawkers}
+            publications={publications}
           />
         )}
 
