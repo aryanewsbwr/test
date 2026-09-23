@@ -13,6 +13,8 @@ export const KNOWN_PUBLICATIONS_HINDI: Record<string, string> = {
   'employment news': 'एम्प्लॉयमेंट न्यूज़',
   'rojgar samachar': 'रोजगार समाचार',
   'zindia today english': 'इंडिया टुडे (इंग्लिश)',
+  'today hindi': 'टुडे हिन्दी',
+  'ztoday hindi': 'टुडे हिन्दी',
   'meri saheli': 'मेरी सहेली',
   'grihashobha': 'गृहशोभा',
   'the economic times': 'द इकोनॉमिक टाइम्स',
