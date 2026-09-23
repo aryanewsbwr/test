@@ -138,6 +138,9 @@ export default function BillingForm({ onClose }: BillingFormProps) {
       const res = await fetch(`/api/billing?customer_id=${bill.customer_id}&month=${targetMonth}&year=${targetYear}`);
       const data = await res.json();
       setBreakupLines(data.breakup || []);
+      if (data.bill) {
+        setBreakupCustomer(data.bill);
+      }
     } catch (err) {
       console.error('Error fetching breakup:', err);
     } finally {
@@ -438,7 +441,20 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                   </thead>
                   <tbody>
                     {breakupLines.map((item, idx) => (
-                      <tr key={idx} className={`border-b text-[11px] ${item.sort_order === 9 ? 'bg-amber-100 font-bold text-blue-900 border-t-2 border-black' : item.sort_order === 4 ? 'bg-slate-50 italic text-slate-700' : item.sort_order === 3 ? 'text-rose-700' : 'hover:bg-blue-50'}`}>
+                      <tr 
+                        key={idx} 
+                        className={`border-b text-[11px] ${
+                          item.sort_order === 9 
+                            ? 'bg-amber-100 font-bold text-blue-900 border-t-2 border-black' 
+                            : item.sort_order === 4 
+                            ? 'bg-blue-50 font-bold text-blue-950 border-t border-b border-blue-200' 
+                            : item.sort_order === 5 
+                            ? 'bg-slate-50 italic text-slate-700' 
+                            : item.sort_order === 3 
+                            ? 'text-rose-700 font-semibold' 
+                            : 'hover:bg-blue-50'
+                        }`}
+                      >
                         <td className="p-1 border-r text-center font-mono">{item.sort_order}</td>
                         <td className="p-1 border-r font-bold">{item.item}</td>
                         <td className="p-1 border-r text-right font-mono">{item.rate !== null ? `₹${item.rate.toFixed(2)}` : '-'}</td>
@@ -454,11 +470,15 @@ export default function BillingForm({ onClose }: BillingFormProps) {
               )}
             </div>
 
-            <div className="flex justify-between items-center pt-2 text-xs font-bold">
-              <span>Total Payable: <strong className="text-blue-900 text-sm font-mono">₹{breakupCustomer.total_payable?.toFixed(2)}</strong></span>
+            <div className="flex justify-between items-center pt-2 text-xs font-bold border-t border-[#808080]">
+              <div className="flex gap-4 items-center">
+                <span>Current Month: <strong className="text-emerald-800 font-mono">₹{breakupCustomer.current_month_charges !== undefined ? breakupCustomer.current_month_charges.toFixed(2) : (breakupCustomer.total_payable - (breakupCustomer.previous_due || 0)).toFixed(2)}</strong></span>
+                <span>Previous Due: <strong className="text-slate-700 font-mono">₹{breakupCustomer.previous_due?.toFixed(2)}</strong></span>
+                <span className="text-sm">Total Payable: <strong className="text-blue-900 font-mono">₹{breakupCustomer.total_payable?.toFixed(2)}</strong></span>
+              </div>
               <button 
                 onClick={() => setBreakupCustomer(null)}
-                className="px-4 py-1 bg-white border border-[#808080] hover:bg-slate-100 cursor-pointer"
+                className="px-4 py-1 bg-white border border-[#808080] hover:bg-slate-100 cursor-pointer shadow-xs"
               >
                 Close
               </button>

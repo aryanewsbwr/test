@@ -724,11 +724,8 @@ export function calculateBilling({
     }
 
     // =========================================================================
-    // 2. PREVIOUS DUE (Sort_order 4)
+    // 2. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
-    // Prior financial year carry-forward anchor (Month = 'Dues' in current FY table).
-    // If not found (new customer created this FY), fallback to cust.dueamount.
-    // NEVER sum both cust.dueamount and Year_End_Dues together!
     const yearEndOpeningDue = yearEndDuesMap.has(custId)
       ? yearEndDuesMap.get(custId)!
       : Number(cust.dueamount || cust.Dueamount || 0);
@@ -737,23 +734,6 @@ export function calculateBilling({
     const priorPaidInFy = priorReceiptsInFyMap.get(custId) || 0;
     const previousDue = Math.round((yearEndOpeningDue + priorBilledInFy - priorPaidInFy) * 100) / 100;
 
-    if (previousDue !== 0) {
-      custBreakup.push({
-        customer_id: custId,
-        name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-        customer_hindi: cust.name_hindi || cust.Name_hindi || '',
-        sort_order: 4,
-        item: 'Previous Due (Opening + Prior Ledger)',
-        rate: null,
-        qty: null,
-        days_or_copies: null,
-        amount: previousDue
-      });
-    }
-
-    // =========================================================================
-    // 3. CHARGES & TOTAL COMPUTATION (Formula 8)
-    // =========================================================================
     const openingBalanceThisBill = previousDue;
     const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal) * 100) / 100;
     const totalPayable = Math.round((openingBalanceThisBill + currentMonthCharges) * 100) / 100;
@@ -761,6 +741,34 @@ export function calculateBilling({
     // Only generate bill if customer has active papers, retail sales, or outstanding dues
     if (totalPayable === 0 && customerPaperTotal === 0 && customerRetailTotal === 0 && custBreakup.length === 0) {
       continue;
+    }
+
+    // Insert "Current Month Charges" Subtotal row into Breakup
+    custBreakup.push({
+      customer_id: custId,
+      name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+      customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+      sort_order: 4,
+      item: 'Current Month Charges (चालू माह शुल्क)',
+      rate: null,
+      qty: null,
+      days_or_copies: null,
+      amount: currentMonthCharges
+    });
+
+    // Previous Due (Sort_order 5)
+    if (previousDue !== 0) {
+      custBreakup.push({
+        customer_id: custId,
+        name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+        customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+        sort_order: 5,
+        item: 'Previous Due (Opening + Prior Ledger)',
+        rate: null,
+        qty: null,
+        days_or_copies: null,
+        amount: previousDue
+      });
     }
 
     custBreakup.push({
