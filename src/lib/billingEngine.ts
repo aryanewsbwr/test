@@ -15,6 +15,8 @@
  * 12. 100% schema alignment with billYYYYYYYY and billnoYYYYYYYY tables
  */
 
+import { cleanOrTransliterateHindi } from './transliteration';
+
 export interface BillingLineItem {
   customer_id: number;
   name_eng: string;
@@ -653,7 +655,9 @@ export function calculateBilling({
         const lineAmt = Math.round(copies * effectiveRate * 100) / 100;
         const pubId = rs.publica_id || rs.Publica_id;
         const pub = pubMap.get(pubId);
-        const pubName = pub?.name || pub?.public_name || pub?.Public_name || rs.public_name || `Publication #${pubId}`;
+        const pubName = pub?.pub_hindi 
+          ? cleanOrTransliterateHindi(pub.pub_hindi, pub.name || pub.public_name)
+          : (pub?.name || pub?.public_name || pub?.Public_name || rs.public_name || `Publication #${pubId}`);
 
         customerRetailTotal += lineAmt;
 
@@ -663,7 +667,7 @@ export function calculateBilling({
           name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
           customer_hindi: cust.name_hindi || cust.Name_hindi || '',
           sort_order: 1,
-          item: `${pubName} (Retail)`,
+          item: pubName,
           rate: effectiveRate,
           qty: copies,
           days_or_copies: copies,

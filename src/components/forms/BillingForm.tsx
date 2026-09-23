@@ -120,12 +120,22 @@ export default function BillingForm({ onClose }: BillingFormProps) {
     }
   };
 
+  // Auto-refresh bills when month, year, or region changes if grid is open
+  useEffect(() => {
+    if (showGrid) {
+      fetchBillsPage(1, searchQuery);
+      setPage(1);
+    }
+  }, [month, selectedYear, selectedRegion, showGrid]);
+
   // Open Breakup Modal
   const handleOpenBreakup = async (bill: any) => {
     setBreakupCustomer(bill);
     setIsLoadingBreakup(true);
     try {
-      const res = await fetch(`/api/billing?customer_id=${bill.customer_id}&month=${month}&year=${selectedYear}`);
+      const targetMonth = bill.month || month;
+      const targetYear = bill.year || selectedYear;
+      const res = await fetch(`/api/billing?customer_id=${bill.customer_id}&month=${targetMonth}&year=${targetYear}`);
       const data = await res.json();
       setBreakupLines(data.breakup || []);
     } catch (err) {
