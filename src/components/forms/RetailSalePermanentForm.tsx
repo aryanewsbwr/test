@@ -45,11 +45,8 @@ export default function RetailSalePermanentForm({
   const [findSearch, setFindSearch] = useState<string>('');
   const [filteredCusts, setFilteredCusts] = useState<Customer[]>([]);
 
-  // Rows in the grid (Publication | Copies | Rate | Rec.Amt)
-  const defaultPubId = publications.find(p => p.publica_id === 512)?.publica_id || publications[0]?.publica_id || 1;
-  const [rows, setRows] = useState<SaleRow[]>([
-    { publica_id: defaultPubId, copies: 1, rate: 60.0, amt: 60.0 }
-  ]);
+  // Rows in the grid (Publication | Copies | Rate | Rec.Amt) - starts empty without defaults
+  const [rows, setRows] = useState<SaleRow[]>([]);
 
   // Narration
   const [narration, setNarration] = useState<string>('');
@@ -91,18 +88,26 @@ export default function RetailSalePermanentForm({
   const dateObj = new Date(isoDate + 'T12:00:00');
   const dayOfWeekVb6 = (isNaN(dateObj.getTime()) ? 0 : dateObj.getDay()) + 1;
 
-  // Rate Helper for a publication
+  // Reset form when opened fresh
+  useEffect(() => {
+    if (isOpen) {
+      setCustInput('');
+      setSelectedCust(null);
+      setRows([]);
+      setNarration('');
+      setStatusMsg(null);
+      setShowSuggestions(false);
+    }
+  }, [isOpen]);
+
+  // Rate Helper for a publication (uses dynamic rates from database)
   const getPubDefaultRate = (pubId: number) => {
     const pub = publications.find(p => p.publica_id === pubId);
     if (!pub) return 5.0;
-    const isMag = (pub.type_p || '').toLowerCase().includes('mag');
-    if (isMag) {
-      if (pub.publica_id === 512 || pub.publica_id === 513) return 60.0;
-      if (pub.today_rate && pub.today_rate > 0) return pub.today_rate;
-      return 60.0;
-    }
     const eff = getSingleEffectiveRate(pub.publica_id, dayOfWeekVb6, isoDate, rates, ratechanges);
-    return eff > 0 ? eff : (pub.today_rate || 5.0);
+    if (eff > 0) return eff;
+    if (pub.today_rate && pub.today_rate > 0) return pub.today_rate;
+    return 5.0;
   };
 
   // Handle typing Customer Name or Customer ID with instant suggestions
@@ -212,10 +217,6 @@ export default function RetailSalePermanentForm({
   };
 
   const handleRemoveRow = (index: number) => {
-    if (rows.length <= 1) {
-      setRows([{ publica_id: defaultPubId, copies: 1, rate: 60.0, amt: 60.0 }]);
-      return;
-    }
     setRows(prev => prev.filter((_, idx) => idx !== index));
   };
 
@@ -300,7 +301,7 @@ export default function RetailSalePermanentForm({
   const handleCancel = () => {
     setCustInput('');
     setSelectedCust(null);
-    setRows([{ publica_id: defaultPubId, copies: 1, rate: 60.0, amt: 60.0 }]);
+    setRows([]);
     setNarration('');
     setStatusMsg(null);
     setShowSuggestions(false);
@@ -526,15 +527,13 @@ export default function RetailSalePermanentForm({
                       className="w-full text-right font-mono font-black text-emerald-950 bg-transparent outline-none focus:bg-yellow-100"
                       title="Rec.Amt (Per Copy Recovery Rate charged to customer)"
                     />
-                    {rows.length > 1 && (
-                      <button 
-                        onClick={() => handleRemoveRow(idx)}
-                        className="text-red-700 hover:text-red-900 font-bold text-xs px-1 cursor-pointer"
-                        title="Remove Item"
-                      >
-                        ✕
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleRemoveRow(idx)}
+                      className="text-red-700 hover:text-red-900 font-bold text-xs px-1 cursor-pointer"
+                      title="Remove Item"
+                    >
+                      ✕
+                    </button>
                   </div>
 
                 </div>
