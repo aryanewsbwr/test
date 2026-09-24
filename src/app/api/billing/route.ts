@@ -54,6 +54,30 @@ async function getPublicationDiscontinues(): Promise<any[]> {
   return cachedPubDis || [];
 }
 
+async function getMaxBillId(fySuffix: string): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from(`billno${fySuffix}`)
+      .select('Bill_id')
+      .order('Bill_id', { ascending: false })
+      .limit(1);
+    if (data && data.length > 0 && data[0].Bill_id) {
+      return Number(data[0].Bill_id);
+    }
+  } catch (_) {}
+  try {
+    const { data } = await supabase
+      .from('bill')
+      .select('bill_id')
+      .order('bill_id', { ascending: false })
+      .limit(1);
+    if (data && data.length > 0 && data[0].bill_id) {
+      return Number(data[0].bill_id);
+    }
+  } catch (_) {}
+  return 1000;
+}
+
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
@@ -248,11 +272,12 @@ export async function GET(request: NextRequest) {
       const cid = parseInt(customerIdStr, 10);
       targetCusts = targetCusts.filter(c => (c.customer_id || c.Customer_id) === cid);
 
-      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail] = await Promise.all([
+      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId] = await Promise.all([
         fetchSubscriptions([cid]),
         fetchBillsAndReceipts([cid], fySuffix),
         getPublicationDiscontinues(),
-        fetchRetailSales([cid], fySuffix)
+        fetchRetailSales([cid], fySuffix),
+        getMaxBillId(fySuffix)
       ]);
 
       const singleResult = calculateBilling({
@@ -270,7 +295,8 @@ export async function GET(request: NextRequest) {
         bills: liveCustBills,
         receipts: liveCustReceipts,
         regions: cachedRegions || [],
-        retailSales: liveRetail || []
+        retailSales: liveRetail || [],
+        startBillId: maxBillId + 1
       });
 
       const singleBill = singleResult.bills[0] || null;
@@ -309,11 +335,12 @@ export async function GET(request: NextRequest) {
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
     const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
 
-    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail] = await Promise.all([
+    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId] = await Promise.all([
       fetchSubscriptions(paginatedCustIds),
       fetchBillsAndReceipts(paginatedCustIds, fySuffix),
       getPublicationDiscontinues(),
-      fetchRetailSales(paginatedCustIds, fySuffix)
+      fetchRetailSales(paginatedCustIds, fySuffix),
+      getMaxBillId(fySuffix)
     ]);
 
     const result = calculateBilling({
@@ -331,7 +358,8 @@ export async function GET(request: NextRequest) {
       bills: liveCustBills,
       receipts: liveCustReceipts,
       regions: cachedRegions || [],
-      retailSales: dbBatchRetail || []
+      retailSales: dbBatchRetail || [],
+      startBillId: maxBillId + 1 + (page - 1) * limit
     });
 
     // Strip heavy breakup arrays from list view for maximum speed
@@ -387,11 +415,12 @@ export async function POST(request: NextRequest) {
       fySuffix = `${startY}${startY + 1}`;
     }
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail] = await Promise.all([
+    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
-      fetchRetailSales(targetCustIds, fySuffix)
+      fetchRetailSales(targetCustIds, fySuffix),
+      getMaxBillId(fySuffix)
     ]);
 
     const result = calculateBilling({
@@ -409,7 +438,8 @@ export async function POST(request: NextRequest) {
       bills: liveCustBills,
       receipts: liveCustReceipts,
       regions: cachedRegions || [],
-      retailSales: dbBatchRetail || []
+      retailSales: dbBatchRetail || [],
+      startBillId: maxBillId + 1
     });
 
     // If commit to live Supabase DB is requested:

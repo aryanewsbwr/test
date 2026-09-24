@@ -93,7 +93,8 @@ export function calculateBilling({
   billHeaders = [],
   receipts = [],
   regions = [],
-  retailSales = []
+  retailSales = [],
+  startBillId
 }: {
   monthName: string;
   year: number | string;
@@ -111,6 +112,7 @@ export function calculateBilling({
   receipts: any[];
   regions: any[];
   retailSales?: any[];
+  startBillId?: number;
 }) {
   let monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase() || m.toLowerCase().startsWith(monthName.toLowerCase().slice(0, 3)));
   if (monthIdx === -1) monthIdx = 7; // August default
@@ -449,7 +451,7 @@ export function calculateBilling({
   const allBreakupLines: BillingLineItem[] = [];
 
   let grandTotalBilling = 0;
-  let nextBillId = 1001;
+  let nextBillId = startBillId !== undefined && startBillId > 0 ? startBillId : 1001;
 
   for (let cIdx = 0; cIdx < targetCustomers.length; cIdx++) {
     const cust = targetCustomers[cIdx];
