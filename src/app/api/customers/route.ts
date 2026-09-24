@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       if (/^\d+$/.test(search)) {
-        query = query.or(`customer_id.eq.${search},priority.eq.${search},phone.ilike.%${search}%`);
+        query = query.or(`customer_id.eq.${search},priority.eq.${search},name_eng.ilike.%${search}%,phone.ilike.%${search}%`);
       } else {
         query = query.or(`name_eng.ilike.%${search}%,name_hindi.ilike.%${search}%`);
       }
