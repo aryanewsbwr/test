@@ -76,6 +76,7 @@ export interface Customer {
   self_agent?: number;
   font_type?: number;
   dueamount: number; // Starting Due
+  due_amount?: number;
   region_id: number;
   paid?: string;
   delivery: number;
