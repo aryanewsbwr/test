@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     const { data, count, error } = await query;
 
-    if (!error && data) {
+    if (!error && data && data.length > 0 && (count ?? 0) > 0) {
       const decodedCustomers = (data || []).map(c => ({
         ...c,
         name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng),
@@ -70,8 +70,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 2. Fallback to Local Dataset if Supabase has network/config error
-    console.warn('Supabase query failed, using local backup:', error?.message);
+    // 2. Fallback to Local Dataset if Supabase has network/config error or empty table
     const all = loadLocalBackup();
     let filtered = all;
 

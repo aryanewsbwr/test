@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 let cachedPubs: any[] | null = null;
 let cachedHawkers: any[] | null = null;
 let cachedDiscontinues: any[] | null = null;
+let cachedAllSubs: any[] | null = null;
 
 function loadLocalData() {
   const loadJson = (filename: string) => {
@@ -19,6 +20,7 @@ function loadLocalData() {
   if (!cachedPubs) cachedPubs = loadJson('publications.json');
   if (!cachedHawkers) cachedHawkers = loadJson('hawkers.json');
   if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
+  if (!cachedAllSubs) cachedAllSubs = loadJson('all_subscriptions.json');
 }
 
 export async function GET(request: NextRequest) {
@@ -34,16 +36,25 @@ export async function GET(request: NextRequest) {
     const cid = parseInt(customerIdStr, 10);
     loadLocalData();
 
-    // 1. Get Subscriptions directly from Supabase customer_detail
-    const { data: dbSubs, error: subsErr } = await supabase
-      .from('customer_detail')
-      .select('*')
-      .eq('customer_id', cid);
+    // 1. Get Subscriptions from Supabase customer_detail
+    let subs: any[] = [];
+    try {
+      const { data: dbSubs, error: subsErr } = await supabase
+        .from('customer_detail')
+        .select('*')
+        .eq('customer_id', cid);
 
-    if (subsErr) {
-      console.warn('Error querying customer_detail from Supabase:', subsErr);
+      if (!subsErr && dbSubs && dbSubs.length > 0) {
+        subs = dbSubs;
+      }
+    } catch (e) {
+      console.warn('Error querying customer_detail from Supabase:', e);
     }
-    const subs = dbSubs || [];
+
+    // 2. Fallback to local backup if Supabase table has 0 rows for this customer
+    if (subs.length === 0 && cachedAllSubs) {
+      subs = cachedAllSubs.filter((s: any) => Number(s.customer_id || s.Customer_id) === cid);
+    }
 
     // 2. Find customer discontinues
     const custDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
