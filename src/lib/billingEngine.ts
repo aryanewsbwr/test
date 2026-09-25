@@ -49,6 +49,7 @@ export interface CustomerMonthlyBill {
   breakup: BillingLineItem[];
   db_bill_items?: any[];
   db_billno_item?: any;
+  db_billdel_items?: any[];
 }
 
 const MONTH_NAMES = [
@@ -460,6 +461,7 @@ export function calculateBilling({
 
     const custBreakup: BillingLineItem[] = [];
     const dbBillItems: any[] = [];
+    const dbBilldelItems: any[] = [];
     let customerPaperTotal = 0;
     let customerDeliveryTotal = 0;
     let customerDiscountTotal = 0;
@@ -647,6 +649,15 @@ export function calculateBilling({
           days_or_copies: 1,
           amount: dely
         });
+        dbBilldelItems.push({
+          Customer_id: custId,
+          Region_id: custRegionId,
+          Publica_id: pubId,
+          month: standardMonthName,
+          year: String(startYear),
+          Dely: dely,
+          sno: snoCounter
+        });
       }
     }
 
@@ -821,7 +832,8 @@ export function calculateBilling({
       total_payable: totalPayable,
       breakup: custBreakup,
       db_bill_items: dbBillItems,
-      db_billno_item: dbBillnoItem
+      db_billno_item: dbBillnoItem,
+      db_billdel_items: dbBilldelItems
     };
 
     generatedBills.push(billObj);

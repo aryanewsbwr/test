@@ -36,11 +36,38 @@ function loadLocalDatasets() {
   if (!cachedRates) cachedRates = loadJson('rates.json');
   if (!cachedRateChanges) cachedRateChanges = loadJson('ratechanges.json');
   if (!cachedPubs) cachedPubs = loadJson('publications.json');
-  if (!cachedHolidays) cachedHolidays = loadJson('holidays.json');
   if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
   if (!cachedBills) cachedBills = loadJson('all_bills.json');
   if (!cachedReceipts) cachedReceipts = loadJson('all_receipts.json');
   if (!cachedRegions) cachedRegions = loadJson('regions.json');
+}
+
+async function getHolidays(): Promise<any[]> {
+  if (cachedHolidays && cachedHolidays.length > 0) return cachedHolidays;
+  try {
+    const all: any[] = [];
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('holiday')
+        .select('*')
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    if (all.length > 0) {
+      cachedHolidays = all;
+      return cachedHolidays;
+    }
+  } catch (err) {
+    console.error('Failed to fetch holidays from Supabase:', err);
+  }
+  if (!cachedHolidays) cachedHolidays = loadJson('holidays.json');
+  return cachedHolidays || [];
 }
 
 async function getPublicationDiscontinues(): Promise<any[]> {
@@ -272,12 +299,13 @@ export async function GET(request: NextRequest) {
       const cid = parseInt(customerIdStr, 10);
       targetCusts = targetCusts.filter(c => (c.customer_id || c.Customer_id) === cid);
 
-      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId] = await Promise.all([
+      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays] = await Promise.all([
         fetchSubscriptions([cid]),
         fetchBillsAndReceipts([cid], fySuffix),
         getPublicationDiscontinues(),
         fetchRetailSales([cid], fySuffix),
-        getMaxBillId(fySuffix)
+        getMaxBillId(fySuffix),
+        getHolidays()
       ]);
 
       const singleResult = calculateBilling({
@@ -289,7 +317,7 @@ export async function GET(request: NextRequest) {
         rates: cachedRates || [],
         ratechanges: cachedRateChanges || [],
         publications: cachedPubs || [],
-        holidays: cachedHolidays || [],
+        holidays: liveHolidays || [],
         discontinues: cachedDiscontinues || [],
         publicationDiscontinues: pubDis,
         bills: liveCustBills,
@@ -335,12 +363,13 @@ export async function GET(request: NextRequest) {
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
     const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
 
-    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId] = await Promise.all([
+    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays] = await Promise.all([
       fetchSubscriptions(paginatedCustIds),
       fetchBillsAndReceipts(paginatedCustIds, fySuffix),
       getPublicationDiscontinues(),
       fetchRetailSales(paginatedCustIds, fySuffix),
-      getMaxBillId(fySuffix)
+      getMaxBillId(fySuffix),
+      getHolidays()
     ]);
 
     const result = calculateBilling({
@@ -352,7 +381,7 @@ export async function GET(request: NextRequest) {
       rates: cachedRates || [],
       ratechanges: cachedRateChanges || [],
       publications: cachedPubs || [],
-      holidays: cachedHolidays || [],
+      holidays: liveHolidays || [],
       discontinues: cachedDiscontinues || [],
       publicationDiscontinues: pubDis,
       bills: liveCustBills,
@@ -415,12 +444,13 @@ export async function POST(request: NextRequest) {
       fySuffix = `${startY}${startY + 1}`;
     }
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId] = await Promise.all([
+    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
       fetchRetailSales(targetCustIds, fySuffix),
-      getMaxBillId(fySuffix)
+      getMaxBillId(fySuffix),
+      getHolidays()
     ]);
 
     const result = calculateBilling({
@@ -432,7 +462,7 @@ export async function POST(request: NextRequest) {
       rates: cachedRates || [],
       ratechanges: cachedRateChanges || [],
       publications: cachedPubs || [],
-      holidays: cachedHolidays || [],
+      holidays: liveHolidays || [],
       discontinues: cachedDiscontinues || [],
       publicationDiscontinues: pubDis,
       bills: liveCustBills,
@@ -450,10 +480,12 @@ export async function POST(request: NextRequest) {
     if (commitToDb && supabase) {
       const billnoTable = `billno${fySuffix}`;
       const billTable = `bill${fySuffix}`;
+      const billdelTable = `billdel${fySuffix}`;
 
       // Extract all DB rows
       const billnoRows = result.bills.map(b => b.db_billno_item).filter(Boolean);
       const billRows = result.bills.flatMap(b => b.db_bill_items || []).filter(Boolean);
+      const billdelRows = result.bills.flatMap(b => b.db_billdel_items || []).filter(Boolean);
 
       // Insert in batches of 500 to Supabase
       const insertBatch = async (tableName: string, rows: any[]) => {
@@ -466,6 +498,13 @@ export async function POST(request: NextRequest) {
       try {
         await insertBatch(billnoTable, billnoRows);
         await insertBatch(billTable, billRows);
+        if (billdelRows.length > 0) {
+          try {
+            await insertBatch(billdelTable, billdelRows);
+          } catch (delErr) {
+            console.warn('billdel insert note:', delErr);
+          }
+        }
         savedToSupabase = true;
         savedBillnoCount = billnoRows.length;
         savedBillItemsCount = billRows.length;

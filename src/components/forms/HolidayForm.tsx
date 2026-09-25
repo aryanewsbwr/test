@@ -44,7 +44,13 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
   // Load existing holidays for Find dialog
   const loadHolidays = async () => {
     try {
-      const { data } = await supabase.from('holiday').select('*').limit(200);
+      const res = await fetch('/api/holidays');
+      const json = await res.json();
+      if (json && json.holidays && json.holidays.length > 0) {
+        setExistingHolidays(json.holidays);
+        return;
+      }
+      const { data } = await supabase.from('holiday').select('*').order('id', { ascending: false }).limit(300);
       if (data && data.length > 0) {
         setExistingHolidays(data);
       } else if (holidays && holidays.length > 0) {
@@ -143,17 +149,27 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
     try {
       const records = selectedIds.map(pid => ({
         publica_id: pid,
-        holiday_date: holidayDate,
-        occasion: occasion.trim()
+        oc_date: holidayDate,
+        dated: holidayDate,
+        remark: occasion.trim()
       }));
 
-      // Insert into Supabase
-      await supabase.from('holiday').insert(records);
-      setMsg(`Holiday '${occasion.trim()}' saved successfully for ${selectedIds.length} publications!`);
-      loadHolidays();
-      setTimeout(() => setMsg(''), 4000);
+      const res = await fetch('/api/holidays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ holidays: records })
+      });
+
+      if (res.ok) {
+        setMsg(`Holiday '${occasion.trim()}' saved successfully for ${selectedIds.length} publications in Supabase!`);
+        loadHolidays();
+        setTimeout(() => setMsg(''), 4000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setMsg(`Save failed: ${errData.error || 'Server error'}`);
+      }
     } catch (err: any) {
-      setMsg(`Holiday saved locally for ${selectedIds.length} publications.`);
+      setMsg(`Error saving holiday: ${err.message}`);
       setTimeout(() => setMsg(''), 4000);
     }
   };
@@ -419,21 +435,26 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
                   </tr>
                 </thead>
                 <tbody>
-                  {existingHolidays.map((h, idx) => (
-                    <tr 
-                      key={idx} 
-                      onClick={() => {
-                        setHolidayDate(h.holiday_date || h.H_Date || h.h_date);
-                        setOccasion(h.occasion || h.Occasion || 'Holiday');
-                        setIsFindOpen(false);
-                      }}
-                      className="border-b hover:bg-blue-50 cursor-pointer text-[11px]"
-                    >
-                      <td className="p-1 border-r font-mono font-bold">{h.holiday_date || h.H_Date || h.h_date}</td>
-                      <td className="p-1 border-r font-bold text-blue-900">{h.occasion || h.Occasion || 'Holiday'}</td>
-                      <td className="p-1 font-mono">Pub #{h.publica_id || h.Publica_id}</td>
-                    </tr>
-                  ))}
+                  {existingHolidays.map((h, idx) => {
+                    const dStr = h.oc_date || h.dated || h.holiday_date || h.H_Date || h.h_date || '';
+                    const occStr = h.remark || h.occasion || h.Occasion || 'Press Holiday';
+                    const pubIdVal = Number(h.publica_id || h.Publica_id || 0);
+                    return (
+                      <tr 
+                        key={idx} 
+                        onClick={() => {
+                          setHolidayDate(dStr);
+                          setOccasion(occStr);
+                          setIsFindOpen(false);
+                        }}
+                        className="border-b hover:bg-blue-50 cursor-pointer text-[11px]"
+                      >
+                        <td className="p-1 border-r font-mono font-bold">{dStr}</td>
+                        <td className="p-1 border-r font-bold text-blue-900">{occStr}</td>
+                        <td className="p-1 font-mono">{pubIdVal === 0 ? 'All (Global)' : `Pub #${pubIdVal}`}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

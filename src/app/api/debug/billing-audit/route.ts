@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       supabase.from('bill20252026').select('*').eq('Customer_id', customerId).order('Bill_id', { ascending: true }),
       supabase.from('customer').select('*').eq('customer_id', customerId),
       supabase.from('customer_detail').select('*').eq('customer_id', customerId),
-      supabase.from('publications').select('*'),
-      supabase.from('holiday').select('*').gte('oc_date', '2025-01-01').lte('oc_date', '2026-04-30'),
+      supabase.from('publication').select('*'),
+      supabase.from('holiday').select('*'),
       supabase.from('discontinue').select('*').eq('customer_id', customerId)
     ]);
 

@@ -163,8 +163,15 @@ export default function VB6DesktopLayout() {
       });
 
     fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
-    fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
-    fetch('/data/holidays.json').then(r => r.json()).then(setHolidays).catch(() => {});
+    fetch('/api/holidays')
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.holidays && d.holidays.length > 0) setHolidays(d.holidays);
+        else fetch('/data/holidays.json').then(r => r.json()).then(setHolidays).catch(() => {});
+      })
+      .catch(() => {
+        fetch('/data/holidays.json').then(r => r.json()).then(setHolidays).catch(() => {});
+      });
     fetch('/data/discontinues.json').then(r => r.json()).then(setDiscontinues).catch(() => {});
   }, []);
 

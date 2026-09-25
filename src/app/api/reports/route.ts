@@ -870,19 +870,24 @@ export async function GET(request: NextRequest) {
       let liveReceipts: any[] = [];
       let pubDis: any[] = [];
       let liveRetail: any[] = [];
+      let liveHolidays = data.holidays;
 
       try {
-        const [subsData, billsReceiptsData, pubDisRes, retailData] = await Promise.all([
+        const [subsData, billsReceiptsData, pubDisRes, retailData, holidaysRes] = await Promise.all([
           fetchSubscriptions(targetCustIds),
           fetchBillsAndReceipts(targetCustIds, fySuffix),
           supabase.from('publicationdis').select('*'),
-          fetchRetailSales(targetCustIds, fySuffix)
+          fetchRetailSales(targetCustIds, fySuffix),
+          supabase.from('holiday').select('*')
         ]);
         custSubs = subsData;
         liveBills = billsReceiptsData.bills;
         liveReceipts = billsReceiptsData.receipts;
         pubDis = (pubDisRes && pubDisRes.data) || [];
         liveRetail = retailData || [];
+        if (holidaysRes && holidaysRes.data && holidaysRes.data.length > 0) {
+          liveHolidays = holidaysRes.data;
+        }
       } catch (err) {
         console.error('Error fetching billing dependencies from Supabase:', err);
       }
@@ -900,7 +905,7 @@ export async function GET(request: NextRequest) {
         rates: data.rates,
         ratechanges: data.ratechanges,
         publications: data.publications,
-        holidays: data.holidays,
+        holidays: liveHolidays || data.holidays,
         discontinues: data.discontinues,
         publicationDiscontinues: pubDis,
         bills: liveBills,
