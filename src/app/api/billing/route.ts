@@ -30,36 +30,121 @@ function loadJson(filename: string): any[] {
   return [];
 }
 
-function loadLocalDatasets() {
+async function fetchAllFromSupabase(table: string): Promise<any[]> {
+  const all: any[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
 
-  if (!cachedCusts) cachedCusts = loadJson('all_customers.json');
+async function getRates(): Promise<any[]> {
+  if (cachedRates && cachedRates.length > 0) return cachedRates;
+  try {
+    const data = await fetchAllFromSupabase('rate');
+    if (data && data.length > 0) {
+      cachedRates = data;
+      return cachedRates;
+    }
+  } catch (err) {
+    console.error('Failed to fetch rates from Supabase:', err);
+  }
   if (!cachedRates) cachedRates = loadJson('rates.json');
+  return cachedRates || [];
+}
+
+async function getRateChanges(): Promise<any[]> {
+  if (cachedRateChanges && cachedRateChanges.length > 0) return cachedRateChanges;
+  try {
+    const data = await fetchAllFromSupabase('ratechange');
+    if (data && data.length > 0) {
+      cachedRateChanges = data.map(rc => ({
+        ...rc,
+        dated: rc.effective_date || rc.dated
+      }));
+      return cachedRateChanges;
+    }
+  } catch (err) {
+    console.error('Failed to fetch ratechanges from Supabase:', err);
+  }
   if (!cachedRateChanges) cachedRateChanges = loadJson('ratechanges.json');
+  return cachedRateChanges || [];
+}
+
+async function getPublications(): Promise<any[]> {
+  if (cachedPubs && cachedPubs.length > 0) return cachedPubs;
+  try {
+    const data = await fetchAllFromSupabase('publication');
+    if (data && data.length > 0) {
+      cachedPubs = data;
+      return cachedPubs;
+    }
+  } catch (err) {
+    console.error('Failed to fetch publications from Supabase:', err);
+  }
   if (!cachedPubs) cachedPubs = loadJson('publications.json');
+  return cachedPubs || [];
+}
+
+async function getDiscontinues(): Promise<any[]> {
+  if (cachedDiscontinues && cachedDiscontinues.length > 0) return cachedDiscontinues;
+  try {
+    const data = await fetchAllFromSupabase('discontinue');
+    if (data && data.length > 0) {
+      cachedDiscontinues = data;
+      return cachedDiscontinues;
+    }
+  } catch (err) {
+    console.error('Failed to fetch discontinues from Supabase:', err);
+  }
   if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
-  if (!cachedBills) cachedBills = loadJson('all_bills.json');
-  if (!cachedReceipts) cachedReceipts = loadJson('all_receipts.json');
+  return cachedDiscontinues || [];
+}
+
+async function getRegions(): Promise<any[]> {
+  if (cachedRegions && cachedRegions.length > 0) return cachedRegions;
+  try {
+    const data = await fetchAllFromSupabase('region');
+    if (data && data.length > 0) {
+      cachedRegions = data;
+      return cachedRegions;
+    }
+  } catch (err) {
+    console.error('Failed to fetch regions from Supabase:', err);
+  }
   if (!cachedRegions) cachedRegions = loadJson('regions.json');
+  return cachedRegions || [];
+}
+
+async function getCustomers(): Promise<any[]> {
+  if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
+  try {
+    const data = await fetchAllFromSupabase('customer');
+    if (data && data.length > 0) {
+      cachedCusts = data;
+      return cachedCusts;
+    }
+  } catch (err) {
+    console.error('Failed to fetch customers from Supabase:', err);
+  }
+  if (!cachedCusts) cachedCusts = loadJson('all_customers.json');
+  return cachedCusts || [];
 }
 
 async function getHolidays(): Promise<any[]> {
   if (cachedHolidays && cachedHolidays.length > 0) return cachedHolidays;
   const localHolidays = loadJson('holidays.json');
   try {
-    const all: any[] = [];
-    const PAGE_SIZE = 1000;
-    let from = 0;
-    while (true) {
-      const { data, error } = await supabase
-        .from('holiday')
-        .select('*')
-        .order('id', { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-      if (error || !data || data.length === 0) break;
-      all.push(...data);
-      if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
-    }
+    const all = await fetchAllFromSupabase('holiday');
     const seen = new Set<string>();
     const merged: any[] = [];
     for (const h of [...all, ...localHolidays]) {
@@ -219,14 +304,14 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
           .in('customer_id', chunk);
         if (genData && genData.length > 0) {
           matchingDb.push(...genData.map(r => ({
-            Retail_id: r.sale_id,
-            Vr_Date: r.vr_date,
-            Customer_id: r.customer_id,
-            Publica_id: r.publica_id,
-            Copies: r.copies,
-            Rate: r.rate,
-            Amt: r.amount,
-            Narr: r.narration
+            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+            Vr_Date: r.vr_date || r.Vr_Date,
+            Customer_id: r.customer_id || r.Customer_id,
+            Publica_id: r.publica_id || r.Publica_id,
+            Copies: r.copies || r.Copies || 1,
+            Rate: r.rate || r.Rate || 0,
+            Amt: r.amt !== undefined ? r.amt : (r.Amt !== undefined ? r.Amt : (r.amount || 0)),
+            Narr: r.narr || r.Narr || r.narration || ''
           })));
         }
       } catch {
@@ -264,7 +349,6 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
 
 export async function GET(request: NextRequest) {
   try {
-    loadLocalDatasets();
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month') || 'August';
     const year = searchParams.get('year') || '2026';
@@ -274,7 +358,14 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    let targetCusts = cachedCusts || [];
+    // Fetch core reference datasets directly from Supabase
+    const [rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
+      getRates(),
+      getRateChanges(),
+      getPublications(),
+      getDiscontinues(),
+      getRegions()
+    ]);
 
     // Determine fiscal year suffix (e.g. 20252026)
     let fySuffix = '20252026';
@@ -289,7 +380,12 @@ export async function GET(request: NextRequest) {
     // If single customer queried (for Breakup / Slip): Instant calculation
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
-      targetCusts = targetCusts.filter(c => (c.customer_id || c.Customer_id) === cid);
+      let targetCust = (cachedCusts || []).find(c => (c.customer_id || c.Customer_id) === cid);
+      if (!targetCust) {
+        const { data: dbCust } = await supabase.from('customer').select('*').eq('customer_id', cid).single();
+        if (dbCust) targetCust = dbCust;
+      }
+      const targetCusts = targetCust ? [targetCust] : [];
 
       const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays] = await Promise.all([
         fetchSubscriptions([cid]),
@@ -306,16 +402,16 @@ export async function GET(request: NextRequest) {
         regionId: 'all',
         customers: targetCusts,
         subscriptions: custSubs,
-        rates: cachedRates || [],
-        ratechanges: cachedRateChanges || [],
-        publications: cachedPubs || [],
-        holidays: liveHolidays || [],
-        discontinues: cachedDiscontinues || [],
+        rates: rates,
+        ratechanges: ratechanges,
+        publications: pubs,
+        holidays: liveHolidays,
+        discontinues: discontinues,
         publicationDiscontinues: pubDis,
         bills: liveCustBills,
         receipts: liveCustReceipts,
-        regions: cachedRegions || [],
-        retailSales: liveRetail || [],
+        regions: regions,
+        retailSales: liveRetail,
         startBillId: maxBillId + 1
       });
 
@@ -334,6 +430,8 @@ export async function GET(request: NextRequest) {
         breakup: singleBreakup
       });
     }
+
+    let targetCusts = await getCustomers();
 
     // Filter by region
     if (regionId && regionId !== 'all') {
@@ -370,16 +468,16 @@ export async function GET(request: NextRequest) {
       regionId: regionId,
       customers: paginatedCusts,
       subscriptions: paginatedSubs,
-      rates: cachedRates || [],
-      ratechanges: cachedRateChanges || [],
-      publications: cachedPubs || [],
-      holidays: liveHolidays || [],
-      discontinues: cachedDiscontinues || [],
+      rates: rates,
+      ratechanges: ratechanges,
+      publications: pubs,
+      holidays: liveHolidays,
+      discontinues: discontinues,
       publicationDiscontinues: pubDis,
       bills: liveCustBills,
       receipts: liveCustReceipts,
-      regions: cachedRegions || [],
-      retailSales: dbBatchRetail || [],
+      regions: regions,
+      retailSales: dbBatchRetail,
       startBillId: maxBillId + 1 + (page - 1) * limit
     });
 
@@ -416,11 +514,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    loadLocalDatasets();
     const body = await request.json();
     const { month = 'August', year = '2026', region_id = 'all', commitToDb = false } = body;
 
-    let targetCusts = cachedCusts || [];
+    let targetCusts = await getCustomers();
     if (region_id && region_id !== 'all') {
       const rId = parseInt(region_id, 10);
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
@@ -436,13 +533,18 @@ export async function POST(request: NextRequest) {
       fySuffix = `${startY}${startY + 1}`;
     }
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays] = await Promise.all([
+    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
       fetchRetailSales(targetCustIds, fySuffix),
       getMaxBillId(fySuffix),
-      getHolidays()
+      getHolidays(),
+      getRates(),
+      getRateChanges(),
+      getPublications(),
+      getDiscontinues(),
+      getRegions()
     ]);
 
     const result = calculateBilling({
@@ -451,16 +553,16 @@ export async function POST(request: NextRequest) {
       regionId: region_id,
       customers: targetCusts,
       subscriptions: targetSubs,
-      rates: cachedRates || [],
-      ratechanges: cachedRateChanges || [],
-      publications: cachedPubs || [],
-      holidays: liveHolidays || [],
-      discontinues: cachedDiscontinues || [],
+      rates: rates,
+      ratechanges: ratechanges,
+      publications: pubs,
+      holidays: liveHolidays,
+      discontinues: discontinues,
       publicationDiscontinues: pubDis,
       bills: liveCustBills,
       receipts: liveCustReceipts,
-      regions: cachedRegions || [],
-      retailSales: dbBatchRetail || [],
+      regions: regions,
+      retailSales: dbBatchRetail,
       startBillId: maxBillId + 1
     });
 

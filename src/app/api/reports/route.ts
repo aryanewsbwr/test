@@ -26,7 +26,24 @@ interface CacheData {
 
 let cache: CacheData | null = null;
 
-function getCache(): CacheData {
+async function fetchAllFromSupabase(table: string): Promise<any[]> {
+  const all: any[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
+async function getCacheAsync() {
   if (cache) return cache;
 
   const load = (file: string) => {
@@ -41,24 +58,71 @@ function getCache(): CacheData {
     return [];
   };
 
-  cache = {
-    customers: load('all_customers.json'),
-    subscriptions: load('all_subscriptions.json'),
-    publications: load('publications.json'),
-    hawkers: load('hawkers.json'),
-    regions: load('regions.json'),
-    receipts: load('all_receipts.json'),
-    bills: load('all_bills.json'),
-    discontinues: load('discontinues.json'),
-    countersale: load('countersale.json'),
-    publishers: load('publishers.json'),
-    rates: load('rates.json'),
-    ratechanges: load('ratechanges.json'),
-    holidays: load('holidays.json'),
-    collect: load('collect.json'),
-  };
+  try {
+    const [
+      customers,
+      publications,
+      hawkers,
+      regions,
+      discontinues,
+      rates,
+      ratechanges,
+      holidays,
+      collect
+    ] = await Promise.all([
+      fetchAllFromSupabase('customer'),
+      fetchAllFromSupabase('publication'),
+      fetchAllFromSupabase('hawker'),
+      fetchAllFromSupabase('region'),
+      fetchAllFromSupabase('discontinue'),
+      fetchAllFromSupabase('rate'),
+      fetchAllFromSupabase('ratechange'),
+      fetchAllFromSupabase('holiday'),
+      fetchAllFromSupabase('collect')
+    ]);
 
-  return cache;
+    const mappedRatechanges = ratechanges.map(rc => ({
+      ...rc,
+      dated: rc.effective_date || rc.dated
+    }));
+
+    cache = {
+      customers: customers.length > 0 ? customers : load('all_customers.json'),
+      subscriptions: load('all_subscriptions.json'),
+      publications: publications.length > 0 ? publications : load('publications.json'),
+      hawkers: hawkers.length > 0 ? hawkers : load('hawkers.json'),
+      regions: regions.length > 0 ? regions : load('regions.json'),
+      receipts: load('all_receipts.json'),
+      bills: load('all_bills.json'),
+      discontinues: discontinues.length > 0 ? discontinues : load('discontinues.json'),
+      countersale: load('countersale.json'),
+      publishers: load('publishers.json'),
+      rates: rates.length > 0 ? rates : load('rates.json'),
+      ratechanges: mappedRatechanges.length > 0 ? mappedRatechanges : load('ratechanges.json'),
+      holidays: holidays.length > 0 ? holidays : load('holidays.json'),
+      collect: collect.length > 0 ? collect : load('collect.json'),
+    };
+    return cache;
+  } catch (err) {
+    console.error('Failed to load cache from Supabase, using local fallback:', err);
+    cache = {
+      customers: load('all_customers.json'),
+      subscriptions: load('all_subscriptions.json'),
+      publications: load('publications.json'),
+      hawkers: load('hawkers.json'),
+      regions: load('regions.json'),
+      receipts: load('all_receipts.json'),
+      bills: load('all_bills.json'),
+      discontinues: load('discontinues.json'),
+      countersale: load('countersale.json'),
+      publishers: load('publishers.json'),
+      rates: load('rates.json'),
+      ratechanges: load('ratechanges.json'),
+      holidays: load('holidays.json'),
+      collect: load('collect.json'),
+    };
+    return cache;
+  }
 }
 
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
@@ -173,14 +237,14 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
           .in('customer_id', chunk);
         if (genData && genData.length > 0) {
           matchingDb.push(...genData.map(r => ({
-            Retail_id: r.sale_id,
-            Vr_Date: r.vr_date,
-            Customer_id: r.customer_id,
-            Publica_id: r.publica_id,
-            Copies: r.copies,
-            Rate: r.rate,
-            Amt: r.amount,
-            Narr: r.narration
+            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+            Vr_Date: r.vr_date || r.Vr_Date,
+            Customer_id: r.customer_id || r.Customer_id,
+            Publica_id: r.publica_id || r.Publica_id,
+            Copies: r.copies || r.Copies || 1,
+            Rate: r.rate || r.Rate || 0,
+            Amt: r.amt !== undefined ? r.amt : (r.Amt !== undefined ? r.Amt : (r.amount || 0)),
+            Narr: r.narr || r.Narr || r.narration || ''
           })));
         }
       } catch {
@@ -231,7 +295,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const search = (searchParams.get('search') || '').toLowerCase().trim();
 
-    const data = getCache();
+    const data = await getCacheAsync();
     const custMap = new Map<number, any>(data.customers.map(c => [c.customer_id, c]));
     const pubMap = new Map<number, any>(data.publications.map(p => [p.publica_id, p]));
     const hwMap = new Map<number, any>(data.hawkers.map(h => [h.hawker_id, h]));
