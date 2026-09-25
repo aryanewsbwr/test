@@ -44,6 +44,7 @@ function loadLocalDatasets() {
 
 async function getHolidays(): Promise<any[]> {
   if (cachedHolidays && cachedHolidays.length > 0) return cachedHolidays;
+  const localHolidays = loadJson('holidays.json');
   try {
     const all: any[] = [];
     const PAGE_SIZE = 1000;
@@ -59,14 +60,23 @@ async function getHolidays(): Promise<any[]> {
       if (data.length < PAGE_SIZE) break;
       from += PAGE_SIZE;
     }
-    if (all.length > 0) {
-      cachedHolidays = all;
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    for (const h of [...all, ...localHolidays]) {
+      const key = `${h.holiday_id || h.id}-${h.holiday_date || h.Holiday_Date || h.h_date}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(h);
+      }
+    }
+    if (merged.length > 0) {
+      cachedHolidays = merged;
       return cachedHolidays;
     }
   } catch (err) {
     console.error('Failed to fetch holidays from Supabase:', err);
   }
-  if (!cachedHolidays) cachedHolidays = loadJson('holidays.json');
+  if (!cachedHolidays) cachedHolidays = localHolidays;
   return cachedHolidays || [];
 }
 
@@ -108,57 +118,39 @@ async function getMaxBillId(fySuffix: string): Promise<number> {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
-  // Query authoritative customer_detailback in safe chunks of 200
   const CHUNK_SIZE = 200;
-  const backSubs: any[] = [];
-  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-    const { data } = await supabase
-      .from('customer_detailback')
-      .select('*')
-      .in('Customer_id', chunk);
-    if (data) backSubs.push(...data);
-  }
-
-  const parseD = (d: any, t: any) => {
-    if (!d) return 0;
-    const p = String(d).split('/');
-    if (p.length !== 3) return 0;
-    const tp = String(t || '00:00').split(':');
-    return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]), Number(tp[0]) || 0, Number(tp[1]) || 0).getTime();
-  };
-
-  const subsByCust = new Map<number, any[]>();
-  for (const row of backSubs) {
-    const cid = row.Customer_id || row.customer_id;
-    if (!subsByCust.has(cid)) subsByCust.set(cid, []);
-    subsByCust.get(cid)!.push(row);
-  }
-
   const result: any[] = [];
   const foundCustIds = new Set<number>();
 
-  subsByCust.forEach((rows, cid) => {
-    foundCustIds.add(cid);
-    let maxTime = 0;
-    for (const r of rows) {
-      const t = parseD(r.Dated, r.PostedTime);
-      if (t > maxTime) maxTime = t;
-    }
-    const latestRows = rows.filter(r => parseD(r.Dated, r.PostedTime) === maxTime);
-    result.push(...latestRows);
-  });
-
-  // Fallback to customer_detail if any customer had no records in customer_detailback
-  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
-  if (missingCustIds.length > 0) {
-    for (let i = 0; i < missingCustIds.length; i += CHUNK_SIZE) {
-      const chunk = missingCustIds.slice(i, i + CHUNK_SIZE);
+  // 1. Query customer_detail directly from Supabase (authoritative active subscriptions)
+  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+    try {
       const { data: cdSubs } = await supabase
         .from('customer_detail')
         .select('*')
         .in('customer_id', chunk);
-      if (cdSubs) result.push(...cdSubs);
+      if (cdSubs && cdSubs.length > 0) {
+        result.push(...cdSubs);
+        cdSubs.forEach(s => foundCustIds.add(s.customer_id));
+      }
+    } catch (err) {
+      console.error('Error fetching customer_detail chunk:', err);
+    }
+  }
+
+  // 2. Fallback to all_subscriptions.json for any missing customers
+  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
+  if (missingCustIds.length > 0) {
+    try {
+      const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
+      if (fs.existsSync(localSubsPath)) {
+        const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
+        const fallback = localSubs.filter((s: any) => missingCustIds.includes(s.customer_id));
+        result.push(...fallback);
+      }
+    } catch (err) {
+      console.error('Error reading local all_subscriptions.json fallback:', err);
     }
   }
 

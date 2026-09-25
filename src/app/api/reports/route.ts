@@ -65,54 +65,38 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
   const CHUNK_SIZE = 200;
-  const backSubs: any[] = [];
-  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-    const { data } = await supabase
-      .from('customer_detailback')
-      .select('*')
-      .in('Customer_id', chunk);
-    if (data) backSubs.push(...data);
-  }
-
-  const parseD = (d: any, t: any) => {
-    if (!d) return 0;
-    const p = String(d).split('/');
-    if (p.length !== 3) return 0;
-    const tp = String(t || '00:00').split(':');
-    return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]), Number(tp[0]) || 0, Number(tp[1]) || 0).getTime();
-  };
-
-  const subsByCust = new Map<number, any[]>();
-  for (const row of backSubs) {
-    const cid = row.Customer_id || row.customer_id;
-    if (!subsByCust.has(cid)) subsByCust.set(cid, []);
-    subsByCust.get(cid)!.push(row);
-  }
-
   const result: any[] = [];
   const foundCustIds = new Set<number>();
 
-  subsByCust.forEach((rows, cid) => {
-    foundCustIds.add(cid);
-    let maxTime = 0;
-    for (const r of rows) {
-      const t = parseD(r.Dated, r.PostedTime);
-      if (t > maxTime) maxTime = t;
-    }
-    const latestRows = rows.filter(r => parseD(r.Dated, r.PostedTime) === maxTime);
-    result.push(...latestRows);
-  });
-
-  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
-  if (missingCustIds.length > 0) {
-    for (let i = 0; i < missingCustIds.length; i += CHUNK_SIZE) {
-      const chunk = missingCustIds.slice(i, i + CHUNK_SIZE);
+  // 1. Query customer_detail directly from Supabase
+  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+    try {
       const { data: cdSubs } = await supabase
         .from('customer_detail')
         .select('*')
         .in('customer_id', chunk);
-      if (cdSubs) result.push(...cdSubs);
+      if (cdSubs && cdSubs.length > 0) {
+        result.push(...cdSubs);
+        cdSubs.forEach(s => foundCustIds.add(s.customer_id));
+      }
+    } catch (err) {
+      console.error('Error fetching customer_detail chunk:', err);
+    }
+  }
+
+  // 2. Fallback to all_subscriptions.json for any missing customers
+  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
+  if (missingCustIds.length > 0) {
+    try {
+      const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
+      if (fs.existsSync(localSubsPath)) {
+        const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
+        const fallback = localSubs.filter((s: any) => missingCustIds.includes(s.customer_id));
+        result.push(...fallback);
+      }
+    } catch (err) {
+      console.error('Error reading local all_subscriptions.json fallback:', err);
     }
   }
 
@@ -885,9 +869,19 @@ export async function GET(request: NextRequest) {
         liveReceipts = billsReceiptsData.receipts;
         pubDis = (pubDisRes && pubDisRes.data) || [];
         liveRetail = retailData || [];
+        // Merge Supabase holidays with full authoritative dataset (prevents 1000-row PostgREST truncation)
+        const holidayMap = new Map<string, any>();
+        (data.holidays || []).forEach((h: any) => {
+          const key = `${h.publica_id || h.publication_id || 0}_${h.oc_date || h.dated}`;
+          holidayMap.set(key, h);
+        });
         if (holidaysRes && holidaysRes.data && holidaysRes.data.length > 0) {
-          liveHolidays = holidaysRes.data;
+          holidaysRes.data.forEach((h: any) => {
+            const key = `${h.publica_id || h.publication_id || 0}_${h.oc_date || h.dated}`;
+            holidayMap.set(key, h);
+          });
         }
+        liveHolidays = Array.from(holidayMap.values());
       } catch (err) {
         console.error('Error fetching billing dependencies from Supabase:', err);
       }
@@ -923,17 +917,67 @@ export async function GET(request: NextRequest) {
 
       const bills = billingResult.bills.map((b) => {
         const c = pageCusts.find(cust => cust.customer_id === b.customer_id) || {};
-        const lineItems = (b.breakup || [])
+
+        // 1. Group delivery charges by publication
+        const deliveryByPub = new Map<string, number>();
+        (b.breakup || [])
+          .filter(item => item.sort_order === 2)
+          .forEach(del => {
+            const pubName = del.item.replace(' - Delivery', '').trim();
+            deliveryByPub.set(pubName, (deliveryByPub.get(pubName) || 0) + del.amount);
+          });
+
+        // 2. Consolidate items by publication name (combining multi-rate days matching FoxPro)
+        const consolidatedMap = new Map<string, any>();
+        (b.breakup || [])
           .filter(item => item.sort_order === 1)
-          .map((item, idx) => ({
-            sno: idx + 1,
-            pub_name: item.item,
-            circulation: 'Morning',
-            qty: item.qty || 1,
-            days: item.days_or_copies || daysInMonth,
-            rate: item.rate,
-            amount: item.amount
-          }));
+          .forEach(item => {
+            const key = item.item.trim();
+            if (!consolidatedMap.has(key)) {
+              consolidatedMap.set(key, {
+                pub_name: item.item,
+                circulation: 'Morning',
+                qty: item.qty || 1,
+                days: item.days_or_copies || 0,
+                rates: item.rate !== null && item.rate !== undefined ? [item.rate] : [],
+                amount: item.amount
+              });
+            } else {
+              const existing = consolidatedMap.get(key);
+              existing.qty = (existing.qty || 0) + (item.qty || 0);
+              existing.days = (existing.days || 0) + (item.days_or_copies || 0);
+              existing.amount = Math.round((existing.amount + item.amount) * 100) / 100;
+              if (item.rate !== null && item.rate !== undefined && !existing.rates.includes(item.rate)) {
+                existing.rates.push(item.rate);
+              }
+            }
+          });
+
+        // 3. Embed delivery charges directly into the publication line item amount (FoxPro standard)
+        let embeddedDeliveryTotal = 0;
+        consolidatedMap.forEach((val, key) => {
+          if (deliveryByPub.has(key)) {
+            const dely = deliveryByPub.get(key)!;
+            val.amount = Math.round((val.amount + dely) * 100) / 100;
+            embeddedDeliveryTotal += dely;
+          }
+          val.rate = val.rates.length === 1 
+            ? val.rates[0] 
+            : (val.days > 0 ? Math.round((val.amount / val.days) * 100) / 100 : (val.rates[0] || null));
+        });
+
+        const lineItems = Array.from(consolidatedMap.values()).map((item, idx) => ({
+          sno: idx + 1,
+          pub_name: item.pub_name,
+          circulation: 'Morning',
+          qty: item.qty || 1,
+          days: item.days || daysInMonth,
+          rate: item.rate,
+          amount: item.amount
+        }));
+
+        const remainingDelivery = Math.max(0, Math.round(((b.delivery_amount || 0) - embeddedDeliveryTotal) * 100) / 100);
+        const totalItemsAmount = Math.round(lineItems.reduce((acc, it) => acc + it.amount, 0) * 100) / 100;
 
         return {
           bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
@@ -948,12 +992,12 @@ export async function GET(request: NextRequest) {
           month: month,
           year: year,
           items: lineItems,
-          delivery_charge: b.delivery_amount || 0,
-          paper_amount: b.paper_amount || 0,
-          current_bill: b.current_month_charges || (b.paper_amount + b.delivery_amount),
+          delivery_charge: remainingDelivery,
+          paper_amount: totalItemsAmount,
+          current_bill: b.current_month_charges || totalItemsAmount,
           previous_due: b.previous_due || b.opening_balance_this_bill || 0,
           advance: c.cbal || 0,
-          net_payable: b.total_payable || 0
+          net_payable: b.total_payable || (totalItemsAmount + (b.previous_due || 0))
         };
       });
 

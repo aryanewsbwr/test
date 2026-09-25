@@ -8,12 +8,12 @@
     "Publica_id": 21,
     "vr_date": "2026-08-25",
     "Vr_Date": "2026-08-25",
-    "copies": 1,
-    "Copies": 1,
-    "rate": 5,
-    "Rate": 5,
-    "amt": 5,
-    "Amt": 5,
+    "copies": 2,
+    "Copies": 2,
+    "rate": 4.5,
+    "Rate": 4.5,
+    "amt": 9,
+    "Amt": 9,
     "narr": "Dainik Navajyoti"
   },
   {
@@ -31,7 +31,7 @@
     "Rate": 60,
     "amt": 60,
     "Amt": 60,
-    "narr": "Today Hindi Magazine August Issue"
+    "narr": "Today Hindi"
   },
   {
     "retail_id": 1117,
@@ -44,10 +44,10 @@
     "Vr_Date": "2026-08-25",
     "copies": 1,
     "Copies": 1,
-    "rate": 30,
-    "Rate": 30,
-    "amt": 30,
-    "Amt": 30,
+    "rate": 25,
+    "Rate": 25,
+    "amt": 25,
+    "Amt": 25,
     "narr": "Current GK Chronology"
   },
   {

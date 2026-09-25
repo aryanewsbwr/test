@@ -57,7 +57,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 109, 216]);
+const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 109]);
 
 // Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
 function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
@@ -155,8 +155,16 @@ export function calculateBilling({
   // Track any missing rates loudly instead of silently using fallback
   const missingRateWarnings: Array<{ publica_id: number; date: string; day_of_week: number; message: string }> = [];
 
+  // Rate lookup cache: (publicaId, dayOfWeek, targetDateIso) -> resolved rate
+  const rateMemo = new Map<string, number>();
+
   // Rate lookup function: ratechange table takes priority over standard rate table
   const getEffectiveRate = (publicaId: number, dayOfWeek: number, targetDateIso: string): number => {
+    const cacheKey = `${publicaId}-${dayOfWeek}-${targetDateIso}`;
+    if (rateMemo.has(cacheKey)) {
+      return rateMemo.get(cacheKey)!;
+    }
+
     // 1. Check ratechanges: rc.Publica_id = publica_id AND (rc.Dayofweek = dayOfWeek OR rc.Dayofweek = 0) AND rc.Dated <= targetDateIso ORDER BY rc.Dated DESC LIMIT 1
     let matchingChanges = ratechanges.filter(rc => {
       const rPub = rc.Publica_id || rc.publica_id;
@@ -191,7 +199,9 @@ export function calculateBilling({
         return (dayB === dayOfWeek ? 1 : 0) - (dayA === dayOfWeek ? 1 : 0);
       });
       const top = matchingChanges[0];
-      return top.NewRate !== undefined ? top.NewRate : (top.new_rate !== undefined ? top.new_rate : (top.newrate || 0));
+      const res = Number(top.NewRate !== undefined ? top.NewRate : (top.new_rate !== undefined ? top.new_rate : (top.newrate || 0)));
+      rateMemo.set(cacheKey, res);
+      return res;
     }
 
     // 2. Fallback to standard rates table: r.Publica_id = publica_id AND r.Dayofweek = dayOfWeek
@@ -202,14 +212,22 @@ export function calculateBilling({
     });
     if (stdRate) {
       const val = stdRate.Rate !== undefined ? stdRate.Rate : stdRate.rate;
-      if (val !== undefined && val !== null && val > 0) return Number(val);
+      if (val !== undefined && val !== null && val > 0) {
+        const res = Number(val);
+        rateMemo.set(cacheKey, res);
+        return res;
+      }
     }
 
     // 3. Fallback any standard rate for publication
     const anyRate = rates.find(r => (r.Publica_id || r.publica_id) === publicaId);
     if (anyRate) {
       const val = anyRate.Rate !== undefined ? anyRate.Rate : anyRate.rate;
-      if (val !== undefined && val !== null && val > 0) return Number(val);
+      if (val !== undefined && val !== null && val > 0) {
+        const res = Number(val);
+        rateMemo.set(cacheKey, res);
+        return res;
+      }
     }
 
     const warnMsg = `[BillingEngine WARN] Missing rate for publication #${publicaId} on date ${targetDateIso} (DayOfWeek: ${dayOfWeek}). Returning 0.00.`;
@@ -220,57 +238,91 @@ export function calculateBilling({
       day_of_week: dayOfWeek,
       message: warnMsg
     });
+    rateMemo.set(cacheKey, 0.0);
     return 0.0;
   };
 
+  // Pre-index publicationDiscontinues by pubId
+  const pubDisMap = new Map<number, { fromIso: string | null; toIso: string | null }[]>();
+  for (const pd of publicationDiscontinues) {
+    const pId = Number(pd.Publica_id || pd.publica_id || pd.publication_id);
+    if (!pId) continue;
+    if (!pubDisMap.has(pId)) pubDisMap.set(pId, []);
+    pubDisMap.get(pId)!.push({
+      fromIso: parseLegacyDateToIso(pd.FromDate || pd.from_date || pd.fromdate),
+      toIso: parseLegacyDateToIso(pd.ToDate || pd.to_date || pd.todate)
+    });
+  }
+
   // Check if publication is globally discontinued in publicationdis table
   const isPubDiscontinued = (publicaId: number, targetDateIso: string): boolean => {
-    return publicationDiscontinues.some(pd => {
-      const pId = pd.Publica_id || pd.publica_id || pd.publication_id;
-      if (pId !== publicaId) return false;
-      const fromIso = parseLegacyDateToIso(pd.FromDate || pd.from_date || pd.fromdate);
-      const toIso = parseLegacyDateToIso(pd.ToDate || pd.to_date || pd.todate);
-      if (fromIso && targetDateIso < fromIso) return false;
-      if (toIso && targetDateIso > toIso) return false;
+    const list = pubDisMap.get(publicaId);
+    if (!list) return false;
+    return list.some(item => {
+      if (item.fromIso && targetDateIso < item.fromIso) return false;
+      if (item.toIso && targetDateIso > item.toIso) return false;
       return true;
     });
   };
 
+  // Pre-index holidays by date ISO
+  // key: dateIso -> { general: boolean, pubIds: Set<number> }
+  const holidayMap = new Map<string, { general: boolean; pubIds: Set<number> }>();
+  for (const h of holidays) {
+    const hIso = parseLegacyDateToIso(h.oc_date || h.Oc_Date || h.dated || h.Dated);
+    if (!hIso) continue;
+    if (!holidayMap.has(hIso)) {
+      holidayMap.set(hIso, { general: false, pubIds: new Set<number>() });
+    }
+    const entry = holidayMap.get(hIso)!;
+    const hPub = Number(h.publication_id || h.publica_id || h.Publica_id || 0);
+    if (!hPub || hPub === 0) {
+      entry.general = true;
+    } else {
+      entry.pubIds.add(hPub);
+    }
+  }
+
   // Holiday check: Daily newspapers skip on general (pub=0) and pub-specific holidays.
   // Periodicals ONLY skip if holiday explicitly specifies that exact publication_id.
   const isHoliday = (publicaId: number, targetDateIso: string, isDaily: boolean = true): boolean => {
-    return holidays.some(h => {
-      const hIso = parseLegacyDateToIso(h.oc_date || h.Oc_Date || h.dated || h.Dated);
-      if (!hIso) return false;
-      const hPub = h.publication_id || h.publica_id || h.Publica_id;
-      if (isDaily) {
-        return hIso === targetDateIso && (!hPub || hPub === 0 || hPub === publicaId);
-      } else {
-        return hIso === targetDateIso && hPub === publicaId;
-      }
-    });
+    const entry = holidayMap.get(targetDateIso);
+    if (!entry) return false;
+    if (isDaily) {
+      return entry.general || entry.pubIds.has(publicaId);
+    } else {
+      return entry.pubIds.has(publicaId);
+    }
   };
+
+  // Pre-index discontinues by customerId
+  const custDisMap = new Map<number, { pubId: number; tempFrom: string; isPerm: boolean; tempTo: string | null }[]>();
+  for (const d of discontinues) {
+    const cid = Number(d.customer_id || d.Customer_id);
+    if (!cid) continue;
+    const tempFrom = parseLegacyDateToIso(d.temp_from || d.Temp_From);
+    if (!tempFrom) continue;
+    if (!custDisMap.has(cid)) custDisMap.set(cid, []);
+    custDisMap.get(cid)!.push({
+      pubId: Number(d.publica_id || d.Publica_id || 0),
+      tempFrom,
+      isPerm: (d.temp_perma || d.Temp_Perma || 'P').toUpperCase().startsWith('P'),
+      tempTo: parseLegacyDateToIso(d.temp_to || d.Temp_To)
+    });
+  }
 
   // Discontinue check: checks active suspension / permanent stop
   // Authoritative column is `temp_from` (verified directly against database schema)
   const isDiscontinued = (custId: number, publicaId: number, targetDateIso: string): boolean => {
-    return discontinues.some(d => {
-      const dCust = d.customer_id || d.Customer_id;
-      if (dCust !== custId) return false;
-
-      const dPub = d.publica_id || d.Publica_id;
-      if (dPub && dPub !== 0 && dPub !== publicaId) return false;
-
-      const tempFrom = parseLegacyDateToIso(d.temp_from || d.Temp_From);
-      if (!tempFrom) return false;
-
-      const isPerm = (d.temp_perma || d.Temp_Perma || 'P').toUpperCase().startsWith('P');
-      if (isPerm) {
-        return targetDateIso >= tempFrom;
+    const list = custDisMap.get(custId);
+    if (!list) return false;
+    return list.some(d => {
+      if (d.pubId !== 0 && d.pubId !== publicaId) return false;
+      if (d.isPerm) {
+        return targetDateIso >= d.tempFrom;
       } else {
-        const tempTo = parseLegacyDateToIso(d.temp_to || d.Temp_To);
-        if (!tempTo) return targetDateIso >= tempFrom;
-        return targetDateIso >= tempFrom && targetDateIso <= tempTo;
+        if (!d.tempTo) return targetDateIso >= d.tempFrom;
+        return targetDateIso >= d.tempFrom && targetDateIso <= d.tempTo;
       }
     });
   };
@@ -482,11 +534,10 @@ export function calculateBilling({
         : englishName;
       const typeP = pub?.type_p || pub?.TypeP || pub?.frequency || 'Daily';
       const is513 = pubId === 513;
-      const is216 = pubId === 216;
       const magzineDay = is513 ? 2 : (pubId === 33 ? 6 : (pub?.magzine_day || pub?.MagzineDay || 0));
-      const isDaily = !is513 && !is216 && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
+      const isDaily = !is513 && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
       const isWeekly = is513 || pubId === 33 || magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
-      const isFortnightly = is216 || FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
+      const isFortnightly = FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
 
       const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
       const cDateIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
@@ -503,9 +554,9 @@ export function calculateBilling({
           const dObj = new Date(calendarYear, monthIdx, day);
           const legacyDayOfWeek = dObj.getDay() + 1; // 1=Sun..7=Sat
 
-          // Active date range check (inclusive bounds)
+          // Active date range check: Target_Date >= s_date AND (c_date is empty OR Target_Date < c_date)
           if (targetDateIso < sDateIso) continue;
-          if (cDateIso && targetDateIso > cDateIso) continue;
+          if (cDateIso && targetDateIso >= cDateIso) continue;
 
           // Holiday, Global Publication Discontinue & Customer Discontinue checks
           if (isPubDiscontinued(pubId, targetDateIso)) continue;
@@ -532,13 +583,16 @@ export function calculateBilling({
 
           if (legacyDayOfWeek !== magzineDay) continue;
           if (targetDateIso < sDateIso) continue;
-          if (cDateIso && targetDateIso > cDateIso) continue;
+          if (cDateIso && targetDateIso >= cDateIso) continue;
           if (isPubDiscontinued(pubId, targetDateIso)) continue;
           if (isHoliday(pubId, targetDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso)) continue;
 
           const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
           if (rate > 0) {
+            // Standard weekly magazines in monthly cycle (e.g. India Today) cap at 4 issues per month
+            const currentTotalCopies = Array.from(rateDaysMap.values()).reduce((a, b) => a + b, 0);
+            if (is513 && currentTotalCopies >= 4) continue;
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
         }
@@ -551,7 +605,7 @@ export function calculateBilling({
         ];
         for (const pDateIso of periodDates) {
           if (pDateIso < sDateIso) continue;
-          if (cDateIso && pDateIso > cDateIso) continue;
+          if (cDateIso && pDateIso >= cDateIso) continue;
           if (isPubDiscontinued(pubId, pDateIso)) continue;
           if (isHoliday(pubId, pDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, pDateIso)) continue;
@@ -573,7 +627,7 @@ export function calculateBilling({
         const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
         const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
-        if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso >= monthStartIso)) {
+        if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
           if (!isPubDiscontinued(pubId, pDateIso) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso)) {
             let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
             if (!rate || rate === 0) {
@@ -672,16 +726,22 @@ export function calculateBilling({
       // Ensure transaction falls within target billing month
       if (vrDate && vrDate >= monthStartIso && vrDate <= monthEndIso) {
         const copies = Number(rs.copies || rs.Copies || 1);
-        // User rule: Rate should be taken from Rec.Amt per copy, NOT from rate column!
-        const recAmtPerCopy = Number(
-          rs.amt !== undefined && rs.amt !== null ? rs.amt : 
-          (rs.Amt !== undefined && rs.Amt !== null ? rs.Amt : 
-          (rs.rec_amt !== undefined && rs.rec_amt !== null ? rs.rec_amt : 
-          (rs.amount !== undefined && rs.amount !== null ? rs.amount : 
-          (rs.rate || rs.Rate || 0))))
-        );
-        const effectiveRate = recAmtPerCopy > 0 ? recAmtPerCopy : Number(rs.rate || rs.Rate || 0);
-        const lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        let lineAmt = 0;
+        let effectiveRate = 0;
+
+        if (rs.amt !== undefined && rs.amt !== null) {
+          lineAmt = Number(rs.amt);
+          effectiveRate = Number(rs.rate || rs.Rate || (copies > 0 ? lineAmt / copies : lineAmt));
+        } else if (rs.Amt !== undefined && rs.Amt !== null) {
+          lineAmt = Number(rs.Amt);
+          effectiveRate = Number(rs.Rate || rs.rate || (copies > 0 ? lineAmt / copies : lineAmt));
+        } else if (rs.amount !== undefined && rs.amount !== null) {
+          lineAmt = Number(rs.amount);
+          effectiveRate = Number(rs.rate || rs.Rate || (copies > 0 ? lineAmt / copies : lineAmt));
+        } else {
+          effectiveRate = Number(rs.rate || rs.Rate || 0);
+          lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        }
         const pubId = rs.publica_id || rs.Publica_id;
         const pub = pubMap.get(pubId);
         const pubName = pub?.pub_hindi 
