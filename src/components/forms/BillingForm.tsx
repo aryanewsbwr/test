@@ -471,14 +471,21 @@ export default function BillingForm({ onClose }: BillingFormProps) {
             </div>
 
             <div className="flex justify-between items-center pt-2 text-xs font-bold border-t border-[#808080]">
-              <div className="flex gap-4 items-center">
-                <span>Current Month: <strong className="text-emerald-800 font-mono">₹{breakupCustomer.current_month_charges !== undefined ? breakupCustomer.current_month_charges.toFixed(2) : (breakupCustomer.total_payable - (breakupCustomer.previous_due || 0)).toFixed(2)}</strong></span>
+              <div className="flex gap-3 items-center flex-wrap">
+                <span>Papers: <strong className="text-slate-800 font-mono">₹{(breakupCustomer.paper_amount !== undefined ? breakupCustomer.paper_amount : ((breakupCustomer.current_month_charges || 0) - (breakupCustomer.delivery_amount || 0)))?.toFixed(2)}</strong></span>
+                {Boolean(breakupCustomer.delivery_amount && breakupCustomer.delivery_amount > 0) && (
+                  <span>+ Delivery: <strong className="text-amber-800 font-mono">₹{breakupCustomer.delivery_amount?.toFixed(2)}</strong></span>
+                )}
+                {Boolean(breakupCustomer.discount_amount && breakupCustomer.discount_amount > 0) && (
+                  <span>- Discount: <strong className="text-rose-800 font-mono">₹{breakupCustomer.discount_amount?.toFixed(2)}</strong></span>
+                )}
+                <span>= Current Month: <strong className="text-emerald-800 font-mono">₹{breakupCustomer.current_month_charges !== undefined ? breakupCustomer.current_month_charges.toFixed(2) : (breakupCustomer.total_payable - (breakupCustomer.previous_due || 0)).toFixed(2)}</strong></span>
                 <span>Previous Due: <strong className="text-slate-700 font-mono">₹{breakupCustomer.previous_due?.toFixed(2)}</strong></span>
                 <span className="text-sm">Total Payable: <strong className="text-blue-900 font-mono">₹{breakupCustomer.total_payable?.toFixed(2)}</strong></span>
               </div>
               <button 
                 onClick={() => setBreakupCustomer(null)}
-                className="px-4 py-1 bg-white border border-[#808080] hover:bg-slate-100 cursor-pointer shadow-xs"
+                className="px-4 py-1 bg-white border border-[#808080] hover:bg-slate-100 cursor-pointer shadow-xs shrink-0"
               >
                 Close
               </button>

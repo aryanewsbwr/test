@@ -817,12 +817,20 @@ export function calculateBilling({
     }
 
     // Insert "Current Month Charges" Subtotal row into Breakup
+    let currentMonthLabel = 'Current Month Charges (चालू माह शुल्क)';
+    if (customerDeliveryTotal > 0 || customerDiscountTotal > 0) {
+      const parts = [`Papers: ₹${(customerPaperTotal + customerRetailTotal).toFixed(2)}`];
+      if (customerDeliveryTotal > 0) parts.push(`Delivery: ₹${customerDeliveryTotal.toFixed(2)}`);
+      if (customerDiscountTotal > 0) parts.push(`Discount: -₹${customerDiscountTotal.toFixed(2)}`);
+      currentMonthLabel = `Current Month Charges (${parts.join(' + ')})`;
+    }
+
     custBreakup.push({
       customer_id: custId,
       name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
       customer_hindi: cust.name_hindi || cust.Name_hindi || '',
       sort_order: 4,
-      item: 'Current Month Charges (चालू माह शुल्क)',
+      item: currentMonthLabel,
       rate: null,
       qty: null,
       days_or_copies: null,
