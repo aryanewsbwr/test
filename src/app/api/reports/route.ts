@@ -22,6 +22,7 @@ interface CacheData {
   ratechanges: any[];
   holidays: any[];
   collect: any[];
+  retailsales?: any[];
 }
 
 let cache: CacheData | null = null;
@@ -58,71 +59,29 @@ async function getCacheAsync() {
     return [];
   };
 
-  try {
-    const [
-      customers,
-      publications,
-      hawkers,
-      regions,
-      discontinues,
-      rates,
-      ratechanges,
-      holidays,
-      collect
-    ] = await Promise.all([
-      fetchAllFromSupabase('customer'),
-      fetchAllFromSupabase('publication'),
-      fetchAllFromSupabase('hawker'),
-      fetchAllFromSupabase('region'),
-      fetchAllFromSupabase('discontinue'),
-      fetchAllFromSupabase('rate'),
-      fetchAllFromSupabase('ratechange'),
-      fetchAllFromSupabase('holiday'),
-      fetchAllFromSupabase('collect')
-    ]);
+  const ratechanges = load('ratechanges.json').map((rc: any) => ({
+    ...rc,
+    dated: rc.effective_date || rc.dated
+  }));
 
-    const mappedRatechanges = ratechanges.map(rc => ({
-      ...rc,
-      dated: rc.effective_date || rc.dated
-    }));
-
-    cache = {
-      customers: customers.length > 0 ? customers : load('all_customers.json'),
-      subscriptions: load('all_subscriptions.json'),
-      publications: publications.length > 0 ? publications : load('publications.json'),
-      hawkers: hawkers.length > 0 ? hawkers : load('hawkers.json'),
-      regions: regions.length > 0 ? regions : load('regions.json'),
-      receipts: load('all_receipts.json'),
-      bills: load('all_bills.json'),
-      discontinues: discontinues.length > 0 ? discontinues : load('discontinues.json'),
-      countersale: load('countersale.json'),
-      publishers: load('publishers.json'),
-      rates: rates.length > 0 ? rates : load('rates.json'),
-      ratechanges: mappedRatechanges.length > 0 ? mappedRatechanges : load('ratechanges.json'),
-      holidays: holidays.length > 0 ? holidays : load('holidays.json'),
-      collect: collect.length > 0 ? collect : load('collect.json'),
-    };
-    return cache;
-  } catch (err) {
-    console.error('Failed to load cache from Supabase, using local fallback:', err);
-    cache = {
-      customers: load('all_customers.json'),
-      subscriptions: load('all_subscriptions.json'),
-      publications: load('publications.json'),
-      hawkers: load('hawkers.json'),
-      regions: load('regions.json'),
-      receipts: load('all_receipts.json'),
-      bills: load('all_bills.json'),
-      discontinues: load('discontinues.json'),
-      countersale: load('countersale.json'),
-      publishers: load('publishers.json'),
-      rates: load('rates.json'),
-      ratechanges: load('ratechanges.json'),
-      holidays: load('holidays.json'),
-      collect: load('collect.json'),
-    };
-    return cache;
-  }
+  cache = {
+    customers: load('all_customers.json'),
+    subscriptions: load('all_subscriptions.json'),
+    publications: load('publications.json'),
+    hawkers: load('hawkers.json'),
+    regions: load('regions.json'),
+    receipts: load('all_receipts.json'),
+    bills: load('all_bills.json'),
+    discontinues: load('discontinues.json'),
+    countersale: load('countersale.json'),
+    publishers: load('publishers.json'),
+    rates: load('rates.json'),
+    ratechanges: ratechanges,
+    holidays: load('holidays.json'),
+    collect: load('collect.json'),
+    retailsales: load('retailsale.json')
+  };
+  return cache;
 }
 
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {

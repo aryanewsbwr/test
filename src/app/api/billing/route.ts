@@ -47,121 +47,48 @@ async function fetchAllFromSupabase(table: string): Promise<any[]> {
   return all;
 }
 
-async function getRates(): Promise<any[]> {
+function getRates(): any[] {
   if (cachedRates && cachedRates.length > 0) return cachedRates;
-  try {
-    const data = await fetchAllFromSupabase('rate');
-    if (data && data.length > 0) {
-      cachedRates = data;
-      return cachedRates;
-    }
-  } catch (err) {
-    console.error('Failed to fetch rates from Supabase:', err);
-  }
-  if (!cachedRates) cachedRates = loadJson('rates.json');
+  cachedRates = loadJson('rates.json');
   return cachedRates || [];
 }
 
-async function getRateChanges(): Promise<any[]> {
+function getRateChanges(): any[] {
   if (cachedRateChanges && cachedRateChanges.length > 0) return cachedRateChanges;
-  try {
-    const data = await fetchAllFromSupabase('ratechange');
-    if (data && data.length > 0) {
-      cachedRateChanges = data.map(rc => ({
-        ...rc,
-        dated: rc.effective_date || rc.dated
-      }));
-      return cachedRateChanges;
-    }
-  } catch (err) {
-    console.error('Failed to fetch ratechanges from Supabase:', err);
-  }
-  if (!cachedRateChanges) cachedRateChanges = loadJson('ratechanges.json');
+  cachedRateChanges = loadJson('ratechanges.json').map((rc: any) => ({
+    ...rc,
+    dated: rc.effective_date || rc.dated
+  }));
   return cachedRateChanges || [];
 }
 
-async function getPublications(): Promise<any[]> {
+function getPublications(): any[] {
   if (cachedPubs && cachedPubs.length > 0) return cachedPubs;
-  try {
-    const data = await fetchAllFromSupabase('publication');
-    if (data && data.length > 0) {
-      cachedPubs = data;
-      return cachedPubs;
-    }
-  } catch (err) {
-    console.error('Failed to fetch publications from Supabase:', err);
-  }
-  if (!cachedPubs) cachedPubs = loadJson('publications.json');
+  cachedPubs = loadJson('publications.json');
   return cachedPubs || [];
 }
 
-async function getDiscontinues(): Promise<any[]> {
+function getDiscontinues(): any[] {
   if (cachedDiscontinues && cachedDiscontinues.length > 0) return cachedDiscontinues;
-  try {
-    const data = await fetchAllFromSupabase('discontinue');
-    if (data && data.length > 0) {
-      cachedDiscontinues = data;
-      return cachedDiscontinues;
-    }
-  } catch (err) {
-    console.error('Failed to fetch discontinues from Supabase:', err);
-  }
-  if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
+  cachedDiscontinues = loadJson('discontinues.json');
   return cachedDiscontinues || [];
 }
 
-async function getRegions(): Promise<any[]> {
+function getRegions(): any[] {
   if (cachedRegions && cachedRegions.length > 0) return cachedRegions;
-  try {
-    const data = await fetchAllFromSupabase('region');
-    if (data && data.length > 0) {
-      cachedRegions = data;
-      return cachedRegions;
-    }
-  } catch (err) {
-    console.error('Failed to fetch regions from Supabase:', err);
-  }
-  if (!cachedRegions) cachedRegions = loadJson('regions.json');
+  cachedRegions = loadJson('regions.json');
   return cachedRegions || [];
 }
 
-async function getCustomers(): Promise<any[]> {
+function getCustomers(): any[] {
   if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
-  try {
-    const data = await fetchAllFromSupabase('customer');
-    if (data && data.length > 0) {
-      cachedCusts = data;
-      return cachedCusts;
-    }
-  } catch (err) {
-    console.error('Failed to fetch customers from Supabase:', err);
-  }
-  if (!cachedCusts) cachedCusts = loadJson('all_customers.json');
+  cachedCusts = loadJson('all_customers.json');
   return cachedCusts || [];
 }
 
-async function getHolidays(): Promise<any[]> {
+function getHolidays(): any[] {
   if (cachedHolidays && cachedHolidays.length > 0) return cachedHolidays;
-  const localHolidays = loadJson('holidays.json');
-  try {
-    const all = await fetchAllFromSupabase('holiday');
-    const seen = new Set<string>();
-    const merged: any[] = [];
-    for (const h of [...all, ...localHolidays]) {
-      const key = `${h.holiday_id || h.id}-${h.holiday_date || h.Holiday_Date || h.h_date}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(h);
-      }
-    }
-    if (merged.length > 0) {
-      cachedHolidays = merged;
-      return cachedHolidays;
-    }
-  } catch (err) {
-    console.error('Failed to fetch holidays from Supabase:', err);
-  }
-  if (!cachedHolidays) cachedHolidays = localHolidays;
+  cachedHolidays = loadJson('holidays.json');
   return cachedHolidays || [];
 }
 
@@ -171,10 +98,13 @@ async function getPublicationDiscontinues(): Promise<any[]> {
     const { data } = await supabase.from('publicationdis').select('*');
     if (data && data.length > 0) cachedPubDis = data;
   } catch (err) {
-    console.error('Failed to fetch publicationdis:', err);
+    // fallback
   }
+  if (!cachedPubDis) cachedPubDis = loadJson('publicationdis.json');
   return cachedPubDis || [];
 }
+
+
 
 async function getMaxBillId(fySuffix: string): Promise<number> {
   try {
