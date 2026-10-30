@@ -5,7 +5,7 @@ import os from 'os';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getReliableHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
@@ -573,11 +573,11 @@ export async function GET(request: NextRequest) {
 
       const singleBill = singleResult.bills[0] || null;
       if (singleBill) {
-        singleBill.customer_hindi = cleanOrTransliterateHindi(singleBill.customer_hindi, singleBill.name_eng);
+        singleBill.customer_hindi = getReliableHindiName(singleBill.customer_hindi, singleBill.name_eng);
       }
       const singleBreakup = (singleResult.breakup_lines || []).map(bl => ({
         ...bl,
-        customer_hindi: cleanOrTransliterateHindi(bl.customer_hindi || '', bl.name_eng)
+        customer_hindi: getReliableHindiName(bl.customer_hindi || '', bl.name_eng)
       }));
 
       return NextResponse.json({
@@ -662,7 +662,7 @@ export async function GET(request: NextRequest) {
       bill_no: b.bill_no,
       customer_id: b.customer_id,
       name_eng: b.name_eng,
-      customer_hindi: cleanOrTransliterateHindi(b.customer_hindi, b.name_eng),
+      customer_hindi: getReliableHindiName(b.customer_hindi, b.name_eng),
       region_name: b.region_name,
       previous_due: b.previous_due,
       paper_amount: b.paper_amount,

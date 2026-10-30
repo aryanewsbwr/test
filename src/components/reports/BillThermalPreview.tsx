@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getReliableHindiName } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { printBillsThermal58mm, getThermalPublicationDisplayName } from '@/lib/billThermalExport';
@@ -124,7 +124,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           bill_id: currentBill.bill_no || currentBill.customer_id,
           customer_id: currentBill.customer_id,
           customer_name: currentBill.customer_name,
-          customer_hindi: cleanOrTransliterateHindi(currentBill.customer_hindi || '', currentBill.customer_name),
+          customer_hindi: getReliableHindiName(currentBill.customer_hindi || '', currentBill.customer_name),
           items: currentBill.items || [],
           delivery_charge: currentBill.delivery_charge || 0,
           paper_amount: currentBill.paper_amount || 0,
@@ -207,7 +207,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           bill_no: b.bill_no || b.customer_id,
           customer_id: b.customer_id,
           customer_name: b.customer_name,
-          customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name),
+          customer_hindi: getReliableHindiName(b.customer_hindi || '', b.customer_name),
           month: `${b.month || ''} ${b.year || ''}`.trim() || 'Oct 2026',
           region_name: b.region_name || b.region_id,
           phone: b.phone,
@@ -264,7 +264,9 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   };
 
   const renderBill = (b: BillRecord, idx: number, forCapture = false) => {
-    let displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+    // Only show a Hindi name we can trust (real DB Hindi / legacy decode / known
+    // phrase). Never the lossy phonetic guess — that produced wrong names before.
+    let displayHindi = getReliableHindiName(b.customer_hindi || '', b.customer_name);
     const cleanEngName = (b.customer_name || '').replace(/\s+crd\b/i, '').trim();
 
     if (displayHindi) {
@@ -446,6 +448,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           <div className="font-black text-[13.5px] uppercase tracking-tight text-black">
             {cleanEngName}
           </div>
+          {displayHindi && (
+            <div className="font-bold text-[12.5px] text-black leading-tight mt-0.5">
+              {displayHindi}
+            </div>
+          )}
           <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 mt-1 whitespace-nowrap">
             <span>Region: {b.region_name || b.region_id}</span>
             {formattedPhone && <span>Mob: {formattedPhone}</span>}

@@ -15,7 +15,7 @@
  * 12. 100% schema alignment with billYYYYYYYY and billnoYYYYYYYY tables
  */
 
-import { cleanOrTransliterateHindi } from './transliteration';
+import { cleanOrTransliterateHindi, getReliableHindiName } from './transliteration';
 
 export interface BillingLineItem {
   customer_id: number;
@@ -615,7 +615,9 @@ export function calculateBilling({
     const cust = targetCustomers[cIdx];
     const custId = cust.customer_id || cust.Customer_id;
     const custNameEng = cust.name_eng || cust.Name_eng || `Customer #${custId}`;
-    const custNameHindi = cleanOrTransliterateHindi(cust.name_hindi || cust.Name_hindi || '', custNameEng);
+    // Only use a Hindi name we can trust (DB Unicode / legacy font decode / known
+    // phrase). Never a lossy phonetic guess — that produced wrong names before.
+    const custNameHindi = getReliableHindiName(cust.name_hindi || cust.Name_hindi || '', custNameEng);
     const custSubs = subsByCust.get(custId) || [];
 
     const custBreakup: BillingLineItem[] = [];

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken } from '@/lib/whatsappService';
 import { getThermalPublicationDisplayName } from '@/lib/billThermalExport';
+import { getReliableHindiName } from '@/lib/transliteration';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
 import sharp from 'sharp';
@@ -51,6 +52,21 @@ function formatWhatsAppCustomerName(rawName: string | undefined | null): string 
   clean = clean.replace(/\s+/g, ' ').trim();
 
   return clean || 'ग्राहक';
+}
+
+/**
+ * Name used for the WhatsApp template variable {{1}} (chat text, rendered by Meta,
+ * so Devanagari is safe here). Prefers a trustworthy Hindi name; falls back to the
+ * clean English name when no reliable Hindi exists. The approved template already
+ * appends " जी," so any trailing जी is stripped to avoid "जी जी".
+ */
+function whatsAppDisplayName(rawName: string | undefined | null, rawHindi?: string | undefined | null): string {
+  const hindi = getReliableHindiName(rawHindi || '', rawName || '');
+  if (hindi) {
+    const stripped = hindi.replace(/\s*जी\s*$/,'').trim();
+    if (stripped) return stripped;
+  }
+  return formatWhatsAppCustomerName(rawName);
 }
 
 /**
@@ -345,7 +361,7 @@ export async function POST(request: NextRequest) {
 
             const sendPayload = {
               toPhone: phone,
-              customerName: formatWhatsAppCustomerName(b.customer_name),
+              customerName: whatsAppDisplayName(b.customer_name, b.customer_hindi),
               month: billMonth,
               billNo: String(b.bill_no || b.customer_id),
               accountNo: String(b.customer_id),
@@ -442,7 +458,7 @@ export async function POST(request: NextRequest) {
       const activeBill = {
         bill_no: String(body.bill_id || body.bill_no || '37210'),
         customer_id: String(body.customer_id || '24669'),
-        customer_name: formatWhatsAppCustomerName(body.customer_name),
+        customer_name: whatsAppDisplayName(body.customer_name, body.customer_hindi),
         month: body.month || month,
         current_amount: Number(body.paper_amount || 0),
         previous_due: Number(body.previous_due || 0),
@@ -532,7 +548,7 @@ export async function POST(request: NextRequest) {
 
           const res = await sendWhatsAppBillMessage({
             toPhone: phone,
-            customerName: formatWhatsAppCustomerName(cust.name_eng || `Customer #${cid}`),
+            customerName: whatsAppDisplayName(cust.name_eng || `Customer #${cid}`, cust.name_hindi),
             month: billData.month,
             billNo: billData.bill_no,
             accountNo: billData.customer_id,

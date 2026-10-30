@@ -886,6 +886,53 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
 }
 
 /**
+ * Returns a TRUSTWORTHY Devanagari Hindi name, or '' when none is available.
+ *
+ * Unlike cleanOrTransliterateHindi, this NEVER falls back to lossy phonetic
+ * guessing from the English name. It only returns Hindi that came from real
+ * data: genuine Unicode already in the DB, a legacy Kruti Dev / Susha 05 decode,
+ * or a curated known phrase. Everything else returns '' so the caller can safely
+ * fall back to the English name instead of printing a wrong/garbled Hindi name.
+ */
+export function getReliableHindiName(rawHindi: any, englishName: any): string {
+  const rawHindiStr = typeof rawHindi === 'string' ? rawHindi : (rawHindi != null ? String(rawHindi) : '');
+  const engStr = typeof englishName === 'string' ? englishName : (englishName != null ? String(englishName) : '');
+  const engLower = engStr.trim().toLowerCase();
+  const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
+
+  const rawHindiCleaned = rawHindiStr.trim()
+    .replace(/[�\x00-\x1f\x7f-\xff]/g, '') // strip corrupted bytes
+    .replace(/\s*[0-9]{5,}\s*/g, ' ')           // strip stray 5+ digit codes
+    .replace(/\\',.*$/, '')                        // strip SQL dump artifacts
+    .trim();
+
+  // 1. Genuine Unicode Devanagari already stored in the database (most reliable)
+  if (rawHindiCleaned && /[ऀ-ॿ]/.test(rawHindiCleaned) && !/[a-zA-Z]/.test(rawHindiCleaned)) {
+    return rawHindiCleaned;
+  }
+
+  // 2. Legacy Kruti Dev 010 exact mapping
+  if (rawHindiCleaned && KRUTI_DEV_MAP[rawHindiCleaned]) {
+    return KRUTI_DEV_MAP[rawHindiCleaned];
+  }
+
+  // 3. Legacy Susha 05 ASCII decode — only accept if it produces clean Devanagari
+  if (rawHindiCleaned) {
+    const susha = sushaToUnicode(rawHindiCleaned);
+    if (susha && /[ऀ-ॿ]/.test(susha) && !/[a-zA-Z]/.test(susha)) {
+      return susha.replace(/\s*[0-9]{5,}\s*/g, ' ').trim();
+    }
+  }
+
+  // 4. Curated known phrases (accurate, hand-maintained)
+  if (KNOWN_PHRASES_MAP[engLower]) return KNOWN_PHRASES_MAP[engLower];
+  if (KNOWN_PHRASES_MAP[engNoTrailingNum]) return KNOWN_PHRASES_MAP[engNoTrailingNum];
+
+  // No trustworthy Hindi available — caller should use the English name instead.
+  return '';
+}
+
+/**
  * Asynchronous transliteration helper: calls /api/transliterate (with Google Input Tools + fallback)
  * or falls back to offline phonetic engine if offline or server-side.
  */
