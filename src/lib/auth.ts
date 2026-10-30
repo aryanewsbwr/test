@@ -80,7 +80,7 @@ const DEFAULT_USERS: AppUser[] = [
   {
     id: 'user_admin_001',
     username: 'ananews',
-    password_hash: 'cf30f21542c8c5e293074eba4401e2dde57b9f0975c368dcef5f21268ae2c23b',
+    password_hash: 'e27bde481d7a5ae355be1026d3098ff01badff78475185268dc18ccea57da07d',
     name: 'Main Administrator',
     role: 'admin',
     is_active: true,
