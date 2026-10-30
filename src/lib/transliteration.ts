@@ -445,7 +445,7 @@ const SUSHA_PATTERNS: [RegExp, string][] = [
   [/laa?[\uFFFD]?ba`orI/gi, 'लाइब्रेरी'],
   [/laa?[\uFFFD]?nsa/gi, 'लायंस'],
   [/laa?[\uFFFD]?T/gi, 'लाइट'],
-  [/vaa?[\uFFFD]?na/gi, 'वाइन'],
+  [/vaa�na/g, 'वाइन'],
   [/laa?[\uFFFD]?f/gi, 'लाइफ'],
   [/jaI[\uFFFD]/gi, 'जी'],
   [/vaIAa[\x00-\xFF\uFFFD]?pI/gi, 'वीआईपी'],
@@ -588,14 +588,66 @@ const SUSHA_CHARS: [string, string][] = [
   ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
 ];
 
+// --- Abugida-aware Susha decoder tables ---------------------------------------
+// Independent (standalone) vowels. Longest-first.
+const SU_INDEP: [string, string][] = [
+  ['AaO', 'औ'], ['Aao', 'ओ'], ['Aa', 'आ'], ['A', 'अ'],
+  ['EaI', 'श्री'], ['Ea', 'श्र'], ['E', 'ऐ'], ['e', 'ए'],
+  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
+];
+// Base consonants (receive inherent vowel / matra / halant per context).
+const SU_CONS: [string, string][] = [
+  ['x', 'क्ष'], ['X', 'क्ष'], ['~', 'त्र'], ['&', 'ज्ञ'],
+  ['k', 'क'], ['K', 'ख'], ['g', 'ग'], ['G', 'घ'],
+  ['c', 'च'], ['C', 'छ'], ['j', 'ज'], ['J', 'झ'],
+  ['T', 'ट'], ['z', 'ठ'], ['D', 'ड'], ['Z', 'ढ'], ['N', 'ण'],
+  ['t', 'त'], ['q', 'थ'], ['d', 'द'], ['Q', 'ध'], ['n', 'न'],
+  ['p', 'प'], ['P', 'फ'], ['f', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
+  ['y', 'य'], ['r', 'र'], ['l', 'ल'], ['v', 'व'], ['w', 'व'],
+  ['S', 'श'], ['Y', 'ष'], ['s', 'स'], ['h', 'ह']
+];
+// Pre-halant consonants (already half).
+const SU_HALFCONS: [string, string][] = [['@', 'क्'], ['%', 'त्']];
+// Dependent vowel signs (matras). Longest-first. NOTE: 'ao'/'aO' are intentionally
+// omitted so a consonant's inherent 'a' is consumed first and the following 'o'/'O'
+// becomes े/ै (fixes गणेश, मेहता) instead of being eaten greedily as ो/ौ.
+const SU_MATRA: [string, string][] = [
+  ['aaO', 'ौ'], ['aao', 'ो'], ['aa', 'ा'],
+  ['O', 'ै'], ['o', 'े'], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'], ['`', '्र']
+];
+// Signs that trail a syllable.
+const SU_TRAIL: [string, string][] = [['M', 'ं'], ['^', 'ँ'], [':', 'ः']];
+// Curated near-certain conjuncts (ASCII consonant pair). Only these trigger an
+// automatic halant, so ordinary full consonants that merely lost their inherent
+// 'a' in the legacy data (सोहन, पवन) are left intact rather than wrongly joined.
+const SU_CONJUNCTS = new Set([
+  'nd', 'nt', 'nn', 'nQ', 'mb', 'mB', 'jy', 'ty', 'Ty', 'Sy', 'Yy', 'Ny',
+  'ly', 'st', 'Yt', 'ST', 'll', 'tt', 'dd', 'Nz', 'Nd'
+]);
+
+function suMatchAt(table: [string, string][], str: string, i: number): [string, string] | null {
+  for (const pair of table) {
+    if (str.startsWith(pair[0], i)) return pair;
+  }
+  return null;
+}
+function suConsKeyAt(str: string, i: number): string | null {
+  const c = suMatchAt(SU_CONS, str, i) || suMatchAt(SU_HALFCONS, str, i);
+  return c ? c[0] : null;
+}
+
 /**
- * Decodes legacy 2008 Susha 05 ASCII font strings to clean Unicode Devanagari Hindi
+ * Decodes legacy 2008 Susha 05 ASCII font strings to clean Unicode Devanagari Hindi.
+ * Models the abugida: a consonant carries an inherent 'a' unless followed by a matra
+ * or (for a curated set of conjunct pairs) another consonant.
  */
 export function sushaToUnicode(text: string): string {
   if (!text) return '';
-  if (/[\u0900-\u097F]/.test(text) && !/[a-zA-Z]/.test(text)) return text;
+  if (/[ऀ-ॿ]/.test(text) && !/[a-zA-Z]/.test(text)) return text;
 
-  let s = text.replace(/[\x00-\x1f\x7f-\xff]/g, '');
+  // Preserve the corrupted 'š'/'Š' byte (legacy encoding of इ) past the strip.
+  let s = text.replace(/[šŠ]/g, '\u0001');
+  s = s.replace(/[\x00\x02-\x1f\x7f-\xff]/g, '');
   for (const [pattern, rep] of SUSHA_PATTERNS) {
     s = s.replace(pattern, rep);
   }
@@ -603,32 +655,54 @@ export function sushaToUnicode(text: string): string {
   const words = s.split(' ');
   const outWords = words.map(w => {
     if (!w) return w;
-    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYhf@%]+)/g, (_, c) => c + '\u093F');
+    // Move a short-i typed before its consonant to after it (vowel-sign reordering).
+    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYhf@%])/g, (_, c) => c + 'ि');
     let res = '';
     let i = 0;
-    while (i < cw.length) {
-      if (cw.charCodeAt(i) >= 0x0900 && cw.charCodeAt(i) <= 0x097F) {
-        res += cw[i++];
-        continue;
-      }
-      if (/[0-9\s.,\/#!$%\^&\*;:{}=\-_~() ]/.test(cw[i]) && !SUSHA_CHARS.some(([k]) => k === cw[i])) {
-        res += cw[i++];
-        continue;
-      }
-      let matched = false;
-      for (const [k, v] of SUSHA_CHARS) {
-        if (cw.startsWith(k, i)) {
-          res += v;
-          i += k.length;
-          matched = true;
-          break;
+    const n = cw.length;
+    while (i < n) {
+      const code = cw.charCodeAt(i);
+      // Already Devanagari (incl. reordered vowel sign) -> copy through.
+      if (code >= 0x0900 && code <= 0x097F) { res += cw[i++]; continue; }
+      // Corrupted 'š' sentinel -> इ
+      if (cw[i] === '\u0001') { res += 'इ'; i++; continue; }
+
+      const iv = suMatchAt(SU_INDEP, cw, i);
+      if (iv) { res += iv[1]; i += iv[0].length; continue; }
+
+      const hc = suMatchAt(SU_HALFCONS, cw, i);
+      if (hc) { res += hc[1]; i += hc[0].length; continue; }
+
+      const c = suMatchAt(SU_CONS, cw, i);
+      if (c) {
+        res += c[1];
+        i += c[0].length;
+        let handled = false;
+        const mt = suMatchAt(SU_MATRA, cw, i);
+        if (mt) { res += mt[1]; i += mt[0].length; handled = true; }
+        else if (cw[i] === 'a') { i++; handled = true; } // inherent vowel
+        if (!handled) {
+          const nextCons = suConsKeyAt(cw, i);
+          if (nextCons && SU_CONJUNCTS.has(c[0] + nextCons)) {
+            res += '्'; // halant -> conjunct
+          }
+          // else leave the consonant full (schwa) — safest for lossy data
         }
+        const tr = suMatchAt(SU_TRAIL, cw, i);
+        if (tr) { res += tr[1]; i += tr[0].length; }
+        continue;
       }
-      if (!matched) {
-        res += cw[i++];
-      }
+
+      const sm = suMatchAt(SU_MATRA, cw, i) || suMatchAt(SU_TRAIL, cw, i);
+      if (sm) { res += sm[1]; i += sm[0].length; continue; }
+
+      if (cw[i] === '-') { res += 'र्'; i++; continue; } // reph
+      if (cw[i] === '$') { res += 'रु'; i++; continue; }
+      if (cw[i] === 'a') { i++; continue; } // stray inherent-vowel marker -> drop
+
+      res += cw[i++];
     }
-    return res.replace(/([क-ह])र्/g, 'र्$1');
+    return res.replace(/([क-ह])([ा-ौंः]*)र्(?![क-ह])/g, 'र्$1$2');
   });
 
   return outWords.join(' ');
