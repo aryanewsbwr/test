@@ -66,7 +66,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const [isSendingWaAll, setIsSendingWaAll] = useState(false);
   const [waProgress, setWaProgress] = useState<{ sent: number; total: number } | null>(null);
   const [waStatus, setWaStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const billCardRef = useRef<HTMLDivElement>(null);
+  const billCardRef = useRef<HTMLDivElement | null>(null);
+  // Off-screen refs + state used to rasterize each bill in the browser for bulk WhatsApp sending
+  const captureRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [captureChunk, setCaptureChunk] = useState<BillRecord[] | null>(null);
 
   if (!bills || bills.length === 0) {
     return (
@@ -165,36 +168,63 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     setWaStatus(null);
 
     try {
-      // Prepare payload with clean customer names, Hindi, and amounts
-      const preparedBills = eligibleBills.map(b => ({
-        bill_no: b.bill_no || b.customer_id,
-        customer_id: b.customer_id,
-        customer_name: b.customer_name,
-        customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name),
-        month: `${b.month || ''} ${b.year || ''}`.trim() || 'Oct 2026',
-        region_name: b.region_name || b.region_id,
-        phone: b.phone,
-        items: b.items || [],
-        paper_amount: b.paper_amount || 0,
-        delivery_charge: b.delivery_charge || 0,
-        previous_due: b.previous_due || 0,
-        net_payable: b.net_payable || 0
-      }));
-
-      // Send in batches of 15 to show progress smoothly
+      // Send in batches of 15 to show progress smoothly and bound browser memory
       const chunkSize = 15;
       let totalSent = 0;
       let totalFailed = 0;
       let totalSkipped = 0;
 
-      for (let i = 0; i < preparedBills.length; i += chunkSize) {
-        const chunk = preparedBills.slice(i, i + chunkSize);
+      for (let i = 0; i < eligibleBills.length; i += chunkSize) {
+        const chunkBills = eligibleBills.slice(i, i + chunkSize);
+
+        // Render this chunk off-screen, then rasterize each bill card in the browser
+        // (where Devanagari fonts exist) — exactly like the single-send path. This is
+        // what prevents the tofu/blocks that the server-side SVG image produced.
+        captureRefs.current.clear();
+        await new Promise<void>((resolve) => {
+          setCaptureChunk(chunkBills);
+          setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())), 40);
+        });
+        try { await (document as any).fonts?.ready; } catch { /* fonts API unavailable */ }
+
+        const chunkImages: (string | undefined)[] = [];
+        for (let j = 0; j < chunkBills.length; j++) {
+          const el = captureRefs.current.get(j);
+          if (!el) { chunkImages[j] = undefined; continue; }
+          try {
+            chunkImages[j] = await toPng(el, {
+              quality: 0.98,
+              pixelRatio: 2,
+              backgroundColor: '#ffffff'
+            });
+          } catch (imgErr) {
+            console.warn('Could not rasterize bill for bulk WhatsApp send:', imgErr);
+            chunkImages[j] = undefined;
+          }
+        }
+
+        const chunkPayload = chunkBills.map((b, j) => ({
+          bill_no: b.bill_no || b.customer_id,
+          customer_id: b.customer_id,
+          customer_name: b.customer_name,
+          customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name),
+          month: `${b.month || ''} ${b.year || ''}`.trim() || 'Oct 2026',
+          region_name: b.region_name || b.region_id,
+          phone: b.phone,
+          items: b.items || [],
+          paper_amount: b.paper_amount || 0,
+          delivery_charge: b.delivery_charge || 0,
+          previous_due: b.previous_due || 0,
+          net_payable: b.net_payable || 0,
+          image_base64: chunkImages[j]
+        }));
+
         const res = await fetch('/api/whatsapp/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            bills: chunk,
-            month: preparedBills[0]?.month || 'Oct 2026'
+            bills: chunkPayload,
+            month: chunkPayload[0]?.month || 'Oct 2026'
           })
         });
 
@@ -210,18 +240,21 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             }
           }
         } else {
-          totalFailed += chunk.length;
+          totalFailed += chunkBills.length;
           console.error('[WhatsApp Batch API Error]:', data.error);
         }
 
-        setWaProgress({ sent: Math.min(i + chunk.length, eligibleBills.length), total: eligibleBills.length });
+        setWaProgress({ sent: Math.min(i + chunkBills.length, eligibleBills.length), total: eligibleBills.length });
       }
+
+      setCaptureChunk(null);
 
       setWaStatus({
         type: totalSent > 0 ? 'success' : 'error',
         message: `WhatsApp batch completed: ${totalSent} delivered successfully${totalFailed > 0 ? `, ${totalFailed} failed` : ''}${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ''}.`
       });
     } catch (err: any) {
+      setCaptureChunk(null);
       setWaStatus({ type: 'error', message: err?.message || 'Network error occurred during batch send.' });
     } finally {
       setIsSendingWaAll(false);
@@ -230,7 +263,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     }
   };
 
-  const renderBill = (b: BillRecord, idx: number) => {
+  const renderBill = (b: BillRecord, idx: number, forCapture = false) => {
     let displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
     const cleanEngName = (b.customer_name || '').replace(/\s+crd\b/i, '').trim();
 
@@ -339,8 +372,14 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     const formattedPhone = cleanPhone(b.phone);
 
     return (
-      <div 
-        ref={idx === currentIndex ? billCardRef : null}
+      <div
+        ref={(el) => {
+          if (forCapture) {
+            if (el) captureRefs.current.set(idx, el);
+          } else if (idx === currentIndex) {
+            billCardRef.current = el;
+          }
+        }}
         key={`${b.customer_id}-${idx}`}
         className="w-[360px] max-w-[360px] bg-white border border-slate-300 shadow-2xl p-6 font-sans text-[12px] leading-tight select-text text-black mb-8 rounded-sm text-center"
         style={{
@@ -647,6 +686,18 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           renderBill(currentBill, currentIndex)
         )}
       </div>
+
+      {/* Off-screen render surface used only during bulk WhatsApp sending.
+          Each bill is rendered here and rasterized in the browser so Devanagari
+          (Hindi) renders from the browser's fonts instead of tofu boxes. */}
+      {captureChunk && (
+        <div
+          aria-hidden
+          style={{ position: 'fixed', left: '-99999px', top: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }}
+        >
+          {captureChunk.map((b, idx) => renderBill(b, idx, true))}
+        </div>
+      )}
     </div>
   );
 };
