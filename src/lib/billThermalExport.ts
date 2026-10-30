@@ -766,9 +766,15 @@ export function generateThermal58mmFullHtml(
 
     .footer-wrong-number-line {
       color: #dc2626;
-      font-weight: 700;
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1.4;
       text-align: center;
-      margin-top: 2px;
+      margin: 4px 0 2px;
+      padding: 4px 6px;
+      border: 1.5px solid #dc2626;
+      border-radius: 6px;
+      background: #fef2f2;
     }
 
     .footer-thanks-line {

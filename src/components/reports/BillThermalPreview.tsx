@@ -542,7 +542,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           <div className="font-bold text-black">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
           <div className="font-semibold text-black text-[9px]">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</div>
           <div className="font-medium text-slate-800">Queries: WhatsApp 9462558949</div>
-          <div className="font-bold text-[10px] text-red-600 text-center mt-0.5">यदि यह बिल आपका नहीं है, तो कृपया इसे अनदेखा करें और व्हाट्सएप पर केवल "यह मेरा बिल नहीं है" लिखकर भेज दें।</div>
+          <div className="font-extrabold text-[12px] leading-snug text-red-600 text-center mt-1 mb-0.5 px-1.5 py-1 border-[1.5px] border-red-600 rounded-md bg-red-50">यदि यह बिल आपका नहीं है, तो कृपया इसे अनदेखा करें और व्हाट्सएप पर केवल "यह मेरा बिल नहीं है" लिखकर भेज दें।</div>
           <div className="font-black text-[11px] text-black mt-0.5">धन्यवाद!</div>
         </div>
       </div>
