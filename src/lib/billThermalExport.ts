@@ -307,6 +307,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         <div class="footer-due-line">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
         <div class="footer-ss-line">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</div>
         <div class="footer-query-line">Queries: WhatsApp 9462558949</div>
+        <div class="footer-wrong-number-line">यदि यह बिल आपका नहीं है, तो कृपया इसे अनदेखा करें और व्हाट्सएप पर केवल "यह मेरा बिल नहीं है" लिखकर भेज दें।</div>
         <div class="footer-thanks-line">धन्यवाद!</div>
       </div>
 
@@ -761,6 +762,13 @@ export function generateThermal58mmFullHtml(
     .footer-query-line {
       font-weight: 700;
       color: #000;
+    }
+
+    .footer-wrong-number-line {
+      color: #dc2626;
+      font-weight: 700;
+      text-align: center;
+      margin-top: 2px;
     }
 
     .footer-thanks-line {
