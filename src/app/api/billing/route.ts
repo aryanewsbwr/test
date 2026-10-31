@@ -104,6 +104,13 @@ async function getDiscontinues(): Promise<any[]> {
   });
 }
 
+// Regions starting with Z are not billed in All Regions. Pick one directly to bill it.
+async function dropHiddenRegions(custs: any[]): Promise<any[]> {
+  const regions = await fetchRegions();
+  const hidden = new Set(regions.filter(r => /^\s*z/i.test(String(r.region_name || r.name || ''))).map(r => Number(r.region_id)));
+  return custs.filter(c => !hidden.has(Number(c.region_id || c.Region_id)));
+}
+
 async function getCustomers(regionId?: string | number): Promise<any[]> {
   // 1. If regionId is specified (and not 'all'), fetch directly from Supabase first
   if (regionId && regionId !== 'all') {
@@ -496,6 +503,8 @@ export async function GET(request: NextRequest) {
     if (regionId && regionId !== 'all') {
       const rId = parseInt(regionId, 10);
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
+    } else {
+      targetCusts = await dropHiddenRegions(targetCusts);
     }
 
     // Filter by search text
@@ -601,6 +610,8 @@ export async function POST(request: NextRequest) {
     if (region_id && region_id !== 'all') {
       const rId = parseInt(region_id, 10);
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
+    } else {
+      targetCusts = await dropHiddenRegions(targetCusts);
     }
 
     // Determine fiscal year suffix (e.g. 20252026)

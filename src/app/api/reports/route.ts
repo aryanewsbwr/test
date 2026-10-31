@@ -955,9 +955,18 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      let { data: billnoRows, error: billnoErr } = await query.order('bill_id', { ascending: true });
+      // Read every page: a month has far more bills than the database returns at once
+      let billnoRows: any[] = [];
+      let billnoErr: any = null;
+      const orderedQuery = query.order('bill_id', { ascending: true });
+      for (let from = 0; ; from += 1000) {
+        const { data: page, error: pageErr } = await orderedQuery.range(from, from + 999);
+        if (pageErr) { billnoErr = pageErr; break; }
+        billnoRows.push(...(page || []));
+        if (!page || page.length < 1000) break;
+      }
 
-      if (billnoErr || !billnoRows || billnoRows.length === 0) {
+      if (billnoErr || billnoRows.length === 0) {
         return NextResponse.json({
           report_title: reportType === 'bill_print_single'
             ? `SINGLE CUSTOMER BILL PRINTING (${standardMonth.toUpperCase()} ${year})`

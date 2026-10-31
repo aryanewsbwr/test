@@ -611,6 +611,8 @@ export function calculateBilling({
     let customerPaperTotal = 0;
     let customerDeliveryTotal = 0;
     let customerDiscountTotal = 0;
+    // Papers actually delivered this month, with their copies, for supplements
+    const billedCopiesByPub = new Map<number, number>();
 
     const custRegionId = cust.region_id || cust.Region_id || 1;
 
@@ -808,6 +810,8 @@ export function calculateBilling({
         });
       });
 
+      if (subPaperTotal > 0) billedCopiesByPub.set(Number(pubId), qty);
+
       // Line-item discount: Subscriptions specify discount percentage in `dis` / `discount_percent` / `Dis`
       // Customer master table does not have a global discount column
       const subDisRaw = cd.dis !== undefined && cd.dis !== null ? cd.dis : (cd.discount_percent !== undefined ? cd.discount_percent : cd.Dis);
@@ -923,7 +927,6 @@ export function calculateBilling({
     // 1C. PROCESS PUBLICATION SUPPLEMENTS (P S)
     // =========================================================================
     let customerSupplementTotal = 0;
-    const custSubPubIds = new Set(custSubs.map(s => Number(s.publica_id || s.Publica_id || s.publication_id)));
 
     for (const supp of supplements) {
       const suppDateIso = parseLegacyDateToIso(supp.date_iso || supp.date);
@@ -935,9 +938,9 @@ export function calculateBilling({
         const parentId = Number(supp.publicasup_id || supp.publica_id || supp.Publica_id || 0);
         const suppId = Number(supp.publica_id || supp.publicasup_id || supp.Publica_id || 0);
 
-        const matchingPubId = custSubPubIds.has(parentId) 
-          ? parentId 
-          : (custSubPubIds.has(suppId) ? suppId : null);
+        const matchingPubId = billedCopiesByPub.has(parentId)
+          ? parentId
+          : (billedCopiesByPub.has(suppId) ? suppId : null);
 
         if (matchingPubId !== null) {
           const appliesToRegion = Boolean(
@@ -949,14 +952,22 @@ export function calculateBilling({
           );
 
           if (appliesToRegion) {
-            const sub = custSubs.find(s => Number(s.publica_id || s.Publica_id || s.publication_id) === matchingPubId);
-            const copies = Number(sub?.qty || sub?.copies || 1);
+            const copies = billedCopiesByPub.get(matchingPubId) || 1;
             let suppRate = Number(supp.rate || 0);
             if (suppRate <= 0) {
               const dow = 1;
               suppRate = getEffectiveRate(suppId || parentId, dow, monthStartIso);
             }
-            if (suppRate <= 0) suppRate = 5.0;
+            if (suppRate <= 0) {
+              // Never guess a price: a supplement with no rate is left off and reported
+              missingRateWarnings.push({
+                publica_id: suppId || parentId,
+                date: monthStartIso,
+                day_of_week: 1,
+                message: `Supplement "${supp.supplement_name || suppId || parentId}" has no rate, so it was not billed.`
+              });
+              continue;
+            }
 
             const lineAmt = Math.round(copies * suppRate * 100) / 100;
 
