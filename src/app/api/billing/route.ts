@@ -679,6 +679,7 @@ export async function POST(request: NextRequest) {
 
     // If commit to live Supabase DB is requested:
     let savedToSupabase = false;
+    let balanceWarning = '';
     let savedBillnoCount = 0;
     let savedBillItemsCount = 0;
 
@@ -742,16 +743,12 @@ export async function POST(request: NextRequest) {
         { headers: billnoRows, lines: billRows, deliveries: billdelRows }
       );
 
-      // Update customer cbal for single or small region runs without blocking batch execution
-      if (result.bills.length <= 100) {
-        for (let i = 0; i < result.bills.length; i += 50) {
-          const chunk = result.bills.slice(i, i + 50);
-          await Promise.all(
-            chunk.map(b =>
-              supabaseAdmin.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
-            )
-          );
-        }
+      // Each customer's balance after this bill, minus meaning owed, for the dues reports.
+      // The bills are already saved, so a failure here is reported instead of undoing them.
+      for (let i = 0; i < result.bills.length; i += 1000) {
+        const balances = result.bills.slice(i, i + 1000).map(b => ({ customer_id: b.customer_id, cbal: -b.total_payable }));
+        const { error } = await supabaseAdmin.from('customer').upsert(balances, { onConflict: 'customer_id' });
+        if (error) balanceWarning = `Bills saved, but customer balances were not updated: ${error.message}`;
       }
 
       savedToSupabase = true;
@@ -768,7 +765,8 @@ export async function POST(request: NextRequest) {
       grand_total: result.grand_total,
       saved_to_supabase: savedToSupabase,
       saved_billno_count: savedBillnoCount,
-      saved_bill_items_count: savedBillItemsCount
+      saved_bill_items_count: savedBillItemsCount,
+      ...(balanceWarning ? { warning: balanceWarning } : {})
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

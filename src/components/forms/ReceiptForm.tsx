@@ -931,12 +931,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       // Stop here so a receipt that was not saved never changes the customer balance
       if (insertErr) throw insertErr;
 
-      // 2. Adjust Customer Due Balance in Supabase Customer Table
+      // 2. Adjust Customer Due Balance in Supabase Customer Table (cbal is minus when owed)
       await supabase
         .from('customer')
         .update({ 
           due_amount: calculatedRemainingBal,
-          cbal: calculatedRemainingBal
+          cbal: -calculatedRemainingBal
         })
         .eq('customer_id', cid);
 
@@ -972,7 +972,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setCustomerReceipts(prev => [...prev, newReceiptGridRow].sort(compareReceipts));
 
       // 4. Update customer master in local state
-      setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedRemainingBal, cbal: calculatedRemainingBal } : c));
+      setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedRemainingBal, cbal: -calculatedRemainingBal } : c));
       setTotalCustomerDue(calculatedRemainingBal);
 
       setMsg({ 
@@ -1197,6 +1197,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
+      // A changed amount changes the balance too, the same as saving or deleting
+      const { error: balanceErr } = await supabase
+        .from('customer')
+        .update({ due_amount: calculatedDues, cbal: -calculatedDues })
+        .eq('customer_id', cid);
+      if (balanceErr) throw new Error(`Receipt updated, but the balance was not: ${balanceErr.message}`);
+      setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedDues, cbal: -calculatedDues } : c));
+
       setIsUpdateModalOpen(false);
       setMsg({ text: `Receipt Rep #${updateRepId} (Recp #${updateRecpNo}) updated successfully!` });
     } catch (err: any) {
@@ -1264,11 +1272,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           .from('customer')
           .update({ 
             due_amount: calculatedDues,
-            cbal: calculatedDues
+            cbal: -calculatedDues
           })
           .eq('customer_id', cid);
 
-        setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedDues, cbal: calculatedDues } : c));
+        setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedDues, cbal: -calculatedDues } : c));
       }
 
       setIsUpdateModalOpen(false);

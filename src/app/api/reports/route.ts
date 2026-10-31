@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
+import { fySuffix } from '@/lib/financialYear';
 import fs from 'fs';
 import path from 'path';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
@@ -7,6 +8,8 @@ import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi, getReliableHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
+// Reading every customer, subscription and receipt takes about ten seconds
+export const maxDuration = 60;
 
 interface CacheData {
   customers: any[];
@@ -29,21 +32,62 @@ interface CacheData {
 
 let cache: CacheData | null = null;
 
-async function fetchAllFromSupabase(table: string): Promise<any[]> {
+// Every row, in a fixed order so pages never overlap, failing loudly rather than returning part
+async function fetchAllFromSupabase(table: string, order: string[]): Promise<any[]> {
   const all: any[] = [];
   const PAGE_SIZE = 1000;
-  let from = 0;
-  while (true) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .range(from, from + PAGE_SIZE - 1);
-    if (error || !data || data.length === 0) break;
-    all.push(...data);
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase.from(table).select('*');
+    for (const column of order) query = query.order(column, { ascending: true });
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`Could not read ${table}: ${error.message}`);
+    all.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) return all;
   }
-  return all;
+}
+
+// Receipts keep their book details in remarks; the reports read them as separate fields
+function receiptForReports(r: any) {
+  let extra: any = {};
+  try {
+    extra = JSON.parse(r.remarks || '{}');
+  } catch {}
+  return {
+    ...r,
+    receipt_id: r.id,
+    receipt_no: String(r.recp_no ?? ''),
+    bill_date: r.recp_date,
+    mal_recp_dt: extra.mal_recp_dt || r.recp_date,
+    manual_rep_no: String(extra.manual_rep_no ?? extra.mal_rep_no ?? ''),
+    cash_chq: extra.cash_chq || 'Cash',
+    cheque_no: extra.cheque_no || '',
+    r_amt: extra.r_amt ?? r.mal_recp_amt,
+    balance: extra.balance ?? 0,
+    due_amt: r.bill_amt
+  };
+}
+
+// Customers, subscriptions, receipts and the rest come from the database on each report.
+// The files these used to come from were never uploaded, so those reports were empty.
+async function loadLiveData(data: CacheData) {
+  const [customers, subscriptions, hawkers, collect, discontinues, countersale, publishers, receipts] = await Promise.all([
+    fetchAllFromSupabase('customer', ['customer_id']),
+    fetchAllFromSupabase('customer_detail', ['customer_id', 'sno']),
+    fetchAllFromSupabase('hawker', ['hawker_id']),
+    fetchAllFromSupabase('collect', ['Collect_id']),
+    fetchAllFromSupabase('discontinue', ['discontinue_id']),
+    fetchAllFromSupabase('countersale', ['id']),
+    fetchAllFromSupabase('publisher', ['publish_id']),
+    fetchAllFromSupabase(`receipt${fySuffix()}`, ['id'])
+  ]);
+  data.customers = customers;
+  data.subscriptions = subscriptions;
+  data.hawkers = hawkers;
+  data.collect = collect.map((a: any) => ({ ...a, collect_id: a.Collect_id ?? a.collect_id }));
+  data.discontinues = discontinues;
+  data.countersale = countersale.map((c: any) => ({ ...c, sale_date: c.vr_date, qty: c.copies }));
+  data.publishers = publishers;
+  data.receipts = receipts.map(receiptForReports);
 }
 
 async function getCacheAsync() {
@@ -258,9 +302,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const search = (searchParams.get('search') || '').toLowerCase().trim();
 
-    const data = await getCacheAsync();
+    const data = { ...(await getCacheAsync()) };
     data.publications = await fetchPublications();
     data.regions = await fetchRegions();
+    // Bill printing reads its own rows from the database, so it skips this slower load
+    if (!reportType.startsWith('bill_print') && reportType !== 'bill_paid_report') await loadLiveData(data);
     const custMap = new Map<number, any>(data.customers.map(c => [c.customer_id, c]));
     const pubMap = new Map<number, any>(data.publications.map(p => [p.publica_id, p]));
     const hwMap = new Map<number, any>(data.hawkers.map(h => [h.hawker_id, h]));
