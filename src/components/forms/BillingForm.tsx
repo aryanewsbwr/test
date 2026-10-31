@@ -1,5 +1,6 @@
 'use client';
 
+import { fyStartYear } from '@/lib/financialYear';
 import React, { useState, useEffect } from 'react';
 import { Printer, RefreshCw, X, Search, FileText, Eye, CheckCircle2, ChevronLeft, ChevronRight, Play, Database, Check } from 'lucide-react';
 import { Customer, Publication, Rate, Holiday, Discontinue } from '@/lib/types';
@@ -21,11 +22,11 @@ const MONTHS = [
   'October', 'November', 'December', 'January', 'February', 'March'
 ];
 
-const FINANCIAL_YEARS = [
-  { label: '2026-2027', value: '20262027', year: 2026 },
-  { label: '2025-2026', value: '20252026', year: 2025 },
-  { label: '2024-2025', value: '20242025', year: 2024 }
-];
+const latestFyStart = fyStartYear();
+const FINANCIAL_YEARS = [0, 1, 2].map(back => {
+  const year = latestFyStart - back;
+  return { label: `${year}-${year + 1}`, value: `${year}${year + 1}`, year };
+});
 
 export default function BillingForm({ onClose, periodMonth, periodStartYear }: BillingFormProps) {
   const periodFinancialYear = `${periodStartYear}${periodStartYear + 1}`;

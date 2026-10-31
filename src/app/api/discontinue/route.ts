@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fyLabel, fySuffix } from '@/lib/financialYear';
 import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
       temp_from,
       temp_to,
       entry_date = new Date().toISOString().split('T')[0],
-      financial_year = '20262027'
+      financial_year = fySuffix()
     } = body;
 
     if (!customer_id) {
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
         temp_from: record.temp_from,
         temp_to: record.temp_to,
         entry_date: record.entry_date,
-        financial_year: '2026-2027'
+        financial_year: fyLabel()
       }]);
     } catch (dbErr) {
       console.warn('Supabase discontinue warning:', dbErr);

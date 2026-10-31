@@ -1,5 +1,6 @@
 'use client';
 
+import { fyLabel } from '@/lib/financialYear';
 import React, { useState, useEffect, useRef } from 'react';
 import { Publication, Rate, RateChange, Publisher } from '@/lib/types';
 import { cleanOrTransliterateHindi, transliterateToHindiAsync } from '@/lib/transliteration';
@@ -1553,7 +1554,7 @@ export default function PublicationForm({
               </div>
 
               <div className="font-bold text-black text-xs">
-                Period :- <span className="text-[#000080] font-mono">2026-2027</span>
+                Period :- <span className="text-[#000080] font-mono">{fyLabel()}</span>
               </div>
             </div>
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fySuffix, previousFySuffix } from '@/lib/financialYear';
 import { supabase } from '@/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     // 2. Fetch Retail Sales from Supabase tables (retailsale20252026, retailsale20262027, retailsale)
     const allDbSales: any[] = [];
-    const retailTables = ['retailsale20252026', 'retailsale20262027', 'retailsale'];
+    const retailTables = [`retailsale${previousFySuffix()}`, `retailsale${fySuffix()}`, 'retailsale'];
     
     for (const tbl of retailTables) {
       try {
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
     // Determine highest retail_id from Supabase across all retail tables
     let maxId = 1200;
     try {
-      for (const tbl of ['retailsale', 'retailsale20252026', 'retailsale20262027']) {
+      for (const tbl of ['retailsale', `retailsale${previousFySuffix()}`, `retailsale${fySuffix()}`]) {
         const { data: maxRow } = await supabase
           .from(tbl)
           .select('retail_id')
@@ -186,18 +187,10 @@ export async function POST(request: NextRequest) {
 
     // Direct insert into Supabase tables
     const { data: inserted, error: insertError } = await supabase
-      .from('retailsale20252026')
+      .from(`retailsale${fySuffix()}`)
       .insert(rowsToInsert)
       .select();
 
-    try {
-      await supabase.from('retailsale20262027').insert(rowsToInsert);
-    } catch {}
-
-    if (insertError) {
-      console.error('Supabase retail sale insert error:', insertError);
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
-    }
 
     return NextResponse.json({
       success: true,
@@ -218,7 +211,7 @@ export async function DELETE(request: NextRequest) {
     const publicaId = searchParams.get('publica_id');
     const date = searchParams.get('date');
 
-    const tables = ['retailsale', 'retailsale20252026', 'retailsale20262027'];
+    const tables = ['retailsale', `retailsale${previousFySuffix()}`, `retailsale${fySuffix()}`];
 
     for (const tbl of tables) {
       if (retailId) {

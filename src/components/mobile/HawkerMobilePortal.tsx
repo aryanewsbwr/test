@@ -1,5 +1,6 @@
 'use client';
 
+import { fySuffix } from '@/lib/financialYear';
 import React, { useState, useEffect, useMemo } from 'react';
 import { AppUser } from '@/lib/auth';
 import { Customer, Publication, Hawker } from '@/lib/types';
@@ -261,7 +262,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
         temp_from: fromIso,
         temp_to: toIso,
         entry_date: todayIso,
-        financial_year: '20262027'
+        financial_year: fySuffix()
       };
 
       const res = await fetch('/api/discontinue', {

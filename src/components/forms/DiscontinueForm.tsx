@@ -1,5 +1,6 @@
 'use client';
 
+import { fyLabel } from '@/lib/financialYear';
 import React, { useState, useEffect, useRef } from 'react';
 import { Customer, Publication, Hawker } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
@@ -48,7 +49,7 @@ export default function DiscontinueForm({
   // CUSTOMER DISCONTINUE STATE
   // ==========================================
   const [entryDate, setEntryDate] = useState<string>(todayDdmmyyyy);
-  const [periodStr, setPeriodStr] = useState<string>('2026-2027');
+  const [periodStr, setPeriodStr] = useState<string>(fyLabel());
 
   // Customer Search & Selection
   const [custSearchTerm, setCustSearchTerm] = useState('');

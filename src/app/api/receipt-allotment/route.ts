@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fySuffix } from '@/lib/financialYear';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
@@ -7,7 +8,7 @@ import fs from 'fs';
 export const dynamic = 'force-dynamic';
 
 const STORAGE_BUCKET = 'news-images';
-const STORAGE_FILE = 'data/receipt_allotments_20262027.json';
+const storageFile = () => `data/receipt_allotments_${fySuffix()}.json`;
 
 export interface ReceiptAllotmentRecord {
   id?: string | number;
@@ -85,7 +86,7 @@ function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmen
 
 async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
   // 1. Try public/data/receipt_allotments_20262027.json
-  const pubPath = path.join(process.cwd(), 'public', 'data', 'receipt_allotments_20262027.json');
+  const pubPath = path.join(process.cwd(), 'public', 'data', `receipt_allotments_${fySuffix()}.json`);
   if (fs.existsSync(pubPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(pubPath, 'utf-8'));
@@ -95,7 +96,7 @@ async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
 
   // 2. Try Supabase Storage
   try {
-    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(STORAGE_FILE);
+    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(storageFile());
     if (!error && data) {
       const text = await data.text();
       const parsed = JSON.parse(text);
@@ -113,7 +114,7 @@ async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
   try {
     const pubDir = path.join(process.cwd(), 'public', 'data');
     if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
-    const pubPath = path.join(pubDir, 'receipt_allotments_20262027.json');
+    const pubPath = path.join(pubDir, `receipt_allotments_${fySuffix()}.json`);
     fs.writeFileSync(pubPath, JSON.stringify(data, null, 2), 'utf-8');
     
     // Also update legacy receipt_allotments.json to keep it aligned
@@ -124,7 +125,7 @@ async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
   // 2. Save to Supabase Storage
   try {
     await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(
-      STORAGE_FILE,
+      storageFile(),
       Buffer.from(JSON.stringify(data, null, 2)),
       { upsert: true, contentType: 'application/json' }
     );
@@ -160,7 +161,7 @@ export async function GET(req: NextRequest) {
     let dbRecords: ReceiptAllotmentRecord[] = [];
     try {
       const { data: dbIssues, error: dbErr } = await supabase
-        .from('receiptissue20262027')
+        .from(`receiptissue${fySuffix()}`)
         .select('*')
         .order('sno', { ascending: true });
 
@@ -268,7 +269,7 @@ export async function POST(req: NextRequest) {
     try {
       if (edit_sno && collectId) {
         await supabase
-          .from('receiptissue20262027')
+          .from(`receiptissue${fySuffix()}`)
           .update({
             ReceiptFrom: String(fromNum),
             ReceiptTo: String(toNum),
@@ -282,7 +283,7 @@ export async function POST(req: NextRequest) {
         const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
 
         await supabase
-          .from('receiptissue20262027')
+          .from(`receiptissue${fySuffix()}`)
           .insert({
             sno: nextSno,
             Collect_id: collectId,
@@ -375,7 +376,7 @@ export async function DELETE(req: NextRequest) {
       if (matchedCol) {
         const collectId = matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id;
         await supabase
-          .from('receiptissue20262027')
+          .from(`receiptissue${fySuffix()}`)
           .delete()
           .eq('Collect_id', collectId)
           .eq('sno', sno);

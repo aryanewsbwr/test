@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { fySuffix, previousFySuffix } from '@/lib/financialYear';
 import { Customer, Region } from '@/lib/types';
 
 interface ReceiptFormProps {
@@ -243,7 +244,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
     // Load next receipt number
     supabase
-      .from('receipt20262027')
+      .from(`receipt${fySuffix()}`)
       .select('recp_no')
       .order('recp_no', { ascending: false })
       .limit(1)
@@ -533,12 +534,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       let bList: any[] = [];
       const [b26Res, items26Res] = await Promise.all([
         supabase
-          .from('billno20262027')
+          .from(`billno${fySuffix()}`)
           .select('*')
           .eq('customer_id', cust.customer_id)
           .order('bill_id', { ascending: true }),
         supabase
-          .from('bill20262027')
+          .from(`bill${fySuffix()}`)
           .select('bill_id, total_amt')
           .eq('customer_id', cust.customer_id)
       ]);
@@ -576,12 +577,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         // Fallback to 20252026
         const [b25Res, items25Res] = await Promise.all([
           supabase
-            .from('billno20252026')
+            .from(`billno${previousFySuffix()}`)
             .select('*')
             .eq('customer_id', cust.customer_id)
             .order('bill_id', { ascending: true }),
           supabase
-            .from('bill20252026')
+            .from(`bill${previousFySuffix()}`)
             .select('bill_id, total_amt')
             .eq('customer_id', cust.customer_id)
         ]);
@@ -636,7 +637,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       try {
         const [r26Res, histRes] = await Promise.all([
           supabase
-            .from('receipt20262027')
+            .from(`receipt${fySuffix()}`)
             .select('*')
             .eq('customer_id', cust.customer_id)
             .order('id', { ascending: true }),
@@ -889,7 +890,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const cid = parseInt(customerId, 10);
       // Re-read the highest number so two open screens can't hand out the same receipt no
       const { data: highestRows, error: highestErr } = await supabase
-        .from('receipt20262027')
+        .from(`receipt${fySuffix()}`)
         .select('recp_no')
         .order('recp_no', { ascending: false })
         .limit(1);
@@ -923,7 +924,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       // 1. Insert into receipt20262027
       const { data: insertedData, error: insertErr } = await supabase
-        .from('receipt20262027')
+        .from(`receipt${fySuffix()}`)
         .insert([receiptPayload])
         .select();
 
@@ -1148,7 +1149,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const cid = parseInt(customerId, 10);
       if (!updateRecpNo || isNaN(cid)) throw new Error('This receipt has no receipt number, so it was not changed.');
       const { data: updatedRows, error: updErr } = await supabase
-        .from('receipt20262027')
+        .from(`receipt${fySuffix()}`)
         .update(updatePayload)
         .eq('customer_id', cid)
         .eq('recp_no', updateRecpNo)
@@ -1220,7 +1221,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const receiptCid = parseInt(customerId, 10);
       if (!updateRecpNo || isNaN(receiptCid)) throw new Error('This receipt has no receipt number, so it was not deleted.');
       const { data: deletedRows, error: delErr } = await supabase
-        .from('receipt20262027')
+        .from(`receipt${fySuffix()}`)
         .delete()
         .eq('customer_id', receiptCid)
         .eq('recp_no', updateRecpNo)
