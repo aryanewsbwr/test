@@ -272,14 +272,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         }
       });
 
-    // Load Regions Master
-    supabase
-      .from('region')
-      .select('*')
-      .order('region_id', { ascending: true })
-      .then(({ data }) => {
-        if (data) setAllRegions(data);
-      });
+    // Load Regions Master (regiond, the list the Region screen keeps)
+    fetch('/api/regions')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.regions) setAllRegions(data.regions);
+      })
+      .catch(() => {});
 
     // Load every customer (24,000+) from the database for search as you type
     fetch('/api/customers?all=true')
