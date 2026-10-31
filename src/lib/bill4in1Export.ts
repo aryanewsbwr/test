@@ -1,4 +1,4 @@
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getReliableHindiName } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
 import { BOY_LOGO_B64 } from './logoBase64';
 
@@ -55,7 +55,7 @@ function formatMoney(n: number | undefined | null): string {
  * In 'detail' mode: Paper prices are pure and delivery charge is shown separately in the summary box
  */
 export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: BillPrintMode = 'simple'): string {
-  const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+  const displayHindi = getReliableHindiName(b.customer_hindi || '', b.customer_name);
   
   // Format items: display actual rows, and pad with empty rows up to 4 items so layout stays 100% aligned
   const minRows = 4;

@@ -588,42 +588,136 @@ const SUSHA_CHARS: [string, string][] = [
   ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
 ];
 
-// --- Abugida-aware Susha decoder tables ---------------------------------------
-// Independent (standalone) vowels. Longest-first.
+// --- Susha 05 decoder tables -----------------------------------------------------
+// Standalone vowels. Longest-first.
 const SU_INDEP: [string, string][] = [
-  ['AaO', 'औ'], ['Aao', 'ओ'], ['Aa', 'आ'], ['A', 'अ'],
-  ['EaI', 'श्री'], ['Ea', 'श्र'], ['E', 'ऐ'], ['e', 'ए'],
-  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
+  ['AaO', 'औ'], ['Aao', 'ओ'], ['Aa^', 'ऑ'], ['A^a', 'ऑ'], ['Aa', 'आ'], ['A', 'अ'],
+  ['eo', 'ऐ'], ['e', 'ए'],
+  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ'], ['?', 'ऋ'], ['R', 'ऋ']
 ];
-// Base consonants (receive inherent vowel / matra / halant per context).
-const SU_CONS: [string, string][] = [
-  ['x', 'क्ष'], ['X', 'क्ष'], ['~', 'त्र'], ['&', 'ज्ञ'],
-  ['k', 'क'], ['K', 'ख'], ['g', 'ग'], ['G', 'घ'],
-  ['c', 'च'], ['C', 'छ'], ['j', 'ज'], ['J', 'झ'],
-  ['T', 'ट'], ['z', 'ठ'], ['D', 'ड'], ['Z', 'ढ'], ['N', 'ण'],
-  ['t', 'त'], ['q', 'थ'], ['d', 'द'], ['Q', 'ध'], ['n', 'न'],
-  ['p', 'प'], ['P', 'फ'], ['f', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
-  ['y', 'य'], ['r', 'र'], ['l', 'ल'], ['v', 'व'], ['w', 'व'],
-  ['S', 'श'], ['Y', 'ष'], ['s', 'स'], ['h', 'ह']
+// Half letters: the glyph has no vertical bar, so 'a' completes the letter and a
+// following consonant joins it. These never end a word in the customer data.
+const SU_HALF: Record<string, string> = {
+  g: 'ग', G: 'घ', c: 'च', j: 'ज', J: 'झ', N: 'ण', q: 'थ', Q: 'ध', n: 'न', P: 'प',
+  F: 'फ', b: 'ब', B: 'भ', m: 'म', y: 'य', l: 'ल', v: 'व', S: 'श', Y: 'ष', s: 'स',
+  x: 'क्ष', E: 'श्र', '@': 'क', '%': 'त', '<': 'त्त'
+};
+// Full letters: complete on their own, so 'a' after one is the ा sign (ra = रा).
+const SU_FULL: Record<string, string> = {
+  k: 'क', K: 'ख', C: 'छ', T: 'ट', z: 'ठ', D: 'ड', Z: 'ढ', t: 'त', d: 'द', p: 'प',
+  f: 'फ', r: 'र', ';': 'ल', h: 'ह', '~': 'त्र', '&': 'ज्ञ', '+': 'ट्ट', W: 'द्व', w: 'द्ध'
+};
+const SU_VOWEL_SIGNS: [string, string][] = [
+  ['ao', 'ो'], ['aO', 'ौ'], ['a^', 'ॉ'], ['a', 'ा'],
+  ['o', 'े'], ['O', 'ै'], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'], ['R', 'ृ']
 ];
-// Pre-halant consonants (already half).
-const SU_HALFCONS: [string, string][] = [['@', 'क्'], ['%', 'त्']];
-// Dependent vowel signs (matras). Longest-first. NOTE: 'ao'/'aO' are intentionally
-// omitted so a consonant's inherent 'a' is consumed first and the following 'o'/'O'
-// becomes े/ै (fixes गणेश, मेहता) instead of being eaten greedily as ो/ौ.
-const SU_MATRA: [string, string][] = [
-  ['aaO', 'ौ'], ['aao', 'ो'], ['aa', 'ा'],
-  ['O', 'ै'], ['o', 'े'], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'], ['`', '्र']
-];
-// Signs that trail a syllable.
-const SU_TRAIL: [string, string][] = [['M', 'ं'], ['^', 'ँ'], [':', 'ः']];
-// Curated near-certain conjuncts (ASCII consonant pair). Only these trigger an
-// automatic halant, so ordinary full consonants that merely lost their inherent
-// 'a' in the legacy data (सोहन, पवन) are left intact rather than wrongly joined.
-const SU_CONJUNCTS = new Set([
-  'nd', 'nt', 'nn', 'nQ', 'mb', 'mB', 'jy', 'ty', 'Ty', 'Sy', 'Yy', 'Ny',
-  'ly', 'st', 'Yt', 'ST', 'll', 'tt', 'dd', 'Nz', 'Nd'
-]);
+const SU_RAKAR = /[`/]/;
+const SU_STRAY_SIGN = /[aoOIuUR`/]/;
+const SU_TRAILING: Record<string, string> = { M: 'ं', '^': 'ँ', ':': 'ः' };
+// Full letters whose next half letter is a conjunct in real words (मुख्य, ब्रह्म)
+const SU_FULL_CONJUNCTS = new Set(['Ky', 'hm', 'hy']);
+
+const suIsConsonant = (ch: string | undefined) => !!ch && (ch in SU_HALF || ch in SU_FULL);
+
+/**
+ * Decodes one Susha 05 word. Susha types Hindi glyph by glyph, not sound by sound:
+ *  - half letters need 'a' to become whole (ga = ग, gaa = गा, gaao = गो, gao = गे)
+ *  - full letters are already whole (r = र, ra = रा, rao = रो, ro = रे)
+ *  - 'i' is typed before the letter it sits on (ila = लि, iNDa = ण्डि)
+ *  - '-' is the reph typed after the syllable it sits on (Samaa- = शर्मा)
+ */
+function decodeSushaWord(word: string): string {
+  let res = '';
+  let i = 0;
+  let pendingShortI = false;
+  let clusterStart = -1;
+  let syllableStart = -1;
+  const n = word.length;
+
+  while (i < n) {
+    const ch = word[i];
+
+    if (ch >= 'ऀ' && ch <= 'ॿ') { res += ch; i++; continue; }
+    if (ch === '\u0001') { res += i === 0 || i === n - 1 ? 'ई' : 'इ'; i++; continue; }
+
+    if (ch === 'i') { pendingShortI = true; i++; continue; }
+
+    if (ch === '-') {
+      if (syllableStart >= 0) res = res.slice(0, syllableStart) + 'र्' + res.slice(syllableStart);
+      i++;
+      continue;
+    }
+
+    if (ch === '$') {
+      syllableStart = res.length;
+      res += 'रु';
+      i++;
+      continue;
+    }
+
+    if (suIsConsonant(ch)) {
+      if (clusterStart < 0) clusterStart = res.length;
+      i++;
+
+      const isHalf = ch in SU_HALF;
+      res += isHalf ? SU_HALF[ch] : SU_FULL[ch];
+      const completed = isHalf && word[i] === 'a';
+      if (completed) i++;
+
+      if (!completed && suIsConsonant(word[i]) && (isHalf || SU_FULL_CONJUNCTS.has(ch + word[i]))) {
+        res += '्';
+        continue;
+      }
+
+      while (i < n && SU_RAKAR.test(word[i])) {
+        if (!res.endsWith('्र')) res += '्र';
+        i++;
+        // A half letter may take 'a' after the rakar: ga`a = ग्रा needs the 'a' kept
+        if (isHalf && !completed && word[i] === 'a') i++;
+      }
+
+      syllableStart = clusterStart;
+      clusterStart = -1;
+
+      if (pendingShortI) {
+        res += 'ि';
+        pendingShortI = false;
+        if (word[i] === 'a') i++;
+      } else {
+        const sign = suMatchAt(SU_VOWEL_SIGNS, word, i);
+        if (sign) { res += sign[1]; i += sign[0].length; }
+      }
+      // Typing slips such as BaaTIo or rooNau repeat a vowel sign: keep the first one
+      while (i < n && SU_STRAY_SIGN.test(word[i])) i++;
+      continue;
+    }
+
+    const indep = suMatchAt(SU_INDEP, word, i);
+    if (indep) {
+      res += indep[1];
+      i += indep[0].length;
+      syllableStart = -1;
+      continue;
+    }
+
+    if (ch in SU_TRAILING) {
+      i++;
+      // Anusvara typed before the vowel sign (DMU = डूं)
+      const lateSign = ch === 'M' && word[i] !== 'a' && !/[ा-ौ]$/.test(res) ? suMatchAt(SU_VOWEL_SIGNS, word, i) : null;
+      if (lateSign) { res += lateSign[1]; i += lateSign[0].length; }
+      res += SU_TRAILING[ch];
+      continue;
+    }
+
+    // A vowel sign with no letter before it is a typing slip (oiSava, `SaMkr)
+    if (SU_STRAY_SIGN.test(ch)) { i++; continue; }
+
+    res += ch;
+    i++;
+  }
+
+  return res;
+}
 
 function suMatchAt(table: [string, string][], str: string, i: number): [string, string] | null {
   for (const pair of table) {
@@ -631,81 +725,38 @@ function suMatchAt(table: [string, string][], str: string, i: number): [string, 
   }
   return null;
 }
-function suConsKeyAt(str: string, i: number): string | null {
-  const c = suMatchAt(SU_CONS, str, i) || suMatchAt(SU_HALFCONS, str, i);
-  return c ? c[0] : null;
-}
+
+// Curated fixes must only match whole words: unanchored, /Da\s+/ turned every word
+// ending in "Da " into "डॉ ".
+const SUSHA_WORD_BOUNDARY_BEFORE = '(?<![A-Za-z\\u0900-\\u097F`;~%@$+<&\\[\\]{}?-])';
+const SUSHA_WORD_BOUNDARY_AFTER = '(?![A-Za-z\\u0900-\\u097F`;~%@$+<&\\[\\]{}?-])';
+const SUSHA_WORD_PATTERNS: [RegExp, string][] = SUSHA_PATTERNS.map(([pattern, rep]) => [
+  new RegExp(
+    `${SUSHA_WORD_BOUNDARY_BEFORE}(?:${pattern.source})${pattern.source.endsWith('\\s+') ? '' : SUSHA_WORD_BOUNDARY_AFTER}`,
+    pattern.flags
+  ),
+  rep
+]);
 
 /**
  * Decodes legacy 2008 Susha 05 ASCII font strings to clean Unicode Devanagari Hindi.
- * Models the abugida: a consonant carries an inherent 'a' unless followed by a matra
- * or (for a curated set of conjunct pairs) another consonant.
  */
 export function sushaToUnicode(text: string): string {
   if (!text) return '';
   if (/[ऀ-ॿ]/.test(text) && !/[a-zA-Z]/.test(text)) return text;
 
-  // Preserve the corrupted 'š'/'Š' byte (legacy encoding of इ) past the strip.
-  let s = text.replace(/[šŠ]/g, '\u0001');
+  // The corrupted Š byte (legacy encoding of इ / ई) reaches us as š, Š or U+FFFD
+  let s = text.replace(/[šŠ�]/g, '\u0001');
   s = s.replace(/[\x00\x02-\x1f\x7f-\xff]/g, '');
-  for (const [pattern, rep] of SUSHA_PATTERNS) {
+  // SQL dump leftovers and keyboard noise that carry no letter
+  s = s.replace(/[\\',!]/g, '').replace(/\/{2,}/g, '');
+  if (/^\s*NULL\s*$/.test(s)) return '';
+
+  for (const [pattern, rep] of SUSHA_WORD_PATTERNS) {
     s = s.replace(pattern, rep);
   }
 
-  const words = s.split(' ');
-  const outWords = words.map(w => {
-    if (!w) return w;
-    // Move a short-i typed before its consonant to after it (vowel-sign reordering).
-    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYhf@%])/g, (_, c) => c + 'ि');
-    let res = '';
-    let i = 0;
-    const n = cw.length;
-    while (i < n) {
-      const code = cw.charCodeAt(i);
-      // Already Devanagari (incl. reordered vowel sign) -> copy through.
-      if (code >= 0x0900 && code <= 0x097F) { res += cw[i++]; continue; }
-      // Corrupted 'š' sentinel -> इ
-      if (cw[i] === '\u0001') { res += 'इ'; i++; continue; }
-
-      const iv = suMatchAt(SU_INDEP, cw, i);
-      if (iv) { res += iv[1]; i += iv[0].length; continue; }
-
-      const hc = suMatchAt(SU_HALFCONS, cw, i);
-      if (hc) { res += hc[1]; i += hc[0].length; continue; }
-
-      const c = suMatchAt(SU_CONS, cw, i);
-      if (c) {
-        res += c[1];
-        i += c[0].length;
-        let handled = false;
-        const mt = suMatchAt(SU_MATRA, cw, i);
-        if (mt) { res += mt[1]; i += mt[0].length; handled = true; }
-        else if (cw[i] === 'a') { i++; handled = true; } // inherent vowel
-        if (!handled) {
-          const nextCons = suConsKeyAt(cw, i);
-          if (nextCons && SU_CONJUNCTS.has(c[0] + nextCons)) {
-            res += '्'; // halant -> conjunct
-          }
-          // else leave the consonant full (schwa) — safest for lossy data
-        }
-        const tr = suMatchAt(SU_TRAIL, cw, i);
-        if (tr) { res += tr[1]; i += tr[0].length; }
-        continue;
-      }
-
-      const sm = suMatchAt(SU_MATRA, cw, i) || suMatchAt(SU_TRAIL, cw, i);
-      if (sm) { res += sm[1]; i += sm[0].length; continue; }
-
-      if (cw[i] === '-') { res += 'र्'; i++; continue; } // reph
-      if (cw[i] === '$') { res += 'रु'; i++; continue; }
-      if (cw[i] === 'a') { i++; continue; } // stray inherent-vowel marker -> drop
-
-      res += cw[i++];
-    }
-    return res.replace(/([क-ह])([ा-ौंः]*)र्(?![क-ह])/g, 'र्$1$2');
-  });
-
-  return outWords.join(' ');
+  return s.split(' ').map(w => (w ? decodeSushaWord(w) : w)).join(' ');
 }
 
 /**
@@ -905,7 +956,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const engLower = engTrimmed.toLowerCase();
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
   let rawHindiCleaned = rawHindiStr.trim()
-    .replace(/[\ufffd\x00-\x1f\x7f-\xff]/g, '') // remove corrupted bytes
+    .replace(/[\x00-\x1f\x7f-\xff]/g, '') // remove control bytes (U+FFFD is decoded by sushaToUnicode)
     .replace(/\s*[0-9]{5,}\s*/g, ' ') // remove stray telephone/UDISE/school code numbers (5+ digits)
     .replace(/\\',.*$/, '') // remove SQL dump artifacts
     .trim();
@@ -975,7 +1026,7 @@ export function getReliableHindiName(rawHindi: any, englishName: any): string {
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
 
   const rawHindiCleaned = rawHindiStr.trim()
-    .replace(/[�\x00-\x1f\x7f-\xff]/g, '') // strip corrupted bytes
+    .replace(/[\x00-\x1f\x7f-\xff]/g, '') // strip control bytes (U+FFFD is decoded by sushaToUnicode)
     .replace(/\s*[0-9]{5,}\s*/g, ' ')           // strip stray 5+ digit codes
     .replace(/\\',.*$/, '')                        // strip SQL dump artifacts
     .trim();

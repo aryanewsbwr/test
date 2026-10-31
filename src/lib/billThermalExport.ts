@@ -1,5 +1,5 @@
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from './bill4in1Export';
-import { cleanOrTransliterateHindi } from './transliteration';
+import { getReliableHindiName } from './transliteration';
 import { roundToFoxProRule } from './billingEngine';
 import { generateDynamicUpiQrSvg } from './upiQrHelper';
 import hindiPubDisplayMapJson from '@/data/hindiPubDisplayMap.json';
@@ -75,7 +75,7 @@ function cleanPhone(p: string | undefined | null): string {
  * Exactly matching the layout, typography, borders, and QR payment card shown in the reference bill.
  */
 export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintMode = 'simple'): string {
-  let displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+  let displayHindi = getReliableHindiName(b.customer_hindi || '', b.customer_name);
   const cleanEngName = (b.customer_name || '').replace(/\s+crd\b/i, '').trim();
 
   // If Hindi contains "CRD" or suffix, clean it up cleanly
@@ -234,6 +234,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <!-- Customer Details Section -->
       <div class="customer-section">
         <div class="customer-name-en">${cleanEngName}</div>
+        ${displayHindi ? `<div class="customer-name-hi">${displayHindi}</div>` : ''}
         <div class="customer-sub-row">
           <span>Region: ${b.region_name || b.region_id}</span>
           ${formattedPhone ? `<span>Mob: ${formattedPhone}</span>` : ''}

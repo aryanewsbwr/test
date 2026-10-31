@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { supabase } from '@/lib/supabaseClient';
 import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { cleanOrTransliterateHindi, getReliableHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
@@ -1135,7 +1135,7 @@ export async function GET(request: NextRequest) {
           customer_id: cid,
           priority: c.priority !== undefined && c.priority !== null && Number(c.priority) > 0 ? Number(c.priority) : cid,
           customer_name: c.name_eng || `Customer #${cid}`,
-          customer_hindi: cleanOrTransliterateHindi(c.name_hindi || '', c.name_eng || `Customer #${cid}`),
+          customer_hindi: getReliableHindiName(c.name_hindi || '', c.name_eng || `Customer #${cid}`),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
           phone: rawPhone || '---',
           region_id: h.region_id,

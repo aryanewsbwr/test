@@ -7,7 +7,7 @@ import {
   SIGNATURE_GLYPH_B64, 
   printBills4in1 
 } from '@/lib/bill4in1Export';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getReliableHindiName } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
 
 interface Bill4in1PreviewProps {
@@ -155,7 +155,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
               {pageBills.map((b, qIdx) => {
                 const isLeft = qIdx % 2 === 0;
                 const isTop = qIdx < 2;
-                const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+                const displayHindi = getReliableHindiName(b.customer_hindi || '', b.customer_name);
                 
                 const minRows = 4;
                 const items = b.items || [];
