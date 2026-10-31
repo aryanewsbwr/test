@@ -23,6 +23,11 @@ interface ReportsFormProps {
   publications?: any[];
 }
 
+type WaRegionStatus = Record<string, { total: number; sent: number; manual: number }>;
+
+// Last WhatsApp region counts per month, so the dropdown is red straight away while it refreshes
+const waRegionCache = new Map<string, WaRegionStatus>();
+
 const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?: boolean; hasHawker?: boolean; hasPub?: boolean; hasPeriod?: boolean; hasCustId?: boolean }> = {
   bill_print_region: { title: 'Region Wise Bill Printing', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
   bill_print_single: { title: 'Single Bill Printing', category: 'Bill Printing', hasCustId: true, hasPeriod: true },
@@ -93,7 +98,7 @@ export default function ReportsForm({
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
   const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('4in1_a4');
   // WhatsApp sent counts per region for the selected month
-  const [waRegionStatus, setWaRegionStatus] = useState<Record<string, { total: number; sent: number; manual: number }>>({});
+  const [waRegionStatus, setWaRegionStatus] = useState<WaRegionStatus>({});
   const [waRegionError, setWaRegionError] = useState('');
   const [isUpdatingWaRegion, setIsUpdatingWaRegion] = useState(false);
 
@@ -103,11 +108,14 @@ export default function ReportsForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadWaRegionStatus = useCallback(async () => {
+    const cacheKey = `${selectedMonth}|${selectedYear}`;
+    setWaRegionStatus(waRegionCache.get(cacheKey) || {});
     try {
       const params = new URLSearchParams({ month: selectedMonth, year: selectedYear });
       const res = await fetch(`/api/whatsapp/regions?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not load WhatsApp region status');
+      waRegionCache.set(cacheKey, data.regions || {});
       setWaRegionStatus(data.regions || {});
       setWaRegionError('');
     } catch (err: any) {
@@ -252,6 +260,18 @@ export default function ReportsForm({
   useEffect(() => {
     if (activeReport === 'bill_print_region' && viewMode === 'criteria') loadWaRegionStatus();
   }, [activeReport, viewMode, loadWaRegionStatus]);
+
+  // Counts the send right away instead of waiting for the reload
+  const handleBillsSent = (sentBills: { region_id?: number | string }[]) => {
+    const cacheKey = `${selectedMonth}|${selectedYear}`;
+    const next = { ...(waRegionCache.get(cacheKey) || {}) };
+    sentBills.forEach(b => {
+      const entry = next[String(b.region_id)];
+      if (entry) next[String(b.region_id)] = { ...entry, sent: Math.min(entry.total, entry.sent + 1) };
+    });
+    waRegionCache.set(cacheKey, next);
+    setWaRegionStatus(next);
+  };
 
   const selectedRegionWa = selectedRegion !== 'all' ? waRegionStatus[selectedRegion] : undefined;
   const selectedRegionName = regions.find(r => String(r.region_id || r.id) === selectedRegion)?.region_name || `#${selectedRegion}`;
@@ -1060,12 +1080,13 @@ export default function ReportsForm({
                 billPrinterType === 'thermal_58mm' ? (
                   <BillThermalPreview 
                     bills={reportData.rows || []} 
-                    title={currentMeta.title} 
-                    zoomLevel={zoomLevel} 
+                    title={currentMeta.title}
+                    zoomLevel={zoomLevel}
                     initialPrintMode={billPrintMode}
+                    onBillsSent={handleBillsSent}
                   />
                 ) : (
-                  <Bill4in1Preview 
+                  <Bill4in1Preview
                     bills={reportData.rows || []} 
                     title={currentMeta.title} 
                     zoomLevel={zoomLevel} 

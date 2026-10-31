@@ -12,6 +12,7 @@ interface BillThermalPreviewProps {
   title?: string;
   zoomLevel?: number;
   initialPrintMode?: BillPrintMode;
+  onBillsSent?: (bills: BillRecord[]) => void;
 }
 
 function formatMoney(n: number | undefined | null): string {
@@ -71,7 +72,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   bills = [],
   title = 'Aryan News Agency - Monthly Bills',
   zoomLevel = 100,
-  initialPrintMode = 'simple'
+  initialPrintMode = 'simple',
+  onBillsSent
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
@@ -134,6 +136,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const sentBillCount = bills.filter(b => waSent[waSentKey(b)]).length;
 
   const markBillsSent = (sentBills: BillRecord[]) => {
+    const firstTimeSent = sentBills.filter(b => !waSent[waSentKey(b)]);
+    if (firstTimeSent.length > 0) onBillsSent?.(firstTimeSent);
     const sentAt = new Date().toISOString();
     setWaSent(prev => {
       const next = { ...prev };

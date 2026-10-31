@@ -21,19 +21,30 @@ function fySuffixFor(year: string): string {
 const billMonthKey = (month: string, year: string) => `${month} ${year}`;
 
 async function loadMonthBills(month: string, year: string) {
-  const bills: { bill_id: number; customer_id: number; region_id: number }[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from(`billno${fySuffixFor(year)}`)
-      .select('bill_id, customer_id, region_id')
-      .or(`month.ilike.${month},month.ilike.${month.slice(0, 3)}%`)
-      .order('bill_id', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    bills.push(...(data || []));
-    if (!data || data.length < PAGE_SIZE) break;
-  }
-  return bills;
+  const table = `billno${fySuffixFor(year)}`;
+  const monthFilter = `month.ilike.${month},month.ilike.${month.slice(0, 3)}%`;
+
+  const { count, error: countError } = await supabase
+    .from(table)
+    .select('bill_id', { count: 'exact', head: true })
+    .or(monthFilter);
+  if (countError) throw countError;
+
+  // Fetch every page at once: a month has thousands of bills and this runs on each screen load
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil((count || 0) / PAGE_SIZE) }, async (_, page) => {
+      const from = page * PAGE_SIZE;
+      const { data, error } = await supabase
+        .from(table)
+        .select('bill_id, customer_id, region_id')
+        .or(monthFilter)
+        .order('bill_id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      return (data || []) as { bill_id: number; customer_id: number; region_id: number }[];
+    })
+  );
+  return pages.flat();
 }
 
 async function loadSentRows(billMonth: string) {
