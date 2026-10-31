@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
@@ -24,7 +23,7 @@ async function loadMonthBills(month: string, year: string) {
   const table = `billno${fySuffixFor(year)}`;
   const monthFilter = `month.ilike.${month},month.ilike.${month.slice(0, 3)}%`;
 
-  const { count, error: countError } = await supabase
+  const { count, error: countError } = await supabaseAdmin
     .from(table)
     .select('bill_id', { count: 'exact', head: true })
     .or(monthFilter);
@@ -34,7 +33,7 @@ async function loadMonthBills(month: string, year: string) {
   const pages = await Promise.all(
     Array.from({ length: Math.ceil((count || 0) / PAGE_SIZE) }, async (_, page) => {
       const from = page * PAGE_SIZE;
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(table)
         .select('bill_id, customer_id, region_id')
         .or(monthFilter)

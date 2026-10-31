@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllRows, fetchPublications } from '@/lib/publicationsData';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import path from 'path';
 import fs from 'fs';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import fs from 'fs';
 import path from 'path';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi, getReliableHindiName } from '@/lib/transliteration';
 

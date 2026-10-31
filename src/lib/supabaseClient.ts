@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mekibdmvpkkujqpfqwyt.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_RSAj2n6JVAg9X6P8UFyTDA_AvhjlwDX';
+// Browser only. Calls go to /api/db, which checks the login and holds the real key.
+// API routes use supabaseAdmin instead.
+const origin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(`${origin}/api/db`, 'login-cookie', {
   auth: {
     persistSession: false
   },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fyLabel, fySuffix } from '@/lib/financialYear';
 import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import path from 'path';
 import fs from 'fs';
 import { parseDateToIso } from '@/lib/discontinueEngine';

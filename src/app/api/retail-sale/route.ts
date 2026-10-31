@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fySuffix, previousFySuffix } from '@/lib/financialYear';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 

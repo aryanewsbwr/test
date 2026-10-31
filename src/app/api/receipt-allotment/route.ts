@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fySuffix } from '@/lib/financialYear';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
 
@@ -145,7 +144,7 @@ export async function GET(req: NextRequest) {
     const collectorName = searchParams.get('collector_name');
 
     // 1. Fetch collectors
-    const collectorsRes = await supabase
+    const collectorsRes = await supabaseAdmin
       .from('collect')
       .select('*')
       .order('name', { ascending: true });
@@ -160,7 +159,7 @@ export async function GET(req: NextRequest) {
     // 2. Query Supabase table receiptissue20262027 (strictly active FY 2026-2027)
     let dbRecords: ReceiptAllotmentRecord[] = [];
     try {
-      const { data: dbIssues, error: dbErr } = await supabase
+      const { data: dbIssues, error: dbErr } = await supabaseAdmin
         .from(`receiptissue${fySuffix()}`)
         .select('*')
         .order('sno', { ascending: true });
@@ -238,7 +237,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve collect_id
-    const { data: cols } = await supabase.from('collect').select('*');
+    const { data: cols } = await supabaseAdmin.from('collect').select('*');
     const cleanName = collector_name.trim();
     const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
     const collectId = matchedCol ? (matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id) : null;
@@ -268,7 +267,7 @@ export async function POST(req: NextRequest) {
     // Save to Supabase receiptissue20262027 table (if table exists)
     try {
       if (edit_sno && collectId) {
-        await supabase
+        await supabaseAdmin
           .from(`receiptissue${fySuffix()}`)
           .update({
             ReceiptFrom: String(fromNum),
@@ -282,7 +281,7 @@ export async function POST(req: NextRequest) {
         const collectorItems = allotments.filter(a => a.collector_name.toLowerCase() === cleanName.toLowerCase());
         const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
 
-        await supabase
+        await supabaseAdmin
           .from(`receiptissue${fySuffix()}`)
           .insert({
             sno: nextSno,
@@ -371,11 +370,11 @@ export async function DELETE(req: NextRequest) {
 
     // Delete from Supabase receiptissue20262027 table
     try {
-      const { data: cols } = await supabase.from('collect').select('*');
+      const { data: cols } = await supabaseAdmin.from('collect').select('*');
       const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
       if (matchedCol) {
         const collectId = matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id;
-        await supabase
+        await supabaseAdmin
           .from(`receiptissue${fySuffix()}`)
           .delete()
           .eq('Collect_id', collectId)

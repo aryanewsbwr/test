@@ -4,7 +4,6 @@ import { replaceMonthBills } from '@/lib/billCommit';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
@@ -47,12 +46,12 @@ function loadJson(filename: string): any[] {
 
 async function fetchAllFromSupabase(table: string): Promise<any[]> {
   try {
-    const { count } = await supabase.from(table).select('*', { count: 'exact', head: true });
+    const { count } = await supabaseAdmin.from(table).select('*', { count: 'exact', head: true });
     const total = count || 0;
     if (total === 0) return [];
     const ranges: number[] = [];
     for (let from = 0; from < total; from += 1000) ranges.push(from);
-    const promises = ranges.map(from => supabase.from(table).select('*').range(from, from + 999));
+    const promises = ranges.map(from => supabaseAdmin.from(table).select('*').range(from, from + 999));
     const results = await Promise.all(promises);
     return results.flatMap(r => r.data || []);
   } catch (err) {
@@ -117,7 +116,7 @@ async function getCustomers(regionId?: string | number): Promise<any[]> {
   if (regionId && regionId !== 'all') {
     try {
       const rId = parseInt(String(regionId), 10);
-      const { data: supaCusts, error } = await supabase
+      const { data: supaCusts, error } = await supabaseAdmin
         .from('customer')
         .select('*')
         .eq('region_id', rId);
@@ -179,11 +178,11 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
     const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
     try {
       const [cdRes, billRes] = await Promise.all([
-        supabase
+        supabaseAdmin
           .from('customer_detail')
           .select('customer_id, s_date, c_date')
           .in('customer_id', chunk),
-        supabase
+        supabaseAdmin
           .from(`billno${fySuffix}`)
           .select('customer_id, balance')
           .in('customer_id', chunk)
@@ -224,7 +223,7 @@ async function getHolidays(): Promise<any[]> {
 async function getPublicationDiscontinues(): Promise<any[]> {
   const localPubDis = loadJson('publicationdis.json') || [];
   try {
-    const { data, error } = await supabase.from('publicationdis').select('*');
+    const { data, error } = await supabaseAdmin.from('publicationdis').select('*');
     // The database is the only live list: merging the file would bring back ended stops
     if (!error && data && data.length > 0) return data;
   } catch (err) {
@@ -253,7 +252,7 @@ async function getSupplements(): Promise<any[]> {
 
 async function getMaxBillId(fySuffix: string): Promise<number> {
   try {
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .from(`billno${fySuffix}`)
       .select('bill_id')
       .order('bill_id', { ascending: false })
@@ -275,7 +274,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     try {
-      const { data: cdSubs, error } = await supabase
+      const { data: cdSubs, error } = await supabaseAdmin
         .from('customer_detail')
         .select('*')
         .in('customer_id', chunk)
@@ -296,12 +295,12 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 // Reads the whole table however large it grows. Sorted so pages never overlap, and a failed
 // page throws because a missing receipt would silently inflate Previous Due.
 async function fetchEveryRow(table: string, columns: string, orderBy: string): Promise<any[]> {
-  const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+  const { count, error } = await supabaseAdmin.from(table).select('*', { count: 'exact', head: true });
   if (error) throw error;
   const ranges: number[] = [];
   for (let from = 0; from < (count || 0); from += 1000) ranges.push(from);
   const results = await Promise.all(
-    ranges.map(from => supabase.from(table).select(columns).order(orderBy, { ascending: true }).range(from, from + 999))
+    ranges.map(from => supabaseAdmin.from(table).select(columns).order(orderBy, { ascending: true }).range(from, from + 999))
   );
   const failed = results.find(r => r.error);
   if (failed) throw failed.error;
@@ -335,9 +334,9 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     const [headerRes, itemsRes, receiptRes] = await Promise.all([
-      supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
-      supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
-      supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(1000)
+      supabaseAdmin.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
+      supabaseAdmin.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
+      supabaseAdmin.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(1000)
     ]);
     const failed = headerRes.error || itemsRes.error || receiptRes.error;
     if (failed) throw new Error(`Could not read bills and receipts: ${failed.message}`);
@@ -361,7 +360,7 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
     const CHUNK_SIZE = 250;
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      const { data: tblData } = await supabase
+      const { data: tblData } = await supabaseAdmin
         .from(`retailsale${fySuffix}`)
         .select('*')
         .in('customer_id', chunk)
@@ -446,7 +445,7 @@ export async function GET(request: NextRequest) {
       const cid = parseInt(customerIdStr, 10);
       let targetCust = (cachedCusts || []).find(c => (c.customer_id || c.Customer_id) === cid);
       if (!targetCust) {
-        const { data: dbCust } = await supabase.from('customer').select('*').eq('customer_id', cid).single();
+        const { data: dbCust } = await supabaseAdmin.from('customer').select('*').eq('customer_id', cid).single();
         if (dbCust) targetCust = dbCust;
       }
       const targetCusts = targetCust ? [targetCust] : [];
@@ -683,7 +682,7 @@ export async function POST(request: NextRequest) {
     let savedBillnoCount = 0;
     let savedBillItemsCount = 0;
 
-    if (commitToDb && supabase) {
+    if (commitToDb && supabaseAdmin) {
       const billnoTable = `billno${fySuffix}`;
       const billTable = `bill${fySuffix}`;
       const billdelTable = `billdel${fySuffix}`;
@@ -736,7 +735,7 @@ export async function POST(request: NextRequest) {
       }).filter(Boolean);
 
       await replaceMonthBills(
-        supabase,
+        supabaseAdmin,
         { billno: billnoTable, bill: billTable, billdel: billdelTable },
         month,
         targetCustIds.map(Number),
@@ -749,7 +748,7 @@ export async function POST(request: NextRequest) {
           const chunk = result.bills.slice(i, i + 50);
           await Promise.all(
             chunk.map(b =>
-              supabase.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
+              supabaseAdmin.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
             )
           );
         }

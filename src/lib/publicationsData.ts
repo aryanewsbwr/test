@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 
 // Reads a whole table, however large. The database returns at most 1,000 rows per request.
 export async function fetchAllRows(table: string, orderBy: string, ascending = true): Promise<any[]> {
