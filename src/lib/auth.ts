@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { supabase } from './supabaseClient';
 
 export interface UserPermissions {
   can_collect: boolean;          // Receipt / Payment collection
@@ -90,16 +89,29 @@ const DEFAULT_USERS: AppUser[] = [
   }
 ];
 
+// app_users holds password hashes, so only the server key may touch it
+export async function usersDb() {
+  const { supabaseAdmin } = await import('./supabaseAdmin');
+  return supabaseAdmin;
+}
+
+// The main administrator is always available, so saving another user can't lock anyone out
+export function withDefaultUsers(users: AppUser[]): AppUser[] {
+  const saved = new Set(users.map(u => u.username.toLowerCase()));
+  return [...users, ...DEFAULT_USERS.filter(u => !saved.has(u.username.toLowerCase()))];
+}
+
 export async function getAllUsers(): Promise<AppUser[]> {
   try {
-    const { data, error } = await supabase.from('app_users').select('*');
+    const db = await usersDb();
+    const { data, error } = await db.from('app_users').select('*');
     if (error) {
       console.warn('Supabase app_users query notice:', error.message || error);
     } else if (data && data.length > 0) {
-      return data.map(u => ({
+      return withDefaultUsers(data.map(u => ({
         ...u,
         permissions: typeof u.permissions === 'string' ? JSON.parse(u.permissions) : (u.permissions || DEFAULT_HAWKER_PERMISSIONS)
-      }));
+      })));
     }
   } catch (err: any) {
     console.warn('Error reading from app_users:', err?.message || err);

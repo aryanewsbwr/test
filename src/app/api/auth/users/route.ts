@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  getAllUsers, 
+  getAllUsers,
+  usersDb,
   hashPassword, 
   AppUser, 
   DEFAULT_ADMIN_PERMISSIONS, 
   DEFAULT_HAWKER_PERMISSIONS, 
   DEFAULT_OPERATOR_PERMISSIONS 
 } from '@/lib/auth';
-import { supabase } from '@/lib/supabaseClient';
 
 export async function GET() {
   try {
@@ -65,14 +65,12 @@ export async function POST(req: NextRequest) {
         updated_at: now
       };
 
-      try {
-        await supabase.from('app_users').upsert({
-          ...updatedUser,
-          permissions: JSON.stringify(updatedUser.permissions)
-        });
-      } catch (err: any) {
-        console.warn('Supabase app_users upsert warning:', err?.message || err);
-      }
+      const db = await usersDb();
+      const { error: saveErr } = await db.from('app_users').upsert({
+        ...updatedUser,
+        permissions: JSON.stringify(updatedUser.permissions)
+      });
+      if (saveErr) throw new Error(`Could not save user: ${saveErr.message}`);
 
       const { password_hash, ...safe } = updatedUser;
       return NextResponse.json({ success: true, user: safe, message: 'User updated successfully' });
@@ -95,14 +93,12 @@ export async function POST(req: NextRequest) {
         updated_at: now
       };
 
-      try {
-        await supabase.from('app_users').insert({
-          ...newUser,
-          permissions: JSON.stringify(newUser.permissions)
-        });
-      } catch (err: any) {
-        console.warn('Supabase app_users insert warning:', err?.message || err);
-      }
+      const db = await usersDb();
+      const { error: saveErr } = await db.from('app_users').insert({
+        ...newUser,
+        permissions: JSON.stringify(newUser.permissions)
+      });
+      if (saveErr) throw new Error(`Could not save user: ${saveErr.message}`);
 
       const { password_hash, ...safe } = newUser;
       return NextResponse.json({ success: true, user: safe, message: 'User created successfully' });
@@ -127,12 +123,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Main administrator account cannot be deleted' }, { status: 403 });
     }
 
-    try {
-      if (id) await supabase.from('app_users').delete().eq('id', id);
-      if (username) await supabase.from('app_users').delete().eq('username', username.toLowerCase());
-    } catch (err: any) {
-      console.warn('Supabase app_users delete warning:', err?.message || err);
-    }
+    const db = await usersDb();
+    const { error: delErr } = id
+      ? await db.from('app_users').delete().eq('id', id)
+      : await db.from('app_users').delete().eq('username', username!.toLowerCase());
+    if (delErr) throw new Error(`Could not delete user: ${delErr.message}`);
 
     return NextResponse.json({ success: true, message: 'User deleted successfully' });
   } catch (error: any) {
