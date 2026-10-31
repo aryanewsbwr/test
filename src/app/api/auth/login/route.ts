@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/auth';
+import { setSessionCookie } from '@/lib/session';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,11 +25,13 @@ export async function POST(req: NextRequest) {
     // Return safe user object (excluding password hash)
     const { password_hash, ...safeUser } = user;
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       user: safeUser,
       message: `Welcome back, ${user.name}!`
     });
+    await setSessionCookie(res, req, user.id);
+    return res;
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(

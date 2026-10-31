@@ -12,11 +12,17 @@ export default function HomePage() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Check saved session
-    try {
-      const savedUserStr = localStorage.getItem('news_auth_user');
-      if (savedUserStr) {
-        const savedUser: AppUser = JSON.parse(savedUserStr);
+    // The server decides who is logged in, so the screens only open once it agrees
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) {
+          localStorage.removeItem('news_auth_user');
+          setUser(null);
+          return;
+        }
+        const { user: savedUser }: { user: AppUser } = await res.json();
+        localStorage.setItem('news_auth_user', JSON.stringify(savedUser));
         setUser(savedUser);
 
         // Smart device mode detection:
@@ -27,13 +33,27 @@ export default function HomePage() {
         } else {
           setViewMode('desktop');
         }
+      } catch (e) {
+        console.error('Failed to check auth session:', e);
+      } finally {
+        setIsInitialized(true);
       }
-    } catch (e) {
-      console.error('Failed to parse auth user session:', e);
-    } finally {
-      setIsInitialized(true);
-    }
+    };
+    checkSession();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    // Keeps a screen left open all week logged in, and closes it if the user was removed
+    const timer = setInterval(async () => {
+      const res = await fetch('/api/auth/me').catch(() => null);
+      if (res?.status === 401) {
+        localStorage.removeItem('news_auth_user');
+        setUser(null);
+      }
+    }, 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [user]);
 
   const handleLoginSuccess = (loggedInUser: AppUser) => {
     setUser(loggedInUser);
@@ -49,6 +69,7 @@ export default function HomePage() {
       try {
         localStorage.removeItem('news_auth_user');
       } catch (e) {}
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       setUser(null);
     }
   };

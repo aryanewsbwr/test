@@ -4,6 +4,7 @@ import path from 'path';
 import readline from 'readline';
 import os from 'os';
 import { supabase } from '@/lib/supabaseClient';
+import { refuseWithout } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -165,6 +166,9 @@ function escapeSqlNum(val: any, fallback = 0): string {
 // GET: Generate & Download standard MySQL dump .sql backup
 // -------------------------------------------------------------
 export async function GET(req: NextRequest) {
+  const refused = await refuseWithout(req, 'can_manage_users');
+  if (refused) return refused;
+
   try {
     const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
@@ -454,6 +458,9 @@ export async function GET(req: NextRequest) {
 // POST: Process SQL restore via JSON payload or File upload
 // -------------------------------------------------------------
 export async function POST(req: NextRequest) {
+  const refused = await refuseWithout(req, 'can_manage_users');
+  if (refused) return refused;
+
   try {
     const contentType = req.headers.get('content-type') || '';
     let parsedTables: Record<string, any[]> = {};

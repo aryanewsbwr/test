@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { refuseWithout } from '@/lib/auth';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
 import { getReliableHindiName } from '@/lib/transliteration';
 
@@ -602,6 +603,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_billing');
+  if (refused) return refused;
+
   try {
     const body = await request.json();
     const { month = 'August', year = '2026', region_id = 'all', commitToDb = false } = body;

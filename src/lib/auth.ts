@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { NextRequest, NextResponse } from 'next/server';
+import { readSessionToken, SESSION_COOKIE } from './session';
 
 export interface UserPermissions {
   can_collect: boolean;          // Receipt / Payment collection
@@ -118,6 +120,24 @@ export async function getAllUsers(): Promise<AppUser[]> {
   }
 
   return DEFAULT_USERS;
+}
+
+// Who is calling, read fresh so a removed or switched-off user stops working at once
+export async function currentUser(req: NextRequest): Promise<AppUser | null> {
+  const userId = await readSessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!userId) return null;
+  const users = await getAllUsers();
+  return users.find(u => u.id === userId && u.is_active !== false) || null;
+}
+
+// A refusal to return from the route, or null when the user may go ahead
+export async function refuseWithout(req: NextRequest, permission: keyof UserPermissions): Promise<NextResponse | null> {
+  const user = await currentUser(req);
+  if (!user) return NextResponse.json({ error: 'Please log in again' }, { status: 401 });
+  if (!user.permissions?.[permission]) {
+    return NextResponse.json({ error: 'You do not have permission for this' }, { status: 403 });
+  }
+  return null;
 }
 
 export async function authenticateUser(username: string, password: string): Promise<AppUser | null> {

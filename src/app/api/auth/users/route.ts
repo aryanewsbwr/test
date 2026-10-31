@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   getAllUsers,
   usersDb,
+  refuseWithout,
   hashPassword, 
   AppUser, 
   DEFAULT_ADMIN_PERMISSIONS, 
@@ -9,8 +10,11 @@ import {
   DEFAULT_OPERATOR_PERMISSIONS 
 } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const refused = await refuseWithout(req, 'can_manage_users');
+    if (refused) return refused;
+
     const users = await getAllUsers();
     const safeUsers = users.map(({ password_hash, ...u }) => u);
     return NextResponse.json({ users: safeUsers });
@@ -21,6 +25,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const refused = await refuseWithout(req, 'can_manage_users');
+    if (refused) return refused;
+
     const body = await req.json();
     const { 
       id, 
@@ -111,6 +118,9 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const refused = await refuseWithout(req, 'can_manage_users');
+    if (refused) return refused;
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const username = searchParams.get('username');
