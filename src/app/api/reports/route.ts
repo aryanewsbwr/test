@@ -1076,7 +1076,8 @@ export async function GET(request: NextRequest) {
         const c = custMap.get(cid) || {};
         const reg = regMap.get(h.region_id);
 
-        const rawItems = itemsByBillId.get(bid) || [];
+        // A reused bill number can leave another customer's lines under the same bill_id
+        const rawItems = (itemsByBillId.get(bid) || []).filter(it => Number(it.customer_id) === cid);
         // Keep rate tiers for the same publication grouped together (sorted by id / insertion sequence, or by publication + sno)
         rawItems.sort((a, b) => {
           if (a.id && b.id) return Number(a.id) - Number(b.id);
@@ -1123,6 +1124,16 @@ export async function GET(request: NextRequest) {
         const rawCurrent = paperTotal + deliveryCharge - discountCharge;
         const paperAmount = roundToFoxProRule(paperTotal);
         const currentBill = roundToFoxProRule(rawCurrent);
+        const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
+        // The saved balance already has the Paid amount taken off. Only trust that gap for
+        // customers with a receipt in this month, so other bills keep their usual total.
+        const monthReceipts = isGovtSupply ? 0 : (monthReceiptsByCust.get(cid) || 0);
+        // The engine saves due_amt whenever there is a real Previous Due, so with none saved, a
+        // total lower than this bill by exactly the month's receipts is a payment. Older bills
+        // whose gap has another cause keep the Previous Due below.
+        const paidOffThisBill = monthReceipts > 0
+          && (h.due_amt === null || h.due_amt === undefined || h.due_amt === '')
+          && Math.abs(rawCurrent + Number(h.balance || 0) - monthReceipts) < 1;
         let prevDue = 0;
         if (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '') {
           prevDue = Number(h.due_amt);
@@ -1130,17 +1141,13 @@ export async function GET(request: NextRequest) {
           // In FoxPro, balance is the net closing balance. If due_amt is not populated,
           // Previous Due = Total Payable - Current Bill.
           const totalFromBalance = Math.abs(Number(h.balance));
-          if (Math.abs(totalFromBalance - currentBill) > 0.01) {
+          if (!paidOffThisBill && Math.abs(totalFromBalance - currentBill) > 0.01) {
             prevDue = roundToFoxProRule(totalFromBalance - currentBill);
           }
         }
 
-        const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
         if (isGovtSupply) prevDue = 0;
-        // The saved balance already has the Paid amount taken off. Only trust that gap for
-        // customers with a receipt in this month, so other bills keep their usual total.
-        const monthReceipts = isGovtSupply ? 0 : (monthReceiptsByCust.get(cid) || 0);
-        const paidAmount = monthReceipts > 0
+        const paidAmount = paidOffThisBill ? monthReceipts : monthReceipts > 0
           ? Math.min(monthReceipts, Math.max(0, rawCurrent + prevDue + Number(h.balance || 0)))
           : 0;
         const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(rawCurrent + prevDue - paidAmount);

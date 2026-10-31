@@ -376,35 +376,34 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   return result;
 }
 
+// Reads the whole table however large it grows. Sorted so pages never overlap, and a failed
+// page throws because a missing receipt would silently inflate Previous Due.
+async function fetchEveryRow(table: string, columns: string, orderBy: string): Promise<any[]> {
+  const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+  if (error) throw error;
+  const ranges: number[] = [];
+  for (let from = 0; from < (count || 0); from += 1000) ranges.push(from);
+  const results = await Promise.all(
+    ranges.map(from => supabase.from(table).select(columns).order(orderBy, { ascending: true }).range(from, from + 999))
+  );
+  const failed = results.find(r => r.error);
+  if (failed) throw failed.error;
+  return results.flatMap(r => r.data || []);
+}
+
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
 
   // When querying all customers (> 500), load entire FY ledger in parallel ranges!
   if (customerIds.length > 500) {
     try {
-      const recRanges: number[] = [];
-      for (let from = 0; from < 35000; from += 1000) recRanges.push(from);
-      const recPromises = recRanges.map(from => supabase.from(`receipt${fySuffix}`).select('customer_id, month, mal_recp_amt, less_amt, recp_no, recp_date').range(from, from + 999));
-
-      const billRanges: number[] = [];
-      for (let from = 0; from < 50000; from += 1000) billRanges.push(from);
-      const billPromises = billRanges.map(from => supabase.from(`bill${fySuffix}`).select('bill_id, customer_id, publica_id, qty, rate, total_amt, month').range(from, from + 999));
-
-      const headerRanges: number[] = [];
-      for (let from = 0; from < 45000; from += 1000) headerRanges.push(from);
-      const headerPromises = headerRanges.map(from => supabase.from(`billno${fySuffix}`).select('bill_id, customer_id, due_amt, del_amt, dis_amt, month, balance').range(from, from + 999));
-
-      const [recRes, billRes, headerRes] = await Promise.all([
-        Promise.all(recPromises),
-        Promise.all(billPromises),
-        Promise.all(headerPromises)
+      const [receipts, bills, billHeaders] = await Promise.all([
+        fetchEveryRow(`receipt${fySuffix}`, 'customer_id, month, mal_recp_amt, less_amt, recp_no, recp_date', 'id'),
+        fetchEveryRow(`bill${fySuffix}`, 'bill_id, customer_id, publica_id, qty, rate, total_amt, month', 'id'),
+        fetchEveryRow(`billno${fySuffix}`, 'bill_id, customer_id, due_amt, del_amt, dis_amt, month, balance', 'bill_id')
       ]);
 
-      return {
-        receipts: recRes.flatMap(r => r.data || []),
-        bills: billRes.flatMap(r => r.data || []),
-        billHeaders: headerRes.flatMap(r => r.data || [])
-      };
+      return { receipts, bills, billHeaders };
     } catch (e) {
       console.error('Error in parallel fetchBillsAndReceipts:', e);
     }

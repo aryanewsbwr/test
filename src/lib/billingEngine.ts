@@ -1081,7 +1081,8 @@ export function calculateBilling({
           let paperAmt = 0;
           if (hasLineItems) {
             for (const it of bills) {
-              if (Number(it.bill_id || it.Bill_id) === hBid) {
+              // A reused bill number can leave another customer's lines under the same bill_id
+              if (Number(it.bill_id || it.Bill_id) === hBid && Number(it.customer_id || it.Customer_id) === hCid) {
                 const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
                 if (val !== undefined) paperAmt += Number(val);
               }
