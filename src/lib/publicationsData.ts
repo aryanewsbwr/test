@@ -1,5 +1,3 @@
-import path from 'path';
-import fs from 'fs';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 
 // Reads a whole table, however large. The database returns at most 1,000 rows per request.
@@ -13,18 +11,35 @@ export async function fetchAllRows(table: string, orderBy: string, ascending = t
   }
 }
 
-// The publication table is the live list. The file is only a fallback for when it can't be read.
+// The publication table is the only list. A failed read stops the caller instead of using old data.
 export async function fetchPublications(): Promise<any[]> {
-  const { data, error } = await supabase.from('publication').select('*').order('publica_id', { ascending: true });
-  if (!error && data && data.length > 0) return data;
-  const f = path.join(process.cwd(), 'public', 'data', 'publications.json');
-  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf-8')) : [];
+  return fetchAllRows('publication', 'publica_id');
 }
 
-// Same rule for regions: the regiond table is live, the file is only a fallback
 export async function fetchRegions(): Promise<any[]> {
-  const { data, error } = await supabase.from('regiond').select('*').order('region_id', { ascending: true });
-  if (!error && data && data.length > 0) return data.map((r: any) => ({ ...r, name: r.region_name }));
-  const f = path.join(process.cwd(), 'public', 'data', 'regions.json');
-  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf-8')) : [];
+  const rows = await fetchAllRows('regiond', 'region_id');
+  return rows.map((r: any) => ({ ...r, name: r.region_name }));
+}
+
+// Next free id in a table whose ids are given by the app rather than the database
+export async function nextId(table: string, column = 'id'): Promise<number> {
+  const { data, error } = await supabase.from(table).select(column).order(column, { ascending: false }).limit(1);
+  if (error) throw new Error(`Could not read ${table}: ${error.message}`);
+  return Number((data?.[0] as any)?.[column] || 0) + 1;
+}
+
+// Swaps a paper's weekday rates. The new set goes in before the old set is removed,
+// so a failure never leaves the paper with no rates for billing.
+export async function replaceBaseRates(pubId: number, dayRates: Record<string, any>) {
+  const { data: oldRates, error: oldErr } = await supabase.from('rate').select('id').eq('publica_id', pubId);
+  if (oldErr) throw new Error(`Could not read rates: ${oldErr.message}`);
+  let id = await nextId('rate');
+  const rows = Object.entries(dayRates).map(([day, rate]) => ({ id: id++, publica_id: pubId, dayofweek: parseInt(day, 10), rate: Number(rate) }));
+  const { error: insErr } = await supabase.from('rate').insert(rows);
+  if (insErr) throw new Error(`Rates not saved: ${insErr.message}`);
+  const oldIds = (oldRates || []).map((r: any) => r.id);
+  if (oldIds.length) {
+    const { error: delErr } = await supabase.from('rate').delete().in('id', oldIds);
+    if (delErr) throw new Error(`New rates saved, but the old ones were not removed: ${delErr.message}`);
+  }
 }

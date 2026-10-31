@@ -48,15 +48,7 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
           setPubList(cleanAndSortPubs(list));
           setSelectedPub('');
         })
-        .catch(() => {
-          fetch('/data/publications.json')
-            .then(r => r.json())
-            .then(d => {
-              setPubList(cleanAndSortPubs(d || []));
-              setSelectedPub('');
-            })
-            .catch(() => {});
-        });
+        .catch(() => {});
     }
   }, [publications]);
 

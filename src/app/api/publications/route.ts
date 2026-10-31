@@ -1,24 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 import { parseDateToIso } from '@/lib/discontinueEngine';
-import { fetchAllRows, fetchPublications } from '@/lib/publicationsData';
+import { fetchAllRows, fetchPublications, nextId, replaceBaseRates } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
-
-function loadJson(filename: string) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf-8'));
-  return [];
-}
-
-function saveJson(filename: string, data: any) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  fs.writeFileSync(f, JSON.stringify(data, null, 2), 'utf-8');
-}
 
 const stopEnd = (d: any): string => String(d.oc_date || d.to_date || d.ToDate || '').split('T')[0];
 
@@ -39,13 +26,7 @@ export async function GET(request: NextRequest) {
       return { publica_id: r.publica_id, dayofweek: r.dayofweek, oldrate: Number(r.oldrate || 0), new_rate: Number(r.newrate || 0), dated: day, effective_date: day };
     });
 
-    let pubdis = loadJson('publicationdis.json');
-    try {
-      const { data: sbPubdis } = await supabase.from('publicationdis').select('*');
-      if (sbPubdis && sbPubdis.length > 0) {
-        pubdis = sbPubdis;
-      }
-    } catch (_) {}
+    const pubdis = await fetchAllRows('publicationdis', 'id');
     // Strictly purge any corrupt or NaN publications
     pubs = pubs.filter((p: any) => {
       const pid = Number(p.publica_id ?? p.publication_id);
@@ -179,85 +160,21 @@ export async function POST(request: NextRequest) {
 
     const todayIso = new Date().toISOString().split('T')[0];
 
-    // 2. Save 7-day rates in Supabase and local cache
+    // 2. Save 7-day rates, and log them as a rate change from today
     if (customRates && typeof customRates === 'object') {
-      let nextRateId = 1000;
-      try {
-        const { data: maxRate } = await supabase
-          .from('rate')
-          .select('id')
-          .order('id', { ascending: false })
-          .limit(1);
-        if (maxRate && maxRate.length > 0 && maxRate[0].id) {
-          nextRateId = Number(maxRate[0].id) + 1;
-        }
-      } catch (_) {}
+      await replaceBaseRates(finalPubId, customRates);
 
-      const rateRows = Object.entries(customRates).map(([day, rate]) => ({
-        id: nextRateId++,
+      let nextRcId = await nextId('ratechange');
+      const rateChangeRows = Object.entries(customRates).map(([day, rate]) => ({
+        id: nextRcId++,
         publica_id: finalPubId,
-        dayofweek: parseInt(day, 10),
-        rate: Number(rate)
+        oldrate: Number(rate),
+        newrate: Number(rate),
+        effective_date: todayIso,
+        dayofweek: parseInt(day, 10)
       }));
-
-      try {
-        await supabase.from('rate').delete().eq('publica_id', finalPubId);
-        const { error: sbRateErr } = await supabase.from('rate').insert(rateRows);
-        if (sbRateErr) console.error('Supabase rate insert error:', sbRateErr);
-      } catch (rErr) {
-        console.warn('Supabase rate update warning:', rErr);
-      }
-
-      // Update local rates.json
-      try {
-        const ratesFile = path.join(process.cwd(), 'public', 'data', 'rates.json');
-        if (fs.existsSync(ratesFile)) {
-          let curRates = JSON.parse(fs.readFileSync(ratesFile, 'utf-8'));
-          curRates = curRates.filter((r: any) => (r.publica_id || r.Publica_id) !== finalPubId);
-          rateRows.forEach(r => {
-            curRates.push({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: r.rate });
-          });
-          saveJson('rates.json', curRates);
-        }
-      } catch (fErr) {}
-
-      // Log in Supabase ratechange table with explicit IDs
-      try {
-        let nextRcId = 3000;
-        try {
-          const { data: maxRc } = await supabase
-            .from('ratechange')
-            .select('id')
-            .order('id', { ascending: false })
-            .limit(1);
-          if (maxRc && maxRc.length > 0 && maxRc[0].id) {
-            nextRcId = Number(maxRc[0].id) + 1;
-          }
-        } catch (_) {}
-
-        const rateChangeRows = Object.entries(customRates).map(([day, rate]) => ({
-          id: nextRcId++,
-          publica_id: finalPubId,
-          oldrate: Number(rate),
-          newrate: Number(rate),
-          effective_date: todayIso,
-          dayofweek: parseInt(day, 10)
-        }));
-        await supabase.from('ratechange').insert(rateChangeRows);
-
-        let curRateChanges = loadJson('ratechanges.json');
-        rateChangeRows.forEach(rc => curRateChanges.push({
-          publica_id: rc.publica_id,
-          dated: rc.effective_date,
-          effective_date: rc.effective_date,
-          dayofweek: rc.dayofweek,
-          oldrate: rc.oldrate,
-          new_rate: rc.newrate
-        }));
-        saveJson('ratechanges.json', curRateChanges);
-      } catch (rcErr) {
-        console.warn('Ratechange record warning:', rcErr);
-      }
+      const { error: rcErr } = await supabase.from('ratechange').insert(rateChangeRows);
+      if (rcErr) throw new Error(`Rates saved, but the rate change log was not: ${rcErr.message}`);
     }
 
     // 3. Handle Closed / Discontinue status in Supabase publicationdis. Billing reads these rows,
@@ -286,22 +203,6 @@ export async function POST(request: NextRequest) {
         if (stopErr) throw new Error(`Could not reopen publication: ${stopErr.message}`);
       }
     }
-
-    try {
-      const { data: allStops } = await supabase.from('publicationdis').select('*');
-      if (allStops && allStops.length > 0) saveJson('publicationdis.json', allStops);
-    } catch (fErr) {}
-
-    // 4. Update local publications.json
-    try {
-      let updatedPubList = pubList;
-      if (isUpdate) {
-        updatedPubList = updatedPubList.map((p: any) => p.publica_id === finalPubId ? { ...p, ...pubRecord } : p);
-      } else {
-        updatedPubList.unshift(pubRecord);
-      }
-      saveJson('publications.json', updatedPubList);
-    } catch (fErr) {}
 
     const fullRecord = {
       ...pubRecord,
@@ -348,21 +249,6 @@ export async function DELETE(request: NextRequest) {
       const { error: delErr } = await supabase.from(table).delete().eq('publica_id', pubId);
       if (delErr) throw new Error(`Could not delete from ${table}: ${delErr.message}`);
     }
-
-    // 2. Delete from local JSON files
-    try {
-      const pubList = loadJson('publications.json');
-      const updatedPubs = pubList.filter((p: any) => p.publica_id !== pubId);
-      saveJson('publications.json', updatedPubs);
-
-      const ratesList = loadJson('rates.json');
-      const updatedRates = ratesList.filter((r: any) => r.publica_id !== pubId);
-      saveJson('rates.json', updatedRates);
-
-      let pdis = loadJson('publicationdis.json');
-      pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== pubId);
-      saveJson('publicationdis.json', pdis);
-    } catch (fErr) {}
 
     return NextResponse.json({
       success: true,

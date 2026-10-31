@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fySuffix } from '@/lib/financialYear';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
 
 export const dynamic = 'force-dynamic';
-
-const STORAGE_BUCKET = 'news-images';
-const storageFile = () => `data/receipt_allotments_${fySuffix()}.json`;
 
 export interface ReceiptAllotmentRecord {
   id?: string | number;
@@ -83,54 +78,34 @@ function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmen
   });
 }
 
-async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
-  // 1. Try public/data/receipt_allotments_20262027.json
-  const pubPath = path.join(process.cwd(), 'public', 'data', `receipt_allotments_${fySuffix()}.json`);
-  if (fs.existsSync(pubPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(pubPath, 'utf-8'));
-      if (Array.isArray(data)) return data;
-    } catch {}
-  }
-
-  // 2. Try Supabase Storage
-  try {
-    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(storageFile());
-    if (!error && data) {
-      const text = await data.text();
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (err) {
-    console.warn('Supabase storage download error for receipt allotments 20262027:', err);
-  }
-
-  return [];
+async function loadCollectors() {
+  const { data, error } = await supabaseAdmin.from('collect').select('*');
+  if (error) throw new Error(`Could not read collection agents: ${error.message}`);
+  return (data || []).map((c: any) => ({
+    collect_id: c.Collect_id,
+    name: c.name || `Collector #${c.Collect_id}`
+  })).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 }
 
-async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
-  // 1. Save to public/data/receipt_allotments_20262027.json
-  try {
-    const pubDir = path.join(process.cwd(), 'public', 'data');
-    if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
-    const pubPath = path.join(pubDir, `receipt_allotments_${fySuffix()}.json`);
-    fs.writeFileSync(pubPath, JSON.stringify(data, null, 2), 'utf-8');
-    
-    // Also update legacy receipt_allotments.json to keep it aligned
-    const legacyPath = path.join(pubDir, 'receipt_allotments.json');
-    fs.writeFileSync(legacyPath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch {}
-
-  // 2. Save to Supabase Storage
-  try {
-    await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(
-      storageFile(),
-      Buffer.from(JSON.stringify(data, null, 2)),
-      { upsert: true, contentType: 'application/json' }
-    );
-  } catch (err) {
-    console.warn('Supabase storage upload error for receipt allotments 20262027:', err);
+// This year's books, from receiptissue<year> with the old software's column names
+async function loadAllotments(collectors: { collect_id: number; name: string }[]): Promise<ReceiptAllotmentRecord[]> {
+  const table = `receiptissue${fySuffix()}`;
+  const { data, error } = await supabaseAdmin.from(table).select('*').order('sno', { ascending: true }).limit(10000);
+  if (error) {
+    throw new Error(error.code === 'PGRST205'
+      ? `The ${table} table does not exist yet. Run supabase/move_json_to_database.sql in Supabase first.`
+      : `Could not read receipt books: ${error.message}`);
   }
+  const colMap = Object.fromEntries(collectors.map(c => [c.collect_id, c.name]));
+  return sortAndIndexAllotments((data || []).map((item: any) => ({
+    sno: Number(item.sno) || 1,
+    collect_id: item.Collect_id,
+    collector_name: colMap[item.Collect_id] || ('Collector ' + item.Collect_id),
+    receipt_from: Number(item.ReceiptFrom) || 0,
+    receipt_to: Number(item.ReceiptTo) || 0,
+    allot_date: formatDateToDDMMYYYY(item.IssueDate),
+    rec_date: item.RecDate ? formatDateToDDMMYYYY(item.RecDate) : null
+  })));
 }
 
 /**
@@ -143,49 +118,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const collectorName = searchParams.get('collector_name');
 
-    // 1. Fetch collectors
-    const collectorsRes = await supabaseAdmin
-      .from('collect')
-      .select('*')
-      .order('name', { ascending: true });
-
-    const collectors = (collectorsRes.data || []).map((c: any) => ({
-      collect_id: c.Collect_id || c.collect_id || c.id,
-      name: c.name || c.collector_name || `Collector #${c.Collect_id}`
-    })).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
-
-    const colMap = Object.fromEntries(collectors.map(c => [c.collect_id, c.name]));
-
-    // 2. Query Supabase table receiptissue20262027 (strictly active FY 2026-2027)
-    let dbRecords: ReceiptAllotmentRecord[] = [];
-    try {
-      const { data: dbIssues, error: dbErr } = await supabaseAdmin
-        .from(`receiptissue${fySuffix()}`)
-        .select('*')
-        .order('sno', { ascending: true });
-
-      if (!dbErr && dbIssues && Array.isArray(dbIssues) && dbIssues.length > 0) {
-        dbRecords = dbIssues.map(item => {
-          const cName = colMap[item.Collect_id] || ('Collector ' + item.Collect_id);
-          return {
-            sno: Number(item.sno) || 1,
-            collect_id: item.Collect_id,
-            collector_name: cName,
-            receipt_from: Number(item.ReceiptFrom) || 0,
-            receipt_to: Number(item.ReceiptTo) || 0,
-            allot_date: formatDateToDDMMYYYY(item.IssueDate),
-            rec_date: item.RecDate ? formatDateToDDMMYYYY(item.RecDate) : null
-          };
-        });
-      }
-    } catch (e) {
-      console.warn('Could not query receiptissue20262027 from Supabase:', e);
-    }
-
-    // 3. Fallback to 2026-2027 dedicated storage if table not yet populated or created
-    const storageRecords = await loadAllotmentsFromStorage();
-    const activeRecords = dbRecords.length > 0 ? dbRecords : storageRecords;
-    const allotments = sortAndIndexAllotments(activeRecords);
+    const collectors = await loadCollectors();
+    const allotments = await loadAllotments(collectors);
 
     let filtered: ReceiptAllotmentRecord[] = [];
     if (collectorName && collectorName.trim()) {
@@ -237,13 +171,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve collect_id
-    const { data: cols } = await supabaseAdmin.from('collect').select('*');
+    const collectors = await loadCollectors();
     const cleanName = collector_name.trim();
-    const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
-    const collectId = matchedCol ? (matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id) : null;
+    const matchedCol = collectors.find(c => (c.name || '').toLowerCase() === cleanName.toLowerCase());
+    if (!matchedCol) {
+      return NextResponse.json({ success: false, error: `"${cleanName}" is not a collection agent. Add them in Collection Agent first.` }, { status: 400 });
+    }
+    const collectId = matchedCol.collect_id;
 
-    // Load existing allotments for validation (strictly FY 2026-2027)
-    let allotments = await loadAllotmentsFromStorage();
+    const allotments = await loadAllotments(collectors);
 
     // Check for range overlap with other 2026-2027 allotments
     for (const item of allotments) {
@@ -264,74 +200,25 @@ export async function POST(req: NextRequest) {
     const formattedRecDate = rec_date ? formatDateToDDMMYYYY(rec_date) : null;
     const dbIssueDate = formatDateToYYYYMMDD(formattedAllotDate);
 
-    // Save to Supabase receiptissue20262027 table (if table exists)
-    try {
-      if (edit_sno && collectId) {
-        await supabaseAdmin
-          .from(`receiptissue${fySuffix()}`)
-          .update({
-            ReceiptFrom: String(fromNum),
-            ReceiptTo: String(toNum),
-            IssueDate: dbIssueDate,
-            RecDate: formattedRecDate ? formatDateToYYYYMMDD(formattedRecDate) : null
-          })
-          .eq('Collect_id', collectId)
-          .eq('sno', edit_sno);
-      } else if (collectId) {
-        const collectorItems = allotments.filter(a => a.collector_name.toLowerCase() === cleanName.toLowerCase());
-        const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
-
-        await supabaseAdmin
-          .from(`receiptissue${fySuffix()}`)
-          .insert({
-            sno: nextSno,
-            Collect_id: collectId,
-            ReceiptFrom: String(fromNum),
-            ReceiptTo: String(toNum),
-            IssueDate: dbIssueDate,
-            RecDate: formattedRecDate ? formatDateToYYYYMMDD(formattedRecDate) : null
-          });
-      }
-    } catch (dbErr) {
-      console.warn('Database write to receiptissue20262027:', dbErr);
-    }
-
-    // Update in storage file for 2026-2027
-    let updatedAllotments = [...allotments];
+    const table = `receiptissue${fySuffix()}`;
+    const fields = {
+      ReceiptFrom: String(fromNum),
+      ReceiptTo: String(toNum),
+      IssueDate: dbIssueDate,
+      RecDate: formattedRecDate ? formatDateToYYYYMMDD(formattedRecDate) : null
+    };
     if (edit_sno) {
-      const idx = updatedAllotments.findIndex(a => 
-        a.collector_name.toLowerCase() === cleanName.toLowerCase() && a.sno === edit_sno
-      );
-      if (idx !== -1) {
-        updatedAllotments[idx] = {
-          ...updatedAllotments[idx],
-          collector_name: cleanName,
-          receipt_from: fromNum,
-          receipt_to: toNum,
-          allot_date: formattedAllotDate,
-          rec_date: formattedRecDate,
-          updated_at: new Date().toISOString()
-        };
-      }
+      const { data, error } = await supabaseAdmin.from(table).update(fields).eq('Collect_id', collectId).eq('sno', edit_sno).select();
+      if (error) throw new Error(`Could not save receipt book: ${error.message}`);
+      if (!data?.length) return NextResponse.json({ success: false, error: 'That receipt book was not found.' }, { status: 404 });
     } else {
-      const collectorItems = allotments.filter(a => a.collector_name.toLowerCase() === cleanName.toLowerCase());
+      const collectorItems = allotments.filter(a => Number(a.collect_id) === Number(collectId));
       const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
-
-      const newRecord: ReceiptAllotmentRecord = {
-        sno: nextSno,
-        collect_id: collectId,
-        collector_name: cleanName,
-        receipt_from: fromNum,
-        receipt_to: toNum,
-        allot_date: formattedAllotDate,
-        rec_date: formattedRecDate,
-        created_at: new Date().toISOString()
-      };
-      updatedAllotments.push(newRecord);
+      const { error } = await supabaseAdmin.from(table).insert({ sno: nextSno, Collect_id: collectId, ...fields });
+      if (error) throw new Error(`Could not save receipt book: ${error.message}`);
     }
 
-    const sortedAll = sortAndIndexAllotments(updatedAllotments);
-    await saveAllotmentsToStorage(sortedAll);
+    const sortedAll = await loadAllotments(collectors);
 
     const collectorFiltered = sortedAll.filter(a => 
       a.collector_name.toLowerCase() === cleanName.toLowerCase()
@@ -368,29 +255,20 @@ export async function DELETE(req: NextRequest) {
     const sno = parseInt(snoStr, 10);
     const cleanName = collectorName.trim();
 
-    // Delete from Supabase receiptissue20262027 table
-    try {
-      const { data: cols } = await supabaseAdmin.from('collect').select('*');
-      const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
-      if (matchedCol) {
-        const collectId = matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id;
-        await supabaseAdmin
-          .from(`receiptissue${fySuffix()}`)
-          .delete()
-          .eq('Collect_id', collectId)
-          .eq('sno', sno);
-      }
-    } catch (dbErr) {
-      console.warn('Database delete error on receiptissue20262027:', dbErr);
-    }
+    const collectors = await loadCollectors();
+    const matchedCol = collectors.find(c => (c.name || '').toLowerCase() === cleanName.toLowerCase());
+    if (!matchedCol) return NextResponse.json({ success: false, error: `"${cleanName}" is not a collection agent.` }, { status: 404 });
 
-    const allotments = await loadAllotmentsFromStorage();
-    const filtered = allotments.filter(a => 
-      !(a.collector_name.toLowerCase() === cleanName.toLowerCase() && a.sno === sno)
-    );
+    const { data, error } = await supabaseAdmin
+      .from(`receiptissue${fySuffix()}`)
+      .delete()
+      .eq('Collect_id', matchedCol.collect_id)
+      .eq('sno', sno)
+      .select();
+    if (error) throw new Error(`Could not delete receipt book: ${error.message}`);
+    if (!data?.length) return NextResponse.json({ success: false, error: 'That receipt book was not found.' }, { status: 404 });
 
-    const reindexed = sortAndIndexAllotments(filtered);
-    await saveAllotmentsToStorage(reindexed);
+    const reindexed = await loadAllotments(collectors);
 
     const collectorRemaining = reindexed.filter(a => 
       a.collector_name.toLowerCase() === cleanName.toLowerCase()

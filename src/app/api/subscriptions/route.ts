@@ -1,42 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications } from '@/lib/publicationsData';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
 import { parseDateToIso } from '@/lib/discontinueEngine';
 
 export const dynamic = 'force-dynamic';
 
-let cachedPubs: any[] | null = null;
-let cachedHawkers: any[] | null = null;
-let cachedDiscontinues: any[] | null = null;
-let cachedAllSubs: any[] | null = null;
-
-function loadLocalData() {
-  const loadJson = (filename: string) => {
-    const srcF = path.join(process.cwd(), 'src', 'data', filename);
-    if (fs.existsSync(srcF)) {
-      try {
-        return JSON.parse(fs.readFileSync(srcF, 'utf-8'));
-      } catch {}
-    }
-    const f = path.join(process.cwd(), 'public', 'data', filename);
-    if (fs.existsSync(f)) {
-      try {
-        return JSON.parse(fs.readFileSync(f, 'utf-8'));
-      } catch {}
-    }
-    return [];
-  };
-
-  if (!cachedHawkers) cachedHawkers = loadJson('hawkers.json');
-  if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
-  if (!cachedAllSubs) cachedAllSubs = loadJson('all_subscriptions.json');
-}
-
 export async function GET(request: NextRequest) {
   try {
-    cachedPubs = await fetchPublications();
+    const pubs = await fetchPublications();
     const { searchParams } = new URL(request.url);
     const customerIdStr = searchParams.get('customer_id') || searchParams.get('customerId');
     const activeOnly = searchParams.get('active_only') === 'true';
@@ -46,77 +17,48 @@ export async function GET(request: NextRequest) {
     }
 
     const cid = parseInt(customerIdStr, 10);
-    loadLocalData();
 
-    // 1. Get Subscriptions from Supabase customer_detail
-    let subs: any[] = [];
-    try {
-      const { data: dbSubs, error: subsErr } = await supabase
-        .from('customer_detail')
-        .select('*')
-        .eq('customer_id', cid);
+    // Subscriptions, this customer's stops and paper-wide stops, all from the database
+    const [subRes, dRes, cdRes, pdRes] = await Promise.all([
+      supabase.from('customer_detail').select('*').eq('customer_id', cid),
+      supabase.from('discontinue').select('*').eq('customer_id', cid),
+      supabase.from('customer_discontinue').select('*').eq('customer_id', cid),
+      supabase.from('publicationdis').select('*')
+    ]);
+    const failed = subRes.error || dRes.error || cdRes.error || pdRes.error;
+    if (failed) throw new Error(`Could not read subscriptions: ${failed.message}`);
+    const subs: any[] = subRes.data || [];
+    const custDiscs: any[] = [...(dRes.data || []), ...(cdRes.data || [])];
 
-      if (!subsErr && dbSubs && dbSubs.length > 0) {
-        subs = dbSubs;
-      }
-    } catch (e) {
-      console.warn('Error querying customer_detail from Supabase:', e);
-    }
+    const hawkerIds = Array.from(new Set(subs.map((s: any) => Number(s.hawker_id)).filter(Boolean)));
+    const { data: hawkers, error: hawkerErr } = hawkerIds.length
+      ? await supabase.from('hawker').select('hawker_id, name').in('hawker_id', hawkerIds)
+      : { data: [], error: null };
+    if (hawkerErr) throw new Error(`Could not read hawkers: ${hawkerErr.message}`);
 
-    // 2. Fallback to local backup if Supabase table has 0 rows for this customer
-    if (subs.length === 0 && cachedAllSubs) {
-      subs = cachedAllSubs.filter((s: any) => Number(s.customer_id || s.Customer_id) === cid);
-    }
-
-    // 2. Find customer discontinues & publication discontinues (Fetch live from Supabase merged with local)
-    let custDiscs: any[] = [];
+    // Map permanent publication discontinues
     const pubDisMap = new Map<number, any>();
+    const todayIsoNow = new Date().toISOString().split('T')[0];
+    (pdRes.data || []).forEach((pd: any) => {
+      const pid = Number(pd.publica_id || pd.Publica_id);
+      const isPerm = (pd.dis_type || pd.Dis_Type || '').toUpperCase().startsWith('P');
+      const toIso = parseDateToIso(pd.to_date || pd.ToDate || pd.todate || pd.oc_date);
 
-    try {
-      const [dRes, cdRes, pdRes] = await Promise.all([
-        supabase.from('discontinue').select('*').eq('customer_id', cid),
-        supabase.from('customer_discontinue').select('*').eq('customer_id', cid),
-        supabase.from('publicationdis').select('*')
-      ]);
-      const liveDiscs = [...(dRes.data || []), ...(cdRes.data || [])];
-      const localDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
-      custDiscs = [...liveDiscs];
-      const seen = new Set(liveDiscs.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
-      for (const ld of localDiscs) {
-        const key = `${ld.customer_id || ld.Customer_id}-${ld.publica_id || ld.Publica_id}-${ld.temp_from || ld.Temp_From}-${ld.temp_to || ld.Temp_To}`;
-        if (!seen.has(key)) {
-          custDiscs.push(ld);
-          seen.add(key);
-        }
+      // If toIso exists and has already passed in the past, the suspension is EXPIRED (not currently discontinued)
+      const isExpired = toIso && toIso < todayIsoNow;
+
+      if (pid && isPerm && !isExpired) {
+        pubDisMap.set(pid, pd);
       }
-
-      // Map permanent publication discontinues
-      const allPubDis = pdRes.data || [];
-      const todayIsoNow = new Date().toISOString().split('T')[0];
-      allPubDis.forEach((pd: any) => {
-        const pid = Number(pd.publica_id || pd.Publica_id);
-        const isPerm = (pd.dis_type || pd.Dis_Type || '').toUpperCase().startsWith('P');
-        const fromIso = parseDateToIso(pd.from_date || pd.FromDate || pd.fromdate || pd.entry_date);
-        const toIso = parseDateToIso(pd.to_date || pd.ToDate || pd.todate || pd.oc_date);
-
-        // If toIso exists and has already passed in the past, the suspension is EXPIRED (not currently discontinued)
-        const isExpired = toIso && toIso < todayIsoNow;
-
-        if (pid && isPerm && !isExpired) {
-          pubDisMap.set(pid, pd);
-        }
-      });
-    } catch {
-      custDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
-    }
+    });
 
     const todayIso = new Date().toISOString().split('T')[0];
 
     const enriched = subs.map(s => {
       const pId = s.publica_id || s.publication_id || s.Publica_id;
       const hId = s.hawker_id || s.Hawker_id;
-      const pub = (cachedPubs || []).find(p => (p.publica_id || p.publication_id) === pId);
-      const hw = (cachedHawkers || []).find(h => (h.hawker_id || h.Hawker_id) === hId);
+      const pub = pubs.find(p => (p.publica_id || p.publication_id) === pId);
+      const hw = (hawkers || []).find((h: any) => h.hawker_id === hId);
       const subSno = s.sno || s.SNo;
       const sDateIso = parseDateToIso(s.s_date || s.S_Date);
 
@@ -190,7 +132,7 @@ export async function GET(request: NextRequest) {
         publica_id: pId,
         publication_name: pub ? (pub.public_name || pub.name) : (s.publication_name || `Publication #${pId}`),
         hawker_id: hId,
-        hawker_name: hw ? (hw.name || hw.hawker_name) : (s.hawker_name || `Hawker #${hId}`),
+        hawker_name: hw ? hw.name : (s.hawker_name || `Hawker #${hId}`),
         qty: Number(s.qty || s.Qty || 1),
         circulation: s.circulation || s.Circulation || 'Morning',
         from_day: s.from_day || s.From_Day || '1-7',

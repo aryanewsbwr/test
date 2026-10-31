@@ -281,35 +281,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllRegions(data);
       });
 
-    // Load All Customers Master (24,000+ records) with instant autocomplete cache fallback
-    fetch('/data/customers_autocomplete.json')
+    // Load every customer (24,000+) from the database for search as you type
+    fetch('/api/customers?all=true')
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setAllCustomers(data);
-        } else {
-          return fetch('/api/customers?limit=30000').then(r => r.json()).then(d => {
-            if (d?.customers) setAllCustomers(d.customers);
-          });
-        }
+        if (data?.customers) setAllCustomers(data.customers);
       })
-      .catch(() => {
-        fetch('/api/customers?limit=30000')
-          .then(res => res.json())
-          .then(data => {
-            if (data?.customers) setAllCustomers(data.customers);
-          })
-          .catch(() => {
-            supabase
-              .from('customer')
-              .select('*')
-              .order('priority', { ascending: true })
-              .limit(5000)
-              .then(({ data }) => {
-                if (data) setAllCustomers(data);
-              });
-          });
-      });
+      .catch(() => {});
 
     // Load Receipt Allotments (starts empty, user selects collector)
     fetch('/api/receipt-allotment')
@@ -633,19 +611,15 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       setCustomerBills(bList || []);
 
-      // 2. Fetch Receipts (receipt20262027 and historical receipts from /api/receipts)
+      // 2. Fetch this year's receipts from the database
       let rList: any[] = [];
       try {
-        const [r26Res, histRes] = await Promise.all([
-          supabase
-            .from(`receipt${fySuffix()}`)
-            .select('*')
-            .eq('customer_id', cust.customer_id)
-            .order('id', { ascending: true }),
-          fetch(`/api/receipts?customer_id=${cust.customer_id}`)
-            .then(res => res.json())
-            .catch(() => ({ receipts: [] }))
-        ]);
+        const r26Res = await supabase
+          .from(`receipt${fySuffix()}`)
+          .select('*')
+          .eq('customer_id', cust.customer_id)
+          .order('id', { ascending: true });
+        if (r26Res.error) throw r26Res.error;
 
         const r26 = (r26Res.data || []).map((r: any) => {
           let parsedRemarks: any = null;
@@ -667,39 +641,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           };
         });
 
-        const rHist = (histRes && histRes.receipts) || [];
-        const rHistMapped = rHist.map((h: any) => ({
-          ...h,
-          rep_id: h.receipt_id || h.Receipt_id || h.id,
-          receipt_id: h.receipt_id || h.Receipt_id || h.id,
-          bill_no: h.bill_no ?? h.bill_id ?? '-',
-          manual_rep_no: h.manual_rep_no ?? h.mal_rep_no ?? '-',
-          mal_rep_no: h.manual_rep_no ?? h.mal_rep_no ?? '-',
-          mal_recp_dt: h.mal_recp_dt ?? '-',
-          balance: h.balance ?? 0,
-          cash_chq: h.cash_chq ?? 'Cash',
-          r_amt: h.r_amt ?? h.mal_recp_amt ?? 0,
-        }));
-        
-        // rHistMapped contains full accurate columns directly from the master SQL dump (including Bill No, Ml.No, Ml.Date, Rep. Id)
-        // Merge rHistMapped first, then add any newly created receipts in Supabase that are not yet in disk
-        const combined = [...rHistMapped];
-        for (const s of r26) {
-          const sRecpNo = String(s.recp_no || s.receipt_no || '');
-          const sId = String(s.id || s.receipt_id || '');
-          const exists = combined.some(c => 
-            (sRecpNo && (String(c.recp_no) === sRecpNo || String(c.receipt_no) === sRecpNo)) ||
-            (sId && (String(c.id) === sId || String(c.receipt_id) === sId))
-          );
-          if (!exists) {
-            combined.push(s);
-          }
-        }
-
         // Sort chronologically by year (2025 -> 2026), bill month (Dues, April .. March) and rep_id
-        combined.sort(compareReceipts);
-
-        rList = combined;
+        rList = [...r26].sort(compareReceipts);
       } catch (err) {
         console.warn('Error fetching receipts:', err);
       }
@@ -1243,20 +1186,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       if (delErr) throw delErr;
       if (!deletedRows || deletedRows.length === 0) throw new Error('Receipt was not found, so nothing was deleted.');
 
-      // 2. Delete from /api/receipts (all_receipts.json on disk)
-      try {
-        const queryParams = new URLSearchParams();
-        queryParams.set('recp_no', String(updateRecpNo));
-        if (customerId) queryParams.set('customer_id', customerId);
-
-        await fetch(`/api/receipts?${queryParams.toString()}`, {
-          method: 'DELETE'
-        });
-      } catch (apiErr) {
-        console.warn('Error calling DELETE /api/receipts:', apiErr);
-      }
-
-      // 3. Remove receipt from local customerReceipts state
+      // 2. Remove receipt from local customerReceipts state
       const filteredReceipts = customerReceipts.filter(r => {
         const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
         const matchRepId = String(rid) === String(updateRepId);

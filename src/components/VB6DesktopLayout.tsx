@@ -168,51 +168,21 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
 
   // Load Initial Metadata
   useEffect(() => {
-    fetch('/data/publishers.json').then(r => r.json()).then(setPublishers).catch(() => {});
+    // Everything comes from the database through the app's own routes
+    fetch('/api/publishers').then(r => r.json()).then(d => { if (d.publishers) setPublishers(d.publishers); }).catch(() => {});
     fetch('/api/publications?with_rates=true&order=alpha').then(r => r.json()).then(data => {
       if (data.publications) {
         const cleaned = normalizeAndSortPubList(data.publications);
         setPublications(cleaned);
         if (cleaned.length > 0) setSelectedPub(cleaned[0]);
       }
-    }).catch(() => {
-      fetch('/data/publications.json').then(r => r.json()).then(data => {
-        const cleaned = normalizeAndSortPubList(data);
-        setPublications(cleaned);
-        if (cleaned.length > 0) setSelectedPub(cleaned[0]);
-      }).catch(() => {});
-    });
-    fetch('/api/regions')
-      .then(r => r.json())
-      .then(data => {
-        if (data.regions) setRegions(data.regions);
-        else if (Array.isArray(data)) setRegions(data);
-      })
-      .catch(() => {
-        fetch('/data/regions.json').then(r => r.json()).then(setRegions).catch(() => {});
-      });
-
-    fetch('/api/hawkers')
-      .then(r => r.json())
-      .then(data => {
-        if (data.hawkers) setHawkers(data.hawkers);
-        else if (Array.isArray(data)) setHawkers(data);
-      })
-      .catch(() => {
-        fetch('/data/hawkers.json').then(r => r.json()).then(setHawkers).catch(() => {});
-      });
+    }).catch(() => {});
+    fetch('/api/regions').then(r => r.json()).then(d => { if (d.regions) setRegions(d.regions); }).catch(() => {});
+    fetch('/api/hawkers').then(r => r.json()).then(d => { if (d.hawkers) setHawkers(d.hawkers); }).catch(() => {});
 
     loadRateTables();
-    fetch('/api/holidays')
-      .then(r => r.json())
-      .then(d => {
-        if (d && d.holidays && d.holidays.length > 0) setHolidays(d.holidays);
-        else fetch('/data/holidays.json').then(r => r.json()).then(setHolidays).catch(() => {});
-      })
-      .catch(() => {
-        fetch('/data/holidays.json').then(r => r.json()).then(setHolidays).catch(() => {});
-      });
-    fetch('/data/discontinues.json').then(r => r.json()).then(setDiscontinues).catch(() => {});
+    fetch('/api/holidays').then(r => r.json()).then(d => { if (d.holidays) setHolidays(d.holidays); }).catch(() => {});
+    fetch('/api/discontinue').then(r => r.json()).then(d => { if (d.discontinues) setDiscontinues(d.discontinues); }).catch(() => {});
   }, []);
 
   // Fetch Customers dynamically based on search & page

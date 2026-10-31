@@ -15,11 +15,12 @@ export default function HawkerPriorityForm({ onClose }: HawkerPriorityFormProps)
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    fetch('/data/hawkers.json')
+    fetch('/api/hawkers')
       .then(r => r.json())
       .then(d => {
-        setHawkers(d || []);
-        if (d && d.length > 0) setSelectedHawker(d[0].hawker_id?.toString() || '1');
+        const list = d.hawkers || [];
+        setHawkers(list);
+        if (list.length > 0) setSelectedHawker(list[0].hawker_id?.toString() || '1');
       })
       .catch(() => {});
   }, []);

@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { fetchRegions } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
-
-function loadJson(filename: string) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf-8'));
-  return [];
-}
-
-function saveJson(filename: string, data: any) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  fs.writeFileSync(f, JSON.stringify(data, null, 2), 'utf-8');
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,17 +58,6 @@ export async function POST(request: NextRequest) {
       : await supabase.from('regiond').insert([regionRow]);
     if (regionErr) throw new Error(`Could not save region: ${regionErr.message}`);
 
-    // 2. Update local regions.json
-    try {
-      let updated = regList;
-      if (isUpdate) {
-        updated = updated.map((r: any) => (r.region_id || r.id) === finalRegId ? { ...r, ...record } : r);
-      } else {
-        updated.push(record);
-      }
-      saveJson('regions.json', updated);
-    } catch (fErr) {}
-
     return NextResponse.json({
       success: true,
       message: `Region #${finalRegId} (${rName}) ${isUpdate ? 'updated' : 'created'} successfully!`,
@@ -112,11 +88,6 @@ export async function DELETE(request: NextRequest) {
 
     const { error: delErr } = await supabase.from('regiond').delete().eq('region_id', rid);
     if (delErr) throw new Error(`Could not delete region: ${delErr.message}`);
-
-    try {
-      const list = loadJson('regions.json');
-      saveJson('regions.json', list.filter((r: any) => (r.region_id || r.id) !== rid));
-    } catch (fErr) {}
 
     return NextResponse.json({ success: true, message: `Region #${rid} deleted successfully.` });
   } catch (error: any) {

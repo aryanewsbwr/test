@@ -315,15 +315,14 @@ export default function CounterSaleForm({
     }
 
     try {
-      const res = await fetch(`/api/counter-sale?id=${encodeURIComponent(String(sale.id))}&publica_id=${sale.publica_id}&sale_date=${encodeURIComponent(sale.sale_date || '')}`, {
+      const res = await fetch(`/api/counter-sale?id=${encodeURIComponent(String(sale.id))}`, {
         method: 'DELETE'
       });
       const data = await res.json();
-      if (data.success) {
-        loadHistory(historyDate);
-      }
-    } catch (err) {
-      console.error('Failed to delete sale:', err);
+      if (!data.success) throw new Error(data.error);
+      loadHistory(historyDate);
+    } catch (err: any) {
+      setStatus({ type: 'error', message: `Sale not deleted: ${err.message}` });
     }
   };
 

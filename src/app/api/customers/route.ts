@@ -1,32 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
-
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { nextId } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
-
-let cachedCustomers: any[] | null = null;
-
-function loadLocalBackup(): any[] {
-  if (cachedCustomers) return cachedCustomers;
-  const srcPath = path.join(process.cwd(), 'src', 'data', 'all_customers.json');
-  if (fs.existsSync(srcPath)) {
-    try {
-      cachedCustomers = JSON.parse(fs.readFileSync(srcPath, 'utf-8'));
-      return cachedCustomers || [];
-    } catch {}
-  }
-  const filePath = path.join(process.cwd(), 'public', 'data', 'all_customers.json');
-  if (fs.existsSync(filePath)) {
-    try {
-      cachedCustomers = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-      return cachedCustomers || [];
-    } catch {}
-  }
-  return [];
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +14,24 @@ export async function GET(request: NextRequest) {
     const regionId = searchParams.get('region_id');
     const order = (searchParams.get('order') || (search ? 'asc' : 'desc')).toLowerCase();
     const isAscending = order === 'asc';
+
+    // Every customer, for screens that search the whole list as you type. The database
+    // returns 1,000 rows per request, so this reads page by page.
+    if (searchParams.get('all') === 'true') {
+      const rows: any[] = [];
+      for (let start = 0; ; start += 1000) {
+        const { data, error } = await supabase
+          .from('customer')
+          .select('customer_id, name_eng, name_hindi, add1, add2, hindi_add, phone, priority, region_id, cbal, dueamount, due_amount, govt_supply')
+          .order('customer_id', { ascending: true })
+          .range(start, start + 999);
+        if (error) throw new Error(`Could not read customers: ${error.message}`);
+        rows.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      const customers = rows.map(c => ({ ...c, name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng) }));
+      return NextResponse.json({ source: 'supabase', total: customers.length, customers });
+    }
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -61,58 +56,21 @@ export async function GET(request: NextRequest) {
     query = query.order('customer_id', { ascending: isAscending }).range(from, to);
 
     const { data, count, error } = await query;
+    if (error) throw new Error(`Could not read customers: ${error.message}`);
 
-    if (!error && data && data.length > 0 && (count ?? 0) > 0) {
-      const decodedCustomers = (data || []).map(c => ({
-        ...c,
-        name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng),
-        hindi_add: cleanOrTransliterateHindi(c.hindi_add, c.add1 || '')
-      }));
-
-      return NextResponse.json({
-        source: 'supabase',
-        total: count || 0,
-        page,
-        limit,
-        totalPages: Math.ceil((count || 0) / limit),
-        customers: decodedCustomers
-      });
-    }
-
-    // 2. Fallback to Local Dataset if Supabase has network/config error or empty table
-    const all = loadLocalBackup();
-    let filtered = all;
-
-    if (search) {
-      const s = search.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.name_eng?.toLowerCase().includes(s) ||
-        c.name_hindi?.includes(s) ||
-        c.customer_id?.toString() === s ||
-        c.priority?.toString() === s ||
-        c.phone?.includes(s)
-      );
-    }
-
-    if (regionId && regionId !== 'all') {
-      filtered = filtered.filter(c => c.region_id === parseInt(regionId, 10));
-    }
-
-    const total = filtered.length;
-    const localData = filtered.slice(from, from + limit);
-    const decodedLocal = localData.map(c => ({
+    const decodedCustomers = (data || []).map(c => ({
       ...c,
       name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng),
       hindi_add: cleanOrTransliterateHindi(c.hindi_add, c.add1 || '')
     }));
 
     return NextResponse.json({
-      source: 'local_backup',
-      total,
+      source: 'supabase',
+      total: count || 0,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      customers: decodedLocal
+      totalPages: Math.ceil((count || 0) / limit),
+      customers: decodedCustomers
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -132,30 +90,16 @@ export async function POST(request: NextRequest) {
     const hindi = cleanOrTransliterateHindi(name_hindi, name_eng);
     const hindiAddress = cleanOrTransliterateHindi(hindi_add, add1 || '');
 
-    const custFilePath = path.join(process.cwd(), 'public', 'data', 'all_customers.json');
-    let localCusts: any[] = [];
-    if (fs.existsSync(custFilePath)) {
-      localCusts = JSON.parse(fs.readFileSync(custFilePath, 'utf-8'));
-    }
-
+    // An existing customer is updated in place. Checking the database, not a copy, keeps an
+    // edit from turning into a second customer with the same name.
     let finalId = customer_id ? parseInt(customer_id, 10) : 0;
-    const isUpdate = finalId > 0 && localCusts.some(c => c.customer_id === finalId);
-
-    if (!isUpdate) {
-      let maxSb = 0;
-      try {
-        const { data: maxRow } = await supabase
-          .from('customer')
-          .select('customer_id')
-          .order('customer_id', { ascending: false })
-          .limit(1);
-        if (maxRow && maxRow.length > 0 && maxRow[0].customer_id) {
-          maxSb = Number(maxRow[0].customer_id);
-        }
-      } catch (_) {}
-      const maxLocal = localCusts.reduce((max, c) => Math.max(max, c.customer_id || 0), 0);
-      finalId = Math.max(maxLocal, maxSb) + 1;
+    if (finalId > 0) {
+      const { data: found, error: findErr } = await supabase.from('customer').select('customer_id').eq('customer_id', finalId);
+      if (findErr) throw new Error(`Could not read customers: ${findErr.message}`);
+      if (!found?.length) finalId = 0;
     }
+    const isUpdate = finalId > 0;
+    if (!isUpdate) finalId = await nextId('customer', 'customer_id');
 
     const cleanSecDep = isNaN(Number(security_deposit)) ? 0 : Number(security_deposit);
 
@@ -174,41 +118,22 @@ export async function POST(request: NextRequest) {
       ...rest
     };
 
-    // 1. Save to Supabase matching exact schema
-    try {
-      const supabaseCustomerRecord = {
-        customer_id: finalId,
-        name_eng: name_eng.trim(),
-        name_hindi: hindi,
-        add1: add1 || '',
-        hindi_add: hindiAddress,
-        phone: phone || '',
-        priority: Number(priority || 1),
-        region_id: parseInt(region_id, 10) || 1,
-        security_deposit: cleanSecDep,
-        due_amount: Number(dueamount || 0)
-      };
-      if (isUpdate) {
-        const { error: sbErr } = await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId);
-        if (sbErr) console.error('Supabase customer update error:', sbErr);
-      } else {
-        const { error: sbErr } = await supabase.from('customer').insert([supabaseCustomerRecord]);
-        if (sbErr) console.error('Supabase customer insert error:', sbErr);
-      }
-    } catch (dbErr) {
-      console.warn('Supabase customer save warning:', dbErr);
-    }
-
-    // 2. Update local all_customers.json
-    try {
-      if (isUpdate) {
-        localCusts = localCusts.map(c => c.customer_id === finalId ? { ...c, ...record } : c);
-      } else {
-        localCusts.unshift(record);
-      }
-      fs.writeFileSync(custFilePath, JSON.stringify(localCusts, null, 2), 'utf-8');
-      cachedCustomers = localCusts;
-    } catch (fsErr) {}
+    const supabaseCustomerRecord = {
+      customer_id: finalId,
+      name_eng: name_eng.trim(),
+      name_hindi: hindi,
+      add1: add1 || '',
+      hindi_add: hindiAddress,
+      phone: phone || '',
+      priority: Number(priority || 1),
+      region_id: parseInt(region_id, 10) || 1,
+      security_deposit: cleanSecDep,
+      due_amount: Number(dueamount || 0)
+    };
+    const { error: sbErr } = isUpdate
+      ? await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId)
+      : await supabase.from('customer').insert([supabaseCustomerRecord]);
+    if (sbErr) throw new Error(`Could not save customer: ${sbErr.message}`);
 
     return NextResponse.json({
       success: true,
@@ -228,24 +153,12 @@ export async function DELETE(request: NextRequest) {
 
     const cid = parseInt(idStr, 10);
 
-    // 1. Delete from Supabase
-    try {
-      await supabase.from('customer').delete().eq('customer_id', cid);
-      await supabase.from('customer_detail').delete().eq('customer_id', cid);
-    } catch (dbErr) {
-      console.warn('Supabase customer delete warning:', dbErr);
-    }
-
-    // 2. Delete from local all_customers.json
-    try {
-      const custFilePath = path.join(process.cwd(), 'public', 'data', 'all_customers.json');
-      if (fs.existsSync(custFilePath)) {
-        let localCusts = JSON.parse(fs.readFileSync(custFilePath, 'utf-8'));
-        localCusts = localCusts.filter((c: any) => c.customer_id !== cid);
-        fs.writeFileSync(custFilePath, JSON.stringify(localCusts, null, 2), 'utf-8');
-        cachedCustomers = localCusts;
-      }
-    } catch (fsErr) {}
+    // Subscriptions first, so a failure never leaves subscriptions with no customer
+    const { error: subErr } = await supabase.from('customer_detail').delete().eq('customer_id', cid);
+    if (subErr) throw new Error(`Could not delete subscriptions: ${subErr.message}`);
+    const { data: gone, error: delErr } = await supabase.from('customer').delete().eq('customer_id', cid).select('customer_id');
+    if (delErr) throw new Error(`Could not delete customer: ${delErr.message}`);
+    if (!gone?.length) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
 
     return NextResponse.json({
       success: true,

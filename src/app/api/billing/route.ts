@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { replaceMonthBills } from '@/lib/billCommit';
-import path from 'path';
-import fs from 'fs';
-import os from 'os';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
@@ -11,54 +8,8 @@ import { getReliableHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
-let cachedCusts: any[] | null = null;
-let cachedRates: any[] | null = null;
-let cachedPubs: any[] | null = null;
-let cachedBills: any[] | null = null;
-let cachedReceipts: any[] | null = null;
-let cachedPubDis: any[] | null = null;
-let cachedAllSubs: any[] | null = null;
-
-function loadJson(filename: string): any[] {
-  const tmpPath = path.join(os.tmpdir(), filename);
-  if (fs.existsSync(tmpPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
-      if (Array.isArray(data) && data.length > 0) return data;
-    } catch {}
-  }
-  const srcF = path.join(process.cwd(), 'src', 'data', filename);
-  if (fs.existsSync(srcF)) {
-    try {
-      return JSON.parse(fs.readFileSync(srcF, 'utf-8'));
-    } catch {}
-  }
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  if (fs.existsSync(f)) {
-    try {
-      return JSON.parse(fs.readFileSync(f, 'utf-8'));
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-async function fetchAllFromSupabase(table: string): Promise<any[]> {
-  try {
-    const { count } = await supabaseAdmin.from(table).select('*', { count: 'exact', head: true });
-    const total = count || 0;
-    if (total === 0) return [];
-    const ranges: number[] = [];
-    for (let from = 0; from < total; from += 1000) ranges.push(from);
-    const promises = ranges.map(from => supabaseAdmin.from(table).select('*').range(from, from + 999));
-    const results = await Promise.all(promises);
-    return results.flatMap(r => r.data || []);
-  } catch (err) {
-    console.error(`Error in fetchAllFromSupabase for ${table}:`, err);
-    return [];
-  }
-}
+// Every input below is read from the database for each run. A failed read stops the run
+// instead of billing from an old copy.
 
 // Rates, rate changes, holidays and discontinues are read fresh for every run, so an entry
 // made today counts straight away. A failed read stops the run instead of billing old data.
@@ -92,16 +43,12 @@ async function getDiscontinues(): Promise<any[]> {
     fetchEveryRow('customer_discontinue', '*', 'id')
   ]);
 
-  // The tables have no subscription dates, so those still come from the original import
-  const localMap = new Map<string, any>();
-  for (const ld of loadJson('discontinues.json') || []) {
-    if (ld.discontinue_id) localMap.set(`id-${ld.discontinue_id}`, ld);
-    localMap.set(`${ld.customer_id}-${ld.publica_id}-${ld.temp_from}`, ld);
+  // s_date ties a stop to the subscription it was entered for. Without the column every stop
+  // would hit every subscription of that paper, so billing waits for it.
+  if (mainRows.length > 0 && !('s_date' in mainRows[0])) {
+    throw new Error('Stops have no subscription dates yet. Run supabase/move_json_to_database.sql in Supabase first.');
   }
-  return [...mainRows, ...extraRows].map((d: any) => {
-    const match = localMap.get(`id-${d.discontinue_id}`) || localMap.get(`${d.customer_id}-${d.publica_id}-${d.temp_from}`);
-    return match ? { ...d, s_date: d.s_date || match.s_date, c_date: d.c_date || match.c_date } : d;
-  });
+  return [...mainRows, ...extraRows];
 }
 
 // Regions starting with Z are not billed in All Regions. Pick one directly to bill it.
@@ -112,52 +59,22 @@ async function dropHiddenRegions(custs: any[]): Promise<any[]> {
 }
 
 async function getCustomers(regionId?: string | number): Promise<any[]> {
-  // 1. If regionId is specified (and not 'all'), fetch directly from Supabase first
-  if (regionId && regionId !== 'all') {
-    try {
-      const rId = parseInt(String(regionId), 10);
-      const { data: supaCusts, error } = await supabaseAdmin
-        .from('customer')
-        .select('*')
-        .eq('region_id', rId);
-      if (!error && supaCusts && supaCusts.length > 0) {
-        return supaCusts;
-      }
-    } catch (e) {
-      console.warn('Supabase fetch error for region customers:', e);
-    }
+  if (!regionId || regionId === 'all') return fetchEveryRow('customer', '*', 'customer_id');
+  const rows: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabaseAdmin
+      .from('customer')
+      .select('*')
+      .eq('region_id', parseInt(String(regionId), 10))
+      .order('customer_id')
+      .range(from, from + 999);
+    if (error) throw new Error(`Could not read customers: ${error.message}`);
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) return rows;
   }
-
-  // 2. Check in-memory cache
-  if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
-
-  // 3. Check local JSON files
-  cachedCusts = loadJson('all_customers.json');
-  if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
-
-  // 4. Fallback: Fetch all from Supabase
-  try {
-    const supaAll = await fetchAllFromSupabase('customer');
-    if (supaAll && supaAll.length > 0) {
-      cachedCusts = supaAll;
-      return cachedCusts;
-    }
-  } catch (err) {
-    console.error('Error fetching all customers from Supabase:', err);
-  }
-
-  return [];
-}
-
-function getAllSubscriptions(): any[] {
-  if (cachedAllSubs && cachedAllSubs.length > 0) return cachedAllSubs;
-  cachedAllSubs = loadJson('all_subscriptions.json');
-  return cachedAllSubs || [];
 }
 
 async function getActiveCustomerIds(targetCustIds: number[], month: string, year: number | string, fySuffix: string): Promise<Set<number>> {
-  const allRetail = loadJson('retailsale.json') || [];
-
   const targetMonthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === month.toLowerCase() || m.toLowerCase().startsWith(month.toLowerCase().slice(0, 3)));
   const actualMonthIdx = targetMonthIdx >= 0 ? targetMonthIdx : 9; // default October
   const actualMonthNum = actualMonthIdx + 1;
@@ -176,42 +93,33 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
   const CHUNK_SIZE = 100;
   for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
     const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
-    try {
-      const [cdRes, billRes] = await Promise.all([
-        supabaseAdmin
-          .from('customer_detail')
-          .select('customer_id, s_date, c_date')
-          .in('customer_id', chunk),
-        supabaseAdmin
-          .from(`billno${fySuffix}`)
-          .select('customer_id, balance')
-          .in('customer_id', chunk)
-          .or(`month.ilike.${priorMonthName},month.ilike.${priorMonthShort}%`)
-      ]);
+    const [cdRes, billRes] = await Promise.all([
+      supabaseAdmin
+        .from('customer_detail')
+        .select('customer_id, s_date, c_date')
+        .in('customer_id', chunk),
+      supabaseAdmin
+        .from(`billno${fySuffix}`)
+        .select('customer_id, balance')
+        .in('customer_id', chunk)
+        .or(`month.ilike.${priorMonthName},month.ilike.${priorMonthShort}%`)
+    ]);
+    // A failed read would quietly leave customers out of the bill run
+    const failed = cdRes.error || billRes.error;
+    if (failed) throw new Error(`Could not read subscriptions: ${failed.message}`);
 
-      if (cdRes.data && cdRes.data.length > 0) {
-        for (const s of cdRes.data) {
-          const cDateIso = parseLegacyDateToIso(s.c_date);
-          if (!cDateIso || cDateIso >= mStartIso) {
-            activeCustSet.add(Number(s.customer_id));
-          }
-        }
+    for (const s of cdRes.data || []) {
+      const cDateIso = parseLegacyDateToIso(s.c_date);
+      if (!cDateIso || cDateIso >= mStartIso) {
+        activeCustSet.add(Number(s.customer_id));
       }
-
-      if (billRes.data && billRes.data.length > 0) {
-        for (const b of billRes.data) {
-          if (b.balance !== null && Number(b.balance) !== 0) {
-            activeCustSet.add(Number(b.customer_id));
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching active customer details in getActiveCustomerIds:', err);
     }
-  }
 
-  for (const rs of allRetail) {
-    activeCustSet.add(Number(rs.customer_id || rs.Customer_id));
+    for (const b of billRes.data || []) {
+      if (b.balance !== null && Number(b.balance) !== 0) {
+        activeCustSet.add(Number(b.customer_id));
+      }
+    }
   }
   return activeCustSet;
 }
@@ -221,31 +129,28 @@ async function getHolidays(): Promise<any[]> {
 }
 
 async function getPublicationDiscontinues(): Promise<any[]> {
-  const localPubDis = loadJson('publicationdis.json') || [];
-  try {
-    const { data, error } = await supabaseAdmin.from('publicationdis').select('*');
-    // The database is the only live list: merging the file would bring back ended stops
-    if (!error && data && data.length > 0) return data;
-  } catch (err) {
-    // fallback
-  }
-  return localPubDis;
+  return fetchEveryRow('publicationdis', '*', 'id');
 }
 
-async function getSupplements(): Promise<any[]> {
-  try {
-    const { data, error } = await supabaseAdmin.storage.from('news-images').download('data/pubsupplements.json');
-    if (!error && data) {
-      const text = await data.text();
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (err) {
-    console.warn('Supabase storage download error in billing:', err);
-  }
-
-  const localList = loadJson('pubsupplements.json') || [];
-  return localList;
+// Supplements entered for the billed month, the old software's PublicationSup rows. The month
+// names in the table vary (Aug, Sept, October), so the year is matched here and the month by
+// the engine. Region 0 means every region.
+async function getSupplements(month: string, year: number | string): Promise<any[]> {
+  const monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase().startsWith(String(month).toLowerCase().slice(0, 3)));
+  const startYr = parseInt(String(year).slice(0, 4), 10);
+  const calYr = monthIdx >= 3 ? startYr : startYr + 1;
+  const { data, error } = await supabaseAdmin.from('publicationsup').select('*').eq('year', String(calYr));
+  if (error) throw new Error(`Could not read supplements: ${error.message}`);
+  return (data || []).map((s: any) => {
+    const regionId = Number(s.region_id || 0);
+    return {
+      ...s,
+      rate: Number(s.rate || 0),
+      region_id: regionId,
+      region_ids: regionId ? [regionId] : [],
+      all_regions: !regionId
+    };
+  });
 }
 
 
@@ -349,41 +254,34 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
   if (customerIds.length === 0) return [];
-  const localSales = loadJson('retailsale.json');
-  const matchingLocal = (localSales || []).filter((s: any) => {
-    const cid = Number(s.Customer_id || s.customer_id);
-    return customerIds.includes(cid);
-  });
 
+  // 40 customers at a time keeps each read under the database's 1,000-row page
   const matchingDb: any[] = [];
-  try {
-    const CHUNK_SIZE = 250;
-    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      const { data: tblData } = await supabaseAdmin
-        .from(`retailsale${fySuffix}`)
-        .select('*')
-        .in('customer_id', chunk)
-        .limit(50000);
+  const CHUNK_SIZE = 40;
+  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+    const { data: tblData, error } = await supabaseAdmin
+      .from(`retailsale${fySuffix}`)
+      .select('*')
+      .in('customer_id', chunk)
+      .limit(1000);
+    if (error) throw new Error(`Could not read retail sales: ${error.message}`);
 
-      if (tblData && tblData.length > 0) {
-        matchingDb.push(...tblData.map((r: any) => ({
-          Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-          Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
-          Customer_id: Number(r.customer_id || r.Customer_id),
-          Publica_id: Number(r.publica_id || r.Publica_id),
-          Copies: Number(r.copies || r.Copies || 1),
-          Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
-          Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
-          Narr: r.narr || r.Narr || r.narration || ''
-        })));
-      }
-    }
-  } catch (_) {}
+    matchingDb.push(...(tblData || []).map((r: any) => ({
+      Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+      Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+      Customer_id: Number(r.customer_id || r.Customer_id),
+      Publica_id: Number(r.publica_id || r.Publica_id),
+      Copies: Number(r.copies || r.Copies || 1),
+      Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+      Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
+      Narr: r.narr || r.Narr || r.narration || ''
+    })));
+  }
 
   const seen = new Set<string>();
   const merged: any[] = [];
-  for (const item of [...matchingLocal, ...matchingDb]) {
+  for (const item of matchingDb) {
     const cid = Number(item.Customer_id || item.customer_id);
     const pid = Number(item.Publica_id || item.publica_id);
     const vDate = item.Vr_Date || item.vr_date || item.dated || item.Dated || '';
@@ -443,12 +341,9 @@ export async function GET(request: NextRequest) {
     // If single customer queried (for Breakup / Slip): Instant calculation
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
-      let targetCust = (cachedCusts || []).find(c => (c.customer_id || c.Customer_id) === cid);
-      if (!targetCust) {
-        const { data: dbCust } = await supabaseAdmin.from('customer').select('*').eq('customer_id', cid).single();
-        if (dbCust) targetCust = dbCust;
-      }
-      const targetCusts = targetCust ? [targetCust] : [];
+      const { data: dbCust, error: custErr } = await supabaseAdmin.from('customer').select('*').eq('customer_id', cid);
+      if (custErr) throw new Error(`Could not read customer: ${custErr.message}`);
+      const targetCusts = dbCust || [];
 
       const [custSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays, liveSupps] = await Promise.all([
         fetchSubscriptions([cid]),
@@ -457,7 +352,7 @@ export async function GET(request: NextRequest) {
         fetchRetailSales([cid], fySuffix),
         getMaxBillId(fySuffix),
         getHolidays(),
-        getSupplements()
+        getSupplements(month, year)
       ]);
 
       const singleResult = calculateBilling({
@@ -545,7 +440,7 @@ export async function GET(request: NextRequest) {
       fetchRetailSales(paginatedCustIds, fySuffix),
       getMaxBillId(fySuffix),
       getHolidays(),
-      getSupplements()
+      getSupplements(month, year)
     ]);
 
     const result = calculateBilling({
@@ -653,7 +548,7 @@ export async function POST(request: NextRequest) {
       fetchPublications(),
       getDiscontinues(),
       fetchRegions(),
-      getSupplements()
+      getSupplements(month, year)
     ]);
 
     const result = calculateBilling({

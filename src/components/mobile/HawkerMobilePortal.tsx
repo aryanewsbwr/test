@@ -55,7 +55,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
     setIsLoading(true);
     try {
       const [cRes, pRes, hRes, rRes] = await Promise.all([
-        fetch(`/api/customers?limit=5000&order=asc`),
+        fetch(`/api/customers?all=true`),
         fetch(`/api/publications?with_rates=false`),
         fetch(`/api/hawkers`),
         fetch(`/api/receipts?limit=200`)

@@ -198,6 +198,9 @@ function discontinueFromOldRow(r: any) {
     temp_from: toIsoDate(r.temp_from),
     temp_to: toIsoDate(r.temp_to),
     entry_date: toIsoDate(r.entrydate),
+    // The subscription the stop was entered for; billing applies the stop to that one only
+    s_date: toIsoDate(r.s_date),
+    c_date: toIsoDate(r.c_date),
     financial_year: fyLabel()
   };
 }

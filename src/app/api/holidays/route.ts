@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
+import { fetchAllRows } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,46 +14,9 @@ async function fetchAllHolidaysFromSupabase(): Promise<any[]> {
     return cachedHolidays;
   }
 
-  try {
-    const all: any[] = [];
-    const PAGE_SIZE = 1000;
-    let from = 0;
-
-    while (true) {
-      const { data, error } = await supabase
-        .from('holiday')
-        .select('*')
-        .order('id', { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error || !data || data.length === 0) break;
-      all.push(...data);
-      if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
-    }
-
-    if (all.length > 0) {
-      cachedHolidays = all;
-      lastFetchTime = now;
-      return cachedHolidays;
-    }
-  } catch (err) {
-    console.error('Failed to fetch holidays from Supabase:', err);
-  }
-
-  // Fallback to local JSON if Supabase fails
-  const f = path.join(process.cwd(), 'public', 'data', 'holidays.json');
-  if (fs.existsSync(f)) {
-    try {
-      cachedHolidays = JSON.parse(fs.readFileSync(f, 'utf-8'));
-      lastFetchTime = now;
-      return cachedHolidays || [];
-    } catch {
-      return [];
-    }
-  }
-
-  return cachedHolidays || [];
+  cachedHolidays = await fetchAllRows('holiday', 'id');
+  lastFetchTime = now;
+  return cachedHolidays;
 }
 
 export async function GET(request: NextRequest) {

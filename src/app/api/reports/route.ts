@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { fySuffix } from '@/lib/financialYear';
-import fs from 'fs';
-import path from 'path';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi, getReliableHindiName } from '@/lib/transliteration';
@@ -29,8 +27,6 @@ interface CacheData {
   retailsales?: any[];
   publicationdis?: any[];
 }
-
-let cache: CacheData | null = null;
 
 // Every row, in a fixed order so pages never overlap, failing loudly rather than returning part
 async function fetchAllFromSupabase(table: string, order: string[]): Promise<any[]> {
@@ -90,201 +86,12 @@ async function loadLiveData(data: CacheData) {
   data.receipts = receipts.map(receiptForReports);
 }
 
-async function getCacheAsync() {
-  if (cache) return cache;
-
-  const load = (file: string) => {
-    try {
-      const srcP = path.join(process.cwd(), 'src', 'data', file);
-      if (fs.existsSync(srcP)) {
-        return JSON.parse(fs.readFileSync(srcP, 'utf-8'));
-      }
-      const p = path.join(process.cwd(), 'public', 'data', file);
-      if (fs.existsSync(p)) {
-        return JSON.parse(fs.readFileSync(p, 'utf-8'));
-      }
-    } catch (e) {
-      console.warn(`Could not load ${file}:`, e);
-    }
-    return [];
+// Starts each report empty; loadLiveData and the report itself fill what they need from the database
+function emptyData(): CacheData {
+  return {
+    customers: [], subscriptions: [], publications: [], hawkers: [], regions: [], receipts: [], bills: [],
+    discontinues: [], countersale: [], publishers: [], rates: [], ratechanges: [], holidays: [], collect: []
   };
-
-  const ratechanges = load('ratechanges.json').map((rc: any) => ({
-    ...rc,
-    dated: rc.effective_date || rc.dated
-  }));
-
-  cache = {
-    customers: load('all_customers.json'),
-    subscriptions: load('all_subscriptions.json'),
-    publications: load('publications.json'),
-    hawkers: load('hawkers.json'),
-    regions: load('regions.json'),
-    receipts: load('all_receipts.json'),
-    bills: load('all_bills.json'),
-    discontinues: load('discontinues.json'),
-    countersale: load('countersale.json'),
-    publishers: load('publishers.json'),
-    rates: load('rates.json'),
-    ratechanges: ratechanges,
-    holidays: load('holidays.json'),
-    collect: load('collect.json'),
-    retailsales: load('retailsale.json'),
-    publicationdis: load('publicationdis.json')
-  };
-  return cache;
-}
-
-async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
-  if (customerIds.length === 0) return [];
-
-  const CHUNK_SIZE = 100;
-  const result: any[] = [];
-  const foundCustIds = new Set<number>();
-
-  // 1. Query customer_detail directly from Supabase
-  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-    try {
-      const { data: cdSubs } = await supabase
-        .from('customer_detail')
-        .select('*')
-        .in('customer_id', chunk)
-        .limit(50000);
-      if (cdSubs && cdSubs.length > 0) {
-        result.push(...cdSubs);
-        cdSubs.forEach(s => foundCustIds.add(s.customer_id));
-      }
-    } catch (err) {
-      console.error('Error fetching customer_detail chunk:', err);
-    }
-  }
-
-  // 2. Fallback to all_subscriptions.json for any missing customers
-  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
-  if (missingCustIds.length > 0) {
-    try {
-      const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-      if (fs.existsSync(localSubsPath)) {
-        const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
-        const fallback = localSubs.filter((s: any) => missingCustIds.includes(s.customer_id));
-        result.push(...fallback);
-      }
-    } catch (err) {
-      console.error('Error reading local all_subscriptions.json fallback:', err);
-    }
-  }
-
-  return result;
-}
-
-
-async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
-  if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
-  const CHUNK_SIZE = 50;
-  const allBills: any[] = [];
-  const allBillHeaders: any[] = [];
-  const allReceipts: any[] = [];
-
-  try {
-    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
-        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
-        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
-        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(50000)
-      ]);
-      if (bData) allBillHeaders.push(...bData);
-      if (itemsData) allBills.push(...itemsData);
-      if (rData) allReceipts.push(...rData);
-    }
-    if (allBills.length > 0 || allBillHeaders.length > 0 || allReceipts.length > 0) {
-      return { bills: allBills, billHeaders: allBillHeaders, receipts: allReceipts };
-    }
-  } catch (e) {
-    // fallback
-  }
-  return { bills: [], billHeaders: [], receipts: [] };
-}
-
-async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
-  if (customerIds.length === 0) return [];
-  const load = (file: string) => {
-    try {
-      const p = path.join(process.cwd(), 'public', 'data', file);
-      if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
-    } catch {
-      return [];
-    }
-    return [];
-  };
-
-  const localSales = load('retailsale.json');
-  const matchingLocal = localSales.filter((s: any) => {
-    const cid = Number(s.Customer_id || s.customer_id);
-    return customerIds.includes(cid);
-  });
-
-  const matchingDb: any[] = [];
-  try {
-    const CHUNK_SIZE = 50;
-    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      
-      // 1. Query generic retailsale table
-      try {
-        const { data: genData } = await supabase
-          .from('retailsale')
-          .select('*')
-          .in('customer_id', chunk)
-          .limit(50000);
-        if (genData && genData.length > 0) {
-          matchingDb.push(...genData.map(r => ({
-            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-            Vr_Date: r.vr_date || r.Vr_Date,
-            Customer_id: r.customer_id || r.Customer_id,
-            Publica_id: r.publica_id || r.Publica_id,
-            Copies: r.copies || r.Copies || 1,
-            Rate: r.rate || r.Rate || 0,
-            Amt: r.amt !== undefined ? r.amt : (r.Amt !== undefined ? r.Amt : (r.amount || 0)),
-            Narr: r.narr || r.Narr || r.narration || ''
-          })));
-        }
-      } catch {
-        // ignore
-      }
-
-      // 2. Query FY specific table (e.g. retailsale20252026)
-      try {
-        const { data: fyData } = await supabase
-          .from(`retailsale${fySuffix}`)
-          .select('*')
-          .in('Customer_id', chunk)
-          .limit(50000);
-        if (fyData && fyData.length > 0) {
-          matchingDb.push(...fyData);
-        }
-      } catch {
-        // ignore
-      }
-    }
-  } catch (err) {
-    console.error('Error fetching retail sales from Supabase:', err);
-  }
-
-  const seen = new Set<string>();
-  const merged: any[] = [];
-  for (const item of [...matchingLocal, ...matchingDb]) {
-    const rId = item.Retail_id || item.retail_id || item.sale_id;
-    const key = rId 
-      ? `id-${rId}` 
-      : `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}-${item.Rate || item.rate || 0}-${item.Amt || item.amt || 0}-${item.Copies || item.copies || 1}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      merged.push(item);
-    }
-  }
-  return merged;
 }
 
 export async function GET(request: NextRequest) {
@@ -302,7 +109,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const search = (searchParams.get('search') || '').toLowerCase().trim();
 
-    const data = { ...(await getCacheAsync()) };
+    const data = emptyData();
     data.publications = await fetchPublications();
     data.regions = await fetchRegions();
     // Bill printing reads its own rows from the database, so it skips this slower load

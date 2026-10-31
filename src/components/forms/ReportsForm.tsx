@@ -159,9 +159,7 @@ export default function ReportsForm({
           if (d.regions && d.regions.length > 0) setRegions(d.regions);
           else if (Array.isArray(d)) setRegions(d);
         })
-        .catch(() => {
-          fetch('/data/regions.json').then(r => r.json()).then(d => setRegions(d || [])).catch(() => {});
-        });
+        .catch(() => {});
     }
 
     if (propsHawkers && propsHawkers.length > 0) {
@@ -173,9 +171,7 @@ export default function ReportsForm({
           if (d.hawkers && d.hawkers.length > 0) setHawkers(d.hawkers);
           else if (Array.isArray(d)) setHawkers(d);
         })
-        .catch(() => {
-          fetch('/data/hawkers.json').then(r => r.json()).then(d => setHawkers(d || [])).catch(() => {});
-        });
+        .catch(() => {});
     }
 
     if (propsPubs && propsPubs.length > 0) {
@@ -187,9 +183,7 @@ export default function ReportsForm({
           if (d.publications && d.publications.length > 0) setPublications(d.publications);
           else if (Array.isArray(d)) setPublications(d);
         })
-        .catch(() => {
-          fetch('/data/publications.json').then(r => r.json()).then(d => setPublications(d || [])).catch(() => {});
-        });
+        .catch(() => {});
     }
   }, [propsRegions, propsHawkers, propsPubs]);
 

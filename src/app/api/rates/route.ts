@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchAllRows, fetchPublications } from '@/lib/publicationsData';
+import { fetchAllRows, fetchPublications, nextId, replaceBaseRates } from '@/lib/publicationsData';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 
 export const dynamic = 'force-dynamic';
-
-function loadJson(filename: string) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf-8'));
-  return [];
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,57 +12,16 @@ export async function GET(request: NextRequest) {
     const dateStr = searchParams.get('date') || '2099-12-31';
     const isHistory = searchParams.get('history') === 'true';
 
-    let rates = loadJson('rates.json');
-    let ratechanges = loadJson('ratechanges.json').map((r: any) => ({
-      publica_id: r.publica_id ?? r.Publica_id,
-      dayofweek: r.dayofweek ?? r.Dayofweek,
-      oldrate: r.oldrate ?? r.old_rate ?? r.OldRate ?? 0,
-      new_rate: r.new_rate ?? r.newrate ?? r.NewRate ?? 0,
-      dated: (r.dated || r.Dated || r.effective_date || '').split('T')[0],
-      effective_date: (r.effective_date || r.dated || r.Dated || '').split('T')[0]
-    }));
+    // The rate and ratechange tables are the only source, the same ones billing reads
+    const [dbRates, dbChanges] = await Promise.all([fetchAllRows('rate', 'id'), fetchAllRows('ratechange', 'id')]);
+    const rates = dbRates.map((r: any) => ({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: Number(r.rate) }));
+    const ratechanges = dbChanges.map((r: any) => {
+      const day = (r.effective_date || '').split('T')[0];
+      return { id: r.id, publica_id: r.publica_id, dayofweek: r.dayofweek, oldrate: Number(r.oldrate || 0), new_rate: Number(r.newrate || 0), dated: day, effective_date: day };
+    });
 
-    // Fetch latest rate changes from Supabase (Supabase is source of truth for ratechange)
-    try {
-      const sbRc = await fetchAllRows('ratechange', 'id');
-
-      if (sbRc && sbRc.length > 0) {
-        ratechanges = sbRc.map((r: any) => ({
-          id: r.id,
-          publica_id: r.publica_id ?? r.Publica_id,
-          dayofweek: r.dayofweek ?? r.Dayofweek,
-          oldrate: Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0),
-          new_rate: Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0),
-          dated: (r.effective_date || r.Dated || r.dated || '').split('T')[0],
-          effective_date: (r.effective_date || r.Dated || r.dated || '').split('T')[0]
-        }));
-      }
-    } catch (sbErr) {
-      console.warn('Supabase ratechange fetch notice:', sbErr);
-    }
-
-    // Try fetching latest rates from Supabase
-    try {
-      const sbRates = await fetchAllRows('rate', 'id');
-      if (sbRates && sbRates.length > 0) {
-        rates = sbRates.map((r: any) => ({
-          publica_id: r.publica_id,
-          dayofweek: r.dayofweek,
-          rate: Number(r.rate)
-        }));
-      }
-    } catch (_) {}
-
-    // The screens price retail and counter sales from these, so they must be the database's own rows
     if (searchParams.get('tables') === 'true') {
-      const [dbRates, dbChanges] = await Promise.all([fetchAllRows('rate', 'id'), fetchAllRows('ratechange', 'id')]);
-      return NextResponse.json({
-        rates: dbRates.map((r: any) => ({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: Number(r.rate) })),
-        ratechanges: dbChanges.map((r: any) => {
-          const day = (r.effective_date || '').split('T')[0];
-          return { id: r.id, publica_id: r.publica_id, dayofweek: r.dayofweek, oldrate: Number(r.oldrate || 0), new_rate: Number(r.newrate || 0), dated: day, effective_date: day };
-        })
-      });
+      return NextResponse.json({ rates, ratechanges });
     }
 
     // History mode: return chronological history of rate changes for a publication
@@ -141,22 +92,11 @@ export async function POST(request: NextRequest) {
     const targetRates = (is_rate_change && new_rates) ? new_rates : day_rates;
 
     if (targetRates && typeof targetRates === 'object') {
-      // 1. Fetch max ID from Supabase to assign explicit IDs (prevent postgres sequence collision)
-      let nextRcId = 3000;
-      try {
-        const { data: maxRc } = await supabase
-          .from('ratechange')
-          .select('id')
-          .order('id', { ascending: false })
-          .limit(1);
-        if (maxRc && maxRc.length > 0 && maxRc[0].id) {
-          nextRcId = Number(maxRc[0].id) + 1;
-        }
-      } catch (_) {}
+      // 1. Ids are given here, matching how the rows were imported
+      let nextRcId = await nextId('ratechange');
 
       // Build rate changes records with lowercase PostgreSQL columns
       const rateChangeRows: any[] = [];
-      const jsonRateChanges: any[] = [];
 
       Object.entries(targetRates).forEach(([day, rate]) => {
         const dayNum = parseInt(day, 10);
@@ -171,94 +111,28 @@ export async function POST(request: NextRequest) {
             newrate: rateVal,
             effective_date: effDateIso
           });
-          jsonRateChanges.push({
-            publica_id: pubId,
-            dayofweek: dayNum,
-            oldrate: oldVal,
-            new_rate: rateVal,
-            dated: effDateIso,
-            effective_date: effDateIso
-          });
         }
       });
 
-      // 2. Insert or Update Supabase ratechange table
-      // If updating a rate change for this effective_date, delete older duplicates for this date first so it acts as a clean update
+      // 2. Rate changes: a change for the same date replaces the earlier one.
+      // New rows go in first, so a failure never leaves the date with no rates.
       if (rateChangeRows.length > 0) {
-        try {
-          if (is_rate_change && effDateIso) {
-            await supabase
-              .from('ratechange')
-              .delete()
-              .eq('publica_id', pubId)
-              .eq('effective_date', effDateIso);
-          }
-          const { error: rcErr } = await supabase.from('ratechange').insert(rateChangeRows);
-          if (rcErr) console.warn('Supabase ratechange insert error:', rcErr);
-        } catch (rcErr) {
-          console.warn('Supabase ratechange insert warning:', rcErr);
+        const { data: earlier, error: readErr } = is_rate_change && effDateIso
+          ? await supabase.from('ratechange').select('id').eq('publica_id', pubId).eq('effective_date', effDateIso)
+          : { data: [], error: null };
+        if (readErr) throw new Error(`Could not read rate changes: ${readErr.message}`);
+        const { error: rcErr } = await supabase.from('ratechange').insert(rateChangeRows);
+        if (rcErr) throw new Error(`Rate change not saved: ${rcErr.message}`);
+        const oldIds = (earlier || []).map((r: any) => r.id);
+        if (oldIds.length) {
+          const { error: delErr } = await supabase.from('ratechange').delete().in('id', oldIds);
+          if (delErr) throw new Error(`New rate change saved, but the earlier one for this date was not removed: ${delErr.message}`);
         }
       }
 
       // 3. Update Supabase rate table with explicit IDs (always update base rates)
-      let nextRateId = 1000;
-      try {
-        const { data: maxRate } = await supabase
-          .from('rate')
-          .select('id')
-          .order('id', { ascending: false })
-          .limit(1);
-        if (maxRate && maxRate.length > 0 && maxRate[0].id) {
-          nextRateId = Number(maxRate[0].id) + 1;
-        }
-      } catch (_) {}
-
-      const rateRows = Object.entries(targetRates).map(([day, rate]) => ({
-        id: nextRateId++,
-        publica_id: pubId,
-        dayofweek: parseInt(day, 10),
-        rate: Number(rate)
-      }));
-
-      try {
-        await supabase.from('rate').delete().eq('publica_id', pubId);
-        const { error: rErr } = await supabase.from('rate').insert(rateRows);
-        if (rErr) console.warn('Supabase rate insert error:', rErr);
-      } catch (dbErr) {
-        console.warn('Supabase rate update warning:', dbErr);
-      }
-
-      // 4. Update local JSON files for immediate offline & cache reflection
-      try {
-        const ratesFile = path.join(process.cwd(), 'public', 'data', 'rates.json');
-        const rcsFile = path.join(process.cwd(), 'public', 'data', 'ratechanges.json');
-
-        if (fs.existsSync(rcsFile)) {
-          let currentRcs = JSON.parse(fs.readFileSync(rcsFile, 'utf-8'));
-          if (is_rate_change && effDateIso) {
-            currentRcs = currentRcs.filter((rc: any) => {
-              const rPub = rc.publica_id || rc.Publica_id;
-              const rEff = (rc.effective_date || rc.Dated || rc.dated || '').split('T')[0];
-              return !(rPub === pubId && rEff === effDateIso);
-            });
-          }
-          jsonRateChanges.forEach(rc => {
-            currentRcs.push(rc);
-          });
-          fs.writeFileSync(rcsFile, JSON.stringify(currentRcs, null, 2), 'utf-8');
-        }
-
-        if (fs.existsSync(ratesFile)) {
-          let currentRates = JSON.parse(fs.readFileSync(ratesFile, 'utf-8'));
-          currentRates = currentRates.filter((r: any) => (r.publica_id || r.Publica_id) !== pubId);
-          rateRows.forEach(r => {
-            currentRates.push({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: r.rate });
-          });
-          fs.writeFileSync(ratesFile, JSON.stringify(currentRates, null, 2), 'utf-8');
-        }
-      } catch (fsErr) {
-        console.warn('File update warning:', fsErr);
-      }
+      // 3. Base rates
+      await replaceBaseRates(pubId, targetRates);
 
       return NextResponse.json({
         success: true,
@@ -289,28 +163,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'publica_id or id is required' }, { status: 400 });
     }
 
-    if (rcIdStr) {
-      const rcId = parseInt(rcIdStr, 10);
-      await supabase.from('ratechange').delete().eq('id', rcId);
-    } else if (pubIdStr && effDate) {
-      const pubId = parseInt(pubIdStr, 10);
-      const effIso = effDate.split('T')[0];
-      await supabase.from('ratechange').delete().eq('publica_id', pubId).eq('effective_date', effIso);
-
-      // Also clean local JSON
-      try {
-        const rcsFile = path.join(process.cwd(), 'public', 'data', 'ratechanges.json');
-        if (fs.existsSync(rcsFile)) {
-          let currentRcs = JSON.parse(fs.readFileSync(rcsFile, 'utf-8'));
-          currentRcs = currentRcs.filter((rc: any) => {
-            const rPub = rc.publica_id || rc.Publica_id;
-            const rEff = (rc.effective_date || rc.Dated || rc.dated || '').split('T')[0];
-            return !(rPub === pubId && rEff === effIso);
-          });
-          fs.writeFileSync(rcsFile, JSON.stringify(currentRcs, null, 2), 'utf-8');
-        }
-      } catch (_) {}
-    }
+    const { error } = rcIdStr
+      ? await supabase.from('ratechange').delete().eq('id', parseInt(rcIdStr, 10))
+      : effDate
+        ? await supabase.from('ratechange').delete().eq('publica_id', parseInt(pubIdStr!, 10)).eq('effective_date', effDate.split('T')[0])
+        : { error: { message: 'effective_date is required with publica_id' } };
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
     return NextResponse.json({ success: true, message: 'Rate change revision deleted successfully' });
   } catch (error: any) {

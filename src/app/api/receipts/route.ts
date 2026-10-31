@@ -1,90 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
-import fs from 'fs';
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
+import { fySuffix } from '@/lib/financialYear';
 
 export const dynamic = 'force-dynamic';
 
-let cachedReceipts: any[] | null = null;
-let lastMtime: number = 0;
-
-function loadReceipts() {
-  const srcF = path.join(process.cwd(), 'src', 'data', 'all_receipts.json');
-  const pubF = path.join(process.cwd(), 'public', 'data', 'all_receipts.json');
-  const f = fs.existsSync(srcF) ? srcF : pubF;
-
-  if (fs.existsSync(f)) {
-    const stats = fs.statSync(f);
-    if (!cachedReceipts || stats.mtimeMs !== lastMtime) {
-      cachedReceipts = JSON.parse(fs.readFileSync(f, 'utf-8'));
-      lastMtime = stats.mtimeMs;
-    }
-  } else {
-    cachedReceipts = [];
-  }
-}
-
+// This year's receipts from the database, for one customer or a page of all of them
 export async function GET(request: NextRequest) {
   try {
-    loadReceipts();
     const { searchParams } = new URL(request.url);
     const customerIdStr = searchParams.get('customer_id');
+    const table = `receipt${fySuffix()}`;
 
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
-      const list = (cachedReceipts || []).filter(r => r.customer_id === cid);
-      return NextResponse.json({ customer_id: cid, total: list.length, receipts: list });
+      const { data, error } = await supabase.from(table).select('*').eq('customer_id', cid).order('id');
+      if (error) throw new Error(`Could not read receipts: ${error.message}`);
+      return NextResponse.json({ customer_id: cid, total: data.length, receipts: data });
     }
 
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const total = (cachedReceipts || []).length;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 1000);
     const start = (page - 1) * limit;
-    const data = (cachedReceipts || []).slice(start, start + limit);
+    const { data, count, error } = await supabase
+      .from(table)
+      .select('*', { count: 'exact' })
+      .order('id', { ascending: false })
+      .range(start, start + limit - 1);
+    if (error) throw new Error(`Could not read receipts: ${error.message}`);
 
-    return NextResponse.json({ total, page, limit, receipts: data });
+    return NextResponse.json({ total: count || 0, page, limit, receipts: data });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-export async function DELETE(request: NextRequest) {
-  try {
-    loadReceipts();
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    const recpNo = searchParams.get('recp_no') || searchParams.get('receipt_no');
-    const customerIdStr = searchParams.get('customer_id');
-
-    if (!id && !recpNo) {
-      return NextResponse.json({ error: 'id or recp_no is required' }, { status: 400 });
-    }
-
-    const f = path.join(process.cwd(), 'public', 'data', 'all_receipts.json');
-    if (!cachedReceipts) {
-      cachedReceipts = [];
-    }
-
-    const initialLen = cachedReceipts.length;
-    cachedReceipts = cachedReceipts.filter(r => {
-      const matchId = id && (String(r.id) === String(id) || String(r.receipt_id) === String(id));
-      const matchRecpNo = recpNo && (String(r.recp_no) === String(recpNo) || String(r.receipt_no) === String(recpNo));
-      const matchCust = customerIdStr ? String(r.customer_id) === String(customerIdStr) : true;
-
-      // If matched, filter out
-      if ((matchId || matchRecpNo) && matchCust) {
-        return false;
-      }
-      return true;
-    });
-
-    if (cachedReceipts.length !== initialLen && fs.existsSync(f)) {
-      fs.writeFileSync(f, JSON.stringify(cachedReceipts, null, 2), 'utf-8');
-      lastMtime = fs.statSync(f).mtimeMs;
-    }
-
-    return NextResponse.json({ success: true, deleted: initialLen - cachedReceipts.length });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-

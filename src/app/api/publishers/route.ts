@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import path from 'path';
-import fs from 'fs';
+import { fetchAllRows } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
 
-function loadJson(filename: string) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf-8'));
-  return [];
-}
-
-function saveJson(filename: string, data: any) {
-  const f = path.join(process.cwd(), 'public', 'data', filename);
-  fs.writeFileSync(f, JSON.stringify(data, null, 2), 'utf-8');
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const pubs = loadJson('publishers.json');
+    const pubs = await fetchAllRows('publisher', 'publish_id');
     return NextResponse.json({ total: pubs.length, publishers: pubs });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -34,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Publisher Name is required' }, { status: 400 });
     }
 
-    const list = loadJson('publishers.json');
+    const list = await fetchAllRows('publisher', 'publish_id');
     let finalId = publish_id ? parseInt(publish_id, 10) : 0;
     const isUpdate = finalId > 0 && list.some((p: any) => p.publish_id === finalId);
 
@@ -46,42 +34,18 @@ export async function POST(request: NextRequest) {
     const record = {
       publish_id: finalId,
       name: name.trim(),
-      address,
-      city,
-      phone,
-      mobile,
-      category,
-      type
+      address: address || '',
+      city: city || '',
+      phone: phone || '',
+      mobile: mobile || '',
+      category: category || 'Newspaper',
+      type: type || 'Publisher'
     };
 
-    try {
-      const supabaseRecord = {
-        publish_id: finalId,
-        name: name.trim(),
-        address: address || '',
-        city: city || '',
-        phone: phone || '',
-        mobile: mobile || '',
-        category: category || 'Newspaper'
-      };
-      if (isUpdate) {
-        await supabase.from('publisher').update(supabaseRecord).eq('publish_id', finalId);
-      } else {
-        await supabase.from('publisher').insert([supabaseRecord]);
-      }
-    } catch (dbErr) {
-      console.warn('Supabase publisher warning:', dbErr);
-    }
-
-    try {
-      let updated = list;
-      if (isUpdate) {
-        updated = updated.map((p: any) => p.publish_id === finalId ? { ...p, ...record } : p);
-      } else {
-        updated.push(record);
-      }
-      saveJson('publishers.json', updated);
-    } catch (fErr) {}
+    const { error } = isUpdate
+      ? await supabase.from('publisher').update(record).eq('publish_id', finalId)
+      : await supabase.from('publisher').insert([record]);
+    if (error) throw new Error(`Could not save publisher: ${error.message}`);
 
     return NextResponse.json({
       success: true,
@@ -101,16 +65,19 @@ export async function DELETE(request: NextRequest) {
 
     const pid = parseInt(idStr, 10);
 
-    try {
-      await supabase.from('publisher').delete().eq('publish_id', pid);
-    } catch (dbErr) {
-      console.warn('Supabase delete warning:', dbErr);
+    // Papers keep their publisher number, so one still in use is kept
+    const { count, error: countErr } = await supabase
+      .from('publication')
+      .select('publica_id', { count: 'exact', head: true })
+      .eq('publish_id', pid);
+    if (countErr) throw new Error(`Could not check publications: ${countErr.message}`);
+    if ((count || 0) > 0) {
+      return NextResponse.json({ error: `${count} publications belong to this publisher. Move them before deleting it.` }, { status: 400 });
     }
 
-    try {
-      const list = loadJson('publishers.json');
-      saveJson('publishers.json', list.filter((p: any) => p.publish_id !== pid));
-    } catch (fErr) {}
+    const { data, error } = await supabase.from('publisher').delete().eq('publish_id', pid).select();
+    if (error) throw new Error(`Could not delete publisher: ${error.message}`);
+    if (!data?.length) return NextResponse.json({ error: 'Publisher not found' }, { status: 404 });
 
     return NextResponse.json({ success: true, message: `Publisher #${pid} deleted successfully.` });
   } catch (error: any) {

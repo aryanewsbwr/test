@@ -120,16 +120,7 @@ export default function DiscontinueForm({
           setPubList(normalizeAndSortPubs(list));
         }
       })
-      .catch(() => {
-        fetch('/data/publications.json')
-          .then(r => r.json())
-          .then(list => {
-            if (Array.isArray(list) && list.length > 0) {
-              setPubList(normalizeAndSortPubs(list));
-            }
-          })
-          .catch(() => {});
-      });
+      .catch(() => {});
   }, [publications]);
 
   // Load Hawkers if not provided

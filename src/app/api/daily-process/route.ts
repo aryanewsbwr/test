@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchPublications } from '@/lib/publicationsData';
-import path from 'path';
-import fs from 'fs';
+import { fetchAllRows, fetchPublications } from '@/lib/publicationsData';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
+import { parseLegacyDateToIso } from '@/lib/billingEngine';
 
 export const dynamic = 'force-dynamic';
 
-let cachedPubs: any[] | null = null;
-let cachedHawkers: any[] | null = null;
-let cachedSubs: any[] | null = null;
-
-function loadData() {
-  if (!cachedHawkers) {
-    const f = path.join(process.cwd(), 'public', 'data', 'hawkers.json');
-    if (fs.existsSync(f)) cachedHawkers = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    else cachedHawkers = [];
-  }
-  if (!cachedSubs) {
-    const f = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-    if (fs.existsSync(f)) cachedSubs = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    else cachedSubs = [];
+// Subscriptions, optionally for one hawker, read from the database page by page
+async function fetchSubscriptions(hawkerId: number | null): Promise<any[]> {
+  if (!hawkerId) return fetchAllRows('customer_detail', 'sno');
+  const rows: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from('customer_detail').select('*').eq('hawker_id', hawkerId).order('sno').range(from, from + 999);
+    if (error) throw new Error(`Could not read subscriptions: ${error.message}`);
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) return rows;
   }
 }
 
@@ -40,8 +34,6 @@ function isDeliveredOnDay(fromDay: string, dayOfWeek: number): boolean {
 
 export async function GET(request: NextRequest) {
   try {
-    loadData();
-    cachedPubs = await fetchPublications();
     const { searchParams } = new URL(request.url);
     const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0];
     const hawkerIdFilter = searchParams.get('hawker_id') || 'all';
@@ -50,28 +42,18 @@ export async function GET(request: NextRequest) {
     // getDay(): 0=Sun..6=Sat => legacy 1=Sun..7=Sat
     const legacyDay = targetDate.getDay() + 1;
 
-    // Use complete subscriptions dataset
-    let dbSubs = cachedSubs || [];
-    if (hawkerIdFilter !== 'all') {
-      const hid = parseInt(hawkerIdFilter, 10);
-      dbSubs = dbSubs.filter((s: any) => Number(s.hawker_id || s.Hawker_id) === hid);
-    }
+    const [pubs, hawkers, dbSubs] = await Promise.all([
+      fetchPublications(),
+      fetchAllRows('hawker', 'hawker_id'),
+      fetchSubscriptions(hawkerIdFilter !== 'all' ? parseInt(hawkerIdFilter, 10) : null)
+    ]);
 
-    // Filter active subscriptions on target date
-    const activeSubs = (dbSubs || []).filter((sub: any) => {
-      // Must be active (no closure date, or closure date after targetDate)
-      if (sub.c_date) {
-        // e.g. 04/11/2019 or 2019-11-04
-        let cDateObj: Date | null = null;
-        if (sub.c_date.includes('/')) {
-          const [d, m, y] = sub.c_date.split('/').map(Number);
-          cDateObj = new Date(y, m - 1, d);
-        } else {
-          cDateObj = new Date(sub.c_date);
-        }
-        if (cDateObj && cDateObj <= targetDate) return false;
-      }
-      // Check delivery days
+    // Subscriptions running on the target date: started on or before it, not closed by it
+    const activeSubs = dbSubs.filter((sub: any) => {
+      const sIso = parseLegacyDateToIso(sub.s_date);
+      const cIso = parseLegacyDateToIso(sub.c_date);
+      if (sIso && sIso > dateStr) return false;
+      if (cIso && cIso <= dateStr) return false;
       return isDeliveredOnDay(sub.from_day, legacyDay);
     });
 
@@ -102,8 +84,8 @@ export async function GET(request: NextRequest) {
 
     // Enrich with Hawker Names and Publication Names
     const results = Array.from(map.values()).map(item => {
-      const hw = (cachedHawkers || []).find(h => h.hawker_id === item.hawker_id);
-      const pub = (cachedPubs || []).find(p => p.publica_id === item.publica_id);
+      const hw = hawkers.find(h => h.hawker_id === item.hawker_id);
+      const pub = pubs.find(p => p.publica_id === item.publica_id);
       return {
         hawker_id: item.hawker_id,
         hawker_name: hw ? hw.name : `Hawker #${item.hawker_id}`,
