@@ -230,12 +230,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     // Load next receipt number
     supabase
       .from('receipt20262027')
-      .select('recp_no, receipt_no')
+      .select('recp_no')
       .order('recp_no', { ascending: false })
       .limit(1)
       .then(({ data }) => {
         if (data && data.length > 0) {
-          const highestNo = Number(data[0].recp_no || data[0].receipt_no) || 1196604;
+          const highestNo = Number(data[0].recp_no) || 1196604;
           setReceiptNo(highestNo + 1);
         } else {
           setReceiptNo(1196605);
@@ -873,7 +873,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
     try {
       const cid = parseInt(customerId, 10);
-      const appliedReceiptNo = receiptNo;
+      // Re-read the highest number so two open screens can't hand out the same receipt no
+      const { data: highestRows, error: highestErr } = await supabase
+        .from('receipt20262027')
+        .select('recp_no')
+        .order('recp_no', { ascending: false })
+        .limit(1);
+      if (highestErr) throw highestErr;
+      const appliedReceiptNo = Math.max(receiptNo, (Number(highestRows?.[0]?.recp_no) || 0) + 1);
       const appliedManualNo = manualRecpNo;
 
       const metadata = {
@@ -958,7 +965,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       });
 
       // 5. Increment System Receipt No & Manual Receipt No for the next entry
-      setReceiptNo(prev => prev + 1);
+      setReceiptNo(appliedReceiptNo + 1);
       const nextManualNo = parseInt(appliedManualNo, 10);
       if (!isNaN(nextManualNo) && nextManualNo > 0) {
         setManualRecpNo(String(nextManualNo + 1));
@@ -1123,17 +1130,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         remarks: JSON.stringify(metadata)
       };
 
-      const targetRepIdNum = parseInt(String(updateRepId), 10);
-      const targetDbId = !isNaN(targetRepIdNum) ? (targetRepIdNum + 18383) : null;
-
-      let query = supabase.from('receipt20262027').update(updatePayload);
-      if (targetDbId) {
-        query = query.eq('id', targetDbId);
-      } else if (updateRecpNo) {
-        query = query.eq('recp_no', updateRecpNo);
-      }
-      const { error: updErr } = await query;
+      // Rep. Id is only a display number, so it can't identify the row
+      const cid = parseInt(customerId, 10);
+      if (!updateRecpNo || isNaN(cid)) throw new Error('This receipt has no receipt number, so it was not changed.');
+      const { data: updatedRows, error: updErr } = await supabase
+        .from('receipt20262027')
+        .update(updatePayload)
+        .eq('customer_id', cid)
+        .eq('recp_no', updateRecpNo)
+        .select('id');
       if (updErr) throw updErr;
+      if (!updatedRows || updatedRows.length === 0) throw new Error('Receipt was not found, so nothing was changed.');
 
       setCustomerReceipts(prev => prev.map(r => {
         const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
@@ -1195,31 +1202,22 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
     setIsDeletingReceipt(true);
     try {
-      const targetRepIdNum = parseInt(String(updateRepId), 10);
-      const targetDbId = !isNaN(targetRepIdNum) ? (targetRepIdNum + 18383) : null;
-
-      // 1. Delete from Supabase receipt20262027
-      let query = supabase.from('receipt20262027').delete();
-      if (targetDbId) {
-        query = query.eq('id', targetDbId);
-      } else if (updateRecpNo) {
-        query = query.eq('recp_no', updateRecpNo);
-      }
-      const { error: delErr } = await query;
-      if (delErr) {
-        console.warn('Supabase delete error on receipt20262027:', delErr);
-      }
-
-      // Also try deleting by recp_no if targetDbId was used, just in case
-      if (updateRecpNo) {
-        await supabase.from('receipt20262027').delete().eq('recp_no', updateRecpNo);
-      }
+      // 1. Delete from Supabase receipt20262027. Rep. Id is only a display number, so it can't identify the row
+      const receiptCid = parseInt(customerId, 10);
+      if (!updateRecpNo || isNaN(receiptCid)) throw new Error('This receipt has no receipt number, so it was not deleted.');
+      const { data: deletedRows, error: delErr } = await supabase
+        .from('receipt20262027')
+        .delete()
+        .eq('customer_id', receiptCid)
+        .eq('recp_no', updateRecpNo)
+        .select('id');
+      if (delErr) throw delErr;
+      if (!deletedRows || deletedRows.length === 0) throw new Error('Receipt was not found, so nothing was deleted.');
 
       // 2. Delete from /api/receipts (all_receipts.json on disk)
       try {
         const queryParams = new URLSearchParams();
-        if (targetDbId) queryParams.set('id', String(targetDbId));
-        if (updateRecpNo) queryParams.set('recp_no', String(updateRecpNo));
+        queryParams.set('recp_no', String(updateRecpNo));
         if (customerId) queryParams.set('customer_id', customerId);
 
         await fetch(`/api/receipts?${queryParams.toString()}`, {
