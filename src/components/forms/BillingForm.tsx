@@ -69,7 +69,14 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
   useEffect(() => {
     fetch('/data/regions.json')
       .then(r => r.json())
-      .then(d => setRegions(d || []))
+      .then(d => {
+        const regionName = (r: any) => String(r.name || r.region_name || '');
+        setRegions(
+          (d || [])
+            .filter((r: any) => !/^\s*z/i.test(regionName(r)))
+            .sort((a: any, b: any) => regionName(a).localeCompare(regionName(b), undefined, { numeric: true, sensitivity: 'base' }))
+        );
+      })
       .catch(() => {});
   }, []);
 
