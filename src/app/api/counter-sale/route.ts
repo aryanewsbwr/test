@@ -23,6 +23,12 @@ function saveJson(filename: string, data: any): void {
   fs.writeFileSync(f, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+// The countersale table keeps dates as dd/mm/yyyy
+function toSaleTableDate(iso: string): string {
+  const [y, m, d] = String(iso).split('T')[0].split('-');
+  return d ? `${d}/${m}/${y}` : iso;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -40,7 +46,7 @@ export async function GET(request: NextRequest) {
       const { data: dbSales, error } = await supabase
         .from('countersale')
         .select('*')
-        .order('Sale_Date', { ascending: false })
+        .order('id', { ascending: false })
         .limit(1000);
 
       if (!error && dbSales && dbSales.length > 0) {
@@ -58,21 +64,23 @@ export async function GET(request: NextRequest) {
         );
 
         dbSales.forEach((dbRow: any) => {
-          const isoDate = normalizeDate(dbRow.Sale_Date);
-          const key = `${dbRow.Publica_id}_${isoDate}_${dbRow.Qty}_${dbRow.Amt}`;
+          const isoDate = normalizeDate(dbRow.vr_date);
+          const qty = Number(dbRow.copies || 1);
+          const amt = Number(dbRow.amt || 0);
+          const key = `${dbRow.publica_id}_${isoDate}_${qty}_${amt}`;
           if (!existingKeys.has(key)) {
             existingKeys.add(key);
             mergedSales.push({
-              id: `sb_${dbRow.Publica_id}_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-              publica_id: Number(dbRow.Publica_id),
-              Publica_id: Number(dbRow.Publica_id),
-              qty: Number(dbRow.Qty || 1),
-              Qty: Number(dbRow.Qty || 1),
-              rate: Number(dbRow.Qty ? (dbRow.Amt / dbRow.Qty).toFixed(2) : dbRow.Amt),
-              amt: Number(dbRow.Amt || 0),
-              Amt: Number(dbRow.Amt || 0),
+              id: `sb_${dbRow.id}`,
+              publica_id: Number(dbRow.publica_id),
+              Publica_id: Number(dbRow.publica_id),
+              qty,
+              Qty: qty,
+              rate: Number(dbRow.rate || (qty ? (amt / qty).toFixed(2) : amt)),
+              amt,
+              Amt: amt,
               sale_date: isoDate,
-              Sale_Date: dbRow.Sale_Date,
+              Sale_Date: isoDate,
               customer_name: 'Counter Customer',
               created_at: new Date().toISOString()
             });
@@ -179,34 +187,31 @@ export async function POST(request: NextRequest) {
       newSalesToSave.push(saleObj);
 
       supabaseRowsToInsert.push({
-        Publica_id: pubId,
-        Qty: qty,
-        Amt: amt,
-        Sale_Date: sale_date
+        publica_id: pubId,
+        copies: qty,
+        rate,
+        amt,
+        vr_date: toSaleTableDate(sale_date),
+        remark: remarks || null
       });
     }
 
     // 1. Save to Supabase
-    let supabaseSuccess = false;
-    try {
-      const { error: sbErr } = await supabase
-        .from('countersale')
-        .insert(supabaseRowsToInsert);
-      if (!sbErr) supabaseSuccess = true;
-      else console.error('Supabase countersale insert warning:', sbErr);
-    } catch (err) {
-      console.error('Supabase countersale insert exception:', err);
-    }
+    const { error: sbErr } = await supabase
+      .from('countersale')
+      .insert(supabaseRowsToInsert);
+    if (sbErr) throw new Error(`Could not save counter sale: ${sbErr.message}`);
 
     // 2. Save to local JSON backup
-    const updatedSales = [...newSalesToSave, ...localSales];
-    saveJson('countersale.json', updatedSales);
+    try {
+      saveJson('countersale.json', [...newSalesToSave, ...localSales]);
+    } catch (fErr) {}
 
     return NextResponse.json({
       success: true,
       message: `Successfully recorded ${newSalesToSave.length} counter sale item(s).`,
       saved_count: newSalesToSave.length,
-      supabase_synced: supabaseSuccess,
+      supabase_synced: true,
       sales: newSalesToSave
     });
   } catch (error: any) {
@@ -233,16 +238,17 @@ export async function DELETE(request: NextRequest) {
       return true;
     });
 
-    saveJson('countersale.json', remainingSales);
+    try {
+      saveJson('countersale.json', remainingSales);
+    } catch (fErr) {}
 
     // Also attempt deletion from Supabase if publica_id and sale_date provided
     if (pubId && saleDate) {
-      try {
-        await supabase
-          .from('countersale')
-          .delete()
-          .match({ Publica_id: Number(pubId), Sale_Date: saleDate });
-      } catch {}
+      const { error: delErr } = await supabase
+        .from('countersale')
+        .delete()
+        .match({ publica_id: Number(pubId), vr_date: toSaleTableDate(saleDate) });
+      if (delErr) throw new Error(`Could not delete counter sale: ${delErr.message}`);
     }
 
     return NextResponse.json({

@@ -5,7 +5,7 @@ import fs from 'fs';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 import { parseDateToIso } from '@/lib/discontinueEngine';
-import { fetchPublications } from '@/lib/publicationsData';
+import { fetchAllRows, fetchPublications } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,10 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch latest rate changes from Supabase
     try {
-      const { data: sbRc } = await supabase
-        .from('ratechange')
-        .select('*')
-        .order('effective_date', { ascending: false });
+      const sbRc = await fetchAllRows('ratechange', 'id');
 
       if (sbRc && sbRc.length > 0) {
         const seenKeys = new Set(
@@ -77,7 +74,7 @@ export async function GET(request: NextRequest) {
     } catch (_) {}
 
     try {
-      const { data: sbRates } = await supabase.from('rate').select('*');
+      const sbRates = await fetchAllRows('rate', 'id');
       if (sbRates && sbRates.length > 0) {
         rates = sbRates.map((r: any) => ({
           publica_id: r.publica_id ?? r.Publica_id,

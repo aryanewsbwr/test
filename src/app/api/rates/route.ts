@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchPublications } from '@/lib/publicationsData';
+import { fetchAllRows, fetchPublications } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -32,10 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch latest rate changes from Supabase (Supabase is source of truth for ratechange)
     try {
-      const { data: sbRc } = await supabase
-        .from('ratechange')
-        .select('*')
-        .order('effective_date', { ascending: false });
+      const sbRc = await fetchAllRows('ratechange', 'id');
 
       if (sbRc && sbRc.length > 0) {
         ratechanges = sbRc.map((r: any) => ({
@@ -54,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     // Try fetching latest rates from Supabase
     try {
-      const { data: sbRates } = await supabase.from('rate').select('*');
+      const sbRates = await fetchAllRows('rate', 'id');
       if (sbRates && sbRates.length > 0) {
         rates = sbRates.map((r: any) => ({
           publica_id: r.publica_id,

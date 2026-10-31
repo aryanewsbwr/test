@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
+import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -25,11 +25,8 @@ export async function GET(request: NextRequest) {
 
     let discs: any[] = [];
     try {
-      const { data: sbData, error } = await supabase
-        .from('discontinue')
-        .select('*')
-        .order('discontinue_id', { ascending: false });
-      if (!error && sbData && sbData.length > 0) {
+      const sbData = await fetchAllRows('discontinue', 'discontinue_id', false);
+      if (sbData.length > 0) {
         discs = sbData;
       }
     } catch (_) {}

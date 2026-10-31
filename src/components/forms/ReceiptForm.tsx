@@ -47,6 +47,20 @@ const getFyMonthIndex = (mStr?: string | null): number => {
   return 99;
 };
 
+// Remarks hold saved details as JSON, with the typed note in narr. Older updates nested
+// the JSON inside narr again, so unwrap until only the note is left.
+const plainNarration = (value: any): string => {
+  let text = String(value ?? '');
+  while (text.trim().startsWith('{')) {
+    try {
+      text = String(JSON.parse(text).narr ?? '');
+    } catch {
+      break;
+    }
+  }
+  return text;
+};
+
 const compareReceipts = (a: any, b: any): number => {
   const yA = parseInt(a.year || '2025', 10);
   const yB = parseInt(b.year || '2025', 10);
@@ -564,8 +578,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           supabase
             .from('billno20252026')
             .select('*')
-            .eq('Customer_id', cust.customer_id)
-            .order('Bill_id', { ascending: true }),
+            .eq('customer_id', cust.customer_id)
+            .order('bill_id', { ascending: true }),
           supabase
             .from('bill20252026')
             .select('bill_id, total_amt')
@@ -1029,7 +1043,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setUpdatePaymentMode(target.cash_chq === 'Cheque' ? 'Cheque' : 'Cash');
     setUpdateChequeNo(target.cheque_no || '');
     setUpdateChequeDate(target.cheque_date || '');
-    setUpdateNarration(target.narr || target.remarks || '');
+    setUpdateNarration(plainNarration(target.narr || target.remarks));
   };
 
   const openUpdateModal = (receiptToEdit?: any) => {

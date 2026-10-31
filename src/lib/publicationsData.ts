@@ -2,6 +2,17 @@ import path from 'path';
 import fs from 'fs';
 import { supabase } from '@/lib/supabaseClient';
 
+// Reads a whole table, however large. The database returns at most 1,000 rows per request.
+export async function fetchAllRows(table: string, orderBy: string, ascending = true): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from(table).select('*').order(orderBy, { ascending }).range(from, from + 999);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) return rows;
+  }
+}
+
 // The publication table is the live list. The file is only a fallback for when it can't be read.
 export async function fetchPublications(): Promise<any[]> {
   const { data, error } = await supabase.from('publication').select('*').order('publica_id', { ascending: true });
