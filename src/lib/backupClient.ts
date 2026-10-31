@@ -163,6 +163,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       const headers = table.name.startsWith('billno') ? live : table.name.startsWith('bill2') ? billHeaders.get(table.name.slice(4)) : null;
       if (headers) add = withoutBilledMonths(add, headers);
       if (table.name === 'customer_detail') add = withoutHeldPapers(add, live);
+      if (table.name.startsWith('billdel')) add = withoutBilledMonths(add, live);
 
       items.push({
         ...difference,
