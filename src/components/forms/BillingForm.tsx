@@ -103,6 +103,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
         })
       });
       const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Bill generation failed');
 
       const pageSize = selectedRegion === 'all' ? 200 : 1000;
       // 2. Load bills for preview (full list for single region, paginated for all regions)

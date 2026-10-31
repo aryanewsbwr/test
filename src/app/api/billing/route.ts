@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
+import { replaceMonthBills } from '@/lib/billCommit';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -340,16 +341,18 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     try {
-      const { data: cdSubs } = await supabase
+      const { data: cdSubs, error } = await supabase
         .from('customer_detail')
         .select('*')
         .in('customer_id', chunk)
         .limit(1000);
+      if (error) throw error;
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching customer_detail chunk:', err);
+      throw new Error(`Could not read subscriptions: ${err.message}`);
     }
   }
 
@@ -395,25 +398,20 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
 
-  try {
-    for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-      const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
-        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
-        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
-        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(1000)
-      ]);
-      if (bData) allBillHeaders.push(...bData);
-      if (itemsData) allBills.push(...itemsData);
-      if (rData) allReceipts.push(...rData);
-    }
-    if (allBills.length > 0 || allBillHeaders.length > 0 || allReceipts.length > 0) {
-      return { bills: allBills, billHeaders: allBillHeaders, receipts: allReceipts };
-    }
-  } catch (e) {
-    // fallback
+  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
+    const [headerRes, itemsRes, receiptRes] = await Promise.all([
+      supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
+      supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
+      supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(1000)
+    ]);
+    const failed = headerRes.error || itemsRes.error || receiptRes.error;
+    if (failed) throw new Error(`Could not read bills and receipts: ${failed.message}`);
+    allBillHeaders.push(...(headerRes.data || []));
+    allBills.push(...(itemsRes.data || []));
+    allReceipts.push(...(receiptRes.data || []));
   }
-  return { bills: [], billHeaders: [], receipts: [] };
+  return { bills: allBills, billHeaders: allBillHeaders, receipts: allReceipts };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
@@ -703,44 +701,6 @@ export async function POST(request: NextRequest) {
 
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
 
-    // If committing to DB, first clean any previously generated bills for this month for target customers
-    // to guarantee an exact, clean overwrite without accumulating ghost duplicates or inflating bill counts!
-    if (commitToDb && supabase && targetCustIds.length > 0) {
-      const monthName = month.trim();
-      const monthPrefix = monthName.slice(0, 3);
-      const billnoTable = `billno${fySuffix}`;
-      const billTable = `bill${fySuffix}`;
-      const billdelTable = `billdel${fySuffix}`;
-
-      try {
-        const oldBids: number[] = [];
-        for (let i = 0; i < targetCustIds.length; i += 200) {
-          const chunk = targetCustIds.slice(i, i + 200);
-          const { data: oldB } = await supabase
-            .from(billnoTable)
-            .select('bill_id')
-            .in('customer_id', chunk)
-            .or(`month.ilike.${monthName},month.ilike.${monthPrefix}%`);
-          if (oldB && oldB.length > 0) {
-            oldBids.push(...oldB.map(b => b.bill_id));
-          }
-        }
-        if (oldBids.length > 0) {
-          for (let i = 0; i < oldBids.length; i += 200) {
-            const chunk = oldBids.slice(i, i + 200);
-            await supabase.from(billTable).delete().in('bill_id', chunk);
-            await supabase.from(billnoTable).delete().in('bill_id', chunk);
-          }
-        }
-        for (let i = 0; i < targetCustIds.length; i += 200) {
-          const chunk = targetCustIds.slice(i, i + 200);
-          await supabase.from(billdelTable).delete().in('customer_id', chunk).or(`month.ilike.${monthName},month.ilike.${monthPrefix}%`);
-        }
-      } catch (cleanErr) {
-        console.warn('Error pre-cleaning month bills for clean overwrite:', cleanErr);
-      }
-    }
-
     const [targetSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions, liveSupps] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
@@ -834,65 +794,29 @@ export async function POST(request: NextRequest) {
         };
       }).filter(Boolean);
 
-      // Insert in batches of 500 to Supabase
-      const insertBatch = async (tableName: string, rows: any[]) => {
-        for (let i = 0; i < rows.length; i += 500) {
-          const batch = rows.slice(i, i + 500);
-          const { error } = await supabase.from(tableName).upsert(batch);
-          if (error) {
-            console.error(`Error upserting into ${tableName}:`, error);
-            throw error;
-          }
-        }
-      };
+      await replaceMonthBills(
+        supabase,
+        { billno: billnoTable, bill: billTable, billdel: billdelTable },
+        month,
+        targetCustIds.map(Number),
+        { headers: billnoRows, lines: billRows, deliveries: billdelRows }
+      );
 
-      try {
-        // When regenerating a bill for the same month/year, first remove old bill line items & delivery items
-        // so that additions or deletions (e.g. removed supplements/subscriptions) cleanly replace the old bill!
-        const targetBillIds = billnoRows.map((b: any) => b.bill_id).filter(Boolean);
-        if (targetBillIds.length > 0) {
-          for (let i = 0; i < targetBillIds.length; i += 200) {
-            const chunk = targetBillIds.slice(i, i + 200);
-            await supabase.from(billTable).delete().in('bill_id', chunk);
-          }
+      // Update customer cbal for single or small region runs without blocking batch execution
+      if (result.bills.length <= 100) {
+        for (let i = 0; i < result.bills.length; i += 50) {
+          const chunk = result.bills.slice(i, i + 50);
+          await Promise.all(
+            chunk.map(b =>
+              supabase.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
+            )
+          );
         }
-
-        const targetCustIds = billnoRows.map((b: any) => b.customer_id).filter(Boolean);
-        if (targetCustIds.length > 0) {
-          for (let i = 0; i < targetCustIds.length; i += 200) {
-            const chunk = targetCustIds.slice(i, i + 200);
-            await supabase.from(billdelTable).delete().in('customer_id', chunk).eq('month', month).eq('year', String(year));
-          }
-        }
-
-        await insertBatch(billnoTable, billnoRows);
-        await insertBatch(billTable, billRows);
-        if (billdelRows.length > 0) {
-          try {
-            await insertBatch(billdelTable, billdelRows);
-          } catch (delErr) {
-            console.warn('billdel insert note:', delErr);
-          }
-        }
-
-        // Update customer cbal for single or small region runs without blocking batch execution
-        if (result.bills.length <= 100) {
-          for (let i = 0; i < result.bills.length; i += 50) {
-            const chunk = result.bills.slice(i, i + 50);
-            await Promise.all(
-              chunk.map(b =>
-                supabase.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
-              )
-            );
-          }
-        }
-
-        savedToSupabase = true;
-        savedBillnoCount = billnoRows.length;
-        savedBillItemsCount = billRows.length;
-      } catch (dbErr) {
-        console.error('Error saving to Supabase:', dbErr);
       }
+
+      savedToSupabase = true;
+      savedBillnoCount = billnoRows.length;
+      savedBillItemsCount = billRows.length;
     }
 
     return NextResponse.json({
