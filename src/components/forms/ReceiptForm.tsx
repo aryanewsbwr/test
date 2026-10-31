@@ -1131,9 +1131,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         query = query.eq('recp_no', updateRecpNo);
       }
       const { error: updErr } = await query;
-      if (updErr) {
-        console.warn('Update error on receipt20262027:', updErr);
-      }
+      if (updErr) throw updErr;
 
       setCustomerReceipts(prev => prev.map(r => {
         const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
@@ -2116,7 +2114,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       {isUpdateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
           <div className="w-[720px] bg-[#D4F1D4] border-2 border-[#5BA35B] shadow-2xl p-3 text-xs text-black font-sans space-y-2 select-none">
-            
+
+            {msg?.isError && (
+              <div role="alert" className="p-1 font-bold text-[11px] text-center border bg-rose-100 border-rose-400 text-rose-900">
+                {msg.text}
+              </div>
+            )}
+
             {/* Header Row: Bill No | Customer Name Banner | Rep No */}
             <div className="grid grid-cols-12 gap-2 items-center pb-1">
               <div className="col-span-3 flex items-center gap-1.5">
