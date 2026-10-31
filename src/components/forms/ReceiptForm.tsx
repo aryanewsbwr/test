@@ -851,7 +851,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const numRevAmt = Number(revAmt) || 0;
   const numLessAmt = Number(lessAmt) || 0;
   const numBillAmt = Number(billAmt) || 0;
-  const effectiveReceivedForDue = numManualRcpAmt > 0 ? numManualRcpAmt : numRevAmt;
+  const effectiveReceivedForDue = numManualRcpAmt !== 0 ? numManualRcpAmt : numRevAmt;
   const calculatedRemainingBal = Math.round((totalCustomerDue - effectiveReceivedForDue - numLessAmt) * 100) / 100;
 
   // 6. Save / Apply Receipt & Advance to Next Entry Instantly
@@ -861,7 +861,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       if (customerInputRef.current) customerInputRef.current.focus();
       return;
     }
-    if (effectiveReceivedForDue <= 0 && numLessAmt <= 0) {
+    if (effectiveReceivedForDue === 0 && numLessAmt <= 0) {
       setMsg({ text: 'Please enter a valid Manual Receipt Amount (Ml. Rcp. At.).', isError: true });
       if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
       return;
@@ -905,9 +905,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         .insert([receiptPayload])
         .select();
 
-      if (insertErr) {
-        console.error('Error inserting into receipt20262027:', insertErr);
-      }
+      // Stop here so a receipt that was not saved never changes the customer balance
+      if (insertErr) throw insertErr;
 
       // 2. Adjust Customer Due Balance in Supabase Customer Table
       await supabase
