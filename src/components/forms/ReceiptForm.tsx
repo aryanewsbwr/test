@@ -47,6 +47,16 @@ const getFyMonthIndex = (mStr?: string | null): number => {
   return 99;
 };
 
+const compareReceipts = (a: any, b: any): number => {
+  const yA = parseInt(a.year || '2025', 10);
+  const yB = parseInt(b.year || '2025', 10);
+  if (yA !== yB) return yA - yB;
+  const mA = getFyMonthIndex(a.month || a.Month);
+  const mB = getFyMonthIndex(b.month || b.Month);
+  if (mA !== mB) return mA - mB;
+  return Number(a.rep_id || a.receipt_id || 0) - Number(b.rep_id || b.receipt_id || 0);
+};
+
 const normalizeMonthName = (mStr?: string | null): string => {
   if (!mStr) return 'October';
   const clean = mStr.trim().toLowerCase();
@@ -670,13 +680,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           }
         }
 
-        // Sort chronologically by year (2025 -> 2026) and rep_id ascending
-        combined.sort((a, b) => {
-          const yA = parseInt(a.year || '2025', 10);
-          const yB = parseInt(b.year || '2025', 10);
-          if (yA !== yB) return yA - yB;
-          return Number(a.rep_id || a.receipt_id || 0) - Number(b.rep_id || b.receipt_id || 0);
-        });
+        // Sort chronologically by year (2025 -> 2026), bill month (Dues, April .. March) and rep_id
+        combined.sort(compareReceipts);
 
         rList = combined;
       } catch (err) {
@@ -929,6 +934,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         bill_id: billNo,
         bill_no: billNo,
         month: month,
+        year: year,
         manual_rep_no: appliedManualNo,
         mal_rep_no: appliedManualNo,
         mal_recp_dt: manualRecpDate || receiptDate,
@@ -941,7 +947,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         mal_recp_amt: effectiveReceivedForDue,
         cash_chq: paymentMode
       };
-      setCustomerReceipts(prev => [...prev, newReceiptGridRow]);
+      setCustomerReceipts(prev => [...prev, newReceiptGridRow].sort(compareReceipts));
 
       // 4. Update customer master in local state
       setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedRemainingBal, cbal: calculatedRemainingBal } : c));
