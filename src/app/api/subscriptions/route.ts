@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -28,7 +29,6 @@ function loadLocalData() {
     return [];
   };
 
-  if (!cachedPubs) cachedPubs = loadJson('publications.json');
   if (!cachedHawkers) cachedHawkers = loadJson('hawkers.json');
   if (!cachedDiscontinues) cachedDiscontinues = loadJson('discontinues.json');
   if (!cachedAllSubs) cachedAllSubs = loadJson('all_subscriptions.json');
@@ -36,6 +36,7 @@ function loadLocalData() {
 
 export async function GET(request: NextRequest) {
   try {
+    cachedPubs = await fetchPublications();
     const { searchParams } = new URL(request.url);
     const customerIdStr = searchParams.get('customer_id') || searchParams.get('customerId');
     const activeOnly = searchParams.get('active_only') === 'true';

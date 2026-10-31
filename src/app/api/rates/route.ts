@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Return effective rates for all publications
-    const pubs = loadJson('publications.json');
+    const pubs = await fetchPublications();
     const allRates: Record<number, Record<number, number>> = {};
     for (const p of pubs) {
       allRates[p.publica_id] = getEffectiveWeekdayRates(p.publica_id, dateStr, rates, ratechanges, p.magzine_day);

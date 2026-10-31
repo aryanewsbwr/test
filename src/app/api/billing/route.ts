@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -117,10 +118,6 @@ async function getRateChanges(): Promise<any[]> {
   } catch (_) {}
   cachedRateChanges = localRcs;
   return cachedRateChanges;
-}
-
-function getPublications(): any[] {
-  return loadJson('publications.json') || [];
 }
 
 async function getDiscontinues(): Promise<any[]> {
@@ -504,7 +501,7 @@ export async function GET(request: NextRequest) {
     const [rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
       getRates(),
       getRateChanges(),
-      getPublications(),
+      fetchPublications(),
       getDiscontinues(),
       getRegions()
     ]);
@@ -760,7 +757,7 @@ export async function POST(request: NextRequest) {
       getHolidays(),
       getRates(),
       getRateChanges(),
-      getPublications(),
+      fetchPublications(),
       getDiscontinues(),
       getRegions(),
       getSupplements()

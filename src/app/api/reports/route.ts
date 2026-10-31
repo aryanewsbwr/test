@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import fs from 'fs';
 import path from 'path';
 import { supabase } from '@/lib/supabaseClient';
@@ -258,6 +259,7 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') || '').toLowerCase().trim();
 
     const data = await getCacheAsync();
+    data.publications = await fetchPublications();
     const custMap = new Map<number, any>(data.customers.map(c => [c.customer_id, c]));
     const pubMap = new Map<number, any>(data.publications.map(p => [p.publica_id, p]));
     const hwMap = new Map<number, any>(data.hawkers.map(h => [h.hawker_id, h]));

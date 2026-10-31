@@ -5,6 +5,7 @@ import fs from 'fs';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 import { parseDateToIso } from '@/lib/discontinueEngine';
+import { fetchPublications } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const withRates = searchParams.get('with_rates') !== 'false';
     const order = (searchParams.get('order') || 'desc').toLowerCase();
 
-    let pubs = loadJson('publications.json');
+    let pubs = await fetchPublications();
     let rates = loadJson('rates.json');
     let ratechanges = loadJson('ratechanges.json').map((r: any) => ({
       publica_id: r.publica_id ?? r.Publica_id,
@@ -93,40 +94,6 @@ export async function GET(request: NextRequest) {
         pubdis = sbPubdis;
       }
     } catch (_) {}
-    try {
-      const { data: sbPubs } = await supabase.from('publication').select('*');
-      if (sbPubs && sbPubs.length > 0) {
-        const localPubIds = new Set(pubs.map((p: any) => Number(p.publica_id)).filter((id: number) => id && !isNaN(id)));
-        let added = false;
-        for (const sp of sbPubs) {
-          const pid = Number(sp.publica_id ?? sp.publication_id ?? sp.id);
-          if (pid && !isNaN(pid) && pid > 0 && !localPubIds.has(pid)) {
-            const pubName = String(sp.public_name || sp.name || `Publication #${pid}`).trim();
-            if (!pubName.includes('NaN')) {
-              pubs.push({
-                publica_id: pid,
-                public_name: pubName,
-                pub_hindi: sp.pub_hindi || '',
-                type_p: sp.type_p || sp.frequency || 'Daily',
-                publish_id: Number(sp.publish_id) || 1,
-                abrv: sp.abrv || pubName.slice(0, 4).toUpperCase(),
-                circulation: sp.circulation || 'Morning',
-                duration: sp.duration || 'Daily',
-                magzine_day: sp.magzine_day ?? null,
-                magzine_month: sp.magzine_month ?? null,
-                chr_del: sp.chr_del ?? 0
-              });
-              localPubIds.add(pid);
-              added = true;
-            }
-          }
-        }
-        if (added) {
-          saveJson('publications.json', pubs);
-        }
-      }
-    } catch (_) {}
-
     // Strictly purge any corrupt or NaN publications
     pubs = pubs.filter((p: any) => {
       const pid = Number(p.publica_id ?? p.publication_id);
@@ -228,22 +195,14 @@ export async function POST(request: NextRequest) {
     }
 
     const hindiName = cleanOrTransliterateHindi(pub_hindi, public_name);
-    const pubList = loadJson('publications.json');
+    const pubList = await fetchPublications();
 
     let finalPubId = publica_id ? parseInt(publica_id, 10) : 0;
     const isUpdate = !is_new && finalPubId > 0 && pubList.some((p: any) => p.publica_id === finalPubId);
 
     if (!isUpdate) {
       // Assign new unique ID checking both JSON and Supabase
-      const maxJson = pubList.reduce((max: number, p: any) => Math.max(max, p.publica_id || 0), 0);
-      let maxSb = 0;
-      try {
-        const { data: sbMax } = await supabase.from('publication').select('publication_id').order('publication_id', { ascending: false }).limit(1);
-        if (sbMax && sbMax.length > 0 && sbMax[0].publication_id) {
-          maxSb = Number(sbMax[0].publication_id);
-        }
-      } catch (_) {}
-      finalPubId = Math.max(maxJson, maxSb) + 1;
+      finalPubId = pubList.reduce((max: number, p: any) => Math.max(max, Number(p.publica_id) || 0), 0) + 1;
     }
 
     const pubRecord = {
@@ -260,28 +219,11 @@ export async function POST(request: NextRequest) {
       chr_del: chr_del ? 1 : 0
     };
 
-    // 1. Save to Supabase publication table matching its exact schema
-    try {
-      const primaryRate = customRates && customRates[1] ? Number(customRates[1]) : 0;
-      const supabasePubRecord = {
-        publication_id: finalPubId,
-        name: public_name.trim(),
-        language: hindiName ? 'Hindi' : 'English',
-        frequency: type_p || duration || 'Daily',
-        publisher: String(publish_id || 1),
-        buying_price: primaryRate,
-        selling_price: primaryRate
-      };
-
-      const { error: sbPubErr } = await supabase
-        .from('publication')
-        .upsert(supabasePubRecord, { onConflict: 'publication_id' });
-      if (sbPubErr) {
-        console.error('Supabase publication upsert error:', sbPubErr);
-      }
-    } catch (dbErr) {
-      console.warn('Supabase publication save warning:', dbErr);
-    }
+    // 1. Save to Supabase publication table, the list billing reads, before anything depends on it
+    const { error: sbPubErr } = isUpdate
+      ? await supabase.from('publication').update(pubRecord).eq('publica_id', finalPubId)
+      : await supabase.from('publication').insert([pubRecord]);
+    if (sbPubErr) throw new Error(`Could not save publication: ${sbPubErr.message}`);
 
     const todayIso = new Date().toISOString().split('T')[0];
 
@@ -439,14 +381,20 @@ export async function DELETE(request: NextRequest) {
 
     const pubId = parseInt(pubIdStr, 10);
 
+    // Deleting removes the rates, so a paper still on a subscription would bill at zero
+    const { count: subCount, error: subErr } = await supabase
+      .from('customer_detail')
+      .select('customer_id', { count: 'exact', head: true })
+      .eq('publica_id', pubId);
+    if (subErr) throw new Error(`Could not check subscriptions: ${subErr.message}`);
+    if ((subCount || 0) > 0) {
+      return NextResponse.json({ error: `${subCount} subscriptions use this publication. Close it instead of deleting.` }, { status: 400 });
+    }
+
     // 1. Delete from Supabase matching exact table schemas
-    try {
-      await supabase.from('publication').delete().eq('publication_id', pubId);
-      await supabase.from('rate').delete().eq('Publica_id', pubId);
-      await supabase.from('ratechange').delete().eq('Publica_id', pubId);
-      await supabase.from('publicationdis').delete().eq('Publica_id', pubId);
-    } catch (dbErr) {
-      console.warn('Supabase delete warning:', dbErr);
+    for (const table of ['rate', 'ratechange', 'publicationdis', 'publication']) {
+      const { error: delErr } = await supabase.from(table).delete().eq('publica_id', pubId);
+      if (delErr) throw new Error(`Could not delete from ${table}: ${delErr.message}`);
     }
 
     // 2. Delete from local JSON files

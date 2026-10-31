@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const limitParam = parseInt(searchParams.get('limit') || '500', 10);
 
     const localSales = loadJson('countersale.json');
-    const publications = loadJson('publications.json');
+    const publications = await fetchPublications();
     const pubMap = new Map<number, any>();
     publications.forEach((p: any) => pubMap.set(Number(p.publica_id), p));
 
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No sale items provided.' }, { status: 400 });
     }
 
-    const publications = loadJson('publications.json');
+    const publications = await fetchPublications();
     const pubMap = new Map<number, any>();
     publications.forEach((p: any) => pubMap.set(Number(p.publica_id), p));
 

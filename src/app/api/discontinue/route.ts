@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       if (c.customer_id) custMap.set(Number(c.customer_id), c);
     }
 
-    const allPubs = loadJson('publications.json');
+    const allPubs = await fetchPublications();
     const pubMap = new Map<number, string>();
     for (const p of allPubs) {
       const pid = Number(p.publica_id || p.publication_id || p.id);

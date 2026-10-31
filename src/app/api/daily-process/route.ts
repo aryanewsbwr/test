@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublications } from '@/lib/publicationsData';
 import path from 'path';
 import fs from 'fs';
 import { supabase } from '@/lib/supabaseClient';
@@ -10,11 +11,6 @@ let cachedHawkers: any[] | null = null;
 let cachedSubs: any[] | null = null;
 
 function loadData() {
-  if (!cachedPubs) {
-    const f = path.join(process.cwd(), 'public', 'data', 'publications.json');
-    if (fs.existsSync(f)) cachedPubs = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    else cachedPubs = [];
-  }
   if (!cachedHawkers) {
     const f = path.join(process.cwd(), 'public', 'data', 'hawkers.json');
     if (fs.existsSync(f)) cachedHawkers = JSON.parse(fs.readFileSync(f, 'utf-8'));
@@ -45,6 +41,7 @@ function isDeliveredOnDay(fromDay: string, dayOfWeek: number): boolean {
 export async function GET(request: NextRequest) {
   try {
     loadData();
+    cachedPubs = await fetchPublications();
     const { searchParams } = new URL(request.url);
     const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0];
     const hawkerIdFilter = searchParams.get('hawker_id') || 'all';
