@@ -470,7 +470,7 @@ export function calculateBilling({
     'july': 3, 'jul': 3,
     'august': 4, 'aug': 4,
     'september': 5, 'sep': 5, 'sept': 5,
-    'october': 6, 'oct': 6,
+    'october': 6, 'octo': 6, 'oct': 6,
     'november': 7, 'nov': 7,
     'december': 8, 'dec': 8,
     'january': 9, 'jan': 9,
@@ -586,22 +586,6 @@ export function calculateBilling({
       const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
       const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
       priorReceiptsInFyMap.set(cid, (priorReceiptsInFyMap.get(cid) || 0) + recpAmt + lessAmt);
-    }
-  }
-
-  // Step D: Late Receipts posted after the monthly billing run (e.g. late September payments in 20262027)
-  // These receipts were received between bill generation date and WhatsApp export / current date,
-  // so they must be credited against the customer's recorded bill balance to prevent double billing.
-  const lateReceiptsByCust = new Map<number, number>();
-  for (const r of receipts) {
-    const cid = Number(r.customer_id || r.Customer_id);
-    const rNo = Number(r.recp_no || r.Recp_no || 0);
-    const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
-    const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-    const totalPaid = recpAmt + lessAmt;
-
-    if (rNo >= 1196564) {
-      lateReceiptsByCust.set(cid, (lateReceiptsByCust.get(cid) || 0) + totalPaid);
     }
   }
 
@@ -1033,21 +1017,9 @@ export function calculateBilling({
     // =========================================================================
     // 2. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
-    // Determine Previous Due / Opening Balance:
-    // If live customer balance (cbal / dueamount) is explicitly updated by receipt entries, respect current customer ledger balance.
+    // Determine Previous Due / Opening Balance (Formula 7): only months before this bill count.
+    // customer.dueamount is a static 2007 field and must never feed this calculation.
     let customerPreviousBalance = 0;
-    const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
-    const rawDue = cust.dueamount !== undefined && cust.dueamount !== null ? Number(cust.dueamount) : (cust.due_amount !== undefined ? Number(cust.due_amount) : null);
-    
-    // Check if customer has receipts posted for this current target month or whole FY receipts
-    const currentMonthReceipts = receipts.filter(r => {
-      const rCid = Number(r.customer_id || r.Customer_id);
-      const rMonth = (r.month || r.Month || '').toLowerCase().trim();
-      const stdM = standardMonthName.toLowerCase().trim();
-      return rCid === Number(custId) && (rMonth === stdM || rMonth.startsWith(stdM.slice(0, 3)));
-    });
-
-    const hasTargetMonthReceipt = currentMonthReceipts.length > 0;
 
     const hasPriorHeaders = allHeaders.some(h => {
       const hCid = Number(h.customer_id || h.Customer_id);
@@ -1060,116 +1032,67 @@ export function calculateBilling({
     const rawCurrentCharges = customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal;
     const currentMonthCharges = roundToFoxProRule(rawCurrentCharges);
 
-    if (hasTargetMonthReceipt) {
-      // The customer entered payment receipt(s) specifically against this target month or with net balance
-      // If customer has exact dueamount in master (e.g. ₹100), net total payable MUST be that exact positive due amount (₹100)!
-      const targetPayable = (rawDue !== undefined && rawDue !== null && rawDue >= 0)
-        ? rawDue
-        : (rawCbal !== null && rawCbal !== 0 ? Math.abs(rawCbal) : 0);
+    if (hasPriorHeaders) {
+      // Calculate cumulative prior bills (Dues + Apr..Sep)
+      let priorBillsTotal = 0;
+      for (const h of allHeaders) {
+        const hCid = Number(h.customer_id || h.Customer_id);
+        if (hCid !== Number(custId)) continue;
+        const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+        const mIdx = FY_MONTH_ORDER[hMonth];
+        if (mIdx === undefined || mIdx >= targetFyIndex) continue;
 
-      // Total payable = openingBalanceThisBill + currentMonthCharges = targetPayable
-      customerPreviousBalance = targetPayable - currentMonthCharges;
-    } else {
-      const latePaid = lateReceiptsByCust.get(custId) || 0;
+        const hBid = Number(h.bill_id || h.Bill_id);
+        const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
+        const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
 
-      if (hasPriorHeaders) {
-        // Calculate cumulative prior bills (Dues + Apr..Sep)
-        let priorBillsTotal = 0;
-        for (const h of allHeaders) {
-          const hCid = Number(h.customer_id || h.Customer_id);
-          if (hCid !== Number(custId)) continue;
-          const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-          const mIdx = FY_MONTH_ORDER[hMonth];
-          if (mIdx === undefined || mIdx >= targetFyIndex) continue;
-
-          const hBid = Number(h.bill_id || h.Bill_id);
-          const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
-          const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
-
-          if (hMonth === 'dues') {
-            priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
-          } else {
-            let paperAmt = 0;
-            if (hasLineItems) {
-              for (const it of bills) {
-                if (Number(it.bill_id || it.Bill_id) === hBid) {
-                  const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
-                  if (val !== undefined) paperAmt += Number(val);
-                }
-              }
-            } else {
-              paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
-            }
-            priorBillsTotal += (paperAmt + delAmt - disAmt);
-          }
-        }
-
-        // Deduct each unique receipt once
-        const seenRecpKeys = new Set<string>();
-        let priorReceiptsTotal = 0;
-        for (const r of receipts) {
-          const rCid = Number(r.customer_id || r.Customer_id);
-          if (rCid !== Number(custId)) continue;
-          const rNo = String(r.recp_no || r.id || '');
-          const rMonth = (r.month || r.Month || '').toLowerCase().trim();
-          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
-          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-          
-          const key = r.recp_no && Number(r.recp_no) !== 0
-            ? String(r.recp_no)
-            : `${rCid}_${rMonth}_${recpAmt}`;
-          if (seenRecpKeys.has(key)) continue;
-          seenRecpKeys.add(key);
-
-          // Only deduct receipts for months strictly prior to target billing month
-          const rMIdx = FY_MONTH_ORDER[rMonth];
-          if (rMIdx !== undefined && rMIdx >= targetFyIndex) continue;
-
-          priorReceiptsTotal += (recpAmt + lessAmt);
-        }
-
-        // Compute net dues across all bills up to and including target month minus all receipts
-        const allCustBillsTotal = priorBillsTotal + customerPaperTotal + customerDeliveryTotal - customerDiscountTotal;
-
-        const seenAllRecpKeys = new Set<string>();
-        let allReceiptsTotal = 0;
-        for (const r of receipts) {
-          const rCid = Number(r.customer_id || r.Customer_id);
-          if (rCid !== Number(custId)) continue;
-          const rMonth = (r.month || r.Month || '').toLowerCase().trim();
-          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
-          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-
-          const key = r.recp_no && Number(r.recp_no) !== 0
-            ? String(r.recp_no)
-            : `${rCid}_${rMonth}_${recpAmt}`;
-          if (seenAllRecpKeys.has(key)) continue;
-          seenAllRecpKeys.add(key);
-
-          allReceiptsTotal += (recpAmt + lessAmt);
-        }
-
-        // If total receipts cover all prior bills and partially/fully pay the current month bill,
-        // then the remaining net payable right now is (allCustBillsTotal - allReceiptsTotal).
-        const netTotalDue = allCustBillsTotal - allReceiptsTotal;
-
-        if (allReceiptsTotal > priorBillsTotal) {
-          // Customer already made a payment that includes current month bill
-          customerPreviousBalance = netTotalDue - (customerPaperTotal + customerDeliveryTotal - customerDiscountTotal);
+        if (hMonth === 'dues') {
+          priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
         } else {
-          // Standard case: customer has unpaid prior balance
-          customerPreviousBalance = priorBillsTotal - priorReceiptsTotal;
+          let paperAmt = 0;
+          if (hasLineItems) {
+            for (const it of bills) {
+              if (Number(it.bill_id || it.Bill_id) === hBid) {
+                const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
+                if (val !== undefined) paperAmt += Number(val);
+              }
+            }
+          } else {
+            paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
+          }
+          priorBillsTotal += (paperAmt + delAmt - disAmt);
         }
-      } else if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
-        // When there are no prior headers in the FY, this customer had no previous bills before October.
-        // Therefore, the balance recorded in October's bill header IS the total net payable for this bill,
-        // and their previous due is 0.
-        customerPreviousBalance = 0;
-      } else {
-        // Customer has no prior billing headers in this financial year.
-        // Opening balance for current FY starts clean at 0 (never use corrupted 2007 cbal / dueamount).
-        customerPreviousBalance = 0;
       }
+
+      // Deduct each unique receipt once
+      const seenRecpKeys = new Set<string>();
+      let priorReceiptsTotal = 0;
+      let targetMonthReceiptsTotal = 0;
+      for (const r of receipts) {
+        const rCid = Number(r.customer_id || r.Customer_id);
+        if (rCid !== Number(custId)) continue;
+        const rMonth = (r.month || r.Month || '').toLowerCase().trim();
+        const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+        const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+
+        const key = r.recp_no && Number(r.recp_no) !== 0
+          ? String(r.recp_no)
+          : `${rCid}_${rMonth}_${recpAmt}`;
+        if (seenRecpKeys.has(key)) continue;
+        seenRecpKeys.add(key);
+
+        const rMIdx = FY_MONTH_ORDER[rMonth];
+        if (rMIdx === targetFyIndex) {
+          targetMonthReceiptsTotal += recpAmt + lessAmt;
+        } else if (rMIdx === undefined || rMIdx < targetFyIndex) {
+          priorReceiptsTotal += recpAmt + lessAmt;
+        }
+      }
+
+      // A receipt in the bill's own month clears older dues first, but it can never
+      // turn this month's charges into a negative Previous Due.
+      const priorDue = priorBillsTotal - priorReceiptsTotal;
+      customerPreviousBalance = priorDue > 0 ? Math.max(0, priorDue - targetMonthReceiptsTotal) : priorDue;
     }
 
     const previousDue = Math.abs(customerPreviousBalance) < 0.01 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
