@@ -23,16 +23,19 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
   const [status, setStatus] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Load collection agents from /data/collect.json
+  const showStatus = (text: string) => {
+    setStatus(text);
+    setTimeout(() => setStatus(''), 3000);
+  };
+
   const loadAgents = async () => {
     try {
-      const res = await fetch('/data/collect.json');
+      const res = await fetch('/api/collection-agents');
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setAgents(data);
-      }
-    } catch (e) {
-      console.error('Failed to load collection agents:', e);
+      if (!res.ok) throw new Error(data.error);
+      setAgents(data.agents);
+    } catch (e: any) {
+      showStatus(`Error: could not load collection agents (${e.message})`);
     }
   };
 
@@ -100,40 +103,48 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
-      setStatus('Error: Collection Agent Name cannot be empty');
-      setTimeout(() => setStatus(''), 3000);
+      showStatus('Error: Collection Agent Name cannot be empty');
       return;
     }
-    const agentData: CollectionAgent = {
-      collect_id: selectedAgentId || (agents.length > 0 ? Math.max(...agents.map(a => a.collect_id)) + 1 : 1),
-      name: name.trim(),
-      address: address.trim(),
-      city: city.trim(),
-      phone: phone.trim(),
-      mobile: mobile.trim(),
-    };
+    try {
+      const res = await fetch('/api/collection-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collect_id: selectedAgentId, name, address, city, phone, mobile })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-    setAgents(prev => [agentData, ...prev.filter(a => a.collect_id !== agentData.collect_id)]);
-    if (onSaveAgent) {
-      onSaveAgent(agentData);
+      const agentData: CollectionAgent = data.agent;
+      setAgents(prev => [agentData, ...prev.filter(a => a.collect_id !== agentData.collect_id)]);
+      if (onSaveAgent) {
+        onSaveAgent(agentData);
+      }
+      setSelectedAgentId(agentData.collect_id);
+      showStatus(`Collection Agent "${agentData.name}" saved successfully.`);
+    } catch (e: any) {
+      showStatus(`Error: ${e.message}`);
     }
-    setSelectedAgentId(agentData.collect_id);
-    setStatus(`Collection Agent "${name.trim()}" saved successfully.`);
-    setTimeout(() => setStatus(''), 3000);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedAgentId) {
       setStatus('Please find and select a collection agent first to delete.');
       setTimeout(() => setStatus(''), 3000);
       return;
     }
     if (window.confirm(`Are you sure you want to delete Collection Agent "${name}"?`)) {
+      const res = await fetch(`/api/collection-agents?id=${selectedAgentId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        showStatus(`Error: ${data.error}`);
+        return;
+      }
       setAgents(prev => prev.filter(a => a.collect_id !== selectedAgentId));
-      setStatus(`Collection Agent "${name}" deleted.`);
       handleCancel();
+      showStatus(`Collection Agent "${name}" deleted.`);
     }
   };
 
