@@ -4,6 +4,15 @@ import { fySuffix } from '@/lib/financialYear';
 
 export const dynamic = 'force-dynamic';
 
+// Receipts are entered on the Receipt screen, which knows the bill month a payment is for.
+// Billing uses that month for Previous Due, so a receipt without it would bill wrongly.
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Collections cannot be saved from the mobile page yet. Please enter this payment on the Receipt screen.' },
+    { status: 400 }
+  );
+}
+
 // This year's receipts from the database, for one customer or a page of all of them
 export async function GET(request: NextRequest) {
   try {
