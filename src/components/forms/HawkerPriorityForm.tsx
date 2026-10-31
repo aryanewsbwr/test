@@ -57,9 +57,12 @@ export default function HawkerPriorityForm({ onClose }: HawkerPriorityFormProps)
     setCustomerRoute(items);
   };
 
+  // Nothing is saved from here yet: the list is not tied to the hawker's own customers,
+  // so writing these positions would reorder the wrong routes. Route order is set per
+  // customer in Customer Info (Priority).
   const handleSave = () => {
-    setMsg('Hawker customer delivery priorities updated successfully!');
-    setTimeout(() => setMsg(''), 3000);
+    setMsg('Not saved: set route order in Customer Info (Priority) for now.');
+    setTimeout(() => setMsg(''), 4000);
   };
 
   return (

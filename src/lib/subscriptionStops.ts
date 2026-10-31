@@ -14,3 +14,17 @@ export async function closeSubscriptions(customerId: number, publicaId: number, 
   const { error } = await query;
   if (error) throw new Error(`Could not close the subscription: ${error.message}`);
 }
+
+// Undoes closeSubscriptions when a permanent stop is deleted: the subscriptions it closed,
+// the ones closed on the stop's own date, open again so billing picks them back up.
+export async function reopenSubscriptions(customerId: number, publicaId: number, stopDate: string) {
+  let query = supabaseAdmin
+    .from('customer_detail')
+    .update({ c_date: null })
+    .eq('customer_id', customerId)
+    .eq('c_date', stopDate);
+  if (publicaId > 0) query = query.eq('publica_id', publicaId);
+
+  const { error } = await query;
+  if (error) throw new Error(`Stop deleted, but the subscription was not reopened: ${error.message}`);
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fyLabel, fySuffix } from '@/lib/financialYear';
 import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
-import { closeSubscriptions } from '@/lib/subscriptionStops';
+import { closeSubscriptions, reopenSubscriptions } from '@/lib/subscriptionStops';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { parseDateToIso } from '@/lib/discontinueEngine';
 
@@ -151,10 +151,18 @@ export async function DELETE(request: NextRequest) {
 
     const did = parseInt(idStr, 10);
 
+    const { data: stop, error: readError } = await supabase.from('discontinue').select('*').eq('discontinue_id', did).maybeSingle();
+    if (readError) throw new Error(`Could not read the stop: ${readError.message}`);
+
     // Billing also reads customer_discontinue, so a stop must leave both tables
     for (const table of ['discontinue', 'customer_discontinue']) {
       const { error } = await supabase.from(table).delete().eq('discontinue_id', did);
       if (error) throw new Error(`Could not delete the stop: ${error.message}`);
+    }
+
+    // A permanent stop closed its subscriptions when saved; deleting it opens them again
+    if (stop && String(stop.temp_perma || '').toUpperCase().startsWith('P') && stop.temp_from) {
+      await reopenSubscriptions(Number(stop.customer_id), Number(stop.publica_id) || 0, String(stop.temp_from).split('T')[0]);
     }
 
     return NextResponse.json({ success: true, message: `Discontinue record #${did} deleted.` });
