@@ -1,589 +1,242 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Download, Upload, Database, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, FileText, ArrowRight, FolderSearch } from 'lucide-react';
+import React, { useState } from 'react';
+import { Download, Upload, Database, RefreshCw, FileText, ShieldCheck } from 'lucide-react';
+import { applyRestore, downloadBackup, planRestore, RestorePlan } from '@/lib/backupClient';
 
 interface BackupRestoreModalProps {
   mode: 'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward';
   onClose: () => void;
 }
 
-export default function BackupRestoreModal({ mode: initialMode, onClose }: BackupRestoreModalProps) {
-  const [activeTab, setActiveTab] = useState<'restore_sql' | 'backup_sql' | 'balance_forward'>(
-    initialMode === 'balance_forward' ? 'balance_forward' : initialMode === 'restore' ? 'restore_sql' : 'backup_sql'
-  );
-  
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [localFilePath, setLocalFilePath] = useState<string>('C:\\Users\\rahul\\Downloads\\27102026BeforeBillProcc\\27102026BeforeBillProcc\\New Project 20261027 2103.sql');
-  const [restoreMethod, setRestoreMethod] = useState<'file' | 'local_path'>('file');
+type Tab = 'restore' | 'backup' | 'balance_forward';
+
+export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModalProps) {
+  const [activeTab, setActiveTab] = useState<Tab>(mode === 'balance_forward' ? 'balance_forward' : mode === 'restore' ? 'restore' : 'backup');
+  const [includeOlderYears, setIncludeOlderYears] = useState(false);
+  const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progressMsg, setProgressMsg] = useState('');
-  const [completed, setCompleted] = useState(false);
-  const [restoreStats, setRestoreStats] = useState<Record<string, number> | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<{ text: string; kind: 'working' | 'done' | 'error' } | null>(null);
 
-  // 1. Download SQL Backup compatible with legacy MySQL / ERP
-  const handleDownloadSqlBackup = async () => {
+  const working = (text: string) => setStatus({ text, kind: 'working' });
+
+  const run = async (task: () => Promise<string>) => {
     setIsProcessing(true);
-    setProgressMsg('Generating SQL backup file (customers, subscriptions, publications, hawkers, rates, discontinues)...');
-
     try {
-      const response = await fetch('/api/backup-restore');
-      if (!response.ok) {
-        throw new Error('Failed to generate SQL backup dump from server.');
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const dateStr = new Date().toISOString().split('T')[0];
-      a.href = url;
-      a.download = `AryanNews_MySQL_Dump_${dateStr}.sql`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      setProgressMsg('SQL backup file generated & downloaded successfully! You can restore this into your old software.');
-      setCompleted(true);
+      setStatus({ text: await task(), kind: 'done' });
     } catch (err: any) {
-      setProgressMsg(`Backup Error: ${err.message}`);
+      setStatus({ text: `Stopped: ${err.message}`, kind: 'error' });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Helper: Client-Side Fast Stream Filter for Large SQL Files (handles 500MB+ in seconds without server upload limits)
-  const filterAndExtractCoreTablesFromBrowser = async (file: File): Promise<Record<string, any[]>> => {
-    const coreTables = new Set([
-      'customer',
-      'customer_detail',
-      'custdetail',
-      'hawker',
-      'publication',
-      'publica',
-      'rate',
-      'ratechange',
-      'publicationdis',
-      'discontinue20262027',
-      'discontinue',
-      'regiond',
-      'region',
-      'regions',
-      'holiday',
-      'receipt20262027',
-      'billno20262027',
-      'bill20262027',
-      'billdel20262027',
-      'retailsale20262027',
-    ]);
+  const handleBackup = () => run(async () => {
+    const rows = await downloadBackup(includeOlderYears, working);
+    return `Backup downloaded: ${rows.toLocaleString()} rows, checked against the database. Keep the file safe.`;
+  });
 
-    const parsedTables: Record<string, any[]> = {};
-    for (const t of coreTables) parsedTables[t] = [];
-
-    const parseRow = (str: string): any[] => {
-      const trimmed = str.trim().replace(/^\(/, '').replace(/\)[,;]?$/, '');
-      const tokens: string[] = [];
-      let inQuote = false;
-      let cur = '';
-
-      for (let i = 0; i < trimmed.length; i++) {
-        const ch = trimmed[i];
-
-        let backslashCount = 0;
-        for (let j = i - 1; j >= 0 && trimmed[j] === '\\'; j--) {
-          backslashCount++;
-        }
-
-        if (ch === '\'' && backslashCount % 2 === 0) {
-          inQuote = !inQuote;
-        } else if (ch === ',' && !inQuote) {
-          tokens.push(cur.trim());
-          cur = '';
-        } else {
-          cur += ch;
-        }
-      }
-      tokens.push(cur.trim());
-
-      return tokens.map(t => {
-        if (t === 'NULL' || t === 'null') return null;
-        if (t.startsWith('\'') && t.endsWith('\'')) {
-          return t.slice(1, -1).replace(/\\'/g, '\'').replace(/\\\\/g, '\\');
-        }
-        const num = Number(t);
-        return isNaN(num) ? t : num;
-      });
-    };
-
-    let currentTbl: string | null = null;
-    let buffer = '';
-    const chunkSize = 8 * 1024 * 1024; // 8MB chunks for instant streaming
-    let offset = 0;
-    const totalSize = file.size;
-
-    while (offset < totalSize) {
-      const slice = file.slice(offset, offset + chunkSize);
-      const text = await slice.text();
-      buffer += text;
-
-      const lines = buffer.split(/\r?\n/);
-      // Keep last partial line in buffer
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        if (trimmed.toLowerCase().startsWith('insert into ')) {
-          const match = trimmed.match(/^insert\s+into\s+[`"]?([a-zA-Z0-9_]+)[`"]?/i);
-          if (match) {
-            const tbl = match[1].toLowerCase();
-            if (coreTables.has(tbl)) {
-              currentTbl = tbl;
-            } else if (tbl === 'discontinue' || (tbl.startsWith('discontinue') && tbl.includes('20262027'))) {
-              currentTbl = 'discontinue20262027';
-            } else if (tbl.startsWith('receipt') && tbl.includes('20262027')) {
-              currentTbl = 'receipt20262027';
-            } else if (tbl.startsWith('billno') && tbl.includes('20262027')) {
-              currentTbl = 'billno20262027';
-            } else if (tbl.startsWith('billdel') && tbl.includes('20262027')) {
-              currentTbl = 'billdel20262027';
-            } else if (tbl.startsWith('bill') && tbl.includes('20262027')) {
-              currentTbl = 'bill20262027';
-            } else if (tbl.startsWith('retailsale') && tbl.includes('20262027')) {
-              currentTbl = 'retailsale20262027';
-            } else {
-              currentTbl = null;
-            }
-          }
-        }
-
-        if (currentTbl) {
-          if (trimmed.startsWith('(')) {
-            parsedTables[currentTbl].push(parseRow(trimmed));
-          }
-          if (trimmed.endsWith(');') || trimmed.endsWith(';')) {
-            currentTbl = null;
-          }
-        }
-      }
-
-      offset += chunkSize;
-      const pct = Math.min(100, Math.round((offset / totalSize) * 100));
-      setProgressMsg(`Reading & extracting active tables (${pct}%)...`);
-    }
-
-    // Process leftover buffer
-    if (buffer && currentTbl) {
-      const trimmed = buffer.trim();
-      if (trimmed.startsWith('(')) {
-        parsedTables[currentTbl].push(parseRow(trimmed));
-      }
-    }
-
-    return parsedTables;
+  const handleChooseFile = (file: File) => {
+    setPlan(null);
+    run(async () => {
+      const result = await planRestore(file, working);
+      setPlan(result);
+      return 'Nothing has been changed yet. Check the list below, then press Apply.';
+    });
   };
 
-  // 2. Restore SQL (Supports direct local file path OR instant client stream filter)
-  const handleRestoreSqlFile = async () => {
-    if (restoreMethod === 'local_path') {
-      if (!localFilePath.trim()) {
-        alert('कृपया फाइल पाथ प्रविष्ट करें! (Please enter file path)');
-        return;
-      }
-      if (!confirm(`क्या आप वाकई इस SQL बैकअप (${localFilePath}) को सॉफ्टवेयर में रिस्टोर करना चाहते हैं?`)) {
-        return;
-      }
-
-      setIsProcessing(true);
-      setProgressMsg(`Reading and processing server file: ${localFilePath}...`);
-      setRestoreStats(null);
-
-      try {
-        const res = await fetch('/api/backup-restore', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filePath: localFilePath.trim() }),
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to restore SQL backup');
-        }
-
-        setRestoreStats(data.stats || {});
-        setProgressMsg('सफलतापूर्वक रिस्टोर संपन्न! (SQL Backup restored successfully into database & local records)');
-        setCompleted(true);
-      } catch (err: any) {
-        setProgressMsg(`Restore Error: ${err.message}`);
-      } finally {
-        setIsProcessing(false);
-      }
-      return;
-    }
-
-    // Restore via File Chooser (uses browser stream filtering to bypass all 413 limits)
-    if (!selectedFile) {
-      alert('कृपया पहले एक .sql बैकअप फाइल चुनें! (Please select a .sql backup file first)');
-      return;
-    }
-
-    if (!confirm(`क्या आप वाकई इस SQL बैकअप (${selectedFile.name}) को सॉफ्टवेयर में रिस्टोर करना चाहते हैं? इससे सॉफ्टवेयर का मौजूदा डाटा अपडेट हो जाएगा।`)) {
-      return;
-    }
-
-    setIsProcessing(true);
-    setProgressMsg(`Reading and filtering active tables from ${selectedFile.name}...`);
-    setRestoreStats(null);
-
-    try {
-      // If file is very large (> 40MB), filter client side to avoid 413 payload limit
-      let payload: any;
-      if (selectedFile.size > 15 * 1024 * 1024) {
-        setProgressMsg(`Large SQL File (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB) detected. Extracting master records...`);
-        const extractedTables = await filterAndExtractCoreTablesFromBrowser(selectedFile);
-        
-        const combinedStats: Record<string, number> = {};
-        const tableEntries = Object.entries(extractedTables).filter(([_, rows]) => rows.length > 0);
-        let currentStep = 0;
-
-        for (const [tblName, rows] of tableEntries) {
-          currentStep++;
-          setProgressMsg(`Saving table '${tblName}' (${rows.length.toLocaleString()} records) [${currentStep}/${tableEntries.length}]...`);
-
-          // Split into 1000-row chunks (~200KB per POST request for high speed)
-          const CHUNK_SIZE = 1000;
-          for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-            const chunk = rows.slice(i, i + CHUNK_SIZE);
-            const res = await fetch('/api/backup-restore', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                tables: { [tblName]: chunk },
-                appendMode: i > 0, // Append subsequent chunks of the same table
-              }),
-            });
-
-            if (!res.ok) {
-              const text = await res.text();
-              throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100)}`);
-            }
-          }
-          combinedStats[tblName] = rows.length;
-        }
-
-        setRestoreStats(combinedStats);
-        setProgressMsg('सफलतापूर्वक रिस्टोर संपन्न! (SQL Backup restored successfully into database & local records)');
-        setCompleted(true);
-      } else {
-        // Standard file upload
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-
-        const res = await fetch('/api/backup-restore', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to restore SQL backup');
-        }
-
-        setRestoreStats(data.stats || {});
-        setProgressMsg('सफलतापूर्वक रिस्टोर संपन्न! (SQL Backup restored successfully into database & local records)');
-        setCompleted(true);
-      }
-    } catch (err: any) {
-      setProgressMsg(`Restore Error: ${err.message}`);
-    } finally {
-      setIsProcessing(false);
-    }
+  const toggle = (index: number, field: 'useAdd' | 'useChange' | 'useRemove') => {
+    if (!plan) return;
+    setPlan({ ...plan, items: plan.items.map((item, i) => (i === index ? { ...item, [field]: !item[field] } : item)) });
   };
 
-  // 3. Balance Forward
-  const handleBalanceForward = async () => {
-    setIsProcessing(true);
-    setProgressMsg('Transferring closing balances of 2025-2026 as opening dues for 2026-2027...');
-    setTimeout(() => {
-      setProgressMsg('Balance Forward verified and applied successfully to all customer accounts!');
-      setCompleted(true);
-      setIsProcessing(false);
-    }, 1200);
+  const handleApply = () => {
+    if (!plan) return;
+    const totals = plan.items.reduce(
+      (sum, i) => ({
+        add: sum.add + (i.useAdd ? i.add.length : 0),
+        change: sum.change + (i.useChange ? i.change.length : 0),
+        remove: sum.remove + (i.useRemove ? i.remove.length : 0)
+      }),
+      { add: 0, change: 0, remove: 0 }
+    );
+    if (totals.add + totals.change + totals.remove === 0) {
+      setStatus({ text: 'Nothing is selected, so there is nothing to do.', kind: 'done' });
+      return;
+    }
+    if (!confirm(`यह डाटाबेस बदलेगा (This changes the live database):\n\nAdd: ${totals.add}\nChange: ${totals.change}\nRemove: ${totals.remove}\n\nA safety copy downloads first. Continue?`)) return;
+
+    run(async () => {
+      const { saved, problems } = await applyRestore(plan, working);
+      setPlan(null);
+      if (problems.length > 0) throw new Error(`${saved} rows saved, but: ${problems.join('; ')}. Use the safety copy to undo.`);
+      return `Restore finished: ${saved.toLocaleString()} rows saved and checked.`;
+    });
   };
+
+  const tabButton = (tab: Tab, label: string, icon: React.ReactNode) => (
+    <button
+      onClick={() => { setActiveTab(tab); setStatus(null); }}
+      className={`px-3 py-1 text-xs font-bold border-t border-l border-r rounded-t-sm cursor-pointer flex items-center gap-1.5 ${
+        activeTab === tab ? 'bg-white border-slate-500 border-b-white text-blue-900' : 'bg-[#ECE9D8] border-transparent text-slate-700 hover:bg-slate-200'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+
+  const hasTick = (count: number, checked: boolean, onChange: () => void, disabled = false) =>
+    count === 0 ? (
+      <span className="text-slate-400">0</span>
+    ) : (
+      <label className="flex items-center justify-end gap-1 cursor-pointer">
+        <span className={disabled ? 'text-slate-400' : 'font-bold'}>{count.toLocaleString()}</span>
+        <input type="checkbox" checked={checked} disabled={disabled || isProcessing} onChange={onChange} />
+      </label>
+    );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-2.5 flex flex-col font-tahoma text-black">
-        
-        {/* Title Bar */}
+      <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-2.5 flex flex-col font-tahoma text-black">
         <div className="vb-titlebar-xp select-none mb-2">
           <div className="flex items-center gap-1.5 font-bold">
             <Database className="w-4 h-4 text-white" />
-            <span>SQL Backup & Restore Center (डाटा बैकअप एवं रिस्टोर)</span>
+            <span>Backup & Restore (डाटा बैकअप एवं रिस्टोर)</span>
           </div>
-          <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
+          <button onClick={onClose} disabled={isProcessing} className="vb-win-btn vb-win-btn-close">✕</button>
         </div>
 
-        {/* Tab Selection */}
         <div className="flex gap-1 border-b border-slate-400 pb-0.5 mb-2 px-1">
-          <button
-            onClick={() => { setActiveTab('restore_sql'); setCompleted(false); setProgressMsg(''); }}
-            className={`px-3 py-1 text-xs font-bold border-t border-l border-r rounded-t-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'restore_sql'
-                ? 'bg-white border-slate-500 border-b-white text-blue-900 shadow-xs'
-                : 'bg-[#ECE9D8] border-transparent text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5 text-blue-700" />
-            <span>1. पुराने सॉफ्टवेयर से SQL रिस्टोर (Restore from SQL)</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('backup_sql'); setCompleted(false); setProgressMsg(''); }}
-            className={`px-3 py-1 text-xs font-bold border-t border-l border-r rounded-t-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'backup_sql'
-                ? 'bg-white border-slate-500 border-b-white text-emerald-900 shadow-xs'
-                : 'bg-[#ECE9D8] border-transparent text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-700" />
-            <span>2. SQL बैकअप बनाएं (Old Software Compatible Backup)</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('balance_forward'); setCompleted(false); setProgressMsg(''); }}
-            className={`px-3 py-1 text-xs font-bold border-t border-l border-r rounded-t-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'balance_forward'
-                ? 'bg-white border-slate-500 border-b-white text-amber-900 shadow-xs'
-                : 'bg-[#ECE9D8] border-transparent text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
-            <span>3. Balance Forward</span>
-          </button>
+          {tabButton('backup', 'बैकअप (Backup)', <Download className="w-3.5 h-3.5 text-emerald-700" />)}
+          {tabButton('restore', 'रिस्टोर (Restore)', <Upload className="w-3.5 h-3.5 text-blue-700" />)}
+          {tabButton('balance_forward', 'Balance Forward', <RefreshCw className="w-3.5 h-3.5 text-amber-700" />)}
         </div>
 
-        {/* Content Box */}
-        <div className="bg-white p-4 vb-box-inset text-xs space-y-3 min-h-[260px] flex flex-col justify-between">
-          
-          {/* TAB 1: RESTORE FROM SQL */}
-          {activeTab === 'restore_sql' && (
+        <div className="bg-white p-4 vb-box-inset text-xs space-y-3 min-h-[260px]">
+          {activeTab === 'backup' && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-blue-900 font-bold border-b pb-1.5">
-                <Upload className="w-5 h-5 text-blue-600" />
-                <div>
-                  <div className="text-sm">पुराने SQL बैकअप से नया सॉफ्टवेयर अपडेट करें</div>
-                  <div className="text-[11px] text-slate-500 font-normal">Supports large MySQL .sql dump files (up to 1 GB+) without upload size limits</div>
-                </div>
-              </div>
-
-              {/* Safety Alert with quick backup button */}
-              <div className="bg-amber-50 border border-amber-300 p-2.5 rounded text-[11px] text-amber-950 space-y-1.5">
-                <div className="font-bold flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-4 h-4 text-amber-700" />
-                    सुरक्षा सलाह: नया डाटा डालने से पहले वर्तमान बैकअप डाउनलोड करें
-                  </span>
-                  <button
-                    onClick={handleDownloadSqlBackup}
-                    disabled={isProcessing}
-                    className="vb-btn bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2 py-0.5 text-[10px] cursor-pointer"
-                  >
-                    पहले बैकअप डाउनलोड करें (Take Safety Backup)
-                  </button>
-                </div>
-                <div className="text-[10px] text-amber-900">
-                  सॉफ्टवेयर रिस्टोर करने से पहले अपने वर्तमान डाटा का एक स्वचालित स्नैपशॉट भी अपने आप बना लेता है।
-                </div>
-              </div>
-
-              {/* Method Toggle: Choose File vs Local File Path */}
-              <div className="flex items-center gap-4 text-xs font-bold text-slate-800 bg-slate-100 p-2 border rounded">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="restore_method"
-                    checked={restoreMethod === 'file'}
-                    onChange={() => setRestoreMethod('file')}
-                  />
-                  <span>1. फाइल चुनें (Choose File from Computer)</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="restore_method"
-                    checked={restoreMethod === 'local_path'}
-                    onChange={() => setRestoreMethod('local_path')}
-                  />
-                  <span>2. फाइल पाथ लिखें (Direct File Path for 400MB+)</span>
-                </label>
-              </div>
-
-              {/* Method 1: File Input */}
-              {restoreMethod === 'file' && (
-                <div className="border-2 border-dashed border-slate-300 rounded p-3 text-center bg-slate-50 hover:bg-slate-100/60 transition-all">
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    accept=".sql,.txt" 
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedFile(e.target.files[0]);
-                        setCompleted(false);
-                        setProgressMsg('');
-                      }
-                    }}
-                    className="hidden" 
-                    id="sql-upload-input"
-                  />
-                  <label htmlFor="sql-upload-input" className="cursor-pointer flex flex-col items-center gap-1">
-                    <FileText className="w-8 h-8 text-blue-600" />
-                    <span className="font-bold text-blue-900">
-                      {selectedFile ? selectedFile.name : 'Click to select .SQL Backup File (फाइल चुनें)'}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Automatic Client-Side Streaming Enabled` : 'Supports files of any size (even 500MB+) with auto-chunking'}
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              {/* Method 2: Direct File Path */}
-              {restoreMethod === 'local_path' && (
-                <div className="space-y-1.5 bg-slate-50 p-2.5 border rounded">
-                  <label className="font-bold text-slate-700 block text-[11px]">
-                    Enter Full Path to your SQL File on this PC:
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={localFilePath}
-                      onChange={(e) => setLocalFilePath(e.target.value)}
-                      placeholder="e.g. C:\Users\rahul\Downloads\15102026.sql"
-                      className="flex-1 border p-1.5 text-xs font-mono bg-white rounded"
-                    />
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    💡 This bypasses browser uploading entirely and restores directly in 2-3 seconds from disk.
-                  </div>
-                </div>
-              )}
-
-              <button 
-                onClick={handleRestoreSqlFile}
-                disabled={(restoreMethod === 'file' && !selectedFile) || (restoreMethod === 'local_path' && !localFilePath.trim()) || isProcessing}
-                className="w-full vb-btn bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
-              >
-                <Upload className="w-4 h-4" />
-                <span>{isProcessing ? 'Restoring Database...' : 'Start SQL Restore (डाटा रिस्टोर करें)'}</span>
-              </button>
-
-              {restoreStats && (
-                <div className="bg-emerald-50 border border-emerald-300 p-2 text-[11px] text-emerald-900 rounded">
-                  <div className="font-bold mb-1">रिस्टोर सारांश (Records Restored):</div>
-                  <div className="grid grid-cols-2 gap-1 text-[10px]">
-                    {Object.entries(restoreStats).map(([table, count]) => (
-                      <div key={table} className="flex justify-between border-b border-emerald-100 py-0.5">
-                        <span className="font-mono">{table}:</span>
-                        <span className="font-bold">{count.toLocaleString()} rows</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: EXPORT SQL BACKUP */}
-          {activeTab === 'backup_sql' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-emerald-900 font-bold border-b pb-1.5">
-                <Download className="w-5 h-5 text-emerald-600" />
-                <div>
-                  <div className="text-sm">पुराने सॉफ्टवेयर के लिए SQL बैकअप फाइल बनाएं</div>
-                  <div className="text-[11px] text-slate-500 font-normal">Generate standard MySQL .sql dump compatible with your legacy FoxPro/MySQL software</div>
-                </div>
-              </div>
-
-              <p className="text-slate-600 leading-relaxed text-[11px]">
-                अगर आप नए सॉफ्टवेयर की एंट्रीज को अपने पुराने सॉफ्टवेयर में टेस्ट या कम्पेयर करना चाहते हैं, तो यह विकल्प आपके वर्तमान डाटा का एकदम सही <strong>.SQL</strong> डंप बनाकर डाउनलोड करेगा जिसे आप पुराने सॉफ्टवेयर में सीधे रिस्टोर कर सकते हैं।
+              <p className="text-slate-700 leading-relaxed">
+                यह लाइव डाटाबेस का बैकअप लेता है: ग्राहक, सब्सक्रिप्शन, पेपर, दरें, हॉकर, बिल, रसीदें और रिटेल सेल। हर टेबल की गिनती जाँची जाती है।
               </p>
-
-              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded text-[11px] text-emerald-950 space-y-1">
-                <div className="font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  बैकअप में शामिल टेबल्स:
-                </div>
-                <div className="text-[10px] text-slate-700 grid grid-cols-2 gap-1 pt-1">
-                  <div>✓ <code>customer</code> (ग्राहकों की सूची व बैलेंसेज)</div>
-                  <div>✓ <code>custdetail</code> (न्यूजपेपर सब्स्क्रिप्शन्स)</div>
-                  <div>✓ <code>publica</code> (समाचार पत्र एवं पत्रिकाएं)</div>
-                  <div>✓ <code>hawker</code> (हॉकरों की सूची व कमीशन)</div>
-                  <div>✓ <code>region</code> (वितरण क्षेत्र व वार्ड)</div>
-                  <div>✓ <code>rate</code> (दिन अनुसार दरें)</div>
-                  <div>✓ <code>discontinue</code> (बंद एवं अवकाश प्रविष्टियां)</div>
-                </div>
-              </div>
-
-              <button 
-                onClick={handleDownloadSqlBackup}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={includeOlderYears} disabled={isProcessing} onChange={e => setIncludeOlderYears(e.target.checked)} />
+                <span>पुराने सालों के बिल भी शामिल करें (All older years, takes several minutes)</span>
+              </label>
+              <button
+                onClick={handleBackup}
                 disabled={isProcessing}
-                className="w-full vb-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                className="w-full vb-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
-                <span>{isProcessing ? 'Generating SQL Dump...' : 'Download .SQL Backup Now (SQL बैकअप डाउनलोड करें)'}</span>
+                <span>{isProcessing ? 'Working...' : 'Download Backup (बैकअप डाउनलोड करें)'}</span>
               </button>
-            </div>
-          )}
-
-          {/* TAB 3: BALANCE FORWARD */}
-          {activeTab === 'balance_forward' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-amber-900 font-bold border-b pb-1.5">
-                <RefreshCw className="w-5 h-5 text-amber-600" />
-                <span className="text-sm">Financial Year Balance Carry Forward</span>
-              </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
-                Calculates the closing dues/advances of all customers up to 31st March and sets them as the Opening Due balances for the new financial year.
+              <p className="text-[10px] text-slate-500">
+                This file restores into this software only, not into the old software. Login accounts are not included.
               </p>
-              <button 
-                onClick={handleBalanceForward}
-                disabled={isProcessing || completed}
-                className="w-full vb-btn bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{isProcessing ? 'Processing Forwarding...' : completed ? 'Forward Completed' : 'Execute Balance Forward'}</span>
-              </button>
             </div>
           )}
 
-          {/* Live Progress / Status notification */}
-          {progressMsg && (
+          {activeTab === 'restore' && (
+            <div className="space-y-3">
+              <div className="bg-amber-50 border border-amber-300 p-2 rounded text-[11px] text-amber-950 flex items-start gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>फाइल चुनने से कुछ नहीं बदलता। पहले अंतर दिखेगा, फिर आप तय करेंगे। बदलने से पहले सेफ्टी कॉपी अपने आप डाउनलोड होगी।</span>
+              </div>
+
+              <div className="border-2 border-dashed border-slate-300 rounded p-3 text-center bg-slate-50">
+                <input
+                  type="file"
+                  accept=".gz,.sql,.txt"
+                  id="restore-file"
+                  className="hidden"
+                  disabled={isProcessing}
+                  onChange={e => {
+                    if (e.target.files?.[0]) handleChooseFile(e.target.files[0]);
+                    e.target.value = '';
+                  }}
+                />
+                <label htmlFor="restore-file" className="cursor-pointer flex flex-col items-center gap-1">
+                  <FileText className="w-7 h-7 text-blue-600" />
+                  <span className="font-bold text-blue-900">फाइल चुनें (Choose a backup .gz, or an old software .sql)</span>
+                </label>
+              </div>
+
+              {plan && (
+                <div className="space-y-2">
+                  <div className="text-[11px] text-slate-700">
+                    {plan.kind === 'backup'
+                      ? `Backup from ${new Date(plan.takenAt || '').toLocaleString('en-IN')}. Applying makes these tables match the file exactly.`
+                      : 'Old software file, running year only. Only new rows are added by default. Bills and receipts are never overwritten, and nothing is removed.'}
+                  </div>
+                  <div className="max-h-60 overflow-y-auto border">
+                    <table className="w-full text-[11px]">
+                      <thead className="bg-slate-100 sticky top-0">
+                        <tr>
+                          <th className="text-left p-1">Table</th>
+                          <th className="text-right p-1">Same</th>
+                          <th className="text-right p-1">Add</th>
+                          <th className="text-right p-1">Change</th>
+                          <th className="text-right p-1">Remove</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plan.items.map((item, i) => (
+                          <tr key={item.table.name} className="border-t">
+                            <td className="p-1 font-mono">
+                              {item.table.name}
+                              {item.skipped > 0 && (
+                                <span className="block font-sans text-[10px] text-slate-500">{item.skipped} skipped: already here</span>
+                              )}
+                            </td>
+                            <td className="p-1 text-right">{item.same.toLocaleString()}</td>
+                            <td className="p-1 text-right">{hasTick(item.add.length, item.useAdd, () => toggle(i, 'useAdd'))}</td>
+                            <td className="p-1 text-right">{hasTick(item.change.length, item.useChange, () => toggle(i, 'useChange'), plan.kind === 'old' && item.table.money)}</td>
+                            <td className="p-1 text-right">{hasTick(item.remove.length, item.useRemove, () => toggle(i, 'useRemove'), plan.kind === 'old')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    onClick={handleApply}
+                    disabled={isProcessing}
+                    className="w-full vb-btn bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>{isProcessing ? 'Working...' : 'Apply Ticked Changes (लागू करें)'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'balance_forward' && (
+            <div className="space-y-2 text-slate-700 leading-relaxed">
+              <p className="font-bold text-amber-900">Financial Year Balance Forward</p>
+              <p>
+                This is done once a year, after the March bills, in the Supabase SQL Editor with the script <code>supabase/year_end_rollover.sql</code>. It cannot run from this screen because it creates the new year&apos;s tables.
+              </p>
+            </div>
+          )}
+
+          {status && (
             <div className={`p-2 border font-bold text-[11px] rounded ${
-              completed 
-                ? 'bg-emerald-100 text-emerald-900 border-emerald-400' 
+              status.kind === 'done' ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                : status.kind === 'error' ? 'bg-red-100 text-red-900 border-red-400'
                 : 'bg-blue-100 text-blue-900 border-blue-400 animate-pulse'
             }`}>
-              {progressMsg}
+              {status.text}
             </div>
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-between items-center pt-2.5 px-1">
-          <div className="text-[10px] text-slate-500">
-            Aryan News Agency • Database Management Utility
-          </div>
-          <button 
-            onClick={onClose}
-            className="vb-btn bg-white hover:bg-slate-100 px-5 py-1 text-xs font-bold cursor-pointer"
-          >
+          <div className="text-[10px] text-slate-500">Aryan News Agency • Database Management Utility</div>
+          <button onClick={onClose} disabled={isProcessing} className="vb-btn bg-white hover:bg-slate-100 px-5 py-1 text-xs font-bold cursor-pointer">
             Close (बंद करें)
           </button>
         </div>
-
       </div>
     </div>
   );
