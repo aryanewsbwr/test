@@ -61,6 +61,18 @@ export async function GET(request: NextRequest) {
       }
     } catch (_) {}
 
+    // The screens price retail and counter sales from these, so they must be the database's own rows
+    if (searchParams.get('tables') === 'true') {
+      const [dbRates, dbChanges] = await Promise.all([fetchAllRows('rate', 'id'), fetchAllRows('ratechange', 'id')]);
+      return NextResponse.json({
+        rates: dbRates.map((r: any) => ({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: Number(r.rate) })),
+        ratechanges: dbChanges.map((r: any) => {
+          const day = (r.effective_date || '').split('T')[0];
+          return { id: r.id, publica_id: r.publica_id, dayofweek: r.dayofweek, oldrate: Number(r.oldrate || 0), new_rate: Number(r.newrate || 0), dated: day, effective_date: day };
+        })
+      });
+    }
+
     // History mode: return chronological history of rate changes for a publication
     if (isHistory && pubIdStr) {
       const pubId = parseInt(pubIdStr, 10);

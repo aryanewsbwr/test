@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchRateTables } from '@/lib/rateTables';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Publication, Rate, RateChange, Customer } from '@/lib/types';
 import { getSingleEffectiveRate } from '@/lib/rateEngine';
@@ -123,12 +124,12 @@ export default function RetailSalePermanentForm({
 
   useEffect(() => {
     if (rates && rates.length > 0) setLocalRates(rates);
-    else fetch('/data/rates.json').then(r => r.json()).then(setLocalRates).catch(() => {});
+    else fetchRateTables().then(t => setLocalRates(t.rates)).catch(() => {});
   }, [rates]);
 
   useEffect(() => {
     if (ratechanges && ratechanges.length > 0) setLocalRatechanges(ratechanges);
-    else fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
+    else fetchRateTables().then(t => setLocalRatechanges(t.ratechanges)).catch(() => {});
   }, [ratechanges]);
 
   // Format DD/MM/YYYY

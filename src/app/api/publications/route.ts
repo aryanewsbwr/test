@@ -31,58 +31,13 @@ export async function GET(request: NextRequest) {
     const order = (searchParams.get('order') || 'desc').toLowerCase();
 
     let pubs = await fetchPublications();
-    let rates = loadJson('rates.json');
-    let ratechanges = loadJson('ratechanges.json').map((r: any) => ({
-      publica_id: r.publica_id ?? r.Publica_id,
-      dayofweek: r.dayofweek ?? r.Dayofweek,
-      oldrate: r.oldrate ?? r.old_rate ?? r.OldRate ?? 0,
-      new_rate: r.new_rate ?? r.newrate ?? r.NewRate ?? 0,
-      dated: (r.dated || r.Dated || r.effective_date || '').split('T')[0],
-      effective_date: (r.effective_date || r.dated || r.Dated || '').split('T')[0]
-    }));
-
-    // Fetch latest rate changes from Supabase
-    try {
-      const sbRc = await fetchAllRows('ratechange', 'id');
-
-      if (sbRc && sbRc.length > 0) {
-        const seenKeys = new Set(
-          ratechanges.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
-        );
-
-        sbRc.forEach((r: any) => {
-          const pid = r.publica_id ?? r.Publica_id;
-          const dow = r.dayofweek ?? r.Dayofweek;
-          const effD = (r.effective_date || r.Dated || r.dated || '').split('T')[0];
-          const newR = Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0);
-          const oldR = Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0);
-          const key = `${pid}-${dow}-${effD}-${newR}`;
-
-          if (!seenKeys.has(key)) {
-            ratechanges.push({
-              publica_id: pid,
-              dayofweek: dow,
-              oldrate: oldR,
-              new_rate: newR,
-              dated: effD,
-              effective_date: effD
-            });
-            seenKeys.add(key);
-          }
-        });
-      }
-    } catch (_) {}
-
-    try {
-      const sbRates = await fetchAllRows('rate', 'id');
-      if (sbRates && sbRates.length > 0) {
-        rates = sbRates.map((r: any) => ({
-          publica_id: r.publica_id ?? r.Publica_id,
-          dayofweek: r.dayofweek ?? r.Dayofweek,
-          rate: Number(r.rate ?? r.Rate)
-        }));
-      }
-    } catch (_) {}
+    // Rates come only from the database, so a change deleted there no longer counts
+    const [dbRates, dbChanges] = await Promise.all([fetchAllRows('rate', 'id'), fetchAllRows('ratechange', 'id')]);
+    const rates = dbRates.map((r: any) => ({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: Number(r.rate) }));
+    const ratechanges = dbChanges.map((r: any) => {
+      const day = (r.effective_date || '').split('T')[0];
+      return { publica_id: r.publica_id, dayofweek: r.dayofweek, oldrate: Number(r.oldrate || 0), new_rate: Number(r.newrate || 0), dated: day, effective_date: day };
+    });
 
     let pubdis = loadJson('publicationdis.json');
     try {

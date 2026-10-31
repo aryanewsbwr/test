@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchRateTables } from '@/lib/rateTables';
 import { fyLabel } from '@/lib/financialYear';
 import React, { useState, useEffect, useRef } from 'react';
 import { Publication, Rate, RateChange, Publisher } from '@/lib/types';
@@ -344,12 +345,12 @@ export default function PublicationForm({
 
   useEffect(() => {
     if (rates && rates.length > 0) setLocalRates(rates);
-    else fetch('/data/rates.json').then(r => r.json()).then(setLocalRates).catch(() => {});
+    else fetchRateTables().then(t => setLocalRates(t.rates)).catch(() => {});
   }, [rates]);
 
   useEffect(() => {
     if (ratechanges && ratechanges.length > 0) setLocalRatechanges(ratechanges);
-    else fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
+    else fetchRateTables().then(t => setLocalRatechanges(t.ratechanges)).catch(() => {});
   }, [ratechanges]);
 
   const handleOpenHistory = async () => {
@@ -717,8 +718,7 @@ export default function PublicationForm({
         setIsRateChangeMode(false);
 
         // Fetch refreshed rates & ratechanges
-        fetch('/data/rates.json').then(r => r.json()).then(setLocalRates).catch(() => {});
-        fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
+        fetchRateTables().then(t => { setLocalRates(t.rates); setLocalRatechanges(t.ratechanges); }).catch(() => {});
 
         const updatedPub: Publication = {
           ...selectedPub,

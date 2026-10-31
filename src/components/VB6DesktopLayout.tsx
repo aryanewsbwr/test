@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchRateTables } from '@/lib/rateTables';
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
@@ -161,6 +162,10 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       .sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
   };
 
+  const loadRateTables = () => {
+    fetchRateTables().then(t => { setRates(t.rates); setRatechanges(t.ratechanges); }).catch(() => {});
+  };
+
   // Load Initial Metadata
   useEffect(() => {
     fetch('/data/publishers.json').then(r => r.json()).then(setPublishers).catch(() => {});
@@ -197,8 +202,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         fetch('/data/hawkers.json').then(r => r.json()).then(setHawkers).catch(() => {});
       });
 
-    fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
-    fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+    loadRateTables();
     fetch('/api/holidays')
       .then(r => r.json())
       .then(d => {
@@ -758,8 +762,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
                 .then(r => r.json())
                 .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
                 .catch(() => {});
-              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
-              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+              loadRateTables();
               setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
             }}
             onDelete={(pubId) => {
@@ -768,8 +771,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
                 .then(r => r.json())
                 .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
                 .catch(() => {});
-              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
-              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+              loadRateTables();
               setStatusMessage(`Publication #${pubId} deleted.`);
             }}
           />
@@ -787,8 +789,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
                 .then(r => r.json())
                 .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
                 .catch(() => {});
-              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
-              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+              loadRateTables();
               setStatusMessage(`Rate change for publication #${pubId} saved.`);
             }}
           />
@@ -897,8 +898,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
                 .then(r => r.json())
                 .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
                 .catch(() => {});
-              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
-              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+              loadRateTables();
               setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
             }}
           />
