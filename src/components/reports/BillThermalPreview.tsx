@@ -86,7 +86,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const captureRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [captureChunk, setCaptureChunk] = useState<BillRecord[] | null>(null);
   // Bills already sent on WhatsApp, keyed by customer + bill month
-  const [waSent, setWaSent] = useState<Record<string, { sent_at: string; status: string }>>({});
+  const [waSent, setWaSent] = useState<Record<string, { sent_at: string; status: string; manual?: boolean }>>({});
   const [waCheckFailed, setWaCheckFailed] = useState(false);
   const [sendAllPrompt, setSendAllPrompt] = useState<{ newBills: BillRecord[]; sentBills: BillRecord[] } | null>(null);
 
@@ -106,9 +106,9 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       })
       .then(data => {
         if (cancelled) return;
-        const next: Record<string, { sent_at: string; status: string }> = {};
+        const next: Record<string, { sent_at: string; status: string; manual?: boolean }> = {};
         (data.sent || []).forEach((s: any) => {
-          next[`${s.customer_id}|${s.bill_month}`] = { sent_at: s.sent_at, status: s.status };
+          next[`${s.customer_id}|${s.bill_month}`] = { sent_at: s.sent_at, status: s.status, manual: s.manual };
         });
         setWaSent(next);
         setWaCheckFailed(false);
@@ -159,7 +159,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     }
 
     if (currentBillSent && !window.confirm(
-      `This bill was already sent on WhatsApp on ${formatSentTime(currentBillSent.sent_at)}.\n(यह बिल पहले ही भेजा जा चुका है।)\n\nDo you want to send it again?`
+      `This bill was already sent on WhatsApp${currentBillSent.manual ? '' : ` on ${formatSentTime(currentBillSent.sent_at)}`}.\n(यह बिल पहले ही भेजा जा चुका है।)\n\nDo you want to send it again?`
     )) return;
 
     setIsSendingWa(true);
@@ -349,7 +349,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     return (
       <div className="mb-2 px-3 py-1 bg-green-600 text-white text-[11px] font-bold rounded-full flex items-center gap-1.5 shadow-sm">
         <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-        <span>Sent on WhatsApp{sent.status === 'read' ? ' (Read)' : sent.status === 'delivered' ? ' (Delivered)' : ''} · {formatSentTime(sent.sent_at)}</span>
+        {sent.manual ? (
+          <span>Marked as sent before</span>
+        ) : (
+          <span>Sent on WhatsApp{sent.status === 'read' ? ' (Read)' : sent.status === 'delivered' ? ' (Delivered)' : ''} · {formatSentTime(sent.sent_at)}</span>
+        )}
       </div>
     );
   };

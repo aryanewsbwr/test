@@ -92,11 +92,30 @@ export default function ReportsForm({
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
   const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('4in1_a4');
+  // WhatsApp sent counts per region for the selected month
+  const [waRegionStatus, setWaRegionStatus] = useState<Record<string, { total: number; sent: number; manual: number }>>({});
+  const [waRegionError, setWaRegionError] = useState('');
+  const [isUpdatingWaRegion, setIsUpdatingWaRegion] = useState(false);
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadWaRegionStatus = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ month: selectedMonth, year: selectedYear });
+      const res = await fetch(`/api/whatsapp/regions?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not load WhatsApp region status');
+      setWaRegionStatus(data.regions || {});
+      setWaRegionError('');
+    } catch (err: any) {
+      console.warn('WhatsApp region status error:', err);
+      setWaRegionStatus({});
+      setWaRegionError('Could not check which regions were already sent on WhatsApp.');
+    }
+  }, [selectedMonth, selectedYear]);
 
   // Sync initialReport when prop changes
   useEffect(() => {
@@ -229,6 +248,43 @@ export default function ReportsForm({
   const now = new Date();
   const printDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
 
+  // Reload on return from the preview too, so bills just sent turn the region red
+  useEffect(() => {
+    if (activeReport === 'bill_print_region' && viewMode === 'criteria') loadWaRegionStatus();
+  }, [activeReport, viewMode, loadWaRegionStatus]);
+
+  const selectedRegionWa = selectedRegion !== 'all' ? waRegionStatus[selectedRegion] : undefined;
+  const selectedRegionName = regions.find(r => String(r.region_id || r.id) === selectedRegion)?.region_name || `#${selectedRegion}`;
+
+  const updateWaRegionMark = async (request: () => Promise<Response>) => {
+    setIsUpdatingWaRegion(true);
+    try {
+      const res = await request();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update the region');
+      await loadWaRegionStatus();
+    } catch (err: any) {
+      setWaRegionError(err?.message || 'Could not update the region.');
+    } finally {
+      setIsUpdatingWaRegion(false);
+    }
+  };
+
+  const handleMarkRegionSent = () => {
+    if (!window.confirm(`Mark all ${selectedMonth} ${selectedYear} bills of ${selectedRegionName} as already sent on WhatsApp?\n\nNothing will be sent to customers. WhatsApp Bill (All) will then treat them as already sent.`)) return;
+    updateWaRegionMark(() => fetch('/api/whatsapp/regions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ region_id: selectedRegion, month: selectedMonth, year: selectedYear })
+    }));
+  };
+
+  const handleUnmarkRegionSent = () => {
+    if (!window.confirm(`Remove the "sent before" mark from ${selectedRegionName}? Bills really sent on WhatsApp stay recorded.`)) return;
+    const params = new URLSearchParams({ region_id: selectedRegion, month: selectedMonth, year: selectedYear });
+    updateWaRegionMark(() => fetch(`/api/whatsapp/regions?${params.toString()}`, { method: 'DELETE' }));
+  };
+
   const handleShowPreview = () => {
     setViewMode('preview');
   };
@@ -322,13 +378,53 @@ export default function ReportsForm({
                   <option value="all">-- All Regions --</option>
                   {[...regions]
                     .sort((a, b) => String(a.region_name || a.name || '').localeCompare(String(b.region_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
-                    .map(r => (
-                      <option key={r.region_id || r.id} value={r.region_id || r.id}>
-                        {r.region_name || r.name} (#{r.region_id || r.id})
-                      </option>
-                    ))}
+                    .map(r => {
+                      const sentInfo = activeReport === 'bill_print_region' ? waRegionStatus[r.region_id || r.id] : undefined;
+                      const isSent = !!sentInfo && sentInfo.sent > 0;
+                      return (
+                        <option key={r.region_id || r.id} value={r.region_id || r.id} style={isSent ? { color: '#DC2626' } : undefined}>
+                          {isSent ? '● ' : ''}{r.region_name || r.name} (#{r.region_id || r.id}){isSent ? ` - Sent ${sentInfo.sent}/${sentInfo.total}` : ''}
+                        </option>
+                      );
+                    })}
                 </select>
               </div>
+            )}
+
+            {/* WhatsApp status of the selected region */}
+            {activeReport === 'bill_print_region' && selectedRegionWa && selectedRegionWa.total > 0 && (
+              <div className="flex items-center flex-wrap gap-2 pl-28">
+                {selectedRegionWa.sent > 0 && (
+                  <span className="px-2.5 py-1 bg-red-600 text-white font-bold rounded">
+                    ● Sent on WhatsApp ({selectedRegionWa.sent}/{selectedRegionWa.total})
+                  </span>
+                )}
+                {selectedRegionWa.sent < selectedRegionWa.total && (
+                  <button
+                    type="button"
+                    onClick={handleMarkRegionSent}
+                    disabled={isUpdatingWaRegion}
+                    title="Record this region's bills as already sent. Nothing is sent to customers."
+                    className="px-2.5 py-1 bg-white hover:bg-red-50 border border-red-600 text-red-700 font-bold rounded cursor-pointer disabled:opacity-60 disabled:cursor-default"
+                  >
+                    Mark as Sent Before
+                  </button>
+                )}
+                {selectedRegionWa.manual > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleUnmarkRegionSent}
+                    disabled={isUpdatingWaRegion}
+                    title="Remove the manual mark. Real WhatsApp sends stay recorded."
+                    className="px-2.5 py-1 bg-[#ECE9D8] hover:bg-white border border-slate-500 text-slate-800 font-bold rounded cursor-pointer disabled:opacity-60 disabled:cursor-default"
+                  >
+                    Undo Mark
+                  </button>
+                )}
+              </div>
+            )}
+            {activeReport === 'bill_print_region' && waRegionError && (
+              <p role="alert" className="pl-28 font-bold text-amber-800">{waRegionError}</p>
             )}
 
             {/* Hawker Dropdown */}

@@ -15,12 +15,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'month is required' }, { status: 400 });
     }
 
-    const latest = new Map<string, { customer_id: string; bill_month: string; status: string; sent_at: string }>();
+    const latest = new Map<string, { customer_id: string; bill_month: string; status: string; sent_at: string; manual: boolean }>();
     const PAGE_SIZE = 1000;
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data, error } = await supabaseAdmin
         .from('whatsapp_messages')
-        .select('customer_id, bill_month, status, created_at')
+        .select('customer_id, bill_month, status, created_at, phone')
         .in('bill_month', months)
         .in('status', ['sent', 'delivered', 'read'])
         .order('created_at', { ascending: true })
@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
           customer_id: row.customer_id,
           bill_month: row.bill_month,
           status: row.status,
-          sent_at: row.created_at
+          sent_at: row.created_at,
+          manual: row.phone === 'manual'
         });
       }
       if (!data || data.length < PAGE_SIZE) break;
