@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
+import { parseDateToIso } from '@/lib/discontinueEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,8 @@ function saveJson(filename: string, data: any) {
   const f = path.join(process.cwd(), 'public', 'data', filename);
   fs.writeFileSync(f, JSON.stringify(data, null, 2), 'utf-8');
 }
+
+const stopEnd = (d: any): string => String(d.oc_date || d.to_date || d.ToDate || '').split('T')[0];
 
 export async function GET(request: NextRequest) {
   try {
@@ -137,11 +140,14 @@ export async function GET(request: NextRequest) {
       const decodedHindi = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
       const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, '2099-12-31', rates, ratechanges, p.magzine_day) : null;
       
-      const disc = pubdis.find((d: any) => (d.publica_id || d.Publica_id) === p.publica_id);
-      const toDate = disc ? (disc.to_date || disc.ToDate) : null;
-      const fromDate = disc ? (disc.from_date || disc.FromDate) : null;
-      const isPermanent = !!(disc && (disc.is_permanent || toDate >= '2090-01-01' || toDate === '2099-12-31' || toDate === 'Permanent'));
-      const isClosed = !!(disc && (toDate >= todayIso || toDate >= '2025-01-01' || isPermanent));
+      // A stop counts while it runs today or later, the same dates billing goes by
+      const disc = pubdis
+        .filter((d: any) => (d.publica_id || d.Publica_id) === p.publica_id && stopEnd(d) >= todayIso)
+        .sort((a: any, b: any) => stopEnd(b).localeCompare(stopEnd(a)))[0];
+      const toDate = disc ? stopEnd(disc) : null;
+      const fromDate = disc ? (disc.entry_date || disc.from_date || disc.FromDate) : null;
+      const isPermanent = !!(disc && (disc.is_permanent || toDate! >= '2090-01-01'));
+      const isClosed = !!disc;
 
       return {
         ...p,
@@ -213,7 +219,8 @@ export async function POST(request: NextRequest) {
       is_closed = false,
       is_permanent = false,
       closed_from,
-      closed_to
+      closed_to,
+      reopen = false
     } = body;
 
     if (!public_name || !public_name.trim()) {
@@ -359,40 +366,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Handle Closed / Discontinue status in Supabase publicationdis
-    try {
-      let pdis = loadJson('publicationdis.json');
-      if (is_closed || is_permanent) {
-        const fromD = closed_from || todayIso;
-        const toD = is_permanent ? '2099-12-31' : (closed_to || '2050-03-31');
+    // 3. Handle Closed / Discontinue status in Supabase publicationdis. Billing reads these rows,
+    // so a failure here must reach the screen. Ended stops are kept as history.
+    const { data: stopRows, error: stopReadErr } = await supabase
+      .from('publicationdis')
+      .select('*')
+      .eq('publica_id', finalPubId);
+    if (stopReadErr) throw new Error(`Could not read publication stops: ${stopReadErr.message}`);
+    const activeStops = (stopRows || []).filter((d: any) => stopEnd(d) >= todayIso);
 
-        await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);
-        const { error: pdErr } = await supabase.from('publicationdis').insert([{
-          Publica_id: finalPubId,
-          FromDate: fromD,
-          ToDate: toD
-        }]);
-        if (pdErr) console.error('Supabase publicationdis insert error:', pdErr);
-
-        pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== finalPubId);
-        pdis.push({ 
-          publica_id: finalPubId, 
-          Publica_id: finalPubId, 
-          from_date: fromD, 
-          FromDate: fromD, 
-          to_date: toD, 
-          ToDate: toD,
-          is_permanent: !!is_permanent 
-        });
-        saveJson('publicationdis.json', pdis);
-      } else {
-        await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);
-        pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== finalPubId);
-        saveJson('publicationdis.json', pdis);
+    if (is_closed || is_permanent) {
+      const fromD = parseDateToIso(closed_from) || todayIso;
+      const toD = is_permanent ? '2099-12-31' : (parseDateToIso(closed_to) || '2050-03-31');
+      const stopFields = { entry_date: fromD, oc_date: toD, dis_type: toD >= '2050-01-01' ? 'P' : 'T' };
+      const { error: stopErr } = activeStops.length > 0
+        ? await supabase.from('publicationdis').update(stopFields).eq('id', activeStops[0].id)
+        : await supabase.from('publicationdis').insert([{ ...stopFields, publica_id: finalPubId, remark: 'Discontinued' }]);
+      if (stopErr) throw new Error(`Could not save publication stop: ${stopErr.message}`);
+    } else if (reopen) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      for (const stop of activeStops) {
+        const { error: stopErr } = String(stop.entry_date || '') > yesterday
+          ? await supabase.from('publicationdis').delete().eq('id', stop.id)
+          : await supabase.from('publicationdis').update({ oc_date: yesterday }).eq('id', stop.id);
+        if (stopErr) throw new Error(`Could not reopen publication: ${stopErr.message}`);
       }
-    } catch (pdErr) {
-      console.warn('Publicationdis update warning:', pdErr);
     }
+
+    try {
+      const { data: allStops } = await supabase.from('publicationdis').select('*');
+      if (allStops && allStops.length > 0) saveJson('publicationdis.json', allStops);
+    } catch (fErr) {}
 
     // 4. Update local publications.json
     try {

@@ -744,7 +744,8 @@ export default function PublicationForm({
       is_closed: isClosed || isPermanent,
       is_permanent: isPermanent,
       closed_from: (isClosed || isPermanent) ? (closedFrom || todayStr) : null,
-      closed_to: isPermanent ? '2099-12-31' : (isClosed ? (closedTo || '2050-03-31') : null)
+      closed_to: isPermanent ? '2099-12-31' : (isClosed ? (closedTo || '2050-03-31') : null),
+      reopen: Boolean(selectedPub.is_closed) && !isClosed && !isPermanent
     };
 
     try {
