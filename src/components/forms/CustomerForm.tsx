@@ -16,6 +16,20 @@ interface Props {
   onSaveCustomer?: (customer: Partial<Customer>, subs: Partial<CustomerDetail>[]) => void;
 }
 
+const CIRCULATION_OPTIONS = ['Morning', 'Evening', 'As Per Norm'];
+
+// Accepts what isScheduleMatch in billingEngine understands: "1-7", "2-6", "1", "1,4,7"
+const DEF_DAYS_PATTERN = /^[1-7](-[1-7]|(,[1-7])*)$/;
+
+const publicationLabel = (p: Publication) => `${p.public_name} (#${p.publica_id})`;
+const hawkerLabel = (h: Hawker) => `${h.name} (#${h.hawker_id})`;
+
+function todayLocalIso(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function formatLegacyDate(dateStr: string | null | undefined): string {
   if (!dateStr || dateStr.trim() === '' || dateStr === 'null') return '-';
   const clean = dateStr.trim();
@@ -64,6 +78,22 @@ export default function CustomerForm({
   const [subscriptions, setSubscriptions] = useState<CustomerDetail[]>([]);
   const [subFilter, setSubFilter] = useState<'active' | 'all'>('active');
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
+
+  // Insert Item Dialog State
+  const [isInsertOpen, setIsInsertOpen] = useState(false);
+  const [isSavingSub, setIsSavingSub] = useState(false);
+  const [insertError, setInsertError] = useState('');
+  const [insertForm, setInsertForm] = useState({
+    pubText: '',
+    hawkerText: '',
+    qty: 1,
+    circulation: 'Morning',
+    fromDay: '1-7',
+    sDate: '',
+    cDate: '',
+    dis: 0,
+    dely: 0
+  });
 
   // Find Dialog State
   const [isFindOpen, setIsFindOpen] = useState(false);
@@ -144,13 +174,15 @@ export default function CustomerForm({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (isFindOpen) setIsFindOpen(false);
+        if (isInsertOpen) setIsInsertOpen(false);
+        else if (isFindOpen) setIsFindOpen(false);
         else onClose();
         return;
       }
+      if (isInsertOpen) return;
       if (e.key === 'F1') {
         e.preventDefault();
-        handleAddSubscriptionRow();
+        handleOpenInsertDialog();
         return;
       }
       if (e.altKey) {
@@ -175,7 +207,7 @@ export default function CustomerForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isFindOpen, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
+  }, [isOpen, isFindOpen, isInsertOpen, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
 
   if (!isOpen) return null;
 
@@ -245,40 +277,130 @@ export default function CustomerForm({
     }
   };
 
-  const handleAddSubscriptionRow = () => {
-    const pub = publications[0];
-    const hwk = hawkers[0];
-    const newSub: CustomerDetail = {
-      sno: subscriptions.length + 1,
-      customer_id: selectedCustId,
-      publica_id: pub?.publica_id || 1,
-      publication_name: pub?.public_name || 'Newspaper',
-      hawker_id: hwk?.hawker_id || 1,
-      hawker_name: hwk?.name || 'Hawker',
+  const handleOpenInsertDialog = () => {
+    if (!selectedCustId) {
+      setStatus('Please save or find a customer first, then insert the item.');
+      setTimeout(() => setStatus(''), 3500);
+      return;
+    }
+    // A customer's papers usually come through one hawker, so start from their current one
+    const currentSub = subscriptions.find(s => s.is_active !== false && s.hawker_id);
+    const currentHawker = hawkers.find(h => h.hawker_id === currentSub?.hawker_id);
+    setInsertForm({
+      pubText: '',
+      hawkerText: currentHawker ? hawkerLabel(currentHawker) : '',
       qty: 1,
-      circulation: 'Daily',
-      s_date: new Date().toISOString().split('T')[0],
-      c_date: null,
-      from_day: '1-7',
-      dely: 0,
+      circulation: 'Morning',
+      fromDay: '1-7',
+      sDate: todayLocalIso(),
+      cDate: '',
       dis: 0,
-      is_active: true
-    };
-    setSubscriptions([...subscriptions, newSub]);
+      dely: 0
+    });
+    setInsertError('');
+    setIsInsertOpen(true);
+  };
+
+  const handleInsertPubChange = (val: string) => {
+    const pub = publications.find(p => publicationLabel(p) === val);
+    setInsertForm(f => ({
+      ...f,
+      pubText: val,
+      circulation: pub?.circulation && CIRCULATION_OPTIONS.includes(pub.circulation) ? pub.circulation : f.circulation
+    }));
+  };
+
+  const handleInsertSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSavingSub) return;
+
+    const pub = publications.find(p => publicationLabel(p) === insertForm.pubText);
+    const hwk = hawkers.find(h => hawkerLabel(h) === insertForm.hawkerText);
+    const fromDay = insertForm.fromDay.trim();
+
+    let error = '';
+    if (!pub) error = 'Please choose a publication from the list.';
+    else if (!hwk) error = 'Please choose a hawker from the list.';
+    else if (!(insertForm.qty >= 1)) error = 'Qty must be at least 1.';
+    else if (!DEF_DAYS_PATTERN.test(fromDay)) error = 'Def.Days must look like 1-7, 2-6, 1 or 1,4,7.';
+    else if (!insertForm.sDate) error = 'Please enter the start date.';
+    else if (insertForm.cDate && insertForm.cDate < insertForm.sDate) error = 'Close date cannot be before the start date.';
+    else if (insertForm.dis < 0 || insertForm.dis > 100) error = 'Discount must be between 0 and 100.';
+    else if (insertForm.dely < 0) error = 'Delivery charge cannot be negative.';
+    if (error || !pub || !hwk) {
+      setInsertError(error);
+      return;
+    }
+
+    const alreadyActive = subscriptions.some(s => s.publica_id === pub.publica_id && s.is_active !== false);
+    if (alreadyActive && !window.confirm(`${pub.public_name} is already active for this customer. Add it again?`)) return;
+
+    setIsSavingSub(true);
+    setInsertError('');
+    try {
+      const res = await fetch('/api/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: selectedCustId,
+          publica_id: pub.publica_id,
+          hawker_id: hwk.hawker_id,
+          qty: insertForm.qty,
+          circulation: insertForm.circulation,
+          s_date: insertForm.sDate,
+          c_date: insertForm.cDate || null,
+          from_day: fromDay,
+          dis: insertForm.dis,
+          dely: insertForm.dely
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Could not save the item.');
+
+      const newSub: CustomerDetail = {
+        sno: data.subscription?.sno,
+        customer_id: selectedCustId,
+        publica_id: pub.publica_id,
+        publication_name: pub.public_name,
+        hawker_id: hwk.hawker_id,
+        hawker_name: hwk.name,
+        qty: insertForm.qty,
+        circulation: insertForm.circulation,
+        s_date: insertForm.sDate,
+        c_date: insertForm.cDate || null,
+        from_day: fromDay,
+        dely: insertForm.dely,
+        dis: insertForm.dis,
+        is_active: !insertForm.cDate
+      };
+      setSubscriptions(prev => [...prev, newSub]);
+      setIsInsertOpen(false);
+      setStatus(`${pub.public_name} added to this customer.`);
+      setTimeout(() => setStatus(''), 3500);
+    } catch (err: any) {
+      setInsertError(`Error saving item: ${err.message || err}`);
+    } finally {
+      setIsSavingSub(false);
+    }
   };
 
   const handleDeleteSubscriptionRow = async (sno: number) => {
     const targetSub = subscriptions.find(s => s.sno === sno);
-    if (targetSub && selectedCustId) {
-      try {
-        await fetch(`/api/subscriptions?customer_id=${selectedCustId}&sno=${sno}&publica_id=${targetSub.publica_id || ''}`, {
-          method: 'DELETE'
-        });
-      } catch (err) {
-        console.warn('Subscription delete warning:', err);
-      }
+    if (!targetSub) return;
+    const pubName = targetSub.publication_name || `Pub #${targetSub.publica_id}`;
+    if (!window.confirm(`Delete ${pubName} from this customer? This removes the row permanently. Use बंद करें to stop delivery instead.`)) return;
+
+    try {
+      const res = await fetch(`/api/subscriptions?customer_id=${selectedCustId}&sno=${sno}&publica_id=${targetSub.publica_id || ''}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Delete failed');
+      setSubscriptions(subscriptions.filter(s => s.sno !== sno));
+    } catch (err: any) {
+      setStatus(`Error deleting item: ${err.message || err}`);
+      setTimeout(() => setStatus(''), 3500);
     }
-    setSubscriptions(subscriptions.filter(s => s.sno !== sno));
   };
 
   const handleDeleteCustomer = async () => {
@@ -311,34 +433,37 @@ export default function CustomerForm({
     const y = today.getFullYear();
     const formattedToday = `${d}/${m}/${y}`;
 
-    setSubscriptions(subscriptions.map(s => {
-      if (s.sno === sno) {
-        return {
-          ...s,
-          c_date: formattedToday,
-          is_active: false
-        };
-      }
-      return s;
-    }));
-
     // Post to API
     const targetSub = subscriptions.find(s => s.sno === sno);
-    if (targetSub) {
-      try {
-        await fetch('/api/subscriptions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'discontinue',
-            customer_id: selectedCustId,
-            publica_id: targetSub.publica_id || (targetSub as any).publication_id,
-            c_date: `${y}-${m}-${d}`
-          })
-        });
-      } catch (err) {
-        console.warn('Discontinue API warning:', err);
-      }
+    if (!targetSub) return;
+    try {
+      const res = await fetch('/api/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'discontinue',
+          customer_id: selectedCustId,
+          publica_id: targetSub.publica_id || (targetSub as any).publication_id,
+          sno,
+          c_date: `${y}-${m}-${d}`
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Discontinue failed');
+
+      setSubscriptions(subscriptions.map(s => {
+        if (s.sno === sno) {
+          return {
+            ...s,
+            c_date: formattedToday,
+            is_active: false
+          };
+        }
+        return s;
+      }));
+    } catch (err: any) {
+      setStatus(`Error stopping item: ${err.message || err}`);
+      setTimeout(() => setStatus(''), 3500);
     }
   };
 
@@ -780,7 +905,7 @@ export default function CustomerForm({
             </span>
             <button 
               type="button"
-              onClick={handleAddSubscriptionRow}
+              onClick={handleOpenInsertDialog}
               className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3 h-3" /> + Insert Item
@@ -836,6 +961,176 @@ export default function CustomerForm({
         </div>
 
       </div>
+
+      {/* Insert Item Popup Dialog */}
+      {isInsertOpen && (
+        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <form
+            onSubmit={handleInsertSubmit}
+            className="bg-[#ECE9D8] border-2 border-white shadow-2xl p-3 w-full max-w-xl space-y-2 text-xs flex flex-col max-h-[85vh] overflow-y-auto"
+          >
+            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+              <span>Insert Item (नया अखबार जोड़ें) - Customer #{selectedCustId}</span>
+              <button type="button" onClick={() => setIsInsertOpen(false)} className="text-white hover:text-red-300 font-bold">✕</button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="insert-pub" className="w-24 font-bold text-slate-800">Item (Publication)</label>
+              <input
+                id="insert-pub"
+                type="text"
+                list="insert-pub-list"
+                value={insertForm.pubText}
+                onChange={(e) => handleInsertPubChange(e.target.value)}
+                placeholder="Type or choose publication..."
+                className="flex-1 min-w-0 px-2 py-0.5 border border-[#808080] bg-white font-bold text-blue-900 shadow-inner"
+                autoFocus
+              />
+              <datalist id="insert-pub-list">
+                {publications.filter(p => !(p.is_closed && p.is_permanent)).map(p => (
+                  <option key={p.publica_id} value={publicationLabel(p)} />
+                ))}
+              </datalist>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="insert-hawker" className="w-24 font-bold text-slate-800">Hawker</label>
+              <input
+                id="insert-hawker"
+                type="text"
+                list="insert-hawker-list"
+                value={insertForm.hawkerText}
+                onChange={(e) => setInsertForm(f => ({ ...f, hawkerText: e.target.value }))}
+                placeholder="Type or choose hawker..."
+                className="flex-1 min-w-0 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800 shadow-inner"
+              />
+              <datalist id="insert-hawker-list">
+                {hawkers.map(h => (
+                  <option key={h.hawker_id} value={hawkerLabel(h)} />
+                ))}
+              </datalist>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-qty" className="w-24 font-bold text-slate-800">Qty</label>
+                <input
+                  id="insert-qty"
+                  type="number"
+                  min={1}
+                  value={insertForm.qty}
+                  onChange={(e) => setInsertForm(f => ({ ...f, qty: Number(e.target.value) }))}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-circulation" className="w-24 font-bold text-slate-800">Circulation</label>
+                <select
+                  id="insert-circulation"
+                  value={insertForm.circulation}
+                  onChange={(e) => setInsertForm(f => ({ ...f, circulation: e.target.value }))}
+                  className="flex-1 min-w-0 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800"
+                >
+                  {CIRCULATION_OPTIONS.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-days" className="w-24 font-bold text-slate-800">Def.Days</label>
+                <input
+                  id="insert-days"
+                  type="text"
+                  list="insert-days-list"
+                  value={insertForm.fromDay}
+                  onChange={(e) => setInsertForm(f => ({ ...f, fromDay: e.target.value }))}
+                  title="1=Sunday ... 7=Saturday. 1-7 = every day, 2-6 = Monday to Friday, 1 = Sunday only, 1,4,7 = chosen days"
+                  className="flex-1 min-w-0 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold"
+                />
+                <datalist id="insert-days-list">
+                  <option value="1-7">Every day</option>
+                  <option value="2-6">Monday to Friday</option>
+                  <option value="1">Sunday only</option>
+                </datalist>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-dis" className="w-24 font-bold text-slate-800">Dis. (%)</label>
+                <input
+                  id="insert-dis"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="any"
+                  value={insertForm.dis}
+                  onChange={(e) => setInsertForm(f => ({ ...f, dis: Number(e.target.value) }))}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-sdate" className="w-24 font-bold text-slate-800">St.Dt.</label>
+                <input
+                  id="insert-sdate"
+                  type="date"
+                  value={insertForm.sDate}
+                  onChange={(e) => setInsertForm(f => ({ ...f, sDate: e.target.value }))}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 border border-[#808080] bg-white font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-dely" className="w-24 font-bold text-slate-800">Del. (₹)</label>
+                <input
+                  id="insert-dely"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={insertForm.dely}
+                  onChange={(e) => setInsertForm(f => ({ ...f, dely: Number(e.target.value) }))}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="insert-cdate" className="w-24 font-bold text-slate-800">Cl.Dt. (optional)</label>
+                <input
+                  id="insert-cdate"
+                  type="date"
+                  value={insertForm.cDate}
+                  onChange={(e) => setInsertForm(f => ({ ...f, cDate: e.target.value }))}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 border border-[#808080] bg-white font-mono"
+                />
+              </div>
+            </div>
+
+            {insertError && (
+              <div role="alert" className="p-1.5 bg-red-100 text-red-800 border border-red-400 font-bold text-center">
+                {insertError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-1.5 pt-1">
+              <button
+                type="submit"
+                disabled={isSavingSub}
+                className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold cursor-pointer disabled:opacity-60 disabled:cursor-default"
+              >
+                {isSavingSub ? 'Saving...' : '💾 Save Item'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsInsertOpen(false)}
+                className="px-4 py-1 bg-[#ECE9D8] border border-black font-bold cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Find Customer Popup Dialog */}
       {isFindOpen && (

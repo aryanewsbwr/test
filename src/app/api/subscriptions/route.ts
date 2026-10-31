@@ -221,21 +221,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, customer_id, publica_id, c_date, discontinue_type } = body;
+    const { action, customer_id, publica_id, c_date, sno } = body;
 
     // Handle Discontinue Action
     if (action === 'discontinue' && customer_id && publica_id) {
       const closeDate = c_date || new Date().toISOString().split('T')[0];
 
-      // Update in Supabase customer_detail if available
-      try {
-        await supabase
-          .from('customer_detail')
-          .update({ c_date: closeDate })
-          .match({ customer_id: customer_id, publication_id: publica_id });
-      } catch (err) {
-        console.warn('Supabase update warning:', err);
-      }
+      // Close only the chosen row: older stopped rows of the same paper keep their own c_date
+      const match = sno ? { customer_id, sno } : { customer_id, publica_id };
+      const { error: closeError } = await supabase
+        .from('customer_detail')
+        .update({ c_date: closeDate })
+        .match(match);
+
+      if (closeError) throw closeError;
 
       return NextResponse.json({
         success: true,
@@ -245,9 +244,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Default Insert
+    if (!Number(customer_id) || !Number(publica_id) || !Number(body.hawker_id) || !body.s_date) {
+      return NextResponse.json({ error: 'customer_id, publica_id, hawker_id and s_date are required' }, { status: 400 });
+    }
+
+    // sno is omitted so Supabase generates it (same as the backup-restore import)
     const { data, error } = await supabase
       .from('customer_detail')
-      .insert([body])
+      .insert([{
+        customer_id: Number(customer_id),
+        publica_id: Number(publica_id),
+        hawker_id: Number(body.hawker_id),
+        qty: Number(body.qty) || 1,
+        circulation: body.circulation || 'Morning',
+        s_date: body.s_date,
+        c_date: c_date || null,
+        from_day: body.from_day || '1-7',
+        dis: Number(body.dis) || 0,
+        dely: Number(body.dely) || 0
+      }])
       .select();
 
     if (error) throw error;
@@ -272,14 +287,16 @@ export async function DELETE(request: NextRequest) {
     const sno = snoStr ? parseInt(snoStr, 10) : undefined;
     const pubId = publicaIdStr ? parseInt(publicaIdStr, 10) : undefined;
 
-    try {
-      let query = supabase.from('customer_detail').delete().eq('customer_id', cid);
-      if (pubId) query = query.eq('publication_id', pubId);
-      await query;
-    } catch (dbErr) {
-      console.warn('Supabase sub delete warning:', dbErr);
+    if (!sno && !pubId) {
+      return NextResponse.json({ error: 'sno or publica_id is required' }, { status: 400 });
     }
 
+    const { error } = await supabase
+      .from('customer_detail')
+      .delete()
+      .match(sno ? { customer_id: cid, sno } : { customer_id: cid, publica_id: pubId });
+
+    if (error) throw error;
 
     return NextResponse.json({ success: true, message: 'Subscription removed' });
   } catch (error: any) {
