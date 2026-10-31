@@ -32,7 +32,8 @@ export function getEffectiveWeekdayRates(
   const baseRates = rates.filter(r => (r.publica_id || (r as any).Publica_id) === publicaId);
   if (baseRates.length > 0) {
     baseRates.forEach(r => {
-      const day = r.dayofweek || (r as any).Dayofweek;
+      // A single rate saved without a real weekday belongs on Sunday, like other legacy magazines
+      const day = r.dayofweek || (r as any).Dayofweek || 1;
       const rateVal = Number(r.rate !== undefined ? r.rate : (r as any).Rate);
       if (day >= 1 && day <= 7 && rateVal > 0) {
         result[day] = rateVal;

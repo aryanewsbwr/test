@@ -21,6 +21,12 @@ function billCurrentAmount(bill: any): number {
   return Number(bill.current_bill ?? bill.paper_amount ?? bill.month_amount ?? 0);
 }
 
+// The approved template has no Paid line, so its text shows the old balance after payments.
+// That keeps Current + Previous equal to Total; the bill image still lists Paid separately.
+function textPreviousDue(bill: any): number {
+  return Number(bill.previous_due || 0) - Number(bill.paid_amount || 0);
+}
+
 function escapeXml(unsafe: string | number | undefined | null): string {
   if (unsafe === undefined || unsafe === null) return '';
   return String(unsafe)
@@ -406,7 +412,7 @@ export async function POST(request: NextRequest) {
               billNo: String(b.bill_no || b.customer_id),
               accountNo: String(b.customer_id),
               currentAmount: billCurrentAmount(b),
-              previousDue: Number(b.previous_due || 0),
+              previousDue: textPreviousDue(b),
               totalPayable: Number(b.net_payable || 0),
               billImageBuffer: imageBuffer,
               imageFileName: `Bill_${b.bill_no || b.customer_id}.png`
@@ -503,7 +509,7 @@ export async function POST(request: NextRequest) {
         customer_name: whatsAppDisplayName(body.customer_name, body.customer_hindi),
         month: body.month || month,
         current_amount: billCurrentAmount(body),
-        previous_due: Number(body.previous_due || 0),
+        previous_due: textPreviousDue(body),
         total_payable: Number(body.net_payable || 0)
       };
 
