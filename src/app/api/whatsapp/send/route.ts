@@ -63,10 +63,37 @@ function formatWhatsAppCustomerName(rawName: string | undefined | null): string 
 function whatsAppDisplayName(rawName: string | undefined | null, rawHindi?: string | undefined | null): string {
   const hindi = getReliableHindiName(rawHindi || '', rawName || '');
   if (hindi) {
-    const stripped = hindi.replace(/\s*जी\s*$/,'').trim();
+    // Legacy names carry route codes (सी38, 1.41, 201) and a जी mid-name (संजय जी गुप्ता)
+    const stripped = hindi
+      .replace(/\s+[ऀ-ॿ]{1,3}\d+\s*$/, '')
+      .replace(/\s+\d[\d./]*\s*$/, '')
+      .replace(/(^|\s)जी(?=\s|$)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (stripped) return stripped;
   }
   return formatWhatsAppCustomerName(rawName);
+}
+
+/**
+ * Records a send attempt. The table allows one successful row per bill, so a
+ * resend updates that row to the latest send instead of failing to log.
+ */
+async function logWhatsAppMessage(row: Record<string, any>) {
+  const { error } = await supabaseAdmin.from('whatsapp_messages').insert(row);
+  if (!error) return;
+  if (error.code !== '23505') {
+    console.warn('[WhatsApp Route] Error logging to database:', error);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabaseAdmin
+    .from('whatsapp_messages')
+    .update({ ...row, created_at: now, updated_at: now })
+    .eq('bill_id', row.bill_id)
+    .in('status', ['sent', 'delivered', 'read']);
+  if (updateError) console.warn('[WhatsApp Route] Error updating resend log:', updateError);
 }
 
 /**
@@ -376,7 +403,7 @@ export async function POST(request: NextRequest) {
 
             // Log to database
             try {
-              await supabaseAdmin.from('whatsapp_messages').insert({
+              await logWhatsAppMessage({
                 customer_id: String(b.customer_id),
                 bill_id: String(b.bill_no || b.customer_id),
                 phone,
@@ -479,7 +506,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Log to database
-      await supabaseAdmin.from('whatsapp_messages').insert({
+      await logWhatsAppMessage({
         customer_id: activeBill.customer_id,
         bill_id: activeBill.bill_no,
         phone: cleanPhone,
@@ -560,7 +587,7 @@ export async function POST(request: NextRequest) {
           });
 
           // Insert tracking row
-          await supabaseAdmin.from('whatsapp_messages').insert({
+          await logWhatsAppMessage({
             customer_id: String(cid),
             bill_id: billData.bill_no,
             phone,

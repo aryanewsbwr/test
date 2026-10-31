@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
@@ -43,6 +43,21 @@ function computeNextMonthBillDate(m: string | undefined, y: string | number | un
   return `01-10-${baseYear}`;
 }
 
+// Same month text the send route stores in whatsapp_messages.bill_month
+function billMonthKey(b: BillRecord): string {
+  return `${b.month || ''} ${b.year || ''}`.trim() || 'Oct 2026';
+}
+
+function waSentKey(b: BillRecord): string {
+  return `${b.customer_id}|${billMonthKey(b)}`;
+}
+
+function formatSentTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
 function cleanPhone(p: string | undefined | null): string {
   if (!p || p === '---') return '';
   const digits = String(p).replace(/\D/g, '');
@@ -70,6 +85,41 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   // Off-screen refs + state used to rasterize each bill in the browser for bulk WhatsApp sending
   const captureRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [captureChunk, setCaptureChunk] = useState<BillRecord[] | null>(null);
+  // Bills already sent on WhatsApp, keyed by customer + bill month
+  const [waSent, setWaSent] = useState<Record<string, { sent_at: string; status: string }>>({});
+  const [waCheckFailed, setWaCheckFailed] = useState(false);
+  const [sendAllPrompt, setSendAllPrompt] = useState<{ newBills: BillRecord[]; sentBills: BillRecord[] } | null>(null);
+
+  const monthsKey = Array.from(new Set((bills || []).map(billMonthKey))).join('|');
+
+  useEffect(() => {
+    if (!monthsKey) return;
+    let cancelled = false;
+    const params = new URLSearchParams();
+    monthsKey.split('|').forEach(m => params.append('month', m));
+
+    fetch(`/api/whatsapp/status?${params.toString()}`)
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Status check failed');
+        return data;
+      })
+      .then(data => {
+        if (cancelled) return;
+        const next: Record<string, { sent_at: string; status: string }> = {};
+        (data.sent || []).forEach((s: any) => {
+          next[`${s.customer_id}|${s.bill_month}`] = { sent_at: s.sent_at, status: s.status };
+        });
+        setWaSent(next);
+        setWaCheckFailed(false);
+      })
+      .catch(err => {
+        console.warn('Could not load WhatsApp sent status:', err);
+        if (!cancelled) setWaCheckFailed(true);
+      });
+
+    return () => { cancelled = true; };
+  }, [monthsKey]);
 
   if (!bills || bills.length === 0) {
     return (
@@ -80,6 +130,17 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   }
 
   const currentBill = bills[currentIndex] || bills[0];
+  const currentBillSent = waSent[waSentKey(currentBill)];
+  const sentBillCount = bills.filter(b => waSent[waSentKey(b)]).length;
+
+  const markBillsSent = (sentBills: BillRecord[]) => {
+    const sentAt = new Date().toISOString();
+    setWaSent(prev => {
+      const next = { ...prev };
+      sentBills.forEach(b => { next[waSentKey(b)] = { sent_at: sentAt, status: 'sent' }; });
+      return next;
+    });
+  };
 
   const handlePrintAll = () => {
     printBillsThermal58mm(bills, title, printMode);
@@ -96,6 +157,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       setTimeout(() => setWaStatus(null), 4000);
       return;
     }
+
+    if (currentBillSent && !window.confirm(
+      `This bill was already sent on WhatsApp on ${formatSentTime(currentBillSent.sent_at)}.\n(यह बिल पहले ही भेजा जा चुका है।)\n\nDo you want to send it again?`
+    )) return;
 
     setIsSendingWa(true);
     setWaStatus(null);
@@ -136,6 +201,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
+        markBillsSent([currentBill]);
         setWaStatus({ type: 'success', message: `WhatsApp bill sent successfully to ${rawPhone}!` });
       } else {
         setWaStatus({ type: 'error', message: data.error || data.errorCode || 'Failed to send WhatsApp bill.' });
@@ -158,11 +224,22 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       return;
     }
 
+    const sentBills = eligibleBills.filter(b => waSent[waSentKey(b)]);
+    if (sentBills.length > 0) {
+      setSendAllPrompt({ newBills: eligibleBills.filter(b => !waSent[waSentKey(b)]), sentBills });
+      return;
+    }
+
     const confirmSend = window.confirm(
       `Send WhatsApp bills to all ${eligibleBills.length} customer(s) with valid phone numbers in this region?\n(Total bills: ${bills.length})`
     );
     if (!confirmSend) return;
 
+    await sendWhatsAppBatch(eligibleBills);
+  };
+
+  const sendWhatsAppBatch = async (eligibleBills: BillRecord[]) => {
+    setSendAllPrompt(null);
     setIsSendingWaAll(true);
     setWaProgress({ sent: 0, total: eligibleBills.length });
     setWaStatus(null);
@@ -233,6 +310,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           totalSent += data.sent_count || 0;
           totalFailed += data.failed_count || 0;
           totalSkipped += data.skipped_count || 0;
+          const sentIds = new Set((data.results || []).filter((r: any) => r.success).map((r: any) => String(r.customer_id)));
+          markBillsSent(chunkBills.filter(b => sentIds.has(String(b.customer_id))));
           if (data.failed_count > 0 && Array.isArray(data.results)) {
             const firstFail = data.results.find((r: any) => !r.success && r.status !== 'skipped');
             if (firstFail) {
@@ -261,6 +340,18 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       setWaProgress(null);
       setTimeout(() => setWaStatus(null), 8000);
     }
+  };
+
+  // Kept outside the bill card so it never appears on the image sent to the customer
+  const renderSentBadge = (b: BillRecord) => {
+    const sent = waSent[waSentKey(b)];
+    if (!sent) return null;
+    return (
+      <div className="mb-2 px-3 py-1 bg-green-600 text-white text-[11px] font-bold rounded-full flex items-center gap-1.5 shadow-sm">
+        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>Sent on WhatsApp{sent.status === 'read' ? ' (Read)' : sent.status === 'delivered' ? ' (Delivered)' : ''} · {formatSentTime(sent.sent_at)}</span>
+      </div>
+    );
   };
 
   const renderBill = (b: BillRecord, idx: number, forCapture = false) => {
@@ -628,15 +719,21 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           <button
             onClick={handleSendCurrentWhatsApp}
             disabled={isSendingWa || isSendingWaAll}
-            className="px-2.5 py-1 bg-green-600 hover:bg-green-500 disabled:bg-green-800 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
-            title="Send this Bill on WhatsApp to this customer"
+            className={`px-2.5 py-1 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm ${
+              currentBillSent
+                ? 'bg-green-600 hover:bg-green-500 disabled:bg-green-800 ring-2 ring-green-300'
+                : 'bg-slate-600 hover:bg-slate-500 disabled:bg-slate-800'
+            }`}
+            title={currentBillSent ? 'Already sent on WhatsApp. Click to send again.' : 'Send this Bill on WhatsApp to this customer'}
           >
             {isSendingWa ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : currentBillSent ? (
+              <CheckCircle className="w-3.5 h-3.5" />
             ) : (
               <Send className="w-3.5 h-3.5" />
             )}
-            <span>{isSendingWa ? 'Sending...' : 'WhatsApp Bill'}</span>
+            <span>{isSendingWa ? 'Sending...' : currentBillSent ? 'Sent - Send Again' : 'WhatsApp Bill'}</span>
           </button>
 
           <button
@@ -653,7 +750,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             <span>
               {isSendingWaAll 
                 ? (waProgress ? `Sending (${waProgress.sent}/${waProgress.total})...` : 'Sending All...')
-                : `WhatsApp Bill (All ${bills.filter(b => b.phone && b.phone !== '---').length})`}
+                : `WhatsApp Bill (All ${bills.filter(b => b.phone && b.phone !== '---').length})${sentBillCount > 0 ? ` · ${sentBillCount} sent` : ''}`}
             </span>
           </button>
 
@@ -678,6 +775,52 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
       )}
 
+      {waCheckFailed && (
+        <div className="w-full max-w-2xl px-3 py-2 mb-2 rounded flex items-center gap-2 text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>Could not check which bills were already sent on WhatsApp, so repeat sends will not be detected.</span>
+        </div>
+      )}
+
+      {/* Bills already sent: choose whether to include them in this batch */}
+      {sendAllPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="wa-send-all-title" className="w-full max-w-md bg-white rounded shadow-2xl p-4 space-y-3 text-sm text-slate-900">
+            <h3 id="wa-send-all-title" className="font-bold text-base">Some bills were already sent</h3>
+            <p>
+              <span className="font-bold text-green-700">{sendAllPrompt.sentBills.length}</span> bill(s) already sent on WhatsApp,{' '}
+              <span className="font-bold">{sendAllPrompt.newBills.length}</span> not sent yet.
+              <br />
+              <span className="text-slate-600">({sendAllPrompt.sentBills.length} बिल पहले ही भेजे जा चुके हैं।)</span>
+            </p>
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setSendAllPrompt(null)}
+                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 font-bold rounded cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => sendWhatsAppBatch([...sendAllPrompt.newBills, ...sendAllPrompt.sentBills])}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded cursor-pointer"
+              >
+                Send All Again ({sendAllPrompt.newBills.length + sendAllPrompt.sentBills.length})
+              </button>
+              <button
+                type="button"
+                disabled={sendAllPrompt.newBills.length === 0}
+                onClick={() => sendWhatsAppBatch(sendAllPrompt.newBills)}
+                className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:bg-slate-300 disabled:cursor-default text-white font-bold rounded cursor-pointer"
+              >
+                Send Only New ({sendAllPrompt.newBills.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Interactive Bill Preview Frame */}
       <div 
         className="w-full flex justify-center py-4 bg-slate-100 overflow-x-auto rounded-b-sm border border-slate-300"
@@ -688,10 +831,18 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       >
         {viewAll ? (
           <div className="flex flex-col items-center gap-6 w-full max-h-[80vh] overflow-y-auto px-4 py-2">
-            {bills.map((b, idx) => renderBill(b, idx))}
+            {bills.map((b, idx) => (
+              <div key={`${b.customer_id}-${idx}`} className="flex flex-col items-center">
+                {renderSentBadge(b)}
+                {renderBill(b, idx)}
+              </div>
+            ))}
           </div>
         ) : (
-          renderBill(currentBill, currentIndex)
+          <div className="flex flex-col items-center">
+            {renderSentBadge(currentBill)}
+            {renderBill(currentBill, currentIndex)}
+          </div>
         )}
       </div>
 
