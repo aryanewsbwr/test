@@ -22,7 +22,7 @@ const CIRCULATION_OPTIONS = ['Morning', 'Evening', 'As Per Norm'];
 const DEF_DAYS_PATTERN = /^[1-7](-[1-7]|(,[1-7])*)$/;
 
 const publicationLabel = (p: Publication) => `${p.public_name} (#${p.publica_id})`;
-const hawkerLabel = (h: Hawker) => `${h.name} (#${h.hawker_id})`;
+const hawkerKey = (name: string) => name.trim().toLowerCase();
 
 function todayLocalIso(): string {
   const d = new Date();
@@ -101,6 +101,15 @@ export default function CustomerForm({
       .filter(h => !h.name.trim().toLowerCase().startsWith('z'))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) || a.hawker_id - b.hawker_id)
   ), [hawkers]);
+
+  // The hawker table repeats a name once per area, so the list shows each name once
+  const insertHawkerNames = useMemo(() => {
+    const names = new Map<string, string>();
+    insertHawkers.forEach(h => {
+      if (!names.has(hawkerKey(h.name))) names.set(hawkerKey(h.name), h.name.trim());
+    });
+    return Array.from(names.values());
+  }, [insertHawkers]);
 
   // Find Dialog State
   const [isFindOpen, setIsFindOpen] = useState(false);
@@ -295,7 +304,7 @@ export default function CustomerForm({
     const currentHawker = insertHawkers.find(h => h.hawker_id === currentSub?.hawker_id);
     setInsertForm({
       pubText: '',
-      hawkerText: currentHawker ? hawkerLabel(currentHawker) : '',
+      hawkerText: currentHawker ? currentHawker.name.trim() : '',
       qty: 1,
       circulation: 'Morning',
       fromDay: '1-7',
@@ -317,24 +326,37 @@ export default function CustomerForm({
     }));
   };
 
+  // Keep the id this customer already uses for the hawker, otherwise take the busiest one
+  const resolveHawkerId = async (matches: Hawker[]): Promise<number> => {
+    const usesMatch = (s: CustomerDetail) => matches.some(h => h.hawker_id === s.hawker_id);
+    const existing = subscriptions.find(s => s.is_active !== false && usesMatch(s)) || subscriptions.find(usesMatch);
+    if (existing?.hawker_id) return existing.hawker_id;
+    if (matches.length === 1) return matches[0].hawker_id;
+
+    const res = await fetch(`/api/hawkers?busiest_of=${matches.map(h => h.hawker_id).join(',')}`);
+    const data = await res.json();
+    if (!res.ok || !data.hawker_id) throw new Error(data.error || 'Could not find the hawker.');
+    return data.hawker_id;
+  };
+
   const handleInsertSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSavingSub) return;
 
     const pub = publications.find(p => publicationLabel(p) === insertForm.pubText);
-    const hwk = insertHawkers.find(h => hawkerLabel(h) === insertForm.hawkerText);
+    const hawkerMatches = insertHawkers.filter(h => hawkerKey(h.name) === hawkerKey(insertForm.hawkerText));
     const fromDay = insertForm.fromDay.trim();
 
     let error = '';
     if (!pub) error = 'Please choose a publication from the list.';
-    else if (!hwk) error = 'Please choose a hawker from the list.';
+    else if (hawkerMatches.length === 0) error = 'Please choose a hawker from the list.';
     else if (!(insertForm.qty >= 1)) error = 'Qty must be at least 1.';
     else if (!DEF_DAYS_PATTERN.test(fromDay)) error = 'Def.Days must look like 1-7, 2-6, 1 or 1,4,7.';
     else if (!insertForm.sDate) error = 'Please enter the start date.';
     else if (insertForm.cDate && insertForm.cDate < insertForm.sDate) error = 'Close date cannot be before the start date.';
     else if (insertForm.dis < 0 || insertForm.dis > 100) error = 'Discount must be between 0 and 100.';
     else if (insertForm.dely < 0) error = 'Delivery charge cannot be negative.';
-    if (error || !pub || !hwk) {
+    if (error || !pub) {
       setInsertError(error);
       return;
     }
@@ -345,13 +367,14 @@ export default function CustomerForm({
     setIsSavingSub(true);
     setInsertError('');
     try {
+      const hawkerId = await resolveHawkerId(hawkerMatches);
       const res = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_id: selectedCustId,
           publica_id: pub.publica_id,
-          hawker_id: hwk.hawker_id,
+          hawker_id: hawkerId,
           qty: insertForm.qty,
           circulation: insertForm.circulation,
           s_date: insertForm.sDate,
@@ -369,8 +392,8 @@ export default function CustomerForm({
         customer_id: selectedCustId,
         publica_id: pub.publica_id,
         publication_name: pub.public_name,
-        hawker_id: hwk.hawker_id,
-        hawker_name: hwk.name,
+        hawker_id: hawkerId,
+        hawker_name: hawkerMatches[0].name.trim(),
         qty: insertForm.qty,
         circulation: insertForm.circulation,
         s_date: insertForm.sDate,
@@ -1012,8 +1035,8 @@ export default function CustomerForm({
                 className="flex-1 min-w-0 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800 shadow-inner"
               />
               <datalist id="insert-hawker-list">
-                {insertHawkers.map(h => (
-                  <option key={h.hawker_id} value={hawkerLabel(h)} />
+                {insertHawkerNames.map(name => (
+                  <option key={name} value={name} />
                 ))}
               </datalist>
             </div>

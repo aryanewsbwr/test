@@ -22,6 +22,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = (searchParams.get('search') || '').trim().toLowerCase();
 
+    // One hawker name can own many ids: return the id carrying the most subscriptions
+    const busiestOf = searchParams.get('busiest_of');
+    if (busiestOf) {
+      const ids = busiestOf.split(',').map(Number).filter(id => id > 0);
+      if (ids.length === 0) {
+        return NextResponse.json({ error: 'busiest_of needs at least one hawker id' }, { status: 400 });
+      }
+      const counts = await Promise.all(ids.map(async id => {
+        const { count, error } = await supabase
+          .from('customer_detail')
+          .select('*', { count: 'exact', head: true })
+          .eq('hawker_id', id);
+        if (error) throw error;
+        return count || 0;
+      }));
+      return NextResponse.json({ hawker_id: ids[counts.indexOf(Math.max(...counts))] });
+    }
+
     let hawkers: any[] = [];
     try {
       // Supabase returns at most 1000 rows per request, so read the table page by page
