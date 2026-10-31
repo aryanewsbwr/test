@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { fySuffix, previousFySuffix } from '@/lib/financialYear';
+import { receiptBookWarning } from '@/lib/receiptBooks';
 import { Customer, Region } from '@/lib/types';
 
 interface ReceiptFormProps {
@@ -880,6 +881,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     if (effectiveReceivedForDue <= 0 && numLessAmt <= 0) {
       setMsg({ text: 'Please enter a valid Manual Receipt Amount (Ml. Rcp. At.).', isError: true });
       if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
+      return;
+    }
+    const bookWarning = receiptBookWarning(manualRecpNo, selectedBookRange);
+    if (bookWarning && !confirm(`${bookWarning}\n\nरसीद नंबर चुनी गई बुक में नहीं है। फिर भी सेव करें? (Save anyway?)`)) {
+      if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
       return;
     }
 
