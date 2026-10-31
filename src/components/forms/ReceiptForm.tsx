@@ -430,20 +430,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     return 0;
   };
 
-  // Helper to find prior credit balance (e.g. from negative balance in billno or excess from prior receipts)
-  const getPriorCreditBalance = (billsList: any[], receiptsList: any[], effectiveDues: number, billAmount: number): number => {
-    const billWithNegBal = billsList.find((b: any) => b.balance !== null && Number(b.balance) < 0);
-    if (billWithNegBal) {
-      return Math.abs(Number(billWithNegBal.balance));
-    }
-    // Most recent receipt is at the end of the sorted array
-    if (receiptsList && receiptsList.length > 0) {
-      const lastRecp = receiptsList[receiptsList.length - 1];
-      if (lastRecp && Number(lastRecp.balance) > 0 && effectiveDues < billAmount) {
-        return Number(lastRecp.balance);
-      }
-    }
-    return 0;
+  // Advance already paid towards this bill: what the customer owes overall is less than the bill.
+  // billno.balance can't be used here: it stores the amount payable as a negative number.
+  const getPriorCreditBalance = (effectiveDues: number, billAmount: number): number => {
+    return Math.max(0, billAmount - effectiveDues);
   };
 
   // Select Month and find corresponding bill
@@ -543,9 +533,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           const computedAmt = sumByBillId.get(bid);
           const delAmt = Number(b.del_amt ?? b.Del_amt ?? b.Del_Amt ?? 0);
           const disAmt = Number(b.dis_amt ?? b.Dis_amt ?? b.Dis_Amt ?? 0);
-          const finalAmt = (b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '')
-            ? Number(b.due_amt)
-            : (computedAmt !== undefined ? (computedAmt + delAmt - disAmt) : (b.balance !== null ? Math.abs(Number(b.balance)) : 0));
+          // due_amt is the previous balance brought forward, so it only stands in for a bill
+          // on rows without line items (the yearly 'Dues' opening row)
+          const finalAmt = computedAmt !== undefined
+            ? computedAmt + delAmt - disAmt
+            : ((b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '')
+              ? Number(b.due_amt)
+              : (b.balance !== null ? Math.abs(Number(b.balance)) : 0));
           return {
             ...b,
             bill_amt: finalAmt,
@@ -581,9 +575,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             const computedAmt = sumByBillId.get(bid);
             const delAmt = Number(b.del_amt ?? b.Del_amt ?? b.Del_Amt ?? 0);
             const disAmt = Number(b.dis_amt ?? b.Dis_amt ?? b.Dis_Amt ?? 0);
-            const finalAmt = (b.Due_Amt !== null && b.Due_Amt !== undefined && b.Due_Amt !== '')
-              ? Number(b.Due_Amt)
-              : (computedAmt !== undefined ? (computedAmt + delAmt - disAmt) : (b.Balance !== null ? Math.abs(Number(b.Balance)) : 0));
+            const finalAmt = computedAmt !== undefined
+              ? computedAmt + delAmt - disAmt
+              : ((b.Due_Amt !== null && b.Due_Amt !== undefined && b.Due_Amt !== '')
+                ? Number(b.Due_Amt)
+                : (b.Balance !== null ? Math.abs(Number(b.Balance)) : 0));
             return {
               ...b,
               bill_id: bid,
@@ -741,8 +737,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setYear(String(b.year || b.Year || '2026'));
     const amt = getBillDisplayAmount(b);
 
-    // If there is no due (totalCustomerDue is 0), data in control section should NOT be there!
-    if (totalCustomerDue === 0) {
+    // If there is no due (nothing owed, or an advance), data in control section should NOT be there!
+    if (totalCustomerDue <= 0) {
       setBillAmt('');
       setManualRcpAmt('');
       setLessAmt('');
@@ -754,7 +750,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
 
     setBillAmt(amt);
-    const credit = getPriorCreditBalance(customerBills, customerReceipts, totalCustomerDue, amt);
+    const credit = getPriorCreditBalance(totalCustomerDue, amt);
     setPriorCreditBal(credit);
     setBalAmt(credit > 0 ? credit : 0);
 
@@ -851,7 +847,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const numRevAmt = Number(revAmt) || 0;
   const numLessAmt = Number(lessAmt) || 0;
   const numBillAmt = Number(billAmt) || 0;
-  const effectiveReceivedForDue = numManualRcpAmt !== 0 ? numManualRcpAmt : numRevAmt;
+  const effectiveReceivedForDue = numManualRcpAmt > 0 ? numManualRcpAmt : numRevAmt;
   const calculatedRemainingBal = Math.round((totalCustomerDue - effectiveReceivedForDue - numLessAmt) * 100) / 100;
 
   // 6. Save / Apply Receipt & Advance to Next Entry Instantly
@@ -861,7 +857,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       if (customerInputRef.current) customerInputRef.current.focus();
       return;
     }
-    if (effectiveReceivedForDue === 0 && numLessAmt <= 0) {
+    if (effectiveReceivedForDue <= 0 && numLessAmt <= 0) {
       setMsg({ text: 'Please enter a valid Manual Receipt Amount (Ml. Rcp. At.).', isError: true });
       if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
       return;
