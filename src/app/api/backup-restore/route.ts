@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { BackupTable, findBackupTable } from '@/lib/backupTables';
+import { closeSubscriptions } from '@/lib/subscriptionStops';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (refused) return refused;
 
   try {
-    const { table: tableName, add = [], update = [], remove = [] } = await req.json();
+    const { table: tableName, add = [], update = [], remove = [], closeStops = [] } = await req.json();
     const table = findBackupTable(tableName);
     if (!table) return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
 
@@ -69,6 +70,8 @@ export async function POST(req: NextRequest) {
       const { error } = await supabaseAdmin.from(table.name).delete().match(matchOf(table, row));
       if (error) throw new Error(`${table.name}: ${error.message}`);
     });
+
+    await inParallel<any>(closeStops, stop => closeSubscriptions(Number(stop.customer_id), Number(stop.publica_id) || 0, stop.temp_from));
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

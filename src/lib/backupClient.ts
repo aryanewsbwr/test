@@ -156,7 +156,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
 
       const difference = compareRows(fileRows, live, table.oldKey || table.key, {
         fileBlankIsSame: true,
-        ignore: table.name.startsWith('receipt') ? ['bill_amt', 'recp_date', 'remarks', 'region_id', 'year'] : []
+        ignore: table.oldIgnore
       });
 
       let add = difference.add;
@@ -206,7 +206,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
   return { kind: 'backup', takenAt, items };
 }
 
-async function writeBatches(table: string, field: 'add' | 'update' | 'remove', rows: any[], onDone: (count: number) => void) {
+async function writeBatches(table: string, field: 'add' | 'update' | 'remove' | 'closeStops', rows: any[], onDone: (count: number) => void) {
   const batches: any[][] = [];
   for (let i = 0; i < rows.length; i += WRITE_BATCH) batches.push(rows.slice(i, i + WRITE_BATCH));
 
@@ -220,10 +220,24 @@ async function writeBatches(table: string, field: 'add' | 'update' | 'remove', r
   });
 }
 
-function numbered(item: RestoreItem): any[] {
+// A backup keeps its own numbers; only rows from an old software file need new ones
+function numbered(item: RestoreItem, kind: RestorePlan['kind']): any[] {
+  if (kind === 'backup') return item.add;
+  if (item.table.databaseNumbers) return item.add.map(({ id, ...row }) => row);
   if (!item.table.assignId) return item.add;
-  let next = item.live.reduce((highest, row) => Math.max(highest, Number(row.id) || 0), 0);
-  return item.add.map(row => ({ ...row, id: ++next }));
+
+  const column = item.table.idColumn || 'id';
+  let next = item.live.reduce((highest, row) => Math.max(highest, Number(row[column]) || 0), 0);
+  return item.add.map(row => {
+    next++;
+    return item.table.name === 'holiday' ? { ...row, id: next, holiday_id: next } : { ...row, [column]: next };
+  });
+}
+
+function permanentStops(plan: RestorePlan): any[] {
+  if (plan.kind !== 'old') return [];
+  const item = plan.items.find(i => i.table.name === 'discontinue');
+  return item?.useAdd ? item.add.filter(row => row.temp_perma === 'Permanent') : [];
 }
 
 // Adds and changes go first and removals last, so stopping halfway never loses a row
@@ -243,12 +257,16 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   );
 
   for (const item of chosen) {
-    if (item.useAdd) await writeBatches(item.table.name, 'add', numbered(item), tick);
+    if (item.useAdd) await writeBatches(item.table.name, 'add', numbered(item, plan.kind), tick);
     if (item.useChange) await writeBatches(item.table.name, 'update', item.change, tick);
   }
   for (const item of chosen) {
     if (item.useRemove) await writeBatches(item.table.name, 'remove', item.remove, tick);
   }
+
+  // A permanent stop from the old file closes its subscriptions, as the Discontinue screen does
+  const stops = permanentStops(plan);
+  if (stops.length > 0) await writeBatches('discontinue', 'closeStops', stops, () => {});
 
   onProgress('Checking the result...');
   const problems: string[] = [];

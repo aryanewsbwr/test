@@ -8,8 +8,14 @@ export interface BackupTable {
   oldKey?: string[];
   // Money tables are never overwritten from an old software file, only added to
   money?: boolean;
-  // The database has no automatic number for this table, so new rows need one
+  // Rows added from an old software file get the next number here, because both
+  // softwares count separately and the same number can mean two different rows
   assignId?: boolean;
+  idColumn?: string;
+  // The database numbers new rows of this table itself
+  databaseNumbers?: boolean;
+  // Columns that differ between the two softwares without meaning a real change
+  oldIgnore?: string[];
 }
 
 const MASTER_TABLES: BackupTable[] = [
@@ -22,10 +28,18 @@ const MASTER_TABLES: BackupTable[] = [
   { name: 'collect', key: ['Collect_id'] },
   { name: 'rate', key: ['id'], oldKey: ['publica_id', 'dayofweek'], assignId: true },
   { name: 'ratechange', key: ['id'], oldKey: ['publica_id', 'dayofweek', 'effective_date'], assignId: true },
-  { name: 'holiday', key: ['id'], oldKey: ['oc_date', 'publica_id'], assignId: true },
-  { name: 'publicationdis', key: ['id'], oldKey: ['publica_id', 'entry_date', 'oc_date'], assignId: true },
+  { name: 'holiday', key: ['id'], oldKey: ['oc_date', 'publica_id'], assignId: true, oldIgnore: ['remark', 'holiday_id'] },
+  { name: 'publicationdis', key: ['id'], oldKey: ['publica_id', 'entry_date'], assignId: true, oldIgnore: ['dis_type', 'remark'] },
   { name: 'publicationsup', key: ['id'], oldKey: ['publica_id', 'publicasup_id', 'month', 'year', 'region_id'], assignId: true },
-  { name: 'discontinue', key: ['discontinue_id'] },
+  {
+    name: 'discontinue',
+    key: ['discontinue_id'],
+    oldKey: ['customer_id', 'publica_id', 'temp_from'],
+    assignId: true,
+    idColumn: 'discontinue_id',
+    oldIgnore: ['discontinue_id', 'sno', 'financial_year']
+  },
+  { name: 'customer_discontinue', key: ['id'] },
   { name: 'countersale', key: ['id'] },
   { name: 'whatsapp_messages', key: ['id'] }
 ];
@@ -35,8 +49,23 @@ function yearlyTables(suffix: string): BackupTable[] {
     { name: `billno${suffix}`, key: ['bill_id'], money: true },
     { name: `bill${suffix}`, key: ['id'], oldKey: ['bill_id', 'publica_id', 'sno'], money: true },
     { name: `billdel${suffix}`, key: ['id'], oldKey: ['customer_id', 'publica_id', 'month', 'sno'], money: true },
-    { name: `receipt${suffix}`, key: ['id'], money: true },
-    { name: `retailsale${suffix}`, key: ['retail_id'], money: true }
+    {
+      name: `receipt${suffix}`,
+      key: ['id'],
+      oldKey: ['customer_id', 'recp_no'],
+      money: true,
+      databaseNumbers: true,
+      oldIgnore: ['id', 'bill_amt', 'recp_date', 'remarks', 'region_id', 'year']
+    },
+    {
+      name: `retailsale${suffix}`,
+      key: ['retail_id'],
+      oldKey: ['customer_id', 'vr_date', 'publica_id', 'copies', 'amt'],
+      money: true,
+      assignId: true,
+      idColumn: 'retail_id',
+      oldIgnore: ['retail_id', 'rate', 'narr']
+    }
   ];
 }
 

@@ -227,12 +227,12 @@ export function oldSoftwareTables(): OldTable[] {
     {
       source: 'holiday',
       target: 'holiday',
-      map: r => ({ oc_date: r.oc_date, dated: r.oc_date, publica_id: r.publica_id })
+      map: r => ({ oc_date: r.oc_date, dated: r.oc_date, publica_id: r.publica_id, remark: 'Press Holiday' })
     },
     {
       source: 'publicationdis',
       target: 'publicationdis',
-      map: r => ({ publica_id: r.publica_id, entry_date: toIsoDate(r.fromdate), oc_date: toIsoDate(r.todate) })
+      map: r => ({ publica_id: r.publica_id, entry_date: toIsoDate(r.fromdate), oc_date: toIsoDate(r.todate), dis_type: 'P', remark: 'Discontinued' })
     },
     plain('publicationsup'),
     { source: `discontinue${suffix}`, target: 'discontinue', map: discontinueFromOldRow },
