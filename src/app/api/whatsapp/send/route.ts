@@ -16,6 +16,11 @@ function getEmbeddedMangalBase64(): string {
   return MANGAL_FONT_BASE64;
 }
 
+// This month's bill after delivery and discount, the same figure the printed bill shows
+function billCurrentAmount(bill: any): number {
+  return Number(bill.current_bill ?? bill.paper_amount ?? bill.month_amount ?? 0);
+}
+
 function escapeXml(unsafe: string | number | undefined | null): string {
   if (unsafe === undefined || unsafe === null) return '';
   return String(unsafe)
@@ -109,7 +114,8 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const region = bill.region_name || bill.region_id || 'WhatsApp';
   const phone = bill.phone || '';
   
-  const currentAmt = Number(bill.paper_amount !== undefined ? bill.paper_amount : (bill.month_amount || 0)).toFixed(2);
+  const currentAmt = billCurrentAmount(bill).toFixed(2);
+  const paidAmt = Number(bill.paid_amount || 0);
   const prevDue = Number(bill.previous_due !== undefined ? bill.previous_due : 0).toFixed(2);
   const deliveryChg = Number(bill.delivery_charge || 0);
   const totalAmt = Number(bill.net_payable !== undefined ? bill.net_payable : (Number(currentAmt) + Number(prevDue) + deliveryChg)).toFixed(2);
@@ -138,7 +144,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
       // Use clean English name for publication to guarantee 100% crisp rendering without tofu squares
       const pubName = String(it.pub_name || it.name || 'Newspaper').trim();
       const daysOrQty = String(it.days !== undefined && it.days !== null ? it.days : (it.qty || 30));
-      const amtStr = Number(it.amount || 0).toFixed(2);
+      const amtStr = Number(it.net_amount ?? it.amount ?? 0).toFixed(2);
 
       itemRowsSvg += `
       <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">${escapeXml(pubName)}</text>
@@ -171,7 +177,8 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const dividerY = curY + 6;
   const currentAmtY = dividerY + 24;
   const prevDueY = currentAmtY + 24;
-  const totalBoxY = prevDueY + 16;
+  const paidY = prevDueY + 24;
+  const totalBoxY = (paidAmt > 0 ? paidY : prevDueY) + 16;
   const qrY = totalBoxY + 52;
   const qrText1Y = qrY + 164;
   const qrText2Y = qrText1Y + 18;
@@ -272,7 +279,11 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     
     <text x="16" y="${prevDueY}" font-size="13" class="t-reg" fill="#000000">Previous Due</text>
     <text x="384" y="${prevDueY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Rs. ${prevDue}</text>
-    
+    ${paidAmt > 0 ? `
+    <text x="16" y="${paidY}" font-size="13" class="t-reg" fill="#000000">Paid</text>
+    <text x="384" y="${paidY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">- Rs. ${paidAmt.toFixed(2)}</text>
+    ` : ''}
+
     <!-- Boxed Total Banner -->
     <rect x="16" y="${totalBoxY}" width="368" height="38" rx="6" fill="#ffffff" stroke="#000000" stroke-width="2"/>
     <text x="32" y="${totalBoxY + 25}" font-size="15" class="t-bold" fill="#000000">TOTAL PAYABLE</text>
@@ -380,6 +391,8 @@ export async function POST(request: NextRequest) {
                 items: b.items || [],
                 delivery_charge: Number(b.delivery_charge || 0),
                 paper_amount: Number(b.paper_amount || 0),
+                current_bill: b.current_bill,
+                paid_amount: Number(b.paid_amount || 0),
                 previous_due: Number(b.previous_due || 0),
                 net_payable: Number(b.net_payable || 0)
               };
@@ -392,7 +405,7 @@ export async function POST(request: NextRequest) {
               month: billMonth,
               billNo: String(b.bill_no || b.customer_id),
               accountNo: String(b.customer_id),
-              currentAmount: Number(b.paper_amount || 0),
+              currentAmount: billCurrentAmount(b),
               previousDue: Number(b.previous_due || 0),
               totalPayable: Number(b.net_payable || 0),
               billImageBuffer: imageBuffer,
@@ -476,6 +489,8 @@ export async function POST(request: NextRequest) {
           items: body.items || [],
           delivery_charge: Number(body.delivery_charge || 0),
           paper_amount: Number(body.paper_amount || 0),
+          current_bill: body.current_bill,
+          paid_amount: Number(body.paid_amount || 0),
           previous_due: Number(body.previous_due || 0),
           net_payable: Number(body.net_payable || 0)
         };
@@ -487,7 +502,7 @@ export async function POST(request: NextRequest) {
         customer_id: String(body.customer_id || '24669'),
         customer_name: whatsAppDisplayName(body.customer_name, body.customer_hindi),
         month: body.month || month,
-        current_amount: Number(body.paper_amount || 0),
+        current_amount: billCurrentAmount(body),
         previous_due: Number(body.previous_due || 0),
         total_payable: Number(body.net_payable || 0)
       };

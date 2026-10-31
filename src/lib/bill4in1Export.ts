@@ -16,6 +16,7 @@ export interface BillItem {
   days?: number;
   rate: number;
   amount: number;
+  net_amount?: number;
   delivery_amount?: number;
 }
 
@@ -97,13 +98,13 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
       const existing = pubConsolidatedMap.get(pubKey);
       if (existing) {
         existing.totalQty += qty;
-        existing.paperAmount += it.amount;
+        existing.paperAmount += it.net_amount ?? it.amount;
         existing.deliveryAmount += itemDelivery;
       } else {
         pubConsolidatedMap.set(pubKey, {
           pub_name: cleanPub,
           totalQty: qty,
-          paperAmount: it.amount,
+          paperAmount: it.net_amount ?? it.amount,
           deliveryAmount: itemDelivery
         });
       }

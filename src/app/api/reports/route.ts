@@ -1081,6 +1081,21 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Each paper's discount %, so a discounted paper can show its amount after discount
+      const discountPctByPub = new Map<string, number>();
+      const discountedCustIds = billnoRows.filter(h => Number(h.dis_amt || 0) > 0).map(h => h.customer_id);
+      for (let i = 0; i < discountedCustIds.length; i += 200) {
+        const { data: discSubs } = await supabase
+          .from('customer_detail')
+          .select('customer_id, publica_id, dis')
+          .in('customer_id', discountedCustIds.slice(i, i + 200))
+          .gt('dis', 0);
+        (discSubs || []).forEach(s => {
+          const key = `${s.customer_id}_${s.publica_id}`;
+          discountPctByPub.set(key, Math.max(discountPctByPub.get(key) || 0, Number(s.dis)));
+        });
+      }
+
       // Construct final BillRecord objects directly from committed database records
       const bills = billnoRows.map(h => {
         const bid = Number(h.bill_id);
@@ -1127,12 +1142,24 @@ export async function GET(request: NextRequest) {
             days: Number(it.qty || daysInMonth),
             rate: Number(it.rate || 0),
             amount: itemAmt,
+            net_amount: undefined as number | undefined,
             delivery_amount: delyAmt
           };
         });
 
         const deliveryCharge = Number(h.del_amt || 0);
         const discountCharge = Number(h.dis_amt || 0);
+        if (discountCharge > 0) {
+          lineItems.forEach((line, idx) => {
+            const pct = discountPctByPub.get(`${cid}_${rawItems[idx].publica_id}`) || 0;
+            line.net_amount = Math.round(line.amount * (100 - pct)) / 100;
+          });
+          // Saved discount doesn't match the subscription %: share it across the papers instead
+          const netTotal = lineItems.reduce((sum, line) => sum + (line.net_amount ?? line.amount), 0);
+          if (paperTotal > 0 && Math.abs(paperTotal - netTotal - discountCharge) > 0.01) {
+            lineItems.forEach(line => { line.net_amount = line.amount * (1 - discountCharge / paperTotal); });
+          }
+        }
         const rawCurrent = paperTotal + deliveryCharge - discountCharge;
         const paperAmount = roundToFoxProRule(paperTotal);
         const currentBill = roundToFoxProRule(rawCurrent);

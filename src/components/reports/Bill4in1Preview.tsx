@@ -194,13 +194,13 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                     const existing = pubConsolidatedMap.get(pubKey);
                     if (existing) {
                       existing.totalQty += qty;
-                      existing.paperAmount += it.amount;
+                      existing.paperAmount += it.net_amount ?? it.amount;
                       existing.deliveryAmount += itemDelivery;
                     } else {
                       pubConsolidatedMap.set(pubKey, {
                         pub_name: cleanPub,
                         totalQty: qty,
-                        paperAmount: it.amount,
+                        paperAmount: it.net_amount ?? it.amount,
                         deliveryAmount: itemDelivery
                       });
                     }

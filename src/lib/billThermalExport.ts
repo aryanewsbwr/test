@@ -113,13 +113,13 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       const existing = pubConsolidatedMap.get(pubKey);
       if (existing) {
         existing.totalQty += qty;
-        existing.paperAmount += it.amount;
+        existing.paperAmount += it.net_amount ?? it.amount;
         existing.deliveryAmount += itemDelivery;
       } else {
         pubConsolidatedMap.set(pubKey, {
           pub_name: pubDisplayName,
           totalQty: qty,
-          paperAmount: it.amount,
+          paperAmount: it.net_amount ?? it.amount,
           deliveryAmount: itemDelivery
         });
       }
@@ -175,7 +175,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   const monthBillAmount = b.current_bill !== undefined && b.current_bill !== null
     ? roundToFoxProRule(b.current_bill)
     : roundToFoxProRule(Math.max(0, paperAmount + deliveryCharge - discountAmount));
-  const previousDue = roundToFoxProRule(b.previous_due || 0);
+  const previousDue = Number(b.previous_due || 0);
   const netPayable = b.net_payable !== undefined && b.net_payable !== null
     ? roundToFoxProRule(b.net_payable)
     : roundToFoxProRule(monthBillAmount + previousDue);

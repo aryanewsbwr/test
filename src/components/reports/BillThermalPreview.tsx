@@ -197,6 +197,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           items: currentBill.items || [],
           delivery_charge: currentBill.delivery_charge || 0,
           paper_amount: currentBill.paper_amount || 0,
+          current_bill: currentBill.current_bill,
+          paid_amount: currentBill.paid_amount || 0,
           previous_due: currentBill.previous_due || 0,
           net_payable: currentBill.net_payable || 0,
           image_base64: imageBase64
@@ -295,6 +297,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           items: b.items || [],
           paper_amount: b.paper_amount || 0,
           delivery_charge: b.delivery_charge || 0,
+          current_bill: b.current_bill,
+          paid_amount: b.paid_amount || 0,
           previous_due: b.previous_due || 0,
           net_payable: b.net_payable || 0,
           image_base64: chunkImages[j]
@@ -402,13 +406,13 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         const existing = pubConsolidatedMap.get(pubKey);
         if (existing) {
           existing.totalQty += qty;
-          existing.paperAmount += it.amount;
+          existing.paperAmount += it.net_amount ?? it.amount;
           existing.deliveryAmount += itemDelivery;
         } else {
           pubConsolidatedMap.set(pubKey, {
             pub_name: pubDisplayName,
             totalQty: qty,
-            paperAmount: it.amount,
+            paperAmount: it.net_amount ?? it.amount,
             deliveryAmount: itemDelivery
           });
         }
@@ -464,7 +468,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     const monthBillAmount = b.current_bill !== undefined && b.current_bill !== null
       ? roundToFoxProRule(b.current_bill)
       : roundToFoxProRule(Math.max(0, paperAmount + deliveryCharge - discountAmount));
-    const previousDue = roundToFoxProRule(b.previous_due || 0);
+    const previousDue = Number(b.previous_due || 0);
     const netPayable = b.net_payable !== undefined && b.net_payable !== null
       ? roundToFoxProRule(b.net_payable)
       : roundToFoxProRule(monthBillAmount + previousDue);
