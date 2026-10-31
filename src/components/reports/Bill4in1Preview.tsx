@@ -381,6 +381,12 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                           <span className="text-slate-800">Previous Balance</span>
                           <span className="font-mono font-bold text-[9px]">{formatMoney(b.previous_due)}</span>
                         </div>
+                        {!!b.paid_amount && (
+                          <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
+                            <span className="text-slate-800">Paid This Month</span>
+                            <span className="font-mono font-bold text-[9px]">-{formatMoney(b.paid_amount)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between items-center py-1.5 px-1.5 bg-slate-50 font-black">
                           <span className="uppercase text-[8.5px]">Grand Total</span>
                           <span className="font-mono text-[10px]">{formatMoney(roundToFoxProRule(b.net_payable))}</span>

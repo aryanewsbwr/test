@@ -580,6 +580,12 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             <span className="text-left">Prev. Due / बकाया</span>
             <span className="font-bold whitespace-nowrap ml-1">₹ {formatMoney(previousDue)}</span>
           </div>
+          {!!b.paid_amount && (
+            <div className="flex justify-between items-center font-semibold text-zinc-900">
+              <span className="text-left">Paid / जमा</span>
+              <span className="font-bold whitespace-nowrap ml-1">- ₹ {formatMoney(b.paid_amount)}</span>
+            </div>
+          )}
         </div>
 
         {/* Total Banner Box */}

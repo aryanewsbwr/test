@@ -39,6 +39,7 @@ export interface BillRecord {
   discount_amount?: number;
   current_bill?: number;
   previous_due: number;
+  paid_amount?: number;
   advance?: number;
   net_payable: number;
 }
@@ -283,6 +284,11 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
                 <td class="sum-lbl">Previous Balance</td>
                 <td class="sum-val">${formatMoney(b.previous_due)}</td>
               </tr>
+              ${b.paid_amount ? `
+              <tr>
+                <td class="sum-lbl">Paid This Month</td>
+                <td class="sum-val">-${formatMoney(b.paid_amount)}</td>
+              </tr>` : ''}
               <tr class="grand-total-row">
                 <td class="sum-lbl font-bold">Grand Total</td>
                 <td class="sum-val font-bold">${formatMoney(roundToFoxProRule(b.net_payable))}</td>

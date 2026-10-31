@@ -45,6 +45,7 @@ export interface CustomerMonthlyBill {
   delivery_amount: number;
   discount_amount: number;
   retail_sale_amount: number;
+  paid_this_month: number;
   total_payable: number;
   breakup: BillingLineItem[];
   db_bill_items?: any[];
@@ -1032,6 +1033,34 @@ export function calculateBilling({
     const rawCurrentCharges = customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal;
     const currentMonthCharges = roundToFoxProRule(rawCurrentCharges);
 
+    // Deduct each unique receipt once
+    const seenRecpKeys = new Set<string>();
+    let priorReceiptsTotal = 0;
+    let targetMonthReceiptsTotal = 0;
+    for (const r of receipts) {
+      const rCid = Number(r.customer_id || r.Customer_id);
+      if (rCid !== Number(custId)) continue;
+      const rMonth = (r.month || r.Month || '').toLowerCase().trim();
+      const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+      const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+
+      const key = r.recp_no && Number(r.recp_no) !== 0
+        ? String(r.recp_no)
+        : `${rCid}_${rMonth}_${recpAmt}`;
+      if (seenRecpKeys.has(key)) continue;
+      seenRecpKeys.add(key);
+
+      const rMIdx = FY_MONTH_ORDER[rMonth];
+      if (rMIdx === targetFyIndex) {
+        targetMonthReceiptsTotal += recpAmt + lessAmt;
+      } else if (rMIdx === undefined || rMIdx < targetFyIndex) {
+        priorReceiptsTotal += recpAmt + lessAmt;
+      }
+    }
+
+    // Part of a same-month receipt left after clearing older dues: shown as Paid on this bill
+    let paidThisMonth = targetMonthReceiptsTotal;
+
     if (hasPriorHeaders) {
       // Calculate cumulative prior bills (Dues + Apr..Sep)
       let priorBillsTotal = 0;
@@ -1064,42 +1093,18 @@ export function calculateBilling({
         }
       }
 
-      // Deduct each unique receipt once
-      const seenRecpKeys = new Set<string>();
-      let priorReceiptsTotal = 0;
-      let targetMonthReceiptsTotal = 0;
-      for (const r of receipts) {
-        const rCid = Number(r.customer_id || r.Customer_id);
-        if (rCid !== Number(custId)) continue;
-        const rMonth = (r.month || r.Month || '').toLowerCase().trim();
-        const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
-        const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-
-        const key = r.recp_no && Number(r.recp_no) !== 0
-          ? String(r.recp_no)
-          : `${rCid}_${rMonth}_${recpAmt}`;
-        if (seenRecpKeys.has(key)) continue;
-        seenRecpKeys.add(key);
-
-        const rMIdx = FY_MONTH_ORDER[rMonth];
-        if (rMIdx === targetFyIndex) {
-          targetMonthReceiptsTotal += recpAmt + lessAmt;
-        } else if (rMIdx === undefined || rMIdx < targetFyIndex) {
-          priorReceiptsTotal += recpAmt + lessAmt;
-        }
-      }
-
       // A receipt in the bill's own month clears older dues first, but it can never
       // turn this month's charges into a negative Previous Due.
       const priorDue = priorBillsTotal - priorReceiptsTotal;
       customerPreviousBalance = priorDue > 0 ? Math.max(0, priorDue - targetMonthReceiptsTotal) : priorDue;
+      paidThisMonth = Math.max(0, targetMonthReceiptsTotal - Math.max(0, priorDue));
     }
 
     const previousDue = Math.abs(customerPreviousBalance) < 0.01 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
 
     const openingBalanceThisBill = previousDue;
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
-    const totalPayable = roundToFoxProRule(customerPreviousBalance + rawCurrentCharges);
+    const totalPayable = roundToFoxProRule(customerPreviousBalance + rawCurrentCharges - paidThisMonth);
 
     // In FoxPro monthly delivery billing, bills are generated strictly for customers with active paper deliveries / sales (paperTotal > 0).
     // Customers with 0 newspaper deliveries in the current month do NOT receive a monthly newspaper bill.
@@ -1188,6 +1193,7 @@ export function calculateBilling({
       delivery_amount: customerDeliveryTotal,
       discount_amount: customerDiscountTotal,
       retail_sale_amount: customerRetailTotal,
+      paid_this_month: paidThisMonth,
       total_payable: totalPayable,
       breakup: custBreakup,
       db_bill_items: dbBillItems,

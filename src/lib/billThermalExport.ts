@@ -272,6 +272,11 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
           <span class="summary-label">Prev. Due / बकाया</span>
           <span class="summary-value">₹ ${formatMoney(previousDue)}</span>
         </div>
+        ${b.paid_amount ? `
+        <div class="summary-row">
+          <span class="summary-label">Paid / जमा</span>
+          <span class="summary-value">- ₹ ${formatMoney(b.paid_amount)}</span>
+        </div>` : ''}
       </div>
 
       <!-- Boxed TOTAL / कुल देय Banner -->

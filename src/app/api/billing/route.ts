@@ -668,6 +668,7 @@ export async function GET(request: NextRequest) {
       paper_amount: b.paper_amount,
       delivery_amount: b.delivery_amount,
       discount_amount: b.discount_amount,
+      paid_this_month: b.paid_this_month,
       total_payable: b.total_payable,
       month: b.month,
       year: b.year

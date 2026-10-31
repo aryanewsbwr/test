@@ -1041,6 +1041,23 @@ export async function GET(request: NextRequest) {
       };
       const daysInMonth = monthDaysMap[standardMonth.toLowerCase()] || 31;
 
+      // Receipts marked for this bill's month, for the Paid line ('Sept' / 'Octo' are stored spellings)
+      const monthReceiptsByCust = new Map<number, number>();
+      const receiptMonthNames = Array.from(new Set([standardMonth, monthPrefix, standardMonth.slice(0, 4)]));
+      for (let i = 0; i < targetCustIds.length; i += 200) {
+        const chunk = targetCustIds.slice(i, i + 200);
+        const { data: monthReceipts } = await supabase
+          .from(`receipt${fySuffix}`)
+          .select('customer_id, mal_recp_amt, less_amt')
+          .in('customer_id', chunk)
+          .in('month', receiptMonthNames);
+        (monthReceipts || []).forEach(r => {
+          const rCid = Number(r.customer_id);
+          const received = Number(r.mal_recp_amt || 0) + Number(r.less_amt || 0);
+          monthReceiptsByCust.set(rCid, (monthReceiptsByCust.get(rCid) || 0) + received);
+        });
+      }
+
       // Construct final BillRecord objects directly from committed database records
       const bills = billnoRows.map(h => {
         const bid = Number(h.bill_id);
@@ -1109,7 +1126,13 @@ export async function GET(request: NextRequest) {
 
         const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
         if (isGovtSupply) prevDue = 0;
-        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(rawCurrent + prevDue);
+        // The saved balance already has the Paid amount taken off. Only trust that gap for
+        // customers with a receipt in this month, so other bills keep their usual total.
+        const monthReceipts = isGovtSupply ? 0 : (monthReceiptsByCust.get(cid) || 0);
+        const paidAmount = monthReceipts > 0
+          ? Math.min(monthReceipts, Math.max(0, rawCurrent + prevDue + Number(h.balance || 0)))
+          : 0;
+        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(rawCurrent + prevDue - paidAmount);
 
         // Extract phone number from c.phone, c.hindi_add, c.add1, or c.add2 if present
         let rawPhone = c.phone || '';
@@ -1148,6 +1171,7 @@ export async function GET(request: NextRequest) {
           paper_amount: paperAmount,
           current_bill: currentBill,
           previous_due: prevDue,
+          paid_amount: paidAmount,
           advance: c.cbal || 0,
           net_payable: netPayable
         };
