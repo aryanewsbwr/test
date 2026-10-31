@@ -852,6 +852,8 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
             rates={rates}
             holidays={holidays}
             discontinues={discontinues}
+            periodMonth={currentPeriod.month}
+            periodStartYear={currentPeriod.startYear}
           />
         )}
 
@@ -935,10 +937,12 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         {activeWindow === 'reports' && (
           <ReportsForm 
             initialReport={selectedReportType}
-            onClose={() => setActiveWindow(null)} 
+            onClose={() => setActiveWindow(null)}
             regions={regions}
             hawkers={hawkers}
             publications={publications}
+            periodMonth={currentPeriod.month}
+            periodStartYear={currentPeriod.startYear}
           />
         )}
 

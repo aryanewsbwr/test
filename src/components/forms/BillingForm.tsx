@@ -12,6 +12,8 @@ interface BillingFormProps {
   rates?: Rate[];
   holidays?: Holiday[];
   discontinues?: Discontinue[];
+  periodMonth: string;
+  periodStartYear: number;
 }
 
 const MONTHS = [
@@ -25,10 +27,18 @@ const FINANCIAL_YEARS = [
   { label: '2024-2025', value: '20242025', year: 2024 }
 ];
 
-export default function BillingForm({ onClose }: BillingFormProps) {
-  const [month, setMonth] = useState('August');
-  const [selectedYear, setSelectedYear] = useState('20262027');
+export default function BillingForm({ onClose, periodMonth, periodStartYear }: BillingFormProps) {
+  const periodFinancialYear = `${periodStartYear}${periodStartYear + 1}`;
+  const [month, setMonth] = useState(periodMonth);
+  const [selectedYear, setSelectedYear] = useState(periodFinancialYear);
   const [selectedRegion, setSelectedRegion] = useState('all');
+
+  // Follow the app's Period, including when it is changed while this form is open
+  useEffect(() => {
+    setMonth(periodMonth);
+    setSelectedYear(periodFinancialYear);
+  }, [periodMonth, periodFinancialYear]);
+
   const [commitToDatabase, setCommitToDatabase] = useState(true);
   const [regions, setRegions] = useState<any[]>([]);
   

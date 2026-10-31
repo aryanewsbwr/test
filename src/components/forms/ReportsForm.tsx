@@ -21,9 +21,14 @@ interface ReportsFormProps {
   regions?: any[];
   hawkers?: any[];
   publications?: any[];
+  periodMonth: string;
+  periodStartYear: number;
 }
 
 type WaRegionStatus = Record<string, { total: number; sent: number; manual: number }>;
+
+// Regions starting with Z are hidden from Region Wise Bill Printing (same rule in /api/reports)
+const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 
 // Last WhatsApp region counts per month, so the dropdown is red straight away while it refreshes
 const waRegionCache = new Map<string, WaRegionStatus>();
@@ -70,7 +75,9 @@ export default function ReportsForm({
   initialPub = 'all',
   regions: propsRegions = [],
   hawkers: propsHawkers = [],
-  publications: propsPubs = []
+  publications: propsPubs = [],
+  periodMonth,
+  periodStartYear
 }: ReportsFormProps) {
   const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
   const [activeReport, setActiveReport] = useState<string>(initialReport);
@@ -86,8 +93,8 @@ export default function ReportsForm({
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion !== undefined && initialRegion !== 'undefined' ? String(initialRegion) : 'all');
   const [selectedHawker, setSelectedHawker] = useState<string>(initialHawker !== undefined && initialHawker !== 'undefined' ? String(initialHawker) : 'all');
   const [selectedPub, setSelectedPub] = useState<string>(initialPub !== undefined && initialPub !== 'undefined' ? String(initialPub) : 'all');
-  const [selectedMonth, setSelectedMonth] = useState<string>('September');
-  const [selectedYear, setSelectedYear] = useState<string>('2026');
+  const [selectedMonth, setSelectedMonth] = useState<string>(periodMonth);
+  const [selectedYear, setSelectedYear] = useState<string>(String(periodStartYear));
   const [targetCustId, setTargetCustId] = useState<string>('');
   const [selectedCustName, setSelectedCustName] = useState<string>('');
   const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
@@ -124,6 +131,12 @@ export default function ReportsForm({
       setWaRegionError('Could not check which regions were already sent on WhatsApp.');
     }
   }, [selectedMonth, selectedYear]);
+
+  // Follow the app's Period, including when it is changed while this form is open
+  useEffect(() => {
+    setSelectedMonth(periodMonth);
+    setSelectedYear(String(periodStartYear));
+  }, [periodMonth, periodStartYear]);
 
   // Sync initialReport when prop changes
   useEffect(() => {
@@ -397,6 +410,7 @@ export default function ReportsForm({
                 >
                   <option value="all">-- All Regions --</option>
                   {[...regions]
+                    .filter(r => activeReport !== 'bill_print_region' || !isHiddenBillRegion(r.region_name || r.name))
                     .sort((a, b) => String(a.region_name || a.name || '').localeCompare(String(b.region_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
                     .map(r => {
                       const sentInfo = activeReport === 'bill_print_region' ? waRegionStatus[r.region_id || r.id] : undefined;

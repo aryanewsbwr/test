@@ -911,6 +911,17 @@ export async function GET(request: NextRequest) {
 
       // If user searched by Customer ID or numeric input, filter directly at DB level
       const trimmedSearch = (search || '').trim();
+
+      // All Regions preview leaves out regions starting with Z; a direct customer search still finds them
+      if (reportType === 'bill_print_region' && (!regionId || regionId === 'all') && !trimmedSearch) {
+        const hiddenRegionIds = data.regions
+          .filter(r => /^\s*z/i.test(String(r.region_name || r.name || '')))
+          .map(r => r.region_id);
+        if (hiddenRegionIds.length > 0) {
+          query = query.not('region_id', 'in', `(${hiddenRegionIds.join(',')})`);
+        }
+      }
+
       const isNumericSearch = /^\d+$/.test(trimmedSearch);
       if (isNumericSearch) {
         query = query.eq('customer_id', parseInt(trimmedSearch, 10));
