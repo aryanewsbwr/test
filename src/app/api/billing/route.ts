@@ -13,10 +13,7 @@ export const dynamic = 'force-dynamic';
 
 let cachedCusts: any[] | null = null;
 let cachedRates: any[] | null = null;
-let cachedRateChanges: any[] | null = null;
 let cachedPubs: any[] | null = null;
-let cachedHolidays: any[] | null = null;
-let cachedDiscontinues: any[] | null = null;
 let cachedBills: any[] | null = null;
 let cachedReceipts: any[] | null = null;
 let cachedPubDis: any[] | null = null;
@@ -63,108 +60,48 @@ async function fetchAllFromSupabase(table: string): Promise<any[]> {
   }
 }
 
+// Rates, rate changes, holidays and discontinues are read fresh for every run, so an entry
+// made today counts straight away. A failed read stops the run instead of billing old data.
 async function getRates(): Promise<any[]> {
-  let localRates = loadJson('rates.json');
-  try {
-    const { data: sbRates } = await supabase.from('rate').select('*');
-    if (sbRates && sbRates.length > 0) {
-      localRates = sbRates.map((r: any) => ({
-        publica_id: r.publica_id ?? r.Publica_id,
-        dayofweek: r.dayofweek ?? r.Dayofweek,
-        rate: Number(r.rate ?? r.Rate)
-      }));
-    }
-  } catch (_) {}
-  return localRates || [];
+  const rows = await fetchEveryRow('rate', '*', 'id');
+  return rows.map((r: any) => ({
+    publica_id: r.publica_id,
+    dayofweek: r.dayofweek,
+    rate: Number(r.rate)
+  }));
 }
 
 async function getRateChanges(): Promise<any[]> {
-  if (cachedRateChanges && cachedRateChanges.length > 0) return cachedRateChanges;
-  let localRcs = loadJson('ratechanges.json').map((rc: any) => ({
-    publica_id: rc.publica_id ?? rc.Publica_id,
-    dayofweek: rc.dayofweek ?? rc.Dayofweek,
-    oldrate: rc.oldrate ?? rc.old_rate ?? rc.OldRate ?? 0,
-    new_rate: rc.new_rate ?? rc.newrate ?? rc.NewRate ?? 0,
-    dated: (rc.effective_date || rc.dated || rc.Dated || '').split('T')[0],
-    effective_date: (rc.effective_date || rc.dated || rc.Dated || '').split('T')[0]
-  }));
-
-  try {
-    const sbRcs = await fetchAllFromSupabase('ratechange');
-    if (sbRcs && sbRcs.length > 0) {
-      const seen = new Set(
-        localRcs.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
-      );
-      sbRcs.forEach((r: any) => {
-        const pid = r.publica_id ?? r.Publica_id;
-        const dow = r.dayofweek ?? r.Dayofweek;
-        const effD = (r.effective_date || r.Dated || r.dated || '').split('T')[0];
-        const newR = Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0);
-        const oldR = Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0);
-        const key = `${pid}-${dow}-${effD}-${newR}`;
-        if (!seen.has(key)) {
-          localRcs.push({
-            publica_id: pid,
-            dayofweek: dow,
-            oldrate: oldR,
-            new_rate: newR,
-            dated: effD,
-            effective_date: effD
-          });
-          seen.add(key);
-        }
-      });
-    }
-  } catch (_) {}
-  cachedRateChanges = localRcs;
-  return cachedRateChanges;
+  const rows = await fetchEveryRow('ratechange', '*', 'id');
+  return rows.map((r: any) => {
+    const effD = (r.effective_date || '').split('T')[0];
+    return {
+      publica_id: r.publica_id,
+      dayofweek: r.dayofweek,
+      oldrate: Number(r.oldrate ?? 0),
+      new_rate: Number(r.newrate ?? 0),
+      dated: effD,
+      effective_date: effD
+    };
+  });
 }
 
 async function getDiscontinues(): Promise<any[]> {
-  if (cachedDiscontinues && cachedDiscontinues.length > 0) return cachedDiscontinues;
-  const localDiscs = loadJson('discontinues.json') || [];
-  try {
-    const [dRes, cdRes] = await Promise.all([
-      fetchAllFromSupabase('discontinue'),
-      fetchAllFromSupabase('customer_discontinue')
-    ]);
+  const [mainRows, extraRows] = await Promise.all([
+    fetchEveryRow('discontinue', '*', 'discontinue_id'),
+    fetchEveryRow('customer_discontinue', '*', 'id')
+  ]);
 
-    const liveList = [...(dRes || []), ...(cdRes || [])];
-    if (liveList.length > 0) {
-      const localMap = new Map<string, any>();
-      for (const ld of localDiscs) {
-        if (ld.discontinue_id) localMap.set(`id-${ld.discontinue_id}`, ld);
-        localMap.set(`${ld.customer_id}-${ld.publica_id}-${ld.temp_from}`, ld);
-      }
-      const enrichedLiveList = liveList.map((d: any) => {
-        const match = localMap.get(`id-${d.discontinue_id}`) || localMap.get(`${d.customer_id}-${d.publica_id}-${d.temp_from}`);
-        if (match) {
-          return {
-            ...d,
-            s_date: d.s_date || match.s_date,
-            c_date: d.c_date || match.c_date
-          };
-        }
-        return d;
-      });
-
-      const merged = [...enrichedLiveList];
-      const seen = new Set(enrichedLiveList.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
-      for (const ld of localDiscs) {
-        const key = `${ld.customer_id || ld.Customer_id}-${ld.publica_id || ld.Publica_id}-${ld.temp_from || ld.Temp_From}-${ld.temp_to || ld.Temp_To}`;
-        if (!seen.has(key)) {
-          merged.push(ld);
-          seen.add(key);
-        }
-      }
-      cachedDiscontinues = merged;
-      return cachedDiscontinues;
-    }
-  } catch (err) {
-    console.warn('Supabase live discontinue fetch error in billing:', err);
+  // The tables have no subscription dates, so those still come from the original import
+  const localMap = new Map<string, any>();
+  for (const ld of loadJson('discontinues.json') || []) {
+    if (ld.discontinue_id) localMap.set(`id-${ld.discontinue_id}`, ld);
+    localMap.set(`${ld.customer_id}-${ld.publica_id}-${ld.temp_from}`, ld);
   }
-  cachedDiscontinues = localDiscs;
-  return cachedDiscontinues;
+  return [...mainRows, ...extraRows].map((d: any) => {
+    const match = localMap.get(`id-${d.discontinue_id}`) || localMap.get(`${d.customer_id}-${d.publica_id}-${d.temp_from}`);
+    return match ? { ...d, s_date: d.s_date || match.s_date, c_date: d.c_date || match.c_date } : d;
+  });
 }
 
 async function getCustomers(regionId?: string | number): Promise<any[]> {
@@ -273,18 +210,7 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
 }
 
 async function getHolidays(): Promise<any[]> {
-  if (cachedHolidays && cachedHolidays.length > 0) return cachedHolidays;
-  try {
-    const all = await fetchAllFromSupabase('holiday');
-    if (all && all.length > 0) {
-      cachedHolidays = all;
-      return cachedHolidays;
-    }
-  } catch (err) {
-    console.warn('Failed to fetch holidays from Supabase in billing route:', err);
-  }
-  cachedHolidays = loadJson('holidays.json');
-  return cachedHolidays || [];
+  return fetchEveryRow('holiday', '*', 'id');
 }
 
 async function getPublicationDiscontinues(): Promise<any[]> {
