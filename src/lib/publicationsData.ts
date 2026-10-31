@@ -9,3 +9,11 @@ export async function fetchPublications(): Promise<any[]> {
   const f = path.join(process.cwd(), 'public', 'data', 'publications.json');
   return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf-8')) : [];
 }
+
+// Same rule for regions: the regiond table is live, the file is only a fallback
+export async function fetchRegions(): Promise<any[]> {
+  const { data, error } = await supabase.from('regiond').select('*').order('region_id', { ascending: true });
+  if (!error && data && data.length > 0) return data.map((r: any) => ({ ...r, name: r.region_name }));
+  const f = path.join(process.cwd(), 'public', 'data', 'regions.json');
+  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf-8')) : [];
+}

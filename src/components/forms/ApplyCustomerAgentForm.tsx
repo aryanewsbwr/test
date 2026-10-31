@@ -17,11 +17,12 @@ export default function ApplyCustomerAgentForm({ onClose }: ApplyCustomerAgentFo
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    fetch('/data/regions.json')
+    fetch('/api/regions')
       .then(r => r.json())
       .then(d => {
-        setRegions(d || []);
-        if (d && d.length > 0) setSelectedRegion(d[0].region_id?.toString() || '1');
+        const list = d.regions || [];
+        setRegions(list);
+        if (list.length > 0) setSelectedRegion(list[0].region_id?.toString() || '1');
       })
       .catch(() => {});
   }, []);

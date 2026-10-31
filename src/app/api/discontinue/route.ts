@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchPublications } from '@/lib/publicationsData';
+import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       if (pid) pubMap.set(pid, p.public_name || p.name || `Publication #${pid}`);
     }
 
-    const allRegions = loadJson('regions.json');
+    const allRegions = await fetchRegions();
     const regionMap = new Map<number, string>();
     for (const r of allRegions) {
       const rid = Number(r.region_id || r.id);

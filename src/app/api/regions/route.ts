@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { fetchRegions } from '@/lib/publicationsData';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ function saveJson(filename: string, data: any) {
 
 export async function GET(request: NextRequest) {
   try {
-    const regions = loadJson('regions.json');
+    const regions = await fetchRegions();
     const decoded = regions.map((r: any) => {
       const rName = String(r.region_name || r.name || '');
       return {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Region Name is required' }, { status: 400 });
     }
 
-    const regList = loadJson('regions.json');
+    const regList = await fetchRegions();
     let finalRegId = region_id ? parseInt(region_id, 10) : 0;
     const isUpdate = finalRegId > 0 && regList.some((r: any) => (r.region_id || r.id) === finalRegId);
 
@@ -64,15 +65,11 @@ export async function POST(request: NextRequest) {
     };
 
     // 1. Save to Supabase regiond table
-    try {
-      if (isUpdate) {
-        await supabase.from('regiond').update({ Region_id: finalRegId, Region_name: rName.trim() }).eq('Region_id', finalRegId);
-      } else {
-        await supabase.from('regiond').insert([{ Region_id: finalRegId, Region_name: rName.trim() }]);
-      }
-    } catch (dbErr) {
-      console.warn('Supabase region save warning:', dbErr);
-    }
+    const regionRow = { region_id: finalRegId, region_name: record.region_name, hindi_name: hindi, zone: record.zone };
+    const { error: regionErr } = isUpdate
+      ? await supabase.from('regiond').update(regionRow).eq('region_id', finalRegId)
+      : await supabase.from('regiond').insert([regionRow]);
+    if (regionErr) throw new Error(`Could not save region: ${regionErr.message}`);
 
     // 2. Update local regions.json
     try {
@@ -103,11 +100,18 @@ export async function DELETE(request: NextRequest) {
 
     const rid = parseInt(idStr, 10);
 
-    try {
-      await supabase.from('regiond').delete().eq('Region_id', rid);
-    } catch (dbErr) {
-      console.warn('Supabase delete warning:', dbErr);
+    // A region still holding customers would leave them with no region on their bills
+    const { count: custCount, error: custErr } = await supabase
+      .from('customer')
+      .select('customer_id', { count: 'exact', head: true })
+      .eq('region_id', rid);
+    if (custErr) throw new Error(`Could not check customers: ${custErr.message}`);
+    if ((custCount || 0) > 0) {
+      return NextResponse.json({ error: `${custCount} customers are in this region. Move them before deleting it.` }, { status: 400 });
     }
+
+    const { error: delErr } = await supabase.from('regiond').delete().eq('region_id', rid);
+    if (delErr) throw new Error(`Could not delete region: ${delErr.message}`);
 
     try {
       const list = loadJson('regions.json');

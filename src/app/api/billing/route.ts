@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchPublications } from '@/lib/publicationsData';
+import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -18,7 +18,6 @@ let cachedHolidays: any[] | null = null;
 let cachedDiscontinues: any[] | null = null;
 let cachedBills: any[] | null = null;
 let cachedReceipts: any[] | null = null;
-let cachedRegions: any[] | null = null;
 let cachedPubDis: any[] | null = null;
 let cachedAllSubs: any[] | null = null;
 
@@ -165,12 +164,6 @@ async function getDiscontinues(): Promise<any[]> {
   }
   cachedDiscontinues = localDiscs;
   return cachedDiscontinues;
-}
-
-function getRegions(): any[] {
-  if (cachedRegions && cachedRegions.length > 0) return cachedRegions;
-  cachedRegions = loadJson('regions.json');
-  return cachedRegions || [];
 }
 
 async function getCustomers(regionId?: string | number): Promise<any[]> {
@@ -503,7 +496,7 @@ export async function GET(request: NextRequest) {
       getRateChanges(),
       fetchPublications(),
       getDiscontinues(),
-      getRegions()
+      fetchRegions()
     ]);
 
     // Determine fiscal year suffix (e.g. 20252026)
@@ -759,7 +752,7 @@ export async function POST(request: NextRequest) {
       getRateChanges(),
       fetchPublications(),
       getDiscontinues(),
-      getRegions(),
+      fetchRegions(),
       getSupplements()
     ]);
 
