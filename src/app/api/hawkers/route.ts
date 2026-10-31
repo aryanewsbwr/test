@@ -24,11 +24,24 @@ export async function GET(request: NextRequest) {
 
     let hawkers: any[] = [];
     try {
-      const { data, error } = await supabase.from('hawker').select('*').order('hawker_id', { ascending: true });
-      if (!error && data && data.length > 0) {
-        hawkers = data;
+      // Supabase returns at most 1000 rows per request, so read the table page by page
+      const PAGE_SIZE = 1000;
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('hawker')
+          .select('*')
+          .order('hawker_id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error || !data) {
+          hawkers = [];
+          break;
+        }
+        hawkers.push(...data);
+        if (data.length < PAGE_SIZE) break;
       }
-    } catch (_) {}
+    } catch (_) {
+      hawkers = [];
+    }
 
     if (hawkers.length === 0) {
       hawkers = loadJson('hawkers.json');

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
 import { cleanOrTransliterateHindi, englishToHindiPhonetic, transliterateToHindiAsync } from '@/lib/transliteration';
@@ -94,6 +94,13 @@ export default function CustomerForm({
     dis: 0,
     dely: 0
   });
+
+  // Hawkers offered when inserting an item: names starting with Z are hidden for now
+  const insertHawkers = useMemo(() => (
+    hawkers
+      .filter(h => !h.name.trim().toLowerCase().startsWith('z'))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) || a.hawker_id - b.hawker_id)
+  ), [hawkers]);
 
   // Find Dialog State
   const [isFindOpen, setIsFindOpen] = useState(false);
@@ -285,7 +292,7 @@ export default function CustomerForm({
     }
     // A customer's papers usually come through one hawker, so start from their current one
     const currentSub = subscriptions.find(s => s.is_active !== false && s.hawker_id);
-    const currentHawker = hawkers.find(h => h.hawker_id === currentSub?.hawker_id);
+    const currentHawker = insertHawkers.find(h => h.hawker_id === currentSub?.hawker_id);
     setInsertForm({
       pubText: '',
       hawkerText: currentHawker ? hawkerLabel(currentHawker) : '',
@@ -315,7 +322,7 @@ export default function CustomerForm({
     if (isSavingSub) return;
 
     const pub = publications.find(p => publicationLabel(p) === insertForm.pubText);
-    const hwk = hawkers.find(h => hawkerLabel(h) === insertForm.hawkerText);
+    const hwk = insertHawkers.find(h => hawkerLabel(h) === insertForm.hawkerText);
     const fromDay = insertForm.fromDay.trim();
 
     let error = '';
@@ -1005,7 +1012,7 @@ export default function CustomerForm({
                 className="flex-1 min-w-0 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800 shadow-inner"
               />
               <datalist id="insert-hawker-list">
-                {hawkers.map(h => (
+                {insertHawkers.map(h => (
                   <option key={h.hawker_id} value={hawkerLabel(h)} />
                 ))}
               </datalist>
