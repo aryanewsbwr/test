@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { nextId } from '@/lib/publicationsData';
+import { currentUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,10 +94,12 @@ export async function POST(request: NextRequest) {
     // An existing customer is updated in place. Checking the database, not a copy, keeps an
     // edit from turning into a second customer with the same name.
     let finalId = customer_id ? parseInt(customer_id, 10) : 0;
+    let oldPhone = '';
     if (finalId > 0) {
-      const { data: found, error: findErr } = await supabase.from('customer').select('customer_id').eq('customer_id', finalId);
+      const { data: found, error: findErr } = await supabase.from('customer').select('customer_id, phone').eq('customer_id', finalId);
       if (findErr) throw new Error(`Could not read customers: ${findErr.message}`);
       if (!found?.length) finalId = 0;
+      else oldPhone = String(found[0].phone || '').trim();
     }
     const isUpdate = finalId > 0;
     if (!isUpdate) finalId = await nextId('customer', 'customer_id');
@@ -134,6 +137,21 @@ export async function POST(request: NextRequest) {
       ? await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId)
       : await supabase.from('customer').insert([supabaseCustomerRecord]);
     if (sbErr) throw new Error(`Could not save customer: ${sbErr.message}`);
+
+    // A number changed here belongs in Numbers > History too. The customer is already saved,
+    // so a failure here (History not set up yet) must not report the save as failed.
+    if (isUpdate && oldPhone !== String(phone || '').trim()) {
+      const user = await currentUser(request);
+      const { error: historyErr } = await supabase.from('customer_phone_history').insert([{
+        customer_id: finalId,
+        customer_name: supabaseCustomerRecord.name_eng,
+        region_id: supabaseCustomerRecord.region_id,
+        old_phone: oldPhone,
+        new_phone: String(phone || '').trim(),
+        changed_by: user?.username || user?.id || ''
+      }]);
+      if (historyErr) console.warn('Number change not added to history:', historyErr.message);
+    }
 
     return NextResponse.json({
       success: true,

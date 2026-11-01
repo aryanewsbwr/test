@@ -49,6 +49,7 @@ import RegionForm from './forms/RegionForm';
 import HolidayForm from './forms/HolidayForm';
 import RateMatrixForm from './forms/RateMatrixForm';
 import CollectionAgentForm from './forms/CollectionAgentForm';
+import NumbersForm from './forms/NumbersForm';
 import UserPermissionsForm from './forms/UserPermissionsForm';
 import CounterSaleForm from './forms/CounterSaleForm';
 import RetailSalePermanentForm from './forms/RetailSalePermanentForm';
@@ -338,6 +339,9 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
               <button onClick={() => { setActiveWindow('customers'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
                 <span>Customer</span>
                 <span className="text-slate-600 font-mono text-[11px] ml-6">Ctrl+C</span>
+              </button>
+              <button onClick={() => { setActiveWindow('numbers'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Numbers
               </button>
               <button onClick={() => { setActiveWindow('collectionagent'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Collection Agent
@@ -778,6 +782,13 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
           <HawkerForm 
             onClose={() => setActiveWindow(null)} 
             hawkers={hawkers}
+            regions={regions}
+          />
+        )}
+
+        {activeWindow === 'numbers' && (
+          <NumbersForm
+            onClose={() => setActiveWindow(null)}
             regions={regions}
           />
         )}
