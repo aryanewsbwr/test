@@ -34,6 +34,13 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
   const [selectedYear, setSelectedYear] = useState(periodFinancialYear);
   const [selectedRegion, setSelectedRegion] = useState('all');
 
+  // Bill one customer instead of a region
+  const [singleMode, setSingleMode] = useState(false);
+  const [custQuery, setCustQuery] = useState('');
+  const [custSuggestions, setCustSuggestions] = useState<any[]>([]);
+  const [selectedCust, setSelectedCust] = useState<any | null>(null);
+  const [highlightedCust, setHighlightedCust] = useState(0);
+
   // Follow the app's Period, including when it is changed while this form is open
   useEffect(() => {
     setMonth(periodMonth);
@@ -48,6 +55,8 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
   const [progress, setProgress] = useState(0);
   const [processStatus, setProcessStatus] = useState('');
   const [processDone, setProcessDone] = useState(false);
+  const [processError, setProcessError] = useState('');
+  const [processWarning, setProcessWarning] = useState('');
   const [summaryData, setSummaryData] = useState<{ totalBills: number; grandTotal: number; savedToSupabase?: boolean } | null>(null);
 
   // Grid / Viewer States
@@ -81,10 +90,47 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
       .catch(() => {});
   }, []);
 
+  const singleId = singleMode ? selectedCust?.customer_id : undefined;
+
+  const handleCustomerSearch = async (query: string) => {
+    setCustQuery(query);
+    setSelectedCust(null);
+    setProcessDone(false);
+    setProcessError('');
+    const q = query.trim();
+    if (!q) {
+      setCustSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=15`);
+      const data = await res.json();
+      setCustSuggestions(data.customers || []);
+      setHighlightedCust(0);
+    } catch (err) {
+      console.warn('Customer search error:', err);
+    }
+  };
+
+  const handleSelectCustomer = (cust: any) => {
+    setSelectedCust(cust);
+    setCustQuery(String(cust.customer_id));
+    setCustSuggestions([]);
+  };
+
+  const fetchSingleBill = async (customerId: number) => {
+    const res = await fetch(`/api/billing?customer_id=${customerId}&month=${month}&year=${selectedYear}`);
+    const data = await res.json();
+    setBills(data.bill ? [data.bill] : []);
+    setTotalCustomers(data.bill ? 1 : 0);
+  };
+
   // Execute Bill Processing (Matching VB6 BillProcessing screenshot_14.jpg)
   const handleProcess = async () => {
     setIsProcessing(true);
     setProcessDone(false);
+    setProcessError('');
+    setProcessWarning('');
     setProgress(15);
     setProcessStatus(`Calculating date-effective rates, holidays & subscriptions for ${month}...`);
 
@@ -100,11 +146,23 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
           month,
           year: selectedYear,
           region_id: selectedRegion,
+          customer_id: singleId,
           commitToDb: commitToDatabase
         })
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Bill generation failed');
+      setProcessWarning(data.warning || '');
+
+      if (singleId) {
+        await fetchSingleBill(singleId);
+        setProgress(100);
+        setSummaryData({ totalBills: 1, grandTotal: data.grand_total || 0, savedToSupabase: data.saved_to_supabase });
+        setProcessStatus(`${month} bill ${data.saved_to_supabase ? 'generated and saved' : 'calculated, not saved,'} for ${selectedCust.name_eng || `#${singleId}`}.`);
+        setProcessDone(true);
+        setShowGrid(true);
+        return;
+      }
 
       const pageSize = selectedRegion === 'all' ? 200 : 1000;
       // 2. Load bills for preview (full list for single region, paginated for all regions)
@@ -122,7 +180,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
       setProcessStatus(`Bill Processing Complete! ${data.total_bills_generated || gridData.total_customers} bills calculated successfully.`);
       setProcessDone(true);
     } catch (err: any) {
-      setProcessStatus(`Error processing bills: ${err.message}`);
+      setProcessError(err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -131,6 +189,10 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
   // Fetch paginated / searched bills when grid is open
   const fetchBillsPage = async (p: number, s: string) => {
     try {
+      if (singleId) {
+        await fetchSingleBill(singleId);
+        return;
+      }
       const pageSize = selectedRegion === 'all' ? 200 : 1000;
       const query = `/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=${pageSize}`;
       const res = await fetch(query);
@@ -148,7 +210,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
       fetchBillsPage(1, searchQuery);
       setPage(1);
     }
-  }, [month, selectedYear, selectedRegion, showGrid]);
+  }, [month, selectedYear, selectedRegion, showGrid, singleId]);
 
   // Open Breakup Modal
   const handleOpenBreakup = async (bill: any) => {
@@ -208,26 +270,75 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
       <div className="flex-1 overflow-y-auto min-h-0">
         {/* Main Authentic Bill Processing Bar (screenshot_14.jpg) */}
         <div className="p-4 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white m-3 space-y-3">
-        
+
+        {/* Region run or one customer */}
+        <div className="flex items-center gap-4 text-xs font-bold text-[#000080]">
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input
+              type="radio"
+              checked={!singleMode}
+              onChange={() => { setSingleMode(false); setProcessDone(false); setProcessError(''); setProcessWarning(''); setShowGrid(false); }}
+            />
+            Region Wise
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input
+              type="radio"
+              checked={singleMode}
+              onChange={() => { setSingleMode(true); setProcessDone(false); setProcessError(''); setProcessWarning(''); setShowGrid(false); }}
+            />
+            Single Customer
+          </label>
+        </div>
+
         {/* Row 1: Region, Month, Year & Process Button */}
         <div className="grid grid-cols-12 gap-2 items-center text-xs">
-          
-          {/* Region Dropdown */}
-          <div className="col-span-5 flex items-center gap-1.5">
-            <label className="font-bold text-[#000080] text-xs shrink-0">Region:</label>
-            <select 
-              value={selectedRegion}
-              onChange={(e) => { setSelectedRegion(e.target.value); setProcessDone(false); }}
-              className="w-full px-1.5 py-1 border border-[#808080] bg-white font-bold text-slate-900 outline-none text-xs"
-            >
-              <option value="all">All Regions (सभी क्षेत्र)</option>
-              {regions.map(r => (
-                <option key={r.region_id || r.id} value={r.region_id || r.id}>
-                  {r.name || r.region_name || `Region ${r.region_id}`}
-                </option>
-              ))}
-            </select>
-          </div>
+
+          {/* Region Dropdown, or the customer when billing one */}
+          {singleMode ? (
+            <div className="col-span-5 flex items-center gap-1.5">
+              <label className="font-bold text-[#800000] text-xs shrink-0">Customer:</label>
+              <input
+                type="text"
+                placeholder="Customer ID or name"
+                value={custQuery}
+                onChange={(e) => handleCustomerSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (custSuggestions.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightedCust(prev => (prev + 1) % custSuggestions.length);
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightedCust(prev => (prev - 1 + custSuggestions.length) % custSuggestions.length);
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSelectCustomer(custSuggestions[highlightedCust]);
+                  } else if (e.key === 'Escape') {
+                    setCustSuggestions([]);
+                  }
+                }}
+                className="w-full px-1.5 py-1 border border-[#7F9DB9] bg-white font-bold text-slate-900 outline-none text-xs"
+                autoFocus
+              />
+            </div>
+          ) : (
+            <div className="col-span-5 flex items-center gap-1.5">
+              <label className="font-bold text-[#000080] text-xs shrink-0">Region:</label>
+              <select
+                value={selectedRegion}
+                onChange={(e) => { setSelectedRegion(e.target.value); setProcessDone(false); }}
+                className="w-full px-1.5 py-1 border border-[#808080] bg-white font-bold text-slate-900 outline-none text-xs"
+              >
+                <option value="all">All Regions (सभी क्षेत्र)</option>
+                {regions.map(r => (
+                  <option key={r.region_id || r.id} value={r.region_id || r.id}>
+                    {r.name || r.region_name || `Region ${r.region_id}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Month Dropdown */}
           <div className="col-span-3 flex items-center gap-1.5">
@@ -260,7 +371,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
           <div className="col-span-2 flex justify-end">
             <button 
               onClick={handleProcess}
-              disabled={isProcessing}
+              disabled={isProcessing || (singleMode && !selectedCust)}
               className="w-full py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-6 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black disabled:opacity-50"
             >
               <span className="transform skew-x-6 flex items-center gap-1">
@@ -271,6 +382,28 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
           </div>
 
         </div>
+
+        {/* Customer picked or matching customers */}
+        {singleMode && selectedCust && (
+          <div className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-1 border border-blue-200">
+            ✓ #{selectedCust.customer_id} {selectedCust.name_eng}{selectedCust.name_hindi ? ` (${selectedCust.name_hindi})` : ''}
+          </div>
+        )}
+        {singleMode && custSuggestions.length > 0 && (
+          <div className="border-2 border-[#0A246A] max-h-44 overflow-y-auto text-xs">
+            {custSuggestions.map((cust, idx) => (
+              <div
+                key={cust.customer_id}
+                onClick={() => handleSelectCustomer(cust)}
+                onMouseEnter={() => setHighlightedCust(idx)}
+                className={`px-2.5 py-1 cursor-pointer font-bold border-b border-slate-100 flex items-center justify-between ${idx === highlightedCust ? 'bg-[#0A246A] text-white' : 'text-slate-900'}`}
+              >
+                <span className="truncate pr-2">{cust.name_eng}{cust.name_hindi ? ` (${cust.name_hindi})` : ''}</span>
+                <span className="font-mono shrink-0">#{cust.customer_id}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Database Sync Option */}
         <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-600">
@@ -298,6 +431,13 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
             </div>
             <p className="text-[11px] font-bold text-blue-900 text-center animate-pulse">{processStatus}</p>
           </div>
+        )}
+
+        {processError && (
+          <div className="text-xs font-bold text-red-800 bg-red-50 px-2 py-1 border border-red-300">{processError}</div>
+        )}
+        {processWarning && (
+          <div className="text-xs font-bold text-amber-900 bg-amber-50 px-2 py-1 border border-amber-400">{processWarning}</div>
         )}
 
         {/* Completion Card & Quick Actions */}

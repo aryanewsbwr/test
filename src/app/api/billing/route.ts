@@ -155,6 +155,17 @@ async function getSupplements(month: string, year: number | string): Promise<any
 
 
 
+// Bill months saved after this one in the financial year, which runs April to March
+function monthsSavedAfter(month: string, headers: any[]): string[] {
+  const fyPosition = (name: string) => {
+    const index = MONTH_NAMES.findIndex(m => m.slice(0, 3).toLowerCase() === String(name).trim().slice(0, 3).toLowerCase());
+    return index < 0 ? -1 : (index + 9) % 12;
+  };
+  const target = fyPosition(month);
+  const later = headers.filter(h => fyPosition(h.month) > target).map(h => String(h.month).trim());
+  return Array.from(new Set(later));
+}
+
 async function getMaxBillId(fySuffix: string): Promise<number> {
   try {
     const { data } = await supabaseAdmin
@@ -502,14 +513,24 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { month = 'August', year = '2026', region_id = 'all', commitToDb = false } = body;
+    const { month = 'August', year = '2026', region_id = 'all', commitToDb = false, customer_id } = body;
+    // One customer's bill, from Bill Generation. Everyone else's saved bills stay as they are.
+    const singleId = parseInt(customer_id, 10) || 0;
 
-    let targetCusts = await getCustomers(region_id);
-    if (region_id && region_id !== 'all') {
-      const rId = parseInt(region_id, 10);
-      targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
+    let targetCusts: any[];
+    if (singleId) {
+      const { data, error } = await supabaseAdmin.from('customer').select('*').eq('customer_id', singleId);
+      if (error) throw new Error(`Could not read customer: ${error.message}`);
+      if (!data?.length) return NextResponse.json({ error: `Customer #${singleId} was not found.` }, { status: 404 });
+      targetCusts = data;
     } else {
-      targetCusts = await dropHiddenRegions(targetCusts);
+      targetCusts = await getCustomers(region_id);
+      if (region_id && region_id !== 'all') {
+        const rId = parseInt(region_id, 10);
+        targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
+      } else {
+        targetCusts = await dropHiddenRegions(targetCusts);
+      }
     }
 
     // Determine fiscal year suffix (e.g. 20252026)
@@ -523,9 +544,11 @@ export async function POST(request: NextRequest) {
     }
     // In FoxPro monthly delivery billing, only active delivery customers receive bills.
     // Filter out discontinued / closed customers with 0 current deliveries.
-    const candidateIds = targetCusts.map(c => Number(c.customer_id || c.Customer_id));
-    const activeCustSet = await getActiveCustomerIds(candidateIds, month, year, fySuffix);
-    targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
+    if (!singleId) {
+      const candidateIds = targetCusts.map(c => Number(c.customer_id || c.Customer_id));
+      const activeCustSet = await getActiveCustomerIds(candidateIds, month, year, fySuffix);
+      targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
+    }
 
     // Sort target customers strictly by customer_id ascending
     targetCusts.sort((a, b) => {
@@ -572,9 +595,18 @@ export async function POST(request: NextRequest) {
       startBillId: maxBillId + 1
     });
 
+    if (singleId && result.bills.length === 0) {
+      return NextResponse.json({ error: `Nothing to bill for customer #${singleId} in ${month}. Any bill already saved was left as it is.` }, { status: 400 });
+    }
+
+    // A later month's saved bill still carries this month's old amount in its Previous Due
+    const laterMonths = singleId ? monthsSavedAfter(month, liveCustBillHeaders) : [];
+
     // If commit to live Supabase DB is requested:
     let savedToSupabase = false;
-    let balanceWarning = '';
+    let balanceWarning = laterMonths.length > 0
+      ? `This customer's ${laterMonths.join(', ')} bill is already saved and still uses the old amount. Generate it again too.`
+      : '';
     let savedBillnoCount = 0;
     let savedBillItemsCount = 0;
 
@@ -640,7 +672,8 @@ export async function POST(request: NextRequest) {
 
       // Each customer's balance after this bill, minus meaning owed, for the dues reports.
       // The bills are already saved, so a failure here is reported instead of undoing them.
-      for (let i = 0; i < result.bills.length; i += 1000) {
+      // An older month's bill must not replace the balance from the customer's latest bill.
+      for (let i = 0; i < result.bills.length && laterMonths.length === 0; i += 1000) {
         const balances = result.bills.slice(i, i + 1000).map(b => ({ customer_id: b.customer_id, cbal: -b.total_payable }));
         const { error } = await supabaseAdmin.from('customer').upsert(balances, { onConflict: 'customer_id' });
         if (error) balanceWarning = `Bills saved, but customer balances were not updated: ${error.message}`;

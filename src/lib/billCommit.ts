@@ -53,15 +53,16 @@ export async function replaceMonthBills(
     const headers = await run(db.from(tables.billno).select('*').in('customer_id', ids).or(monthFilter));
     oldHeaders.push(...headers);
     if (headers.length > 0) {
-      oldLines.push(...await run(db.from(tables.bill).select('*').in('bill_id', headers.map(h => h.bill_id))));
+      oldLines.push(...await run(db.from(tables.bill).select('*').in('bill_id', headers.map(h => h.bill_id)).in('customer_id', ids)));
     }
     oldDeliveries.push(...await run(db.from(tables.billdel).select('*').in('customer_id', ids).or(monthFilter)));
   }
 
   const clearCustomers = async (lineFilter: 'old' | 'all') => {
     if (lineFilter === 'old') {
-      for (const ids of chunks(oldHeaders.map(h => h.bill_id), CHUNK_SIZE)) {
-        await run(db.from(tables.bill).delete().in('bill_id', ids));
+      // By customer too, so a reused bill number can never take another customer's lines
+      for (const headers of chunks(oldHeaders, CHUNK_SIZE)) {
+        await run(db.from(tables.bill).delete().in('bill_id', headers.map(h => h.bill_id)).in('customer_id', headers.map(h => h.customer_id)));
       }
     }
     for (const ids of customerChunks) {
