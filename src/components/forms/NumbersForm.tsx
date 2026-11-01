@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Region } from '@/lib/types';
-import { normalizePhones } from '@/lib/phoneNumbers';
+import { displayPhones, normalizePhones } from '@/lib/phoneNumbers';
 
 interface NumbersFormProps {
   onClose: () => void;
@@ -116,7 +116,7 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
     .map(e => {
       const stored = String(e.customer.phone || '').trim();
       const normalized = normalizePhones(e.value);
-      return { ...e, stored, normalized, changed: e.value.trim() !== stored && normalized !== stored };
+      return { ...e, stored, normalized, changed: e.value.trim() !== displayPhones(stored) && normalized !== stored };
     })
     .filter(e => e.changed);
   const invalidIds = new Set(pending.filter(e => e.normalized === null).map(e => e.id));
@@ -172,13 +172,13 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
   };
 
   return (
-    <div className="relative w-full max-w-[860px] h-[calc(100vh-70px)] max-h-[640px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma overflow-hidden">
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] px-2 py-1 flex items-center justify-between">
-        <span className="font-bold text-xs text-white">Customer Numbers</span>
+    <div className="relative w-full max-w-[1000px] self-stretch min-h-0 bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma overflow-hidden">
+      <div className="shrink-0 bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] px-2 py-1 flex items-center justify-between">
+        <span className="font-bold text-sm text-white">Customer Numbers</span>
         <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 p-2 border-b border-[#808080] text-xs">
+      <div className="shrink-0 flex flex-wrap items-center gap-2 p-2 border-b border-[#808080] text-sm">
         <label className="font-bold text-[#800000]">Region</label>
         <select
           value={regionId}
@@ -195,64 +195,64 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name, ID or number"
-          className="flex-1 min-w-[160px] px-2 py-1 border border-[#7F9DB9] bg-white text-black outline-none"
+          className="flex-1 min-w-[160px] px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-black placeholder:text-slate-600 outline-none"
         />
-        <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer">
+        <label className="flex items-center gap-1 font-bold text-black cursor-pointer">
           <input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} />
           No number only
         </label>
       </div>
 
-      <div className="flex-1 bg-white m-2 border border-[#808080] overflow-auto">
+      <div className="flex-1 min-h-0 bg-white m-2 border border-[#808080] overflow-auto">
         {showHistory ? (
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-[#ECE9D8] border-b">
+          <table className="w-full text-sm text-black">
+            <thead className="sticky top-0 z-10 bg-[#ECE9D8] border-b">
               <tr>
-                <th className="p-1 border-r text-left w-32">Date & Time</th>
-                <th className="p-1 border-r text-center w-16">Cust ID</th>
-                <th className="p-1 border-r text-left">Customer</th>
-                <th className="p-1 border-r text-left">Old Number</th>
-                <th className="p-1 border-r text-left">New Number</th>
-                <th className="p-1 text-left w-20">Changed By</th>
+                <th className="p-1.5 border-r text-left w-44">Date & Time</th>
+                <th className="p-1.5 border-r text-center w-20">Cust ID</th>
+                <th className="p-1.5 border-r text-left">Customer</th>
+                <th className="p-1.5 border-r text-left">Old Number</th>
+                <th className="p-1.5 border-r text-left">New Number</th>
+                <th className="p-1.5 text-left w-24">Changed By</th>
               </tr>
             </thead>
             <tbody>
               {shownHistory.map(h => (
-                <tr key={h.id} className="border-b text-[11px] hover:bg-blue-50">
-                  <td className="p-1 border-r font-mono">{formatWhen(h.changed_at)}</td>
-                  <td className="p-1 border-r text-center font-mono font-bold text-blue-900">#{h.customer_id}</td>
-                  <td className="p-1 border-r font-bold">{h.customer_name}</td>
-                  <td className="p-1 border-r font-mono text-slate-500">{h.old_phone || '(no number)'}</td>
-                  <td className="p-1 border-r font-mono font-bold">{h.new_phone || '(removed)'}</td>
-                  <td className="p-1">{h.changed_by}</td>
+                <tr key={h.id} className="border-b hover:bg-blue-50">
+                  <td className="p-1.5 border-r font-semibold">{formatWhen(h.changed_at)}</td>
+                  <td className="p-1.5 border-r text-center font-bold text-blue-900">#{h.customer_id}</td>
+                  <td className="p-1.5 border-r font-bold">{h.customer_name}</td>
+                  <td className="p-1.5 border-r font-semibold text-slate-700">{displayPhones(h.old_phone) || '(no number)'}</td>
+                  <td className="p-1.5 border-r font-bold">{displayPhones(h.new_phone) || '(removed)'}</td>
+                  <td className="p-1.5 font-semibold">{h.changed_by}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-[#ECE9D8] border-b">
+          <table className="w-full text-sm text-black">
+            <thead className="sticky top-0 z-10 bg-[#ECE9D8] border-b">
               <tr>
-                <th className="p-1 border-r text-center w-16">Cust ID</th>
-                <th className="p-1 border-r text-left">Customer</th>
-                <th className="p-1 border-r text-left">Address</th>
-                <th className="p-1 text-left w-52">Number</th>
+                <th className="p-1.5 border-r text-center w-20">Cust ID</th>
+                <th className="p-1.5 border-r text-left">Customer</th>
+                <th className="p-1.5 border-r text-left">Address</th>
+                <th className="p-1.5 text-left w-56">Number</th>
               </tr>
             </thead>
             <tbody>
               {shown.map((c, index) => {
                 const addressNumber = numberInAddress(c);
-                const value = edits[c.customer_id] ?? String(c.phone || '');
+                const value = edits[c.customer_id] ?? displayPhones(c.phone);
                 const isChanged = pending.some(e => e.id === c.customer_id);
                 return (
-                  <tr key={c.customer_id} className={`border-b text-[11px] ${isChanged ? 'bg-amber-50' : 'hover:bg-blue-50'}`}>
-                    <td className="p-1 border-r text-center font-mono font-bold text-blue-900">#{c.customer_id}</td>
-                    <td className="p-1 border-r">
+                  <tr key={c.customer_id} className={`border-b ${isChanged ? 'bg-amber-100' : 'hover:bg-blue-50'}`}>
+                    <td className="p-1.5 border-r text-center font-bold text-blue-900">#{c.customer_id}</td>
+                    <td className="p-1.5 border-r">
                       <div className="font-bold">{c.name_eng}</div>
-                      {c.name_hindi && <div className="text-[10px] text-slate-600">{c.name_hindi}</div>}
+                      {c.name_hindi && <div className="text-[13px] font-semibold text-slate-800">{c.name_hindi}</div>}
                     </td>
-                    <td className="p-1 border-r text-slate-600">{c.add1 || c.hindi_add}</td>
-                    <td className="p-0.5">
+                    <td className="p-1.5 border-r font-semibold text-slate-800">{c.add1 || c.hindi_add}</td>
+                    <td className="p-1">
                       <input
                         type="text"
                         inputMode="tel"
@@ -261,7 +261,7 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
                         placeholder={addressNumber ? `In address: ${addressNumber}` : 'No number'}
                         onChange={(e) => setEdits(prev => ({ ...prev, [c.customer_id]: e.target.value }))}
                         onKeyDown={(e) => focusNextRow(e, index)}
-                        className={`w-full px-1.5 py-0.5 font-mono text-xs outline-none border ${invalidIds.has(c.customer_id) ? 'border-red-600 bg-red-50 text-red-800' : 'border-[#7F9DB9] bg-white text-black'}`}
+                        className={`w-full px-2 py-1 text-base font-bold placeholder:text-sm placeholder:font-semibold placeholder:text-slate-500 outline-none border focus:border-2 focus:border-[#0A246A] ${invalidIds.has(c.customer_id) ? 'border-red-600 bg-red-50 text-red-800' : 'border-[#7F9DB9] bg-white text-black'}`}
                       />
                     </td>
                   </tr>
@@ -272,25 +272,25 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
         )}
 
         {!showHistory && shown.length === 0 && (
-          <div className="p-6 text-center text-xs text-slate-600">
+          <div className="p-6 text-center text-sm font-bold text-slate-700">
             {loading ? 'Loading customers...' : (regionId || needle.length >= 2) ? 'No customers found.' : 'Select a region, or search for a customer.'}
           </div>
         )}
         {showHistory && shownHistory.length === 0 && (
-          <div className="p-6 text-center text-xs text-slate-600">
+          <div className="p-6 text-center text-sm font-bold text-slate-700">
             {historyNotSetUp ? 'History is not set up yet. Run supabase/phone_history.sql in Supabase.' : 'No number changes yet.'}
           </div>
         )}
       </div>
 
       {msg && (
-        <div className={`mx-2 mb-1 px-2 py-0.5 text-center text-xs font-bold border ${msg.bad ? 'text-red-800 bg-red-50 border-red-300' : 'text-emerald-800 bg-emerald-50 border-emerald-300'}`}>
+        <div className={`shrink-0 mx-2 mb-1 px-2 py-1 text-center text-sm font-bold border ${msg.bad ? 'text-red-800 bg-red-50 border-red-300' : 'text-emerald-800 bg-emerald-50 border-emerald-300'}`}>
           {msg.text}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-2 text-xs">
-        <span className="text-slate-700 font-bold">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-2 pb-2 text-sm">
+        <span className="text-black font-bold">
           {showHistory
             ? `${shownHistory.length} change(s), newest first`
             : `${filtered.length} customer(s)${filtered.length > MAX_ROWS ? `, first ${MAX_ROWS} shown, search to find others` : ''}`}

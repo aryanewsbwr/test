@@ -11,3 +11,8 @@ export function normalizePhones(text: string): string | null {
   }
   return numbers.join(', ');
 }
+
+// The same numbers as people read them, without the 91
+export function displayPhones(stored: string | null | undefined): string {
+  return String(stored || '').trim().replace(/\b91([6-9]\d{9})\b/g, '$1');
+}
