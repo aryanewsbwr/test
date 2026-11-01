@@ -1044,13 +1044,6 @@ export function calculateBilling({
     // customer.dueamount is a static 2007 field and must never feed this calculation.
     let customerPreviousBalance = 0;
 
-    const hasPriorHeaders = allHeaders.some(h => {
-      const hCid = Number(h.customer_id || h.Customer_id);
-      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-      const mIdx = FY_MONTH_ORDER[hMonth];
-      return hCid === Number(custId) && mIdx !== undefined && mIdx < targetFyIndex;
-    });
-
     // Current month charges
     const rawCurrentCharges = customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal;
     const currentMonthCharges = roundToFoxProRule(rawCurrentCharges);
@@ -1083,45 +1076,44 @@ export function calculateBilling({
     // Part of a same-month receipt left after clearing older dues: shown as Paid on this bill
     let paidThisMonth = targetMonthReceiptsTotal;
 
-    if (hasPriorHeaders) {
-      // Calculate cumulative prior bills (Dues + Apr..Sep)
-      let priorBillsTotal = 0;
-      for (const h of allHeaders) {
-        const hCid = Number(h.customer_id || h.Customer_id);
-        if (hCid !== Number(custId)) continue;
-        const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-        const mIdx = FY_MONTH_ORDER[hMonth];
-        if (mIdx === undefined || mIdx >= targetFyIndex) continue;
+    // Calculate cumulative prior bills (Dues + Apr..Sep). A new customer has none, so an
+    // advance paid before their first bill comes through here as a minus Previous Due.
+    let priorBillsTotal = 0;
+    for (const h of allHeaders) {
+      const hCid = Number(h.customer_id || h.Customer_id);
+      if (hCid !== Number(custId)) continue;
+      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[hMonth];
+      if (mIdx === undefined || mIdx >= targetFyIndex) continue;
 
-        const hBid = Number(h.bill_id || h.Bill_id);
-        const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
-        const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
+      const hBid = Number(h.bill_id || h.Bill_id);
+      const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
+      const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
 
-        if (hMonth === 'dues') {
-          priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
-        } else {
-          let paperAmt = 0;
-          if (hasLineItems) {
-            for (const it of bills) {
-              // A reused bill number can leave another customer's lines under the same bill_id
-              if (Number(it.bill_id || it.Bill_id) === hBid && Number(it.customer_id || it.Customer_id) === hCid) {
-                const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
-                if (val !== undefined) paperAmt += Number(val);
-              }
+      if (hMonth === 'dues') {
+        priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
+      } else {
+        let paperAmt = 0;
+        if (hasLineItems) {
+          for (const it of bills) {
+            // A reused bill number can leave another customer's lines under the same bill_id
+            if (Number(it.bill_id || it.Bill_id) === hBid && Number(it.customer_id || it.Customer_id) === hCid) {
+              const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
+              if (val !== undefined) paperAmt += Number(val);
             }
-          } else {
-            paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
           }
-          priorBillsTotal += (paperAmt + delAmt - disAmt);
+        } else {
+          paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
         }
+        priorBillsTotal += (paperAmt + delAmt - disAmt);
       }
-
-      // A receipt in the bill's own month clears older dues first, but it can never
-      // turn this month's charges into a negative Previous Due.
-      const priorDue = priorBillsTotal - priorReceiptsTotal;
-      customerPreviousBalance = priorDue > 0 ? Math.max(0, priorDue - targetMonthReceiptsTotal) : priorDue;
-      paidThisMonth = Math.max(0, targetMonthReceiptsTotal - Math.max(0, priorDue));
     }
+
+    // A receipt in the bill's own month clears older dues first, but it can never
+    // turn this month's charges into a negative Previous Due.
+    const priorDue = priorBillsTotal - priorReceiptsTotal;
+    customerPreviousBalance = priorDue > 0 ? Math.max(0, priorDue - targetMonthReceiptsTotal) : priorDue;
+    paidThisMonth = Math.max(0, targetMonthReceiptsTotal - Math.max(0, priorDue));
 
     const previousDue = Math.abs(customerPreviousBalance) < 0.01 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
 

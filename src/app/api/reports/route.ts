@@ -1088,7 +1088,12 @@ export async function GET(request: NextRequest) {
       });
 
       // Filter to only printable bills (customers with billed items)
-      const printableBills = bills.filter(b => b.items.length > 0 || b.current_bill > 0 || b.net_payable > 0);
+      // A customer whose advance covers the bill has nothing to pay, so the region run leaves
+      // them out of printing and WhatsApp. Looking one customer up still shows their bill.
+      const skipSettled = reportType === 'bill_print_region' && !trimmedSearch;
+      const printableBills = bills
+        .filter(b => b.items.length > 0 || b.current_bill > 0 || b.net_payable > 0)
+        .filter(b => !skipSettled || b.net_payable > 0);
 
       // Sort by Route Priority ASC
       printableBills.sort((a, b) => {

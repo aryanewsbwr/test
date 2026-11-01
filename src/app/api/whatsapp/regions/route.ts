@@ -35,12 +35,12 @@ async function loadMonthBills(month: string, year: string) {
       const from = page * PAGE_SIZE;
       const { data, error } = await supabaseAdmin
         .from(table)
-        .select('bill_id, customer_id, region_id')
+        .select('bill_id, customer_id, region_id, balance')
         .or(monthFilter)
         .order('bill_id', { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
       if (error) throw error;
-      return (data || []) as { bill_id: number; customer_id: number; region_id: number }[];
+      return (data || []) as { bill_id: number; customer_id: number; region_id: number; balance: number | null }[];
     })
   );
   return pages.flat();
@@ -81,6 +81,9 @@ export async function GET(request: NextRequest) {
 
     const regions: Record<string, { total: number; sent: number; manual: number }> = {};
     for (const b of bills) {
+      // Settled bills are never sent, so they must not hold a region back from "all sent".
+      // Minus balance means the customer owes.
+      if (Number(b.balance || 0) >= 0) continue;
       const entry = (regions[b.region_id] = regions[b.region_id] || { total: 0, sent: 0, manual: 0 });
       entry.total++;
       const phone = sentCustomers.get(String(b.customer_id));
