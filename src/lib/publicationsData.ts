@@ -30,9 +30,24 @@ export async function nextId(table: string, column = 'id'): Promise<number> {
 
 // Swaps a paper's weekday rates. The new set goes in before the old set is removed,
 // so a failure never leaves the paper with no rates for billing.
+const FREQUENCY_BY_RATE_DAY: Record<number, string> = { 1: 'Weekly', 2: 'Fortnightly', 3: 'Monthly', 4: 'Quarterly', 6: 'Special' };
+
+// Older magazines keep their frequency only in the day of their rate row. Saving new rates
+// replaces that row, so the frequency moves to the paper's Duration first.
+async function keepMagazineFrequency(pubId: number, oldRates: any[]) {
+  const frequency = FREQUENCY_BY_RATE_DAY[Number(oldRates[0]?.dayofweek)];
+  if (!frequency) return;
+  const { data: pub, error } = await supabase.from('publication').select('type_p, duration').eq('publica_id', pubId).maybeSingle();
+  if (error) throw new Error(`Could not read publication: ${error.message}`);
+  if (!pub || pub.duration || !/mag|periodical/i.test(pub.type_p || '')) return;
+  const { error: saveErr } = await supabase.from('publication').update({ duration: frequency }).eq('publica_id', pubId);
+  if (saveErr) throw new Error(`Could not save the magazine's frequency: ${saveErr.message}`);
+}
+
 export async function replaceBaseRates(pubId: number, dayRates: Record<string, any>) {
-  const { data: oldRates, error: oldErr } = await supabase.from('rate').select('id').eq('publica_id', pubId);
+  const { data: oldRates, error: oldErr } = await supabase.from('rate').select('id, dayofweek').eq('publica_id', pubId).order('id');
   if (oldErr) throw new Error(`Could not read rates: ${oldErr.message}`);
+  await keepMagazineFrequency(pubId, oldRates || []);
   let id = await nextId('rate');
   const rows = Object.entries(dayRates).map(([day, rate]) => ({ id: id++, publica_id: pubId, dayofweek: parseInt(day, 10), rate: Number(rate) }));
   const { error: insErr } = await supabase.from('rate').insert(rows);

@@ -691,6 +691,13 @@ export default function PublicationForm({
       return;
     }
 
+    // Billing goes by Duration, so a magazine without one would be charged the wrong issues
+    if (/mag|periodical/i.test(selectedPub.type_p || '') && !selectedPub.duration) {
+      setMsg('Error: Please select Duration for this magazine (Weekly, Fortnightly, Monthly or Quarterly)');
+      setTimeout(() => setMsg(''), 4000);
+      return;
+    }
+
     const todayStr = new Date().toISOString().split('T')[0];
     const pubMagDay = publishingDay ? (DAY_NAME_TO_ID[publishingDay] || null) : (selectedPub.magzine_day || null);
 

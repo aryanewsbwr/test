@@ -58,8 +58,6 @@ export const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109, 216]);
-
 // Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
 export function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
   if (!dStr || dStr.trim() === '' || dStr === 'null') return null;
@@ -206,6 +204,15 @@ export function calculateBilling({
   // 4 = Quarterly
   // 6 = Special / Book / CD / One-off
   const magFrequencyFromRates = new Map<number, string>();
+  // The Duration set on the paper comes first. Saving rates on screen writes a row for each
+  // day, so the first rate row alone would make a fortnightly magazine look weekly.
+  for (const p of publications) {
+    const pid = Number(p.publication_id || p.publica_id || p.Publica_id);
+    const duration = String(p.duration || '').trim().toLowerCase();
+    if (pid && ['weekly', 'fortnightly', 'monthly', 'quarterly', 'special'].includes(duration)) {
+      magFrequencyFromRates.set(pid, duration);
+    }
+  }
   for (const r of rates) {
     const rPub = Number(r.Publica_id || r.publica_id);
     const rDow = Number(r.Dayofweek !== undefined ? r.Dayofweek : r.dayofweek);
@@ -662,7 +669,6 @@ export function calculateBilling({
       // 1 = Weekly, 2 = Fortnightly, 3 = Monthly, 4 = Quarterly, 6 = Special
       const isFortnightly = rateDerivedFreq === 'fortnightly' || (
         !rateDerivedFreq && (
-          FORTNIGHTLY_PUBS.has(pubId) ||
           typeP.toLowerCase().includes('fortnight') ||
           typeP.toLowerCase().includes('bi-month') ||
           typeP.toLowerCase().includes('bi-weekly')
@@ -745,7 +751,9 @@ export function calculateBilling({
           if (isHoliday(pubId, pDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, pDateIso, sDateIso)) continue;
 
-          let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 2, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
+          // Issue 1 covers the 1st to 15th and Issue 2 the 16th to month end, each at its own rate
+          const issue = pDateIso.endsWith('-16') ? 2 : 1;
+          let rate = getEffectiveRate(pubId, issue, pDateIso) || getEffectiveRate(pubId, 3 - issue, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
           if (!rate || rate === 0) {
             for (let d = 3; d <= 7; d++) {
               const alt = getEffectiveRate(pubId, d, pDateIso);
