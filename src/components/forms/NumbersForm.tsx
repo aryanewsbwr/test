@@ -38,6 +38,11 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
     [regions]
   );
 
+  const regionNames = useMemo(
+    () => new Map(regions.map((r: any) => [Number(r.region_id), String(r.region_name || r.name || '')])),
+    [regions]
+  );
+
   // A region loads whole and is searched on screen; with no region, search looks through everyone
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +240,7 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
               <tr>
                 <th className="p-1.5 border-r text-center w-20">Cust ID</th>
                 <th className="p-1.5 border-r text-left">Customer</th>
-                <th className="p-1.5 border-r text-left">Address</th>
+                <th className="p-1.5 border-r text-left w-48">Region</th>
                 <th className="p-1.5 text-left w-56">Number</th>
               </tr>
             </thead>
@@ -251,7 +256,7 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
                       <div className="font-bold">{c.name_eng}</div>
                       {c.name_hindi && <div className="text-[13px] font-semibold text-slate-800">{c.name_hindi}</div>}
                     </td>
-                    <td className="p-1.5 border-r font-semibold text-slate-800">{c.add1 || c.hindi_add}</td>
+                    <td className="p-1.5 border-r font-bold">{regionNames.get(Number(c.region_id)) || `Region #${c.region_id}`}</td>
                     <td className="p-1">
                       <input
                         type="text"
