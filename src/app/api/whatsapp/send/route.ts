@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken } from '@/lib/whatsappService';
 import { getThermalPublicationDisplayName } from '@/lib/billThermalExport';
+import { billRoundOff, formatRoundOff } from '@/lib/billingEngine';
 import { getReliableHindiName } from '@/lib/transliteration';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
@@ -21,10 +22,11 @@ function billCurrentAmount(bill: any): number {
   return Number(bill.current_bill ?? bill.paper_amount ?? bill.month_amount ?? 0);
 }
 
-// The approved template has no Paid line, so its text shows the old balance after payments.
-// That keeps Current + Previous equal to Total; the bill image still lists Paid separately.
+// The approved template has no Paid or Round Off line, so its text shows whatever is left of
+// the Total after this month's bill. That keeps Current + Previous equal to Total; the bill
+// image still lists Paid and Round Off separately.
 function textPreviousDue(bill: any): number {
-  return Number(bill.previous_due || 0) - Number(bill.paid_amount || 0);
+  return Math.round((Number(bill.net_payable || 0) - billCurrentAmount(bill)) * 100) / 100;
 }
 
 function escapeXml(unsafe: string | number | undefined | null): string {
@@ -125,6 +127,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const prevDue = Number(bill.previous_due !== undefined ? bill.previous_due : 0).toFixed(2);
   const deliveryChg = Number(bill.delivery_charge || 0);
   const totalAmt = Number(bill.net_payable !== undefined ? bill.net_payable : (Number(currentAmt) + Number(prevDue) + deliveryChg)).toFixed(2);
+  const roundOff = billRoundOff(Number(totalAmt), Number(currentAmt) + Number(prevDue) - paidAmt);
 
   const fontB64 = getEmbeddedMangalBase64();
   const fontFaceCss = fontB64 ? `
@@ -184,7 +187,9 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const currentAmtY = dividerY + 24;
   const prevDueY = currentAmtY + 24;
   const paidY = prevDueY + 24;
-  const totalBoxY = (paidAmt > 0 ? paidY : prevDueY) + 16;
+  const lastPaymentY = paidAmt > 0 ? paidY : prevDueY;
+  const roundOffY = lastPaymentY + 24;
+  const totalBoxY = (roundOff !== 0 ? roundOffY : lastPaymentY) + 16;
   const qrY = totalBoxY + 52;
   const qrText1Y = qrY + 164;
   const qrText2Y = qrText1Y + 18;
@@ -288,6 +293,10 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     ${paidAmt > 0 ? `
     <text x="16" y="${paidY}" font-size="13" class="t-reg" fill="#000000">Paid</text>
     <text x="384" y="${paidY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">- Rs. ${paidAmt.toFixed(2)}</text>
+    ` : ''}
+    ${roundOff !== 0 ? `
+    <text x="16" y="${roundOffY}" font-size="13" class="t-reg" fill="#000000">Round Off</text>
+    <text x="384" y="${roundOffY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">${formatRoundOff(roundOff)}</text>
     ` : ''}
 
     <!-- Boxed Total Banner -->

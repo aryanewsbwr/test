@@ -116,6 +116,17 @@ export function roundToFoxProRule(amount: number): number {
   return isNegative ? -rounded : rounded;
 }
 
+// The total is rounded once from unrounded amounts, so the lines shown on a bill can miss it
+// by some paise. This is the Round Off line that makes them add up; it never changes the total.
+export function billRoundOff(total: number, shownLines: number): number {
+  const gap = Math.round((total - shownLines) * 100) / 100;
+  return Math.abs(gap) < 0.01 ? 0 : gap;
+}
+
+export function formatRoundOff(roundOff: number): string {
+  return `${roundOff < 0 ? '-' : '+'}${Math.abs(roundOff).toFixed(2)}`;
+}
+
 export function calculateBilling({
   monthName,
   year,
@@ -1157,6 +1168,35 @@ export function calculateBilling({
         qty: null,
         days_or_copies: null,
         amount: previousDue
+      });
+    }
+
+    if (paidThisMonth > 0) {
+      custBreakup.push({
+        customer_id: custId,
+        name_eng: custNameEng,
+        customer_hindi: custNameHindi,
+        sort_order: 6,
+        item: 'Paid This Month (जमा)',
+        rate: null,
+        qty: null,
+        days_or_copies: null,
+        amount: -paidThisMonth
+      });
+    }
+
+    const roundOff = billRoundOff(totalPayable, currentMonthCharges + previousDue - paidThisMonth);
+    if (roundOff !== 0) {
+      custBreakup.push({
+        customer_id: custId,
+        name_eng: custNameEng,
+        customer_hindi: custNameHindi,
+        sort_order: 8,
+        item: 'Round Off',
+        rate: null,
+        qty: null,
+        days_or_copies: null,
+        amount: roundOff
       });
     }
 

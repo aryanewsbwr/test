@@ -1,5 +1,5 @@
 import { getReliableHindiName } from '@/lib/transliteration';
-import { roundToFoxProRule } from '@/lib/billingEngine';
+import { billRoundOff, formatRoundOff, roundToFoxProRule } from '@/lib/billingEngine';
 import { BOY_LOGO_B64 } from './logoBase64';
 
 export { BOY_LOGO_B64 };
@@ -167,6 +167,8 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
     ? 0
     : roundToFoxProRule(b.delivery_charge || 0);
 
+  const roundOff = billRoundOff(roundToFoxProRule(b.net_payable), summaryPaperTotal + summaryDelivery + b.previous_due - (b.paid_amount || 0));
+
   return `
     <div class="${quadrantClass}">
       <!-- TOP HEADER -->
@@ -289,6 +291,11 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
               <tr>
                 <td class="sum-lbl">Paid This Month</td>
                 <td class="sum-val">-${formatMoney(b.paid_amount)}</td>
+              </tr>` : ''}
+              ${roundOff !== 0 ? `
+              <tr>
+                <td class="sum-lbl">Round Off</td>
+                <td class="sum-val">${formatRoundOff(roundOff)}</td>
               </tr>` : ''}
               <tr class="grand-total-row">
                 <td class="sum-lbl font-bold">Grand Total</td>

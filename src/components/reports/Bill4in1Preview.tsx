@@ -8,7 +8,7 @@ import {
   printBills4in1 
 } from '@/lib/bill4in1Export';
 import { getReliableHindiName } from '@/lib/transliteration';
-import { roundToFoxProRule } from '@/lib/billingEngine';
+import { billRoundOff, formatRoundOff, roundToFoxProRule } from '@/lib/billingEngine';
 
 interface Bill4in1PreviewProps {
   bills: BillRecord[];
@@ -236,6 +236,8 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                   ? 0
                   : roundToFoxProRule(b.delivery_charge || 0);
 
+                const roundOff = billRoundOff(roundToFoxProRule(b.net_payable), summaryPaperTotal + summaryDelivery + b.previous_due - (b.paid_amount || 0));
+
                 return (
                   <div 
                     key={b.customer_id || qIdx}
@@ -385,6 +387,12 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                           <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                             <span className="text-slate-800">Paid This Month</span>
                             <span className="font-mono font-bold text-[9px]">-{formatMoney(b.paid_amount)}</span>
+                          </div>
+                        )}
+                        {roundOff !== 0 && (
+                          <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
+                            <span className="text-slate-800">Round Off</span>
+                            <span className="font-mono font-bold text-[9px]">{formatRoundOff(roundOff)}</span>
                           </div>
                         )}
                         <div className="flex justify-between items-center py-1.5 px-1.5 bg-slate-50 font-black">

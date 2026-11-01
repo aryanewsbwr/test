@@ -4,7 +4,7 @@ import { fyStartYear } from '@/lib/financialYear';
 import React, { useState, useEffect } from 'react';
 import { Printer, RefreshCw, X, Search, FileText, Eye, CheckCircle2, ChevronLeft, ChevronRight, Play, Database, Check } from 'lucide-react';
 import { Customer, Publication, Rate, Holiday, Discontinue } from '@/lib/types';
-import { BillingLineItem } from '@/lib/billingEngine';
+import { BillingLineItem, billRoundOff, formatRoundOff } from '@/lib/billingEngine';
 
 interface BillingFormProps {
   onClose: () => void;
@@ -172,6 +172,17 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
 
   const pageSize = selectedRegion === 'all' ? 200 : 1000;
   const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
+
+  const breakupRoundOff = breakupCustomer?.current_month_charges !== undefined
+    ? billRoundOff(breakupCustomer.total_payable, breakupCustomer.current_month_charges + (breakupCustomer.previous_due || 0) - (breakupCustomer.paid_this_month || 0))
+    : 0;
+  const slipRoundOff = selectedBillForPrint
+    ? billRoundOff(
+        selectedBillForPrint.total_payable,
+        (selectedBillForPrint.previous_due || 0) + (selectedBillForPrint.paper_amount || 0) + (selectedBillForPrint.delivery_amount || 0)
+          - (selectedBillForPrint.discount_amount || 0) - (selectedBillForPrint.paid_this_month || 0)
+      )
+    : 0;
 
   return (
     <div className={`relative w-full ${showGrid ? 'max-w-[920px]' : 'max-w-[600px]'} max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0 transition-all duration-200`}>
@@ -509,6 +520,12 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
                 )}
                 <span>= Current Month: <strong className="text-emerald-800 font-mono">₹{breakupCustomer.current_month_charges !== undefined ? breakupCustomer.current_month_charges.toFixed(2) : (breakupCustomer.total_payable - (breakupCustomer.previous_due || 0)).toFixed(2)}</strong></span>
                 <span>Previous Due: <strong className="text-slate-700 font-mono">₹{breakupCustomer.previous_due?.toFixed(2)}</strong></span>
+                {Boolean(breakupCustomer.paid_this_month && breakupCustomer.paid_this_month > 0) && (
+                  <span>- Paid: <strong className="text-rose-800 font-mono">₹{breakupCustomer.paid_this_month?.toFixed(2)}</strong></span>
+                )}
+                {breakupRoundOff !== 0 && (
+                  <span>Round Off: <strong className="text-slate-700 font-mono">{formatRoundOff(breakupRoundOff)}</strong></span>
+                )}
                 <span className="text-sm">Total Payable: <strong className="text-blue-900 font-mono">₹{breakupCustomer.total_payable?.toFixed(2)}</strong></span>
               </div>
               <button 
@@ -593,6 +610,18 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
                   <div className="flex justify-between text-rose-700">
                     <span>Discount:</span>
                     <span>-₹{selectedBillForPrint.discount_amount?.toFixed(2)}</span>
+                  </div>
+                )}
+                {selectedBillForPrint.paid_this_month > 0 && (
+                  <div className="flex justify-between">
+                    <span>Paid (जमा):</span>
+                    <span>-₹{selectedBillForPrint.paid_this_month?.toFixed(2)}</span>
+                  </div>
+                )}
+                {slipRoundOff !== 0 && (
+                  <div className="flex justify-between">
+                    <span>Round Off:</span>
+                    <span>{formatRoundOff(slipRoundOff)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-black text-sm border-t pt-1">

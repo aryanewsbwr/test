@@ -1,6 +1,6 @@
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from './bill4in1Export';
 import { getReliableHindiName } from './transliteration';
-import { roundToFoxProRule } from './billingEngine';
+import { billRoundOff, formatRoundOff, roundToFoxProRule } from './billingEngine';
 import { generateDynamicUpiQrSvg } from './upiQrHelper';
 import hindiPubDisplayMapJson from '@/data/hindiPubDisplayMap.json';
 import englishPubSetJson from '@/data/englishPubSet.json';
@@ -179,6 +179,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   const netPayable = b.net_payable !== undefined && b.net_payable !== null
     ? roundToFoxProRule(b.net_payable)
     : roundToFoxProRule(monthBillAmount + previousDue);
+  const roundOff = billRoundOff(netPayable, monthBillAmount + previousDue - Number(b.paid_amount || 0));
 
   const monthYearDisplay = formatShortMonthYear(b.month, b.year);
   const formattedPhone = cleanPhone(b.phone);
@@ -276,6 +277,11 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         <div class="summary-row">
           <span class="summary-label">Paid / जमा</span>
           <span class="summary-value">- ₹ ${formatMoney(b.paid_amount)}</span>
+        </div>` : ''}
+        ${roundOff !== 0 ? `
+        <div class="summary-row">
+          <span class="summary-label">Round Off</span>
+          <span class="summary-value">${formatRoundOff(roundOff)}</span>
         </div>` : ''}
       </div>
 

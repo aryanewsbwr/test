@@ -3,7 +3,7 @@ import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle,
 import { toPng } from 'html-to-image';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
 import { getReliableHindiName } from '@/lib/transliteration';
-import { roundToFoxProRule } from '@/lib/billingEngine';
+import { billRoundOff, formatRoundOff, roundToFoxProRule } from '@/lib/billingEngine';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { printBillsThermal58mm, getThermalPublicationDisplayName } from '@/lib/billThermalExport';
 
@@ -472,6 +472,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     const netPayable = b.net_payable !== undefined && b.net_payable !== null
       ? roundToFoxProRule(b.net_payable)
       : roundToFoxProRule(monthBillAmount + previousDue);
+    const roundOff = billRoundOff(netPayable, monthBillAmount + previousDue - Number(b.paid_amount || 0));
 
     const monthYearDisplay = formatShortMonthYear(b.month, b.year);
     const formattedPhone = cleanPhone(b.phone);
@@ -596,6 +597,12 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             <div className="flex justify-between items-center font-semibold text-zinc-900">
               <span className="text-left">Paid / जमा</span>
               <span className="font-bold whitespace-nowrap ml-1">- ₹ {formatMoney(b.paid_amount)}</span>
+            </div>
+          )}
+          {roundOff !== 0 && (
+            <div className="flex justify-between items-center font-semibold text-zinc-900">
+              <span className="text-left">Round Off</span>
+              <span className="font-bold whitespace-nowrap ml-1">{formatRoundOff(roundOff)}</span>
             </div>
           )}
         </div>
