@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (refused) return refused;
 
   try {
-    const { table: tableName, add = [], update = [], remove = [], closeStops = [] } = await req.json();
+    const { table: tableName, add = [], update = [], remove = [], closeStops = [], settle = [] } = await req.json();
     const table = findBackupTable(tableName);
     if (!table) return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
 
@@ -79,6 +79,15 @@ export async function POST(req: NextRequest) {
     });
 
     await inParallel<any>(closeStops, stop => closeSubscriptions(Number(stop.customer_id), Number(stop.publica_id) || 0, stop.temp_from));
+
+    // A restored receipt lowers the balance, as the Receipt screen does (cbal is minus when owed)
+    await inParallel<any>(settle, async ({ customer_id, paid }) => {
+      const { data, error } = await supabaseAdmin.from('customer').select('cbal').eq('customer_id', customer_id).single();
+      if (error) throw new Error(`customer ${customer_id}: ${error.message}`);
+      const cbal = Math.round((Number(data.cbal || 0) + Number(paid)) * 100) / 100;
+      const { error: saveError } = await supabaseAdmin.from('customer').update({ cbal, due_amount: -cbal }).eq('customer_id', customer_id);
+      if (saveError) throw new Error(`customer ${customer_id}: ${saveError.message}`);
+    });
 
     return NextResponse.json({ success: true, failed });
   } catch (error: any) {

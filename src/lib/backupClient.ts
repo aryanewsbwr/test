@@ -265,7 +265,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
 
 async function writeBatches(
   table: string,
-  field: 'add' | 'update' | 'remove' | 'closeStops',
+  field: 'add' | 'update' | 'remove' | 'closeStops' | 'settle',
   rows: any[],
   onDone: (count: number) => void,
   onRefused: (failed: { row: string; error: string }[]) => void = () => {}
@@ -315,6 +315,21 @@ function permanentStops(plan: RestorePlan): any[] {
   return item?.useAdd ? item.add.filter(row => row.temp_perma === 'Permanent') : [];
 }
 
+// What each customer paid in the receipts just added from an old file, leaving out any not saved
+function paymentsAdded(plan: RestorePlan, refused: Map<string, { row: string; error: string }[]>) {
+  if (plan.kind !== 'old') return [];
+  const paid = new Map<number, number>();
+  for (const item of plan.items) {
+    if (!item.useAdd || !/^receipt\d/.test(item.table.name)) continue;
+    const notSaved = new Set((refused.get(item.table.name) || []).map(failed => failed.row));
+    for (const row of item.add) {
+      const amount = (Number(row.mal_recp_amt) || 0) + (Number(row.less_amt) || 0);
+      if (amount !== 0 && !notSaved.has(String(row.customer_id))) paid.set(Number(row.customer_id), (paid.get(Number(row.customer_id)) || 0) + amount);
+    }
+  }
+  return Array.from(paid, ([customer_id, amount]) => ({ customer_id, paid: amount }));
+}
+
 // Adds and changes go first and removals last, so stopping halfway never loses a row
 export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   const chosen = plan.items.filter(i => (i.useAdd && i.add.length) || (i.useChange && i.change.length) || (i.useRemove && i.remove.length));
@@ -346,6 +361,10 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   // A permanent stop from the old file closes its subscriptions, as the Discontinue screen does
   const stops = permanentStops(plan);
   if (stops.length > 0) await writeBatches('discontinue', 'closeStops', stops, () => {});
+
+  // Last, because the customer updates above write the balance they first read
+  const payments = paymentsAdded(plan, refused);
+  if (payments.length > 0) await writeBatches('customer', 'settle', payments, () => {});
 
   onProgress('Checking the result...');
   const problems: string[] = [];
