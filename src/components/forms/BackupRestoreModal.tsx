@@ -174,7 +174,6 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
               <div className="border-2 border-dashed border-slate-300 rounded p-3 text-center bg-slate-50">
                 <input
                   type="file"
-                  accept=".gz,.sql,.txt"
                   id="restore-file"
                   className="hidden"
                   disabled={isProcessing}

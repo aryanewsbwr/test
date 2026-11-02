@@ -166,14 +166,34 @@ export function withMobileNumbers(customers: any[], mobiles: any[], liveCustomer
   });
 }
 
+// A name retyped in the old software outdates the corrected Hindi, so it is decoded afresh.
+// A stray \ from an earlier import is not a new name.
+export function withoutOutdatedHindi(changes: any[], liveCustomers: any[]) {
+  const letters = (name: any) => String(name ?? '').replace(/\\/g, '').trim();
+  const liveNames = new Map(liveCustomers.map(c => [Number(c.customer_id), c.name_hindi]));
+  return changes.map(c => (letters(c.name_hindi) === letters(liveNames.get(Number(c.customer_id))) ? c : { ...c, name_hindi_unicode: null }));
+}
+
 // These could change what customers are charged, so they stay unticked unless chosen
 const CAREFUL_ADDS = /^(billno|bill2|rate)/;
 
+// The name can't be trusted, as a file may come with no extension, so the first bytes decide
+async function fileKind(file: Blob): Promise<'backup' | 'zip' | 'old'> {
+  const [first, second] = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  if (first === 0x1f && second === 0x8b) return 'backup';
+  if (first === 0x50 && second === 0x4b) return 'zip';
+  return 'old';
+}
+
 export async function planRestore(file: File, onProgress: Progress): Promise<RestorePlan> {
-  if (/\.sql$|\.txt$/i.test(file.name)) {
+  const kind = await fileKind(file);
+  if (kind === 'zip') throw new Error('यह ZIP फाइल है। पहले इसे खोलें (Extract), फिर अंदर की .sql फाइल चुनें');
+
+  if (kind === 'old') {
     const definitions = oldSoftwareTables();
     const wanted = new Set([...definitions.map(d => d.source), MOBILE_TABLE]);
     const tables = await readSqlFile(file, wanted, percent => onProgress(`Reading the file (${percent}%)...`));
+    if (!tables.customer) throw new Error('यह सही बैकअप फाइल नहीं है: इसमें ग्राहकों का डाटा नहीं मिला');
 
     const items: RestoreItem[] = [];
     const billHeaders = new Map<string, any[]>();
@@ -192,6 +212,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
         fileBlankIsSame: true,
         ignore: table.oldIgnore
       });
+      if (table.name === 'customer') difference.change = withoutOutdatedHindi(difference.change, live);
 
       let add = difference.add;
       const headers = table.name.startsWith('billno') ? live : table.name.startsWith('bill2') ? billHeaders.get(table.name.slice(4)) : null;
