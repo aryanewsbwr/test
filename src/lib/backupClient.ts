@@ -191,7 +191,8 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
         fileCount: fileRows.length,
         live,
         useAdd: add.length > 0 && !CAREFUL_ADDS.test(table.name),
-        useChange: false,
+        // Balances and blanks are already held back, so this only brings in edits like a new address
+        useChange: table.name === 'customer' && difference.change.length > 0,
         useRemove: false,
         skipped: difference.add.length - add.length
       });

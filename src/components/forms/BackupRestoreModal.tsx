@@ -11,6 +11,23 @@ interface BackupRestoreModalProps {
 
 type Tab = 'restore' | 'backup' | 'balance_forward';
 
+// Plain names for the old software restore, which staff run without knowing the tables
+const PLAIN_NAMES: [RegExp, string][] = [
+  [/^customer_detail/, 'सब्सक्रिप्शन (Subscriptions)'],
+  [/^customer/, 'ग्राहक (Customers)'],
+  [/^hawker/, 'हॉकर (Hawkers)'],
+  [/^publication$/, 'पेपर (Papers)'],
+  [/^discontinue/, 'बंद पेपर (Stops)'],
+  [/^holiday/, 'छुट्टियाँ (Holidays)'],
+  [/^billdel/, 'डिलीवरी का हिसाब (Delivery details)'],
+  [/^billno/, 'बिल (Bills)'],
+  [/^receipt/, 'रसीदें (Receipts)'],
+  [/^retailsale/, 'रिटेल सेल (Retail sales)'],
+  [/^rate/, 'रेट बदलाव (Rate changes)']
+];
+
+const plainName = (table: string) => PLAIN_NAMES.find(([pattern]) => pattern.test(table))?.[1] || 'अन्य (Other)';
+
 export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(mode === 'balance_forward' ? 'balance_forward' : mode === 'restore' ? 'restore' : 'backup');
   const [includeOlderYears, setIncludeOlderYears] = useState(false);
@@ -41,7 +58,9 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     run(async () => {
       const result = await planRestore(file, working);
       setPlan(result);
-      return 'Nothing has been changed yet. Check the list below, then press Apply.';
+      return result.kind === 'old'
+        ? 'अभी कुछ नहीं बदला है। नीचे देखें, फिर रिस्टोर बटन दबाएँ।'
+        : 'Nothing has been changed yet. Check the list below, then press Apply.';
     });
   };
 
@@ -64,16 +83,19 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
       setStatus({ text: 'Nothing is selected, so there is nothing to do.', kind: 'done' });
       return;
     }
-    if (!confirm(`यह डाटाबेस बदलेगा (This changes the live database):\n\nAdd: ${totals.add}\nChange: ${totals.change}\nRemove: ${totals.remove}\n\nA safety copy downloads first. Continue?`)) return;
+    const question = plan.kind === 'old'
+      ? `${totals.add + totals.change} रिकॉर्ड जोड़े या अपडेट किए जाएँगे। पहले एक सेफ्टी कॉपी डाउनलोड होगी। आगे बढ़ें?`
+      : `यह डाटाबेस बदलेगा (This changes the live database):\n\nAdd: ${totals.add}\nChange: ${totals.change}\nRemove: ${totals.remove}\n\nA safety copy downloads first. Continue?`;
+    if (!confirm(question)) return;
 
     run(async () => {
       try {
         const { saved, problems } = await applyRestore(plan, working);
         setPlan(null);
         if (problems.length > 0) throw new Error(`${saved} rows saved, but: ${problems.join('; ')}`);
-        return `Restore finished: ${saved.toLocaleString()} rows saved and checked.`;
+        return `रिस्टोर पूरा हुआ (Restore finished): ${saved.toLocaleString()} रिकॉर्ड सेव और जाँचे गए।`;
       } catch (err: any) {
-        throw new Error(`${err.message}. Rows already saved are safe: choose the same file again to finish, nothing is added twice.`);
+        throw new Error(`${err.message}. जो सेव हो गया वह सुरक्षित है। वही फाइल दोबारा चुनकर रिस्टोर पूरा करें, कुछ भी दो बार नहीं जुड़ेगा।`);
       }
     });
   };
@@ -166,12 +188,53 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
                 </label>
               </div>
 
-              {plan && (
+              {plan?.kind === 'old' && (() => {
+                const coming = plan.items.filter(i => (i.useAdd && i.add.length > 0) || (i.useChange && i.change.length > 0));
+                const leftOut = plan.items.filter(i => !i.useAdd && i.add.length > 0);
+                return (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-700">
+                      पुराने बिल, रसीदें और बैलेंस नहीं बदलेंगे, और कुछ भी हटाया नहीं जाएगा। जो पहले से है वह दोबारा नहीं जुड़ेगा।
+                    </p>
+                    {coming.length === 0 ? (
+                      <div className="p-2 border rounded bg-emerald-50 text-emerald-900 font-bold text-[11px]">सब कुछ पहले से मौजूद है। कुछ करने की ज़रूरत नहीं।</div>
+                    ) : (
+                      <>
+                        <div className="border divide-y max-h-48 overflow-y-auto">
+                          {coming.map(i => (
+                            <div key={i.table.name} className="flex justify-between p-1.5 text-[11px]">
+                              <span>{plainName(i.table.name)}</span>
+                              <span className="font-bold">
+                                {i.useAdd && i.add.length > 0 && `${i.add.length.toLocaleString()} नए`}
+                                {i.useAdd && i.add.length > 0 && i.useChange && i.change.length > 0 && ', '}
+                                {i.useChange && i.change.length > 0 && `${i.change.length.toLocaleString()} अपडेट`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={handleApply}
+                          disabled={isProcessing}
+                          className="w-full vb-btn bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>{isProcessing ? 'Working...' : 'रिस्टोर करें (Restore)'}</span>
+                        </button>
+                      </>
+                    )}
+                    {leftOut.length > 0 && (
+                      <p className="text-[10px] text-slate-500">
+                        नहीं जोड़े गए, क्योंकि ये ग्राहकों का बिल बदल सकते हैं: {leftOut.map(i => `${plainName(i.table.name)} ${i.add.length}`).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {plan?.kind === 'backup' && (
                 <div className="space-y-2">
                   <div className="text-[11px] text-slate-700">
-                    {plan.kind === 'backup'
-                      ? `Backup from ${new Date(plan.takenAt || '').toLocaleString('en-IN')}. Applying makes these tables match the file exactly.`
-                      : 'Old software file, running year only. Only new rows are added by default. Bills and receipts are never overwritten, and nothing is removed.'}
+                    {`Backup from ${new Date(plan.takenAt || '').toLocaleString('en-IN')}. Applying makes these tables match the file exactly.`}
                   </div>
                   <div className="max-h-60 overflow-y-auto border">
                     <table className="w-full text-[11px]">
@@ -195,8 +258,8 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
                             </td>
                             <td className="p-1 text-right">{item.same.toLocaleString()}</td>
                             <td className="p-1 text-right">{hasTick(item.add.length, item.useAdd, () => toggle(i, 'useAdd'))}</td>
-                            <td className="p-1 text-right">{hasTick(item.change.length, item.useChange, () => toggle(i, 'useChange'), plan.kind === 'old' && item.table.money)}</td>
-                            <td className="p-1 text-right">{hasTick(item.remove.length, item.useRemove, () => toggle(i, 'useRemove'), plan.kind === 'old')}</td>
+                            <td className="p-1 text-right">{hasTick(item.change.length, item.useChange, () => toggle(i, 'useChange'))}</td>
+                            <td className="p-1 text-right">{hasTick(item.remove.length, item.useRemove, () => toggle(i, 'useRemove'))}</td>
                           </tr>
                         ))}
                       </tbody>
