@@ -19,7 +19,8 @@ export interface BackupTable {
 }
 
 const MASTER_TABLES: BackupTable[] = [
-  { name: 'customer', key: ['customer_id'] },
+  // Balances are worked out here from bills and receipts, so an old file's figures never replace them
+  { name: 'customer', key: ['customer_id'], oldIgnore: ['cbal', 'paid', 'delivery', 'discount'] },
   { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'publica_id', 'hawker_id', 'circulation', 's_date'] },
   { name: 'hawker', key: ['hawker_id'] },
   { name: 'publication', key: ['publica_id'] },
@@ -149,10 +150,14 @@ export function compareRows(fileRows: any[], liveRows: any[], key: string[], opt
     const current = live.get(id);
     if (!current) {
       result.add.push(row);
-    } else if (Object.keys(row).every(column => ignore.includes(column) || unchanged(row[column], current[column]))) {
+      return;
+    }
+    // Only the columns that really differ are written, so a blank in an old file never wipes a live value
+    const changed = Object.keys(row).filter(column => !ignore.includes(column) && !unchanged(row[column], current[column]));
+    if (changed.length === 0) {
       result.same++;
     } else {
-      result.change.push({ ...current, ...row });
+      result.change.push({ ...current, ...Object.fromEntries(changed.map(column => [column, row[column]])) });
     }
   });
 

@@ -136,6 +136,14 @@ export function withoutHeldPapers(rows: any[], liveSubscriptions: any[]) {
   return rows.filter(row => !held.has(`${row.customer_id}|${row.publica_id}`));
 }
 
+// Each software numbers receipts itself, so one payment typed into both looks like two receipts
+export function withoutRepeatedReceipts(rows: any[], liveReceipts: any[]) {
+  const payment = (receipt: any) =>
+    `${receipt.customer_id}|${monthCode(receipt.month)}|${Number(receipt.mal_recp_amt) || 0}|${Number(receipt.less_amt) || 0}`;
+  const held = new Set(liveReceipts.map(payment));
+  return rows.filter(row => !held.has(payment(row)));
+}
+
 // These could change what customers are charged, so they stay unticked unless chosen
 const CAREFUL_ADDS = /^(billno|bill2|rate)/;
 
@@ -164,6 +172,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       if (headers) add = withoutBilledMonths(add, headers);
       if (table.name === 'customer_detail') add = withoutHeldPapers(add, live);
       if (table.name.startsWith('billdel')) add = withoutBilledMonths(add, live);
+      if (table.name.startsWith('receipt')) add = withoutRepeatedReceipts(add, live);
 
       items.push({
         ...difference,

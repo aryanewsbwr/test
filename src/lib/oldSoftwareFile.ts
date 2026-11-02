@@ -1,8 +1,8 @@
 import { fyLabel, fySuffix } from './financialYear';
 
 // Reads the MySQL .sql file from the old software in the browser, a piece at a time.
-// The old software's Hindi font text is single-byte, so bytes must stay exactly as they are.
 const PIECE_SIZE = 16 * 1024 * 1024;
+const UTF8 = new TextDecoder('utf-8', { fatal: true });
 
 export interface SqlTable {
   columns: string[];
@@ -15,6 +15,18 @@ function bytesToText(bytes: Uint8Array): string {
     parts.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 32768) as unknown as number[]));
   }
   return parts.join('');
+}
+
+// The file is read byte by byte, so one value's special letters are still raw bytes. A dump can be
+// UTF-8 or single-byte; either way the old font's ई byte must end up as š, as the database holds it.
+export function textFromBytes(value: string): string {
+  if (!/[\x80-\xff]/.test(value)) return value;
+  const bytes = Uint8Array.from(value, ch => ch.charCodeAt(0));
+  try {
+    return UTF8.decode(bytes);
+  } catch {
+    return value.replace(/\x9a/g, 'š').replace(/\x8a/g, 'Š');
+  }
 }
 
 const ESCAPES: Record<string, string> = { n: '\n', r: '\r', t: '\t', '0': '\0', Z: '\x1a' };
@@ -54,7 +66,7 @@ function readRow(text: string, start: number): { values: any[]; next: number } |
           pos++;
         }
       }
-      values.push(value);
+      values.push(textFromBytes(value));
     } else {
       const begin = pos;
       while (pos < text.length && text[pos] !== ',' && text[pos] !== ')') pos++;
