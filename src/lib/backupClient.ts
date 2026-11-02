@@ -1,4 +1,5 @@
 import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, RowDifference, rowKey } from './backupTables';
+import { roundToFoxProRule } from './billingEngine';
 import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
 
@@ -177,6 +178,9 @@ export function withoutOutdatedHindi(changes: any[], liveCustomers: any[]) {
   return changes.map(c => (letters(c.name_hindi) === letters(liveNames.get(Number(c.customer_id))) ? c : { ...c, name_hindi_unicode: null }));
 }
 
+const FY_MONTHS = ['apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'jan', 'feb', 'mar'];
+const isGovtSupply = (customer: any) => [1, -1, true, '1', '-1'].includes(customer.govt_supply);
+
 const billsByMonth = (headers: any[], lines: any[]) => {
   const linesOf = new Map<string, any[]>();
   for (const line of lines) {
@@ -195,7 +199,7 @@ const billsByMonth = (headers: any[], lines: any[]) => {
 
 // The bills whose charge differs from the old software. Only months the file has bills for count,
 // so bills made here for a month the file has not reached yet are left alone.
-export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[]) {
+export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[], receipts: any[] = []) {
   const fromFile = billsByMonth(fileHeaders, fileLines);
   const live = billsByMonth(liveHeaders, liveLines);
   const fileMonths = new Set(fileHeaders.map(header => monthCode(header.month)));
@@ -203,25 +207,54 @@ export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeader
   const taken = new Set(liveHeaders.map(header => Number(header.bill_id)));
   let nextId = Math.max(0, ...Array.from(taken));
 
+  // What a bill shows as payable. The old file's balance field means something else, so it is
+  // worked out here the way this website's bills do, and the bill prints the right amount.
+  const charges = new Map<string, { month: number; amount: number }[]>();
+  for (const [key, bill] of Array.from(live).concat(Array.from(fromFile))) {
+    const [customer, code] = key.split('|');
+    if (fromFile.has(key) && live.get(key) === bill) continue;
+    charges.set(customer, [...(charges.get(customer) || []), { month: FY_MONTHS.indexOf(code), amount: bill.amount }]);
+  }
+  const dues = new Map<string, number>();
+  for (const header of [...fileHeaders, ...liveHeaders]) {
+    if (monthCode(header.month) === 'due') dues.set(String(header.customer_id), Number(header.due_amt || 0));
+  }
+  const paid = new Map<string, { month: number; amount: number }[]>();
+  const seen = new Set<string>();
+  for (const receipt of receipts) {
+    const key = `${receipt.customer_id}|${receipt.recp_no}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const customer = String(receipt.customer_id);
+    paid.set(customer, [...(paid.get(customer) || []), { month: FY_MONTHS.indexOf(monthCode(receipt.month)), amount: (Number(receipt.mal_recp_amt) || 0) + (Number(receipt.less_amt) || 0) }]);
+  }
+  const payable = (customer: string, code: string) => {
+    const month = FY_MONTHS.indexOf(code);
+    const upTo = (rows: { month: number; amount: number }[] = []) => rows.filter(row => row.month <= month).reduce((sum, row) => sum + row.amount, 0);
+    return -roundToFoxProRule((dues.get(customer) || 0) + upTo(charges.get(customer)) - upTo(paid.get(customer)));
+  };
+
   const fixes: any[] = [];
   for (const key of Array.from(new Set([...Array.from(fromFile.keys()), ...Array.from(live.keys())]))) {
     const file = fromFile.get(key);
     const here = live.get(key);
     const [customer, code] = key.split('|');
-    if (!fileMonths.has(code) || Math.abs((file?.amount || 0) - (here?.amount || 0)) < 1) continue;
+    if (!fileMonths.has(code)) continue;
+    if (here && Math.abs((file?.amount || 0) - here.amount) < 1) continue;
 
     const customer_id = Number(customer);
     const month = here?.header.month ?? monthNames.get(code) ?? file?.header.month;
-    if (!file || file.lines.length === 0) {
-      fixes.push({ customer_id, month, bill_id: here!.header.bill_id, remove: true, lines: [] });
+    if (here && (!file || file.lines.length === 0)) {
+      fixes.push({ customer_id, month, bill_id: here.header.bill_id, remove: true, lines: [] });
       continue;
     }
+    if (!file) continue;
     const bill_id = here?.header.bill_id ?? (taken.has(Number(file.header.bill_id)) ? ++nextId : Number(file.header.bill_id));
     taken.add(bill_id);
     const lines = file.lines.map(line => ({ ...line, bill_id, month }));
     fixes.push(here
       ? { customer_id, month, bill_id, lines, header: { del_amt: file.header.del_amt, dis_amt: file.header.dis_amt, balance: Number(here.header.balance || 0) + here.amount - file.amount } }
-      : { customer_id, month, bill_id, lines, newHeader: { ...file.header, bill_id, month } });
+      : { customer_id, month, bill_id, lines, newHeader: { ...file.header, bill_id, month, balance: payable(customer, code) } });
   }
   return fixes;
 }
@@ -253,9 +286,8 @@ export function balancesToCorrect(customers: any[], headers: any[], lines: any[]
     add(receipt.customer_id, -(Number(receipt.mal_recp_amt || 0) + Number(receipt.less_amt || 0)));
   }
 
-  const isGovt = (customer: any) => [1, -1, true, '1', '-1'].includes(customer.govt_supply);
   return customers
-    .filter(c => billed.has(Number(c.customer_id)) && !isGovt(c))
+    .filter(c => billed.has(Number(c.customer_id)) && !isGovtSupply(c))
     .map(c => ({ customer_id: c.customer_id, was: Number(c.cbal || 0), cbal: -Math.round((owed.get(Number(c.customer_id)) || 0) * 100) / 100 }))
     .filter(c => Math.abs(c.cbal - c.was) > 1)
     .map(({ customer_id, cbal }) => ({ customer_id, cbal }));
@@ -325,12 +357,14 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
     }
     const billnoItem = items.find(i => i.table.name.startsWith('billno'));
     const billItem = items.find(i => i.table.name.startsWith('bill2'));
+    const receiptItem = items.find(i => /^receipt\d/.test(i.table.name));
     const billFixes = billnoItem && billItem
       ? billCorrections(
           rowsOf(tables[billnoItem.table.name], row => row),
           rowsOf(tables[billItem.table.name], definitions.find(d => d.source === billItem.table.name)!.map),
           billnoItem.live,
-          billItem.live
+          billItem.live,
+          [...(receiptItem?.live || []), ...(receiptItem?.add || [])]
         )
       : [];
     return { kind: 'old', items, billFixes };
