@@ -1,6 +1,8 @@
 import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, RowDifference, rowKey } from './backupTables';
+import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
 
+const BILL_FIX_BATCH = 50;
 const FILE_FORMAT = 'aryan-news-backup';
 const MOBILE_TABLE = 'customer_mobile';
 const PAGE_SIZE = 1000;
@@ -90,6 +92,7 @@ export interface RestorePlan {
   kind: 'backup' | 'old';
   takenAt?: string;
   items: RestoreItem[];
+  billFixes?: any[];
 }
 
 async function readBackupFile(file: File): Promise<{ takenAt: string; tables: Record<string, any[]> }> {
@@ -174,8 +177,94 @@ export function withoutOutdatedHindi(changes: any[], liveCustomers: any[]) {
   return changes.map(c => (letters(c.name_hindi) === letters(liveNames.get(Number(c.customer_id))) ? c : { ...c, name_hindi_unicode: null }));
 }
 
-// These could change what customers are charged, so they stay unticked unless chosen
-const CAREFUL_ADDS = /^(billno|bill2|rate)/;
+const billsByMonth = (headers: any[], lines: any[]) => {
+  const linesOf = new Map<string, any[]>();
+  for (const line of lines) {
+    const key = `${line.bill_id}|${line.customer_id}`;
+    linesOf.set(key, [...(linesOf.get(key) || []), line]);
+  }
+  const bills = new Map<string, { header: any; lines: any[]; amount: number }>();
+  for (const header of headers) {
+    if (monthCode(header.month) === 'due') continue;
+    const billLines = linesOf.get(`${header.bill_id}|${header.customer_id}`) || [];
+    const amount = billLines.reduce((sum, line) => sum + Number(line.total_amt || 0), 0) + Number(header.del_amt || 0) - Number(header.dis_amt || 0);
+    bills.set(`${header.customer_id}|${monthCode(header.month)}`, { header, lines: billLines, amount });
+  }
+  return bills;
+};
+
+// The bills whose charge differs from the old software. Only months the file has bills for count,
+// so bills made here for a month the file has not reached yet are left alone.
+export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[]) {
+  const fromFile = billsByMonth(fileHeaders, fileLines);
+  const live = billsByMonth(liveHeaders, liveLines);
+  const fileMonths = new Set(fileHeaders.map(header => monthCode(header.month)));
+  const monthNames = new Map(liveHeaders.map(header => [monthCode(header.month), header.month]));
+  const taken = new Set(liveHeaders.map(header => Number(header.bill_id)));
+  let nextId = Math.max(0, ...Array.from(taken));
+
+  const fixes: any[] = [];
+  for (const key of Array.from(new Set([...Array.from(fromFile.keys()), ...Array.from(live.keys())]))) {
+    const file = fromFile.get(key);
+    const here = live.get(key);
+    const [customer, code] = key.split('|');
+    if (!fileMonths.has(code) || Math.abs((file?.amount || 0) - (here?.amount || 0)) < 1) continue;
+
+    const customer_id = Number(customer);
+    const month = here?.header.month ?? monthNames.get(code) ?? file?.header.month;
+    if (!file || file.lines.length === 0) {
+      fixes.push({ customer_id, month, bill_id: here!.header.bill_id, remove: true, lines: [] });
+      continue;
+    }
+    const bill_id = here?.header.bill_id ?? (taken.has(Number(file.header.bill_id)) ? ++nextId : Number(file.header.bill_id));
+    taken.add(bill_id);
+    const lines = file.lines.map(line => ({ ...line, bill_id, month }));
+    fixes.push(here
+      ? { customer_id, month, bill_id, lines, header: { del_amt: file.header.del_amt, dis_amt: file.header.dis_amt, balance: Number(here.header.balance || 0) + here.amount - file.amount } }
+      : { customer_id, month, bill_id, lines, newHeader: { ...file.header, bill_id, month } });
+  }
+  return fixes;
+}
+
+// Each billed customer's balance from their bills and receipts, the way bills work out dues.
+// Government supply customers and customers with no bill this year keep what they have.
+export function balancesToCorrect(customers: any[], headers: any[], lines: any[], receipts: any[]) {
+  const owed = new Map<number, number>();
+  const add = (id: any, amount: number) => owed.set(Number(id), (owed.get(Number(id)) || 0) + amount);
+
+  const linesTotal = new Map<string, number>();
+  for (const line of lines) {
+    const key = `${line.bill_id}|${line.customer_id}`;
+    linesTotal.set(key, (linesTotal.get(key) || 0) + Number(line.total_amt || 0));
+  }
+  for (const header of headers) {
+    const charge = monthCode(header.month) === 'due'
+      ? Number(header.due_amt || 0)
+      : (linesTotal.get(`${header.bill_id}|${header.customer_id}`) || 0) + Number(header.del_amt || 0) - Number(header.dis_amt || 0);
+    add(header.customer_id, charge);
+  }
+  const billed = new Set(owed.keys());
+
+  const seen = new Set<string>();
+  for (const receipt of receipts) {
+    const key = `${receipt.customer_id}|${receipt.recp_no}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    add(receipt.customer_id, -(Number(receipt.mal_recp_amt || 0) + Number(receipt.less_amt || 0)));
+  }
+
+  const isGovt = (customer: any) => [1, -1, true, '1', '-1'].includes(customer.govt_supply);
+  return customers
+    .filter(c => billed.has(Number(c.customer_id)) && !isGovt(c))
+    .map(c => ({ customer_id: c.customer_id, was: Number(c.cbal || 0), cbal: -Math.round((owed.get(Number(c.customer_id)) || 0) * 100) / 100 }))
+    .filter(c => Math.abs(c.cbal - c.was) > 1)
+    .map(({ customer_id, cbal }) => ({ customer_id, cbal }));
+}
+
+// Bills are corrected one by one through billCorrections instead
+const CAREFUL_ADDS = /^(billno|bill2)/;
+// Settings that make this website match the old software. Saved money rows are never changed this way.
+const FOLLOW_FILE = /^(customer|customer_detail|publication|rate|receiptissue\d+)$/;
 
 // The name can't be trusted, as a file may come with no extension, so the first bytes decide
 async function fileKind(file: Blob): Promise<'backup' | 'zip' | 'old'> {
@@ -229,13 +318,22 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
         fileCount: fileRows.length,
         live,
         useAdd: add.length > 0 && !CAREFUL_ADDS.test(table.name),
-        // Balances and blanks are already held back, so this only brings in edits like a new address
-        useChange: table.name === 'customer' && difference.change.length > 0,
+        useChange: FOLLOW_FILE.test(table.name) && difference.change.length > 0,
         useRemove: false,
         skipped: difference.add.length - add.length
       });
     }
-    return { kind: 'old', items };
+    const billnoItem = items.find(i => i.table.name.startsWith('billno'));
+    const billItem = items.find(i => i.table.name.startsWith('bill2'));
+    const billFixes = billnoItem && billItem
+      ? billCorrections(
+          rowsOf(tables[billnoItem.table.name], row => row),
+          rowsOf(tables[billItem.table.name], definitions.find(d => d.source === billItem.table.name)!.map),
+          billnoItem.live,
+          billItem.live
+        )
+      : [];
+    return { kind: 'old', items, billFixes };
   }
 
   onProgress('Reading the backup file...');
@@ -265,7 +363,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
 
 async function writeBatches(
   table: string,
-  field: 'add' | 'update' | 'remove' | 'closeStops' | 'settle',
+  field: 'add' | 'update' | 'remove' | 'closeStops' | 'setBalances' | 'fixBills',
   rows: any[],
   onDone: (count: number) => void,
   onRefused: (failed: { row: string; error: string }[]) => void = () => {}
@@ -315,21 +413,6 @@ function permanentStops(plan: RestorePlan): any[] {
   return item?.useAdd ? item.add.filter(row => row.temp_perma === 'Permanent') : [];
 }
 
-// What each customer paid in the receipts just added from an old file, leaving out any not saved
-function paymentsAdded(plan: RestorePlan, refused: Map<string, { row: string; error: string }[]>) {
-  if (plan.kind !== 'old') return [];
-  const paid = new Map<number, number>();
-  for (const item of plan.items) {
-    if (!item.useAdd || !/^receipt\d/.test(item.table.name)) continue;
-    const notSaved = new Set((refused.get(item.table.name) || []).map(failed => failed.row));
-    for (const row of item.add) {
-      const amount = (Number(row.mal_recp_amt) || 0) + (Number(row.less_amt) || 0);
-      if (amount !== 0 && !notSaved.has(String(row.customer_id))) paid.set(Number(row.customer_id), (paid.get(Number(row.customer_id)) || 0) + amount);
-    }
-  }
-  return Array.from(paid, ([customer_id, amount]) => ({ customer_id, paid: amount }));
-}
-
 // Adds and changes go first and removals last, so stopping halfway never loses a row
 export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   const chosen = plan.items.filter(i => (i.useAdd && i.add.length) || (i.useChange && i.change.length) || (i.useRemove && i.remove.length));
@@ -362,9 +445,22 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   const stops = permanentStops(plan);
   if (stops.length > 0) await writeBatches('discontinue', 'closeStops', stops, () => {});
 
+  const billFixes = plan.billFixes || [];
+  const billnoName = plan.items.find(i => i.table.name.startsWith('billno'))?.table.name;
+  for (let i = 0; billnoName && i < billFixes.length; i += BILL_FIX_BATCH) {
+    await writeBatches(billnoName, 'fixBills', billFixes.slice(i, i + BILL_FIX_BATCH), () => {});
+  }
+
   // Last, because the customer updates above write the balance they first read
-  const payments = paymentsAdded(plan, refused);
-  if (payments.length > 0) await writeBatches('customer', 'settle', payments, () => {});
+  if (plan.kind === 'old') {
+    onProgress('Checking customer balances...');
+    const suffix = fySuffix();
+    const [customers, headers, lines, receipts] = await Promise.all(
+      ['customer', `billno${suffix}`, `bill${suffix}`, `receipt${suffix}`].map(async name => (await fetchTable(name)).rows)
+    );
+    const balances = balancesToCorrect(customers, headers, lines, receipts);
+    if (balances.length > 0) await writeBatches('customer', 'setBalances', balances, () => {});
+  }
 
   onProgress('Checking the result...');
   const problems: string[] = [];

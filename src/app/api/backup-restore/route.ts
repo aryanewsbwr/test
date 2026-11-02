@@ -20,6 +20,28 @@ function matchOf(table: BackupTable, row: any) {
   return Object.fromEntries(table.key.map(column => [column, row[column]]));
 }
 
+async function checked(table: string, query: PromiseLike<{ error: any }>) {
+  const { error } = await query;
+  if (error) throw new Error(`${table}: ${error.message}`);
+}
+
+// Makes one customer's bill for a month match the old software: its lines, then its header
+async function replaceBill(billnoTable: string, fix: any) {
+  const suffix = billnoTable.replace('billno', '');
+  const lines = `bill${suffix}`;
+  const { customer_id, bill_id } = fix;
+
+  await checked(lines, supabaseAdmin.from(lines).delete().eq('bill_id', bill_id).eq('customer_id', customer_id));
+  if (fix.remove) {
+    await checked(`billdel${suffix}`, supabaseAdmin.from(`billdel${suffix}`).delete().eq('customer_id', customer_id).eq('month', fix.month));
+    await checked(billnoTable, supabaseAdmin.from(billnoTable).delete().eq('bill_id', bill_id).eq('customer_id', customer_id));
+    return;
+  }
+  if (fix.newHeader) await checked(billnoTable, supabaseAdmin.from(billnoTable).insert(fix.newHeader));
+  if (fix.header) await checked(billnoTable, supabaseAdmin.from(billnoTable).update(fix.header).eq('bill_id', bill_id).eq('customer_id', customer_id));
+  if (fix.lines.length > 0) await checked(lines, supabaseAdmin.from(lines).insert(fix.lines));
+}
+
 // GET ?table=name&from=0 returns one page of a table, in a fixed order so pages never overlap
 export async function GET(req: NextRequest) {
   const refused = await refuseWithout(req, 'can_manage_users');
@@ -51,7 +73,7 @@ export async function POST(req: NextRequest) {
   if (refused) return refused;
 
   try {
-    const { table: tableName, add = [], update = [], remove = [], closeStops = [], settle = [] } = await req.json();
+    const { table: tableName, add = [], update = [], remove = [], closeStops = [], setBalances = [], fixBills = [] } = await req.json();
     const table = findBackupTable(tableName);
     if (!table) return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
 
@@ -80,13 +102,11 @@ export async function POST(req: NextRequest) {
 
     await inParallel<any>(closeStops, stop => closeSubscriptions(Number(stop.customer_id), Number(stop.publica_id) || 0, stop.temp_from));
 
-    // A restored receipt lowers the balance, as the Receipt screen does (cbal is minus when owed)
-    await inParallel<any>(settle, async ({ customer_id, paid }) => {
-      const { data, error } = await supabaseAdmin.from('customer').select('cbal').eq('customer_id', customer_id).single();
+    await inParallel<any>(fixBills, fix => replaceBill(table.name, fix));
+
+    await inParallel<any>(setBalances, async ({ customer_id, cbal }) => {
+      const { error } = await supabaseAdmin.from('customer').update({ cbal, due_amount: -cbal }).eq('customer_id', customer_id);
       if (error) throw new Error(`customer ${customer_id}: ${error.message}`);
-      const cbal = Math.round((Number(data.cbal || 0) + Number(paid)) * 100) / 100;
-      const { error: saveError } = await supabaseAdmin.from('customer').update({ cbal, due_amount: -cbal }).eq('customer_id', customer_id);
-      if (saveError) throw new Error(`customer ${customer_id}: ${saveError.message}`);
     });
 
     return NextResponse.json({ success: true, failed });

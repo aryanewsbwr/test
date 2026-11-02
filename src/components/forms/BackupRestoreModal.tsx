@@ -80,12 +80,13 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
       }),
       { add: 0, change: 0, remove: 0 }
     );
-    if (totals.add + totals.change + totals.remove === 0) {
+    const billFixes = plan.billFixes?.length || 0;
+    if (totals.add + totals.change + totals.remove + billFixes === 0) {
       setStatus({ text: 'Nothing is selected, so there is nothing to do.', kind: 'done' });
       return;
     }
     const question = plan.kind === 'old'
-      ? `${totals.add + totals.change} रिकॉर्ड जोड़े या अपडेट किए जाएँगे। पहले एक सेफ्टी कॉपी डाउनलोड होगी। आगे बढ़ें?`
+      ? `${totals.add + totals.change + billFixes} रिकॉर्ड जोड़े या अपडेट किए जाएँगे। पहले एक सेफ्टी कॉपी डाउनलोड होगी। आगे बढ़ें?`
       : `यह डाटाबेस बदलेगा (This changes the live database):\n\nAdd: ${totals.add}\nChange: ${totals.change}\nRemove: ${totals.remove}\n\nA safety copy downloads first. Continue?`;
     if (!confirm(question)) return;
 
@@ -190,13 +191,13 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
 
               {plan?.kind === 'old' && (() => {
                 const coming = plan.items.filter(i => (i.useAdd && i.add.length > 0) || (i.useChange && i.change.length > 0));
-                const leftOut = plan.items.filter(i => !i.useAdd && i.add.length > 0);
+                const billFixes = plan.billFixes?.length || 0;
                 return (
                   <div className="space-y-2">
                     <p className="text-[11px] text-slate-700">
-                      पुराने बिल, रसीदें और बैलेंस नहीं बदलेंगे, और कुछ भी हटाया नहीं जाएगा। जो पहले से है वह दोबारा नहीं जुड़ेगा।
+                      वेबसाइट इस बैकअप जैसी कर दी जाएगी। जो पहले से है वह दोबारा नहीं जुड़ेगा। ग्राहकों का बैलेंस आखिर में बिल और रसीदों से जाँचा जाएगा।
                     </p>
-                    {coming.length === 0 ? (
+                    {coming.length === 0 && billFixes === 0 ? (
                       <div className="p-2 border rounded bg-emerald-50 text-emerald-900 font-bold text-[11px]">सब कुछ पहले से मौजूद है। कुछ करने की ज़रूरत नहीं।</div>
                     ) : (
                       <>
@@ -211,6 +212,12 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
                               </span>
                             </div>
                           ))}
+                          {billFixes > 0 && (
+                            <div className="flex justify-between p-1.5 text-[11px]">
+                              <span>बिल सुधार (Bill corrections)</span>
+                              <span className="font-bold">{billFixes.toLocaleString()} अपडेट</span>
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={handleApply}
@@ -221,11 +228,6 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
                           <span>{isProcessing ? 'Working...' : 'रिस्टोर करें (Restore)'}</span>
                         </button>
                       </>
-                    )}
-                    {leftOut.length > 0 && (
-                      <p className="text-[10px] text-slate-500">
-                        नहीं जोड़े गए, क्योंकि ये ग्राहकों का बिल बदल सकते हैं: {leftOut.map(i => `${plainName(i.table.name)} ${i.add.length}`).join(', ')}
-                      </p>
                     )}
                   </div>
                 );
