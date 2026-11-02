@@ -593,7 +593,7 @@ const SUSHA_CHARS: [string, string][] = [
 const SU_INDEP: [string, string][] = [
   ['AaO', 'औ'], ['Aao', 'ओ'], ['Aa^', 'ऑ'], ['A^a', 'ऑ'], ['Aa', 'आ'], ['A', 'अ'],
   ['eo', 'ऐ'], ['e', 'ए'],
-  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ'], ['?', 'ऋ'], ['R', 'ऋ']
+  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'उ'], ['?', 'ऋ'], ['R', 'ऋ']
 ];
 // Half letters: the glyph has no vertical bar, so 'a' completes the letter and a
 // following consonant joins it. These never end a word in the customer data.
@@ -605,7 +605,7 @@ const SU_HALF: Record<string, string> = {
 // Full letters: complete on their own, so 'a' after one is the ा sign (ra = रा).
 const SU_FULL: Record<string, string> = {
   k: 'क', K: 'ख', C: 'छ', T: 'ट', z: 'ठ', D: 'ड', Z: 'ढ', t: 'त', d: 'द', p: 'प',
-  f: 'फ', r: 'र', ';': 'ल', h: 'ह', '~': 'त्र', '&': 'ज्ञ', '+': 'ट्ट', W: 'द्व', w: 'द्ध'
+  f: 'फ', r: 'र', ';': 'ल', h: 'ह', '~': 'त्र', '&': 'ज्ञ', '+': 'ट्ट', W: 'द्ध', w: 'द्व'
 };
 const SU_VOWEL_SIGNS: [string, string][] = [
   ['ao', 'ो'], ['aO', 'ौ'], ['a^', 'ॉ'], ['a', 'ा'],
@@ -614,8 +614,10 @@ const SU_VOWEL_SIGNS: [string, string][] = [
 const SU_RAKAR = /[`/]/;
 const SU_STRAY_SIGN = /[aoOIuUR`/]/;
 const SU_TRAILING: Record<string, string> = { M: 'ं', '^': 'ँ', ':': 'ः' };
-// Full letters whose next half letter is a conjunct in real words (मुख्य, ब्रह्म)
-const SU_FULL_CONJUNCTS = new Set(['Ky', 'hm', 'hy']);
+// Full letters whose next half letter is a conjunct in real words (मुख्य)
+const SU_FULL_CONJUNCTS = new Set(['Ky', 'hy']);
+// What comes before W when it is द्व rather than द्ध: भारद्वाज, रामद्वारा, or the start of a word
+const SU_DVA_BEFORE = /^(?:i?|Baar|rama)$/;
 
 const suIsConsonant = (ch: string | undefined) => !!ch && (ch in SU_HALF || ch in SU_FULL);
 
@@ -638,7 +640,7 @@ function decodeSushaWord(word: string): string {
     const ch = word[i];
 
     if (ch >= 'ऀ' && ch <= 'ॿ') { res += ch; i++; continue; }
-    if (ch === '\u0001') { res += i === 0 || i === n - 1 ? 'ई' : 'इ'; i++; continue; }
+    if (ch === '\u0001') { res += 'ई'; i++; continue; }
 
     if (ch === 'i') { pendingShortI = true; i++; continue; }
 
@@ -660,7 +662,9 @@ function decodeSushaWord(word: string): string {
       i++;
 
       const isHalf = ch in SU_HALF;
-      res += isHalf ? SU_HALF[ch] : SU_FULL[ch];
+      // No Hindi word starts with द्ध, so W opening a word is द्व (Warka = द्वारका, iWvaodI = द्विवेदी)
+      const isDva = ch === 'W' && SU_DVA_BEFORE.test(word.slice(0, i - 1));
+      res += isDva ? 'द्व' : isHalf ? SU_HALF[ch] : SU_FULL[ch];
       const completed = isHalf && word[i] === 'a';
       if (completed) i++;
 
@@ -745,8 +749,8 @@ export function sushaToUnicode(text: string): string {
   if (!text) return '';
   if (/[ऀ-ॿ]/.test(text) && !/[a-zA-Z]/.test(text)) return text;
 
-  // The corrupted Š byte (legacy encoding of इ / ई) reaches us as š, Š or U+FFFD
-  let s = text.replace(/[šŠ�]/g, '\u0001');
+  // The Š byte (legacy encoding of ई) reaches us as š, Š, the raw 0x9A or 0x8A, or U+FFFD
+  let s = text.replace(/[šŠ\x8a\x9a�]/g, '\u0001');
   s = s.replace(/[\x00\x02-\x1f\x7f-\xff]/g, '');
   // SQL dump leftovers and keyboard noise that carry no letter
   s = s.replace(/[\\',!]/g, '').replace(/\/{2,}/g, '');
@@ -956,6 +960,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const engLower = engTrimmed.toLowerCase();
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
   let rawHindiCleaned = rawHindiStr.trim()
+    .replace(/[\x8a\x9a]/g, 'š') // the old font's ई byte, kept for sushaToUnicode
     .replace(/[\x00-\x1f\x7f-\xff]/g, '') // remove control bytes (U+FFFD is decoded by sushaToUnicode)
     .replace(/\s*[0-9]{5,}\s*/g, ' ') // remove stray telephone/UDISE/school code numbers (5+ digits)
     .replace(/\\',.*$/, '') // remove SQL dump artifacts
@@ -1026,6 +1031,7 @@ export function getReliableHindiName(rawHindi: any, englishName: any): string {
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
 
   const rawHindiCleaned = rawHindiStr.trim()
+    .replace(/[\x8a\x9a]/g, 'š') // the old font's ई byte, kept for sushaToUnicode
     .replace(/[\x00-\x1f\x7f-\xff]/g, '') // strip control bytes (U+FFFD is decoded by sushaToUnicode)
     .replace(/\s*[0-9]{5,}\s*/g, ' ')           // strip stray 5+ digit codes
     .replace(/\\',.*$/, '')                        // strip SQL dump artifacts
