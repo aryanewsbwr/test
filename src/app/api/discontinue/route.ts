@@ -4,6 +4,7 @@ import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publication
 import { closeSubscriptions, reopenSubscriptions } from '@/lib/subscriptionStops';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { parseDateToIso } from '@/lib/discontinueEngine';
+import { storedHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < custIds.length; i += 200) {
       const { data, error } = await supabase
         .from('customer')
-        .select('customer_id, name_eng, name_hindi, region_id')
+        .select('*')
         .in('customer_id', custIds.slice(i, i + 200));
       if (error) throw new Error(error.message);
       for (const c of data || []) custMap.set(Number(c.customer_id), c);
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
         ...d,
         customer_id: cid,
         customer_name: cust?.name_eng || (cid ? `Customer #${cid}` : ''),
-        customer_hindi: cust?.name_hindi || '',
+        customer_hindi: storedHindiName(cust),
         publica_id: pid,
         publication_name: pubName,
         region_id: regionId,

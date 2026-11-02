@@ -3,7 +3,7 @@ import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { fySuffix } from '@/lib/financialYear';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
-import { cleanOrTransliterateHindi, getReliableHindiName } from '@/lib/transliteration';
+import { cleanOrTransliterateHindi, getReliableHindiName, storedHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 // Reading every customer, subscription and receipt takes about ten seconds
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
         return {
           customer_id: c.customer_id,
           name: c.name_eng || `Customer #${c.customer_id}`,
-          name_hindi: c.name_hindi || '',
+          name_hindi: storedHindiName(c),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || '---',
           phone: c.phone || '---',
           region_id: c.region_id || 1,
@@ -371,7 +371,7 @@ export async function GET(request: NextRequest) {
         return {
           customer_id: c.customer_id,
           name: c.name_eng || `Customer #${c.customer_id}`,
-          name_hindi: c.name_hindi || '',
+          name_hindi: storedHindiName(c),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || '---',
           phone: c.phone || '---',
           region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
@@ -1068,7 +1068,7 @@ export async function GET(request: NextRequest) {
           customer_id: cid,
           priority: c.priority !== undefined && c.priority !== null && Number(c.priority) > 0 ? Number(c.priority) : cid,
           customer_name: c.name_eng || `Customer #${cid}`,
-          customer_hindi: getReliableHindiName(c.name_hindi || '', c.name_eng || `Customer #${cid}`),
+          customer_hindi: getReliableHindiName(storedHindiName(c), c.name_eng || `Customer #${cid}`),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
           phone: rawPhone || '---',
           region_id: h.region_id,
@@ -1342,7 +1342,7 @@ export async function GET(request: NextRequest) {
         return {
           customer_id: c.customer_id,
           name: c.name_eng || `Customer #${c.customer_id}`,
-          name_hindi: c.name_hindi || '',
+          name_hindi: storedHindiName(c),
           region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
           publications: pubInfo,
           copies: subs.reduce((sum, s) => sum + (s.qty || 1), 0),

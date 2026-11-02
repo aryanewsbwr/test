@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { cleanOrTransliterateHindi, storedHindiName } from '@/lib/transliteration';
 import { nextId } from '@/lib/publicationsData';
 import { currentUser } from '@/lib/auth';
 
@@ -23,14 +23,20 @@ export async function GET(request: NextRequest) {
       for (let start = 0; ; start += 1000) {
         const { data, error } = await supabase
           .from('customer')
-          .select('customer_id, name_eng, name_hindi, add1, add2, hindi_add, phone, priority, region_id, cbal, dueamount, due_amount, govt_supply')
+          .select('*')
           .order('customer_id', { ascending: true })
           .range(start, start + 999);
         if (error) throw new Error(`Could not read customers: ${error.message}`);
         rows.push(...(data || []));
         if (!data || data.length < 1000) break;
       }
-      const customers = rows.map(c => ({ ...c, name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng) }));
+      const customers = rows.map(c => {
+        const { customer_id, name_eng, add1, add2, hindi_add, phone, priority, region_id, cbal, dueamount, due_amount, govt_supply } = c;
+        return {
+          customer_id, name_eng, add1, add2, hindi_add, phone, priority, region_id, cbal, dueamount, due_amount, govt_supply,
+          name_hindi: cleanOrTransliterateHindi(storedHindiName(c), name_eng)
+        };
+      });
       return NextResponse.json({ source: 'supabase', total: customers.length, customers });
     }
 
@@ -61,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     const decodedCustomers = (data || []).map(c => ({
       ...c,
-      name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng),
+      name_hindi: cleanOrTransliterateHindi(storedHindiName(c), c.name_eng),
       hindi_add: cleanOrTransliterateHindi(c.hindi_add, c.add1 || '')
     }));
 
@@ -137,6 +143,11 @@ export async function POST(request: NextRequest) {
       ? await supabase.from('customer').update(supabaseCustomerRecord).eq('customer_id', finalId)
       : await supabase.from('customer').insert([supabaseCustomerRecord]);
     if (sbErr) throw new Error(`Could not save customer: ${sbErr.message}`);
+
+    // The corrected column is what bills print, so an edit must reach it. Separate from the save
+    // above, so a database without this column yet still saves the customer.
+    const { error: hindiErr } = await supabase.from('customer').update({ name_hindi_unicode: hindi }).eq('customer_id', finalId);
+    if (hindiErr) console.warn('Corrected Hindi name not saved:', hindiErr.message);
 
     // A number changed here belongs in Numbers > History too. The customer is already saved,
     // so a failure here (History not set up yet) must not report the save as failed.

@@ -4,7 +4,7 @@ import { replaceMonthBills } from '@/lib/billCommit';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
-import { getReliableHindiName } from '@/lib/transliteration';
+import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
@@ -417,7 +417,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       targetCusts = targetCusts.filter(c => 
         String(c.name_eng || c.Name_eng || '').toLowerCase().includes(search) ||
-        String(c.name_hindi || c.Name_hindi || '').toLowerCase().includes(search) ||
+        storedHindiName(c).toLowerCase().includes(search) ||
         String(c.customer_id || c.Customer_id || '') === search ||
         String(c.customer_id || c.Customer_id || '').includes(search) ||
         String(c.phone || '').includes(search) ||

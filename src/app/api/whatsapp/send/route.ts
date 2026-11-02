@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken } from '@/lib/whatsappService';
 import { getThermalPublicationDisplayName } from '@/lib/billThermalExport';
 import { billRoundOff, formatRoundOff } from '@/lib/billingEngine';
-import { getReliableHindiName } from '@/lib/transliteration';
+import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
 import sharp from 'sharp';
@@ -592,7 +592,7 @@ export async function POST(request: NextRequest) {
             bill_no: String(cid),
             customer_id: String(cid),
             customer_name: cust.name_eng || `Customer #${cid}`,
-            customer_hindi: cust.name_hindi || cust.name_eng || '',
+            customer_hindi: storedHindiName(cust) || cust.name_eng || '',
             month,
             region_name: cust.region_id || '',
             phone,
@@ -605,7 +605,7 @@ export async function POST(request: NextRequest) {
 
           const res = await sendWhatsAppBillMessage({
             toPhone: phone,
-            customerName: whatsAppDisplayName(cust.name_eng || `Customer #${cid}`, cust.name_hindi),
+            customerName: whatsAppDisplayName(cust.name_eng || `Customer #${cid}`, storedHindiName(cust)),
             month: billData.month,
             billNo: billData.bill_no,
             accountNo: billData.customer_id,

@@ -1057,6 +1057,11 @@ export function getReliableHindiName(rawHindi: any, englishName: any): string {
   return '';
 }
 
+/** A customer's Hindi as saved: the corrected column when filled, else the old-font text. */
+export function storedHindiName(customer: any): string {
+  return String(customer?.name_hindi_unicode || '').trim() || customer?.name_hindi || customer?.Name_hindi || '';
+}
+
 /**
  * Asynchronous transliteration helper: calls /api/transliterate (with Google Input Tools + fallback)
  * or falls back to offline phonetic engine if offline or server-side.

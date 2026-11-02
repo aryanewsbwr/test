@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fySuffix, previousFySuffix } from '@/lib/financialYear';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
+import { storedHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
     if (customerIds.length > 0) {
       const { data: dbCusts } = await supabase
         .from('customer')
-        .select('customer_id, name_eng, name_hindi, add1, region_id')
+        .select('*')
         .in('customer_id', customerIds.slice(0, 200))
         .limit(50000);
 
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
         customer_id: custId,
         Customer_id: custId,
         customer_name_eng: cust ? cust.name_eng : `Customer #${custId}`,
-        customer_name_hindi: cust ? (cust.name_hindi || cust.name_eng) : `ग्राहक #${custId}`,
+        customer_name_hindi: cust ? (storedHindiName(cust) || cust.name_eng) : `ग्राहक #${custId}`,
         customer_address: cust ? (cust.add1 || '') : '',
         region_id: cust ? cust.region_id : null,
         publica_id: pubId,
