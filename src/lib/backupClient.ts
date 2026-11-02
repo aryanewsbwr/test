@@ -130,10 +130,19 @@ export function withoutBilledMonths(rows: any[], liveHeaders: any[]) {
   return rows.filter(row => !billed.has(`${row.customer_id}|${monthCode(row.month)}`));
 }
 
-// A subscription edited here looks new in the old file; adding it would bill that paper twice
+// A subscription edited here looks new in the old file; adding it would bill that paper twice.
+// A paper restarted there is different: every row here is closed and its start date is new.
 export function withoutHeldPapers(rows: any[], liveSubscriptions: any[]) {
-  const held = new Set(liveSubscriptions.map(sub => `${sub.customer_id}|${sub.publica_id}`));
-  return rows.filter(row => !held.has(`${row.customer_id}|${row.publica_id}`));
+  const today = new Date().toISOString().slice(0, 10);
+  const isOpen = (sub: any) => !sub.c_date || String(sub.c_date).slice(0, 10) >= today;
+  const paper = (sub: any) => `${sub.customer_id}|${sub.publica_id}`;
+  const held = new Set(liveSubscriptions.map(paper));
+  const running = new Set(liveSubscriptions.filter(isOpen).map(paper));
+  const starts = new Set(liveSubscriptions.map(sub => `${paper(sub)}|${String(sub.s_date).slice(0, 10)}`));
+  return rows.filter(row => {
+    if (!held.has(paper(row))) return true;
+    return isOpen(row) && !!row.s_date && !running.has(paper(row)) && !starts.has(`${paper(row)}|${row.s_date}`);
+  });
 }
 
 // Each software numbers receipts itself, so one payment typed into both looks like two receipts
@@ -215,17 +224,24 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
   return { kind: 'backup', takenAt, items };
 }
 
-async function writeBatches(table: string, field: 'add' | 'update' | 'remove' | 'closeStops', rows: any[], onDone: (count: number) => void) {
+async function writeBatches(
+  table: string,
+  field: 'add' | 'update' | 'remove' | 'closeStops',
+  rows: any[],
+  onDone: (count: number) => void,
+  onRefused: (failed: { row: string; error: string }[]) => void = () => {}
+) {
   const batches: any[][] = [];
   for (let i = 0; i < rows.length; i += WRITE_BATCH) batches.push(rows.slice(i, i + WRITE_BATCH));
 
   await eachInParallel(batches, PARALLEL_WRITES, async batch => {
-    await fetch('/api/backup-restore', {
+    const { failed = [] } = await fetch('/api/backup-restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table, [field]: batch })
     }).then(readJson);
-    onDone(batch.length);
+    onRefused(failed);
+    onDone(batch.length - failed.length);
   });
 }
 
@@ -265,8 +281,12 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
     `AryanNews_BeforeRestore_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json.gz`
   );
 
+  const refused = new Map<string, { row: string; error: string }[]>();
   for (const item of chosen) {
-    if (item.useAdd) await writeBatches(item.table.name, 'add', numbered(item, plan.kind), tick);
+    const note = (failed: { row: string; error: string }[]) => {
+      if (failed.length > 0) refused.set(item.table.name, [...(refused.get(item.table.name) || []), ...failed]);
+    };
+    if (item.useAdd) await writeBatches(item.table.name, 'add', numbered(item, plan.kind), tick, note);
     if (item.useChange) await writeBatches(item.table.name, 'update', item.change, tick);
   }
   for (const item of chosen) {
@@ -280,7 +300,11 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   onProgress('Checking the result...');
   const problems: string[] = [];
   for (const item of chosen) {
-    const expected = item.live.length + (item.useAdd ? item.add.length : 0) - (item.useRemove ? item.remove.length : 0);
+    const notSaved = refused.get(item.table.name) || [];
+    if (notSaved.length > 0) {
+      problems.push(`${item.table.name}: ${notSaved.length} rows not saved (${notSaved.slice(0, 5).map(f => f.row).join(', ')}): ${notSaved[0].error}`);
+    }
+    const expected = item.live.length + (item.useAdd ? item.add.length - notSaved.length : 0) - (item.useRemove ? item.remove.length : 0);
     const { rows } = await fetchTable(item.table.name);
     if (rows.length !== expected) problems.push(`${item.table.name}: expected ${expected} rows, found ${rows.length}`);
     if (plan.kind === 'backup' && item.useAdd && item.useRemove) {

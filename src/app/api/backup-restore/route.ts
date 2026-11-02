@@ -55,9 +55,16 @@ export async function POST(req: NextRequest) {
     const table = findBackupTable(tableName);
     if (!table) return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
 
+    const failed: { row: string; error: string }[] = [];
     if (add.length > 0) {
       const { error } = await supabaseAdmin.from(table.name).insert(add);
-      if (error) throw new Error(`${table.name}: ${error.message}`);
+      if (error) {
+        // One bad row refuses its whole batch, so the rest are saved singly and only the bad ones reported
+        await inParallel<any>(add, async row => {
+          const { error: rowError } = await supabaseAdmin.from(table.name).insert(row);
+          if (rowError) failed.push({ row: String(row.customer_id ?? row[table.key[0]]), error: rowError.message });
+        });
+      }
     }
 
     await inParallel<any>(update, async row => {
@@ -73,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     await inParallel<any>(closeStops, stop => closeSubscriptions(Number(stop.customer_id), Number(stop.publica_id) || 0, stop.temp_from));
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, failed });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

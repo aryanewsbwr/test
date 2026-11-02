@@ -67,10 +67,14 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     if (!confirm(`यह डाटाबेस बदलेगा (This changes the live database):\n\nAdd: ${totals.add}\nChange: ${totals.change}\nRemove: ${totals.remove}\n\nA safety copy downloads first. Continue?`)) return;
 
     run(async () => {
-      const { saved, problems } = await applyRestore(plan, working);
-      setPlan(null);
-      if (problems.length > 0) throw new Error(`${saved} rows saved, but: ${problems.join('; ')}. Use the safety copy to undo.`);
-      return `Restore finished: ${saved.toLocaleString()} rows saved and checked.`;
+      try {
+        const { saved, problems } = await applyRestore(plan, working);
+        setPlan(null);
+        if (problems.length > 0) throw new Error(`${saved} rows saved, but: ${problems.join('; ')}`);
+        return `Restore finished: ${saved.toLocaleString()} rows saved and checked.`;
+      } catch (err: any) {
+        throw new Error(`${err.message}. Rows already saved are safe: choose the same file again to finish, nothing is added twice.`);
+      }
     });
   };
 
