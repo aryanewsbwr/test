@@ -256,7 +256,12 @@ export function oldSoftwareTables(): OldTable[] {
     plain(`bill${suffix}`, { totalamt: 'total_amt' }),
     plain(`billdel${suffix}`),
     { source: `receipt${suffix}`, target: `receipt${suffix}`, map: receiptFromOldRow },
-    { source: `retailsale${suffix}`, target: `retailsale${suffix}`, map: datesOf(['vr_date'], renamed({})) }
+    { source: `retailsale${suffix}`, target: `retailsale${suffix}`, map: datesOf(['vr_date'], renamed({})) },
+    {
+      source: `receiptissue${suffix}`,
+      target: `receiptissue${suffix}`,
+      map: datesOf(['IssueDate', 'RecDate'], renamed({ collect_id: 'Collect_id', receiptfrom: 'ReceiptFrom', receiptto: 'ReceiptTo', issuedate: 'IssueDate', recdate: 'RecDate' }))
+    }
   ];
 }
 

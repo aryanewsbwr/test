@@ -21,6 +21,7 @@ const PLAIN_NAMES: [RegExp, string][] = [
   [/^holiday/, 'छुट्टियाँ (Holidays)'],
   [/^billdel/, 'डिलीवरी का हिसाब (Delivery details)'],
   [/^billno/, 'बिल (Bills)'],
+  [/^receiptissue/, 'रसीद बुक (Receipt books)'],
   [/^receipt/, 'रसीदें (Receipts)'],
   [/^retailsale/, 'रिटेल सेल (Retail sales)'],
   [/^rate/, 'रेट बदलाव (Rate changes)']

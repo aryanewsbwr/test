@@ -12,6 +12,8 @@ export interface BackupTable {
   // softwares count separately and the same number can mean two different rows
   assignId?: boolean;
   idColumn?: string;
+  // The next number counts within this column, not across the whole table
+  assignIdWithin?: string;
   // The database numbers new rows of this table itself
   databaseNumbers?: boolean;
   // Columns that differ between the two softwares without meaning a real change
@@ -66,6 +68,15 @@ function yearlyTables(suffix: string): BackupTable[] {
       assignId: true,
       idColumn: 'retail_id',
       oldIgnore: ['retail_id', 'rate', 'narr']
+    },
+    {
+      name: `receiptissue${suffix}`,
+      key: ['Collect_id', 'sno'],
+      oldKey: ['Collect_id', 'ReceiptFrom', 'ReceiptTo'],
+      assignId: true,
+      assignIdWithin: 'Collect_id',
+      idColumn: 'sno',
+      oldIgnore: ['sno']
     }
   ];
 }

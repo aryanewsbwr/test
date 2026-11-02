@@ -2,6 +2,7 @@ import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, Row
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
 
 const FILE_FORMAT = 'aryan-news-backup';
+const MOBILE_TABLE = 'customer_mobile';
 const PAGE_SIZE = 1000;
 const PARALLEL_PAGES = 6;
 const WRITE_BATCH = 500;
@@ -153,13 +154,26 @@ export function withoutRepeatedReceipts(rows: any[], liveReceipts: any[]) {
   return rows.filter(row => !held.has(payment(row)));
 }
 
+// The old software keeps mobile numbers in their own table. They only fill a blank phone here,
+// so a number corrected on this website is never replaced.
+export function withMobileNumbers(customers: any[], mobiles: any[], liveCustomers: any[]) {
+  const hasPhone = (phone: any) => /\d/.test(String(phone ?? ''));
+  const held = new Set(liveCustomers.filter(c => hasPhone(c.phone)).map(c => Number(c.customer_id)));
+  const numbers = new Map(mobiles.filter(m => hasPhone(m.mobile)).map(m => [Number(m.customer_id), String(m.mobile).trim()]));
+  return customers.map(c => {
+    const mobile = numbers.get(Number(c.customer_id));
+    return mobile && !hasPhone(c.phone) && !held.has(Number(c.customer_id)) ? { ...c, phone: mobile } : c;
+  });
+}
+
 // These could change what customers are charged, so they stay unticked unless chosen
 const CAREFUL_ADDS = /^(billno|bill2|rate)/;
 
 export async function planRestore(file: File, onProgress: Progress): Promise<RestorePlan> {
   if (/\.sql$|\.txt$/i.test(file.name)) {
     const definitions = oldSoftwareTables();
-    const tables = await readSqlFile(file, new Set(definitions.map(d => d.source)), percent => onProgress(`Reading the file (${percent}%)...`));
+    const wanted = new Set([...definitions.map(d => d.source), MOBILE_TABLE]);
+    const tables = await readSqlFile(file, wanted, percent => onProgress(`Reading the file (${percent}%)...`));
 
     const items: RestoreItem[] = [];
     const billHeaders = new Map<string, any[]>();
@@ -167,8 +181,11 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       if (!tables[definition.source]) continue;
       const table = findBackupTable(definition.target)!;
       onProgress(`Comparing ${table.name} with the database...`);
-      const fileRows = rowsOf(tables[definition.source], definition.map);
       const { rows: live } = await fetchTable(table.name);
+      const mapped = rowsOf(tables[definition.source], definition.map);
+      const fileRows = table.name === 'customer' && tables[MOBILE_TABLE]
+        ? withMobileNumbers(mapped, rowsOf(tables[MOBILE_TABLE], row => row), live)
+        : mapped;
       if (table.name.startsWith('billno')) billHeaders.set(table.name.slice(6), live);
 
       const difference = compareRows(fileRows, live, table.oldKey || table.key, {
@@ -181,7 +198,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       if (headers) add = withoutBilledMonths(add, headers);
       if (table.name === 'customer_detail') add = withoutHeldPapers(add, live);
       if (table.name.startsWith('billdel')) add = withoutBilledMonths(add, live);
-      if (table.name.startsWith('receipt')) add = withoutRepeatedReceipts(add, live);
+      if (/^receipt\d/.test(table.name)) add = withoutRepeatedReceipts(add, live);
 
       items.push({
         ...difference,
@@ -253,6 +270,17 @@ function numbered(item: RestoreItem, kind: RestorePlan['kind']): any[] {
   if (!item.table.assignId) return item.add;
 
   const column = item.table.idColumn || 'id';
+  const within = item.table.assignIdWithin;
+  if (within) {
+    const highest = new Map<string, number>();
+    for (const row of item.live) highest.set(String(row[within]), Math.max(highest.get(String(row[within])) || 0, Number(row[column]) || 0));
+    return item.add.map(row => {
+      const next = (highest.get(String(row[within])) || 0) + 1;
+      highest.set(String(row[within]), next);
+      return { ...row, [column]: next };
+    });
+  }
+
   let next = item.live.reduce((highest, row) => Math.max(highest, Number(row[column]) || 0), 0);
   return item.add.map(row => {
     next++;
