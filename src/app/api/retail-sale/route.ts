@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
         const { data: tblSales } = await query;
         if (tblSales && tblSales.length > 0) {
-          allDbSales.push(...tblSales);
+          allDbSales.push(...tblSales.map((sale: any) => ({ ...sale, source_table: tbl })));
         }
       } catch {}
     }
@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
       const cust = custMap.get(custId);
 
       return {
+        source_table: s.source_table,
         retail_id: Number(s.retail_id),
         Retail_id: Number(s.retail_id),
         sale_id: Number(s.retail_id),
@@ -191,7 +192,9 @@ export async function POST(request: NextRequest) {
       .from(`retailsale${fySuffix()}`)
       .insert(rowsToInsert)
       .select();
-
+    if (insertError) {
+      return NextResponse.json({ error: `Retail sale not saved: ${insertError.message}` }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
@@ -208,51 +211,33 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const retailId = searchParams.get('retail_id');
+    const table = searchParams.get('table');
     const customerId = searchParams.get('customer_id');
     const publicaId = searchParams.get('publica_id');
     const date = searchParams.get('date');
 
-    const tables = ['retailsale', `retailsale${previousFySuffix()}`, `retailsale${fySuffix()}`];
-
-    for (const tbl of tables) {
-      if (retailId) {
-        try { await supabase.from(tbl).delete().eq('retail_id', Number(retailId)); } catch {}
-        try { await supabase.from(tbl).delete().eq('Retail_id', Number(retailId)); } catch {}
-        try { await supabase.from(tbl).delete().eq('sale_id', Number(retailId)); } catch {}
-      }
-
-      if (customerId && date) {
-        if (publicaId) {
-          try { 
-            await supabase.from(tbl).delete()
-              .eq('customer_id', Number(customerId))
-              .eq('vr_date', date)
-              .eq('publica_id', Number(publicaId)); 
-          } catch {}
-          try { 
-            await supabase.from(tbl).delete()
-              .eq('Customer_id', Number(customerId))
-              .eq('Vr_Date', date)
-              .eq('Publica_id', Number(publicaId)); 
-          } catch {}
-        } else {
-          try { 
-            await supabase.from(tbl).delete()
-              .eq('customer_id', Number(customerId))
-              .eq('vr_date', date); 
-          } catch {}
-          try { 
-            await supabase.from(tbl).delete()
-              .eq('Customer_id', Number(customerId))
-              .eq('Vr_Date', date); 
-          } catch {}
-        }
-      }
+    // The years share sale numbers, so one sale is deleted only from the table it was listed from,
+    // and a day's sales only from the year that day falls in.
+    const listed = [`retailsale${previousFySuffix()}`, `retailsale${fySuffix()}`, 'retailsale'];
+    let query;
+    if (retailId && table && listed.includes(table)) {
+      query = supabase.from(table).delete().eq('retail_id', Number(retailId));
+    } else if (customerId && date) {
+      query = supabase.from(`retailsale${fySuffix(new Date(date))}`).delete()
+        .eq('customer_id', Number(customerId))
+        .eq('vr_date', date);
+      if (publicaId) query = query.eq('publica_id', Number(publicaId));
+    } else {
+      return NextResponse.json({ error: 'Choose the sale to delete.' }, { status: 400 });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Deleted retail sale from database successfully.` 
+    const { data: deleted, error } = await query.select();
+    if (error) return NextResponse.json({ error: `Retail sale not deleted: ${error.message}` }, { status: 500 });
+    if (!deleted?.length) return NextResponse.json({ error: 'Nothing was deleted: this sale was not found.' }, { status: 404 });
+
+    return NextResponse.json({
+      success: true,
+      message: `Deleted ${deleted.length} retail sale item(s).`
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

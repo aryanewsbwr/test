@@ -470,10 +470,10 @@ export default function RetailSalePermanentForm({
         if (res.ok) successCount++;
       }
 
-      setStatusMsg({ 
-        text: `✓ Successfully saved ${successCount} retail sale item(s) for #${selectedCust.customer_id} ${selectedCust.name_eng}!`, 
-        isError: false 
-      });
+      const failedCount = rows.length - successCount;
+      setStatusMsg(failedCount > 0
+        ? { text: `${failedCount} of ${rows.length} retail sale item(s) were NOT saved. Check the list and save them again.`, isError: true }
+        : { text: `✓ Successfully saved ${successCount} retail sale item(s) for #${selectedCust.customer_id} ${selectedCust.name_eng}!`, isError: false });
 
       // Refresh customer sales
       const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
@@ -506,6 +506,9 @@ export default function RetailSalePermanentForm({
         const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
         const refData = await refRes.json();
         setCustomerSales(refData.sales || []);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setStatusMsg({ text: `Delete failed: ${errData.error || 'Unknown error'}`, isError: true });
       }
     } catch (err: any) {
       setStatusMsg({ text: `Delete failed: ${err.message}`, isError: true });
@@ -561,6 +564,7 @@ export default function RetailSalePermanentForm({
     try {
       const queryParams = new URLSearchParams();
       if (rId) queryParams.set('retail_id', String(rId));
+      if (saleItem.source_table) queryParams.set('table', saleItem.source_table);
       if (cId) queryParams.set('customer_id', String(cId));
       if (pId) queryParams.set('publica_id', String(pId));
       if (targetIso) queryParams.set('date', targetIso);
