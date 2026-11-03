@@ -843,7 +843,7 @@ export default function PublicationForm({
   const permanentCount = pubList.filter(p => p.is_permanent).length;
 
   return (
-    <div className="d2-window relative w-full max-w-[780px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[780px] d2:max-w-[1360px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       {/* Title Bar */}
       <div className="d2-title bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
@@ -926,8 +926,10 @@ export default function PublicationForm({
           </div>
         </div>
 
+        {/* Desktop 2 puts the fields and the rates side by side, so the window fits without scrolling */}
+        <div className="d2:flex d2:items-start d2:gap-6 space-y-3 d2:space-y-0">
         {/* Form Inputs Grid */}
-        <div className="grid grid-cols-12 gap-y-1.5 gap-x-2 text-xs font-bold text-black items-center max-w-[670px] mx-auto w-full pt-1">
+        <div className="grid grid-cols-12 gap-y-1.5 gap-x-2 text-xs font-bold text-black items-center max-w-[670px] mx-auto w-full pt-1 d2:flex-1">
           {/* Publication Name */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Publication Name</label>
           <div className="col-span-8 flex items-center gap-1">
@@ -1187,7 +1189,7 @@ export default function PublicationForm({
         </div>
 
         {/* Weekdays Rate Section with Rate Change Revision Mode */}
-        <div className="flex flex-col items-center gap-1.5 pt-1 pb-1">
+        <div className="flex flex-col items-center gap-1.5 pt-1 pb-1 d2:w-[600px] d2:shrink-0">
           {/* Mode Selector & Rate History Button */}
           <div className="flex items-center justify-center gap-5 py-1 px-3 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs shadow-xs text-xs font-bold">
             <label className="flex items-center gap-1.5 cursor-pointer text-[#800000]">
@@ -1441,6 +1443,7 @@ export default function PublicationForm({
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         {/* Status Message */}

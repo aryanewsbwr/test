@@ -252,3 +252,11 @@ html.desktop2 .d2-app ::placeholder { font-weight: 500; }
 /* Drop-downs have fixed widths, so their text stays a little lighter and tighter to fit (e.g. "November") */
 html.desktop2 .d2-window select { font-weight: 600 !important; letter-spacing: -0.01em; padding-left: 6px; padding-right: 2px; }
 html.desktop2 .d2-window select.w-20 { width: 6.25rem; }
+
+/* A window never grows past the screen: its height limit is divided by its own zoom, and long
+   lists inside it scroll instead. A pop-up inside a window is not enlarged a second time. */
+html.desktop2 { --d2-z: 1; }
+@media (min-width: 1400px) { html.desktop2 { --d2-z: 1.15; } }
+@media (min-width: 1700px) { html.desktop2 { --d2-z: 1.3; } }
+html.desktop2 .d2-window { max-height: calc((100dvh - 150px) / var(--d2-z)) !important; }
+html.desktop2 .d2-window .d2-window { zoom: 1; max-height: calc((100dvh - 180px) / var(--d2-z)) !important; }

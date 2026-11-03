@@ -26,5 +26,6 @@ module.exports = {
       }
     },
   },
-  plugins: [],
+  // d2: applies a class only in the Desktop 2 look (html.desktop2), e.g. d2:grid-cols-2
+  plugins: [function ({ addVariant }) { addVariant('d2', 'html.desktop2 &'); }],
 }
