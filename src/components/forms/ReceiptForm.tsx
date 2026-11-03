@@ -83,6 +83,8 @@ const normalizeMonthName = (mStr?: string | null): string => {
   return found || mStr;
 };
 
+const isDuesRow = (bill: any) => String(bill.month ?? bill.Month ?? '').trim().toLowerCase() === 'dues';
+
 const getCurrentMonthName = () => {
   const mIndex = new Date().getMonth();
   const calMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -536,13 +538,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           const computedAmt = sumByBillId.get(bid);
           const delAmt = Number(b.del_amt ?? b.Del_amt ?? b.Del_Amt ?? 0);
           const disAmt = Number(b.dis_amt ?? b.Dis_amt ?? b.Dis_Amt ?? 0);
-          // due_amt is the previous balance brought forward, so it only stands in for a bill
-          // on rows without line items (the yearly 'Dues' opening row)
-          const finalAmt = computedAmt !== undefined
-            ? computedAmt + delAmt - disAmt
-            : ((b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '')
-              ? Number(b.due_amt)
-              : (b.balance !== null ? Math.abs(Number(b.balance)) : 0));
+          // Only the yearly 'Dues' row carries the balance brought forward. A month with no
+          // papers only repeats the balance, so it charges just its delivery less discount.
+          const finalAmt = isDuesRow(b)
+            ? Number(b.due_amt ?? b.Due_Amt ?? 0)
+            : (computedAmt ?? 0) + delAmt - disAmt;
           return {
             ...b,
             bill_amt: finalAmt,
@@ -578,11 +578,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             const computedAmt = sumByBillId.get(bid);
             const delAmt = Number(b.del_amt ?? b.Del_amt ?? b.Del_Amt ?? 0);
             const disAmt = Number(b.dis_amt ?? b.Dis_amt ?? b.Dis_Amt ?? 0);
-            const finalAmt = computedAmt !== undefined
-              ? computedAmt + delAmt - disAmt
-              : ((b.Due_Amt !== null && b.Due_Amt !== undefined && b.Due_Amt !== '')
-                ? Number(b.Due_Amt)
-                : (b.Balance !== null ? Math.abs(Number(b.Balance)) : 0));
+            const finalAmt = isDuesRow(b)
+              ? Number(b.due_amt ?? b.Due_Amt ?? 0)
+              : (computedAmt ?? 0) + delAmt - disAmt;
             return {
               ...b,
               bill_id: bid,
