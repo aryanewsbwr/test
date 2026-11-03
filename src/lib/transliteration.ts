@@ -600,7 +600,7 @@ const SU_INDEP: [string, string][] = [
 const SU_HALF: Record<string, string> = {
   g: 'ग', G: 'घ', c: 'च', j: 'ज', J: 'झ', N: 'ण', q: 'थ', Q: 'ध', n: 'न', P: 'प',
   F: 'फ', b: 'ब', B: 'भ', m: 'म', y: 'य', l: 'ल', v: 'व', S: 'श', Y: 'ष', s: 'स',
-  x: 'क्ष', E: 'श्र', '@': 'क', '%': 'त', '<': 'त्त'
+  x: 'क्ष', X: 'क्ष', E: 'श्र', '@': 'क', '%': 'त', '<': 'त्त'
 };
 // Full letters: complete on their own, so 'a' after one is the ा sign (ra = रा).
 const SU_FULL: Record<string, string> = {

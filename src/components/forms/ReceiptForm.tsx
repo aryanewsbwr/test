@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { fySuffix, previousFySuffix } from '@/lib/financialYear';
 import { receiptBookWarning } from '@/lib/receiptBooks';
 import { Customer, Region } from '@/lib/types';
+import { sushaToUnicode } from '@/lib/transliteration';
+import { mobilesIn, withoutMobiles } from '@/lib/phoneNumbers';
 
 interface ReceiptFormProps {
   onClose: () => void;
@@ -101,6 +103,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [customerMobiles, setCustomerMobiles] = useState<string[]>([]);
   const [customerRegion, setCustomerRegion] = useState('');
   
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -486,10 +489,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setCustomerId(String(cust.customer_id));
     setPriorityId(cust.priority?.toString() || '');
 
-    // Format address with phone
-    const addrParts = [cust.add1, cust.add2, cust.hindi_add].filter(Boolean).join(' ').trim();
-    const phonePart = cust.phone ? `    ${cust.phone}` : '';
-    setCustomerAddress(addrParts ? `${addrParts}${phonePart}` : '---');
+    // English address when there is one, otherwise the Hindi one decoded from the old font.
+    // Mobile numbers typed into the address are shown with the phone numbers instead.
+    const englishAddress = withoutMobiles([cust.add1, cust.add2].filter(Boolean).join(', '));
+    const hindiAddress = String(cust.hindi_add || '').trim();
+    const decodedHindi = /[ऀ-ॿ]/.test(hindiAddress) ? hindiAddress : sushaToUnicode(hindiAddress);
+    setCustomerAddress(englishAddress || withoutMobiles(decodedHindi));
+    setCustomerMobiles(mobilesIn(cust.phone, cust.add1, cust.add2, hindiAddress));
 
     const reg = allRegions.find(r => r.region_id === cust.region_id);
     setCustomerRegion(reg ? (reg.region_name || `SR${reg.region_id}`) : (cust.region_id ? `SR${cust.region_id}` : ''));
@@ -1610,11 +1616,15 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
           </div>
 
-          {/* Row 3: Address & Phone */}
-          <div className="flex items-center gap-2">
-            <label className="font-bold text-[#000080] shrink-0">Address :</label>
-            <span className="font-bold text-slate-800 text-xs truncate">
+          {/* Row 3: Address & Phone, shown only */}
+          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 items-baseline">
+            <label className="font-bold text-[#000080]">Address :</label>
+            <span className="font-bold text-slate-800 text-xs truncate" title={customerAddress}>
               {customerAddress || '---'}
+            </span>
+            <label className="font-bold text-[#000080]">Mob. No. :</label>
+            <span className="font-bold text-slate-800 text-xs font-mono">
+              {customerMobiles.length > 0 ? customerMobiles.join(',   ') : '---'}
             </span>
           </div>
 
