@@ -100,8 +100,6 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
             <span>Period</span>
           </div>
           <div className="flex items-center gap-1">
-            <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
-            <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
             <button onClick={onExit} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
           </div>
         </div>

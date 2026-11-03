@@ -46,8 +46,6 @@ export default function SubscriptionsModal({
             <span>Customer Subscribed Papers & Delivery Schedule - ID #{customer.customer_id}</span>
           </div>
           <div className="flex items-center gap-1">
-            <button className="vb-win-btn">_</button>
-            <button className="vb-win-btn">□</button>
             <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
           </div>
         </div>

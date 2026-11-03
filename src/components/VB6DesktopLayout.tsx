@@ -357,12 +357,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Aryan News Agency" className="d2-applogo h-3.5 w-auto shrink-0 bg-white rounded-xs px-px" />
           <span className="tracking-wide md:hidden">Aryan News Agency</span>
-          <span className="tracking-wide hidden md:inline">Aryan News Agency (2008 Visual Basic Desktop Edition) - [Beawar, Rajasthan]</span>
-        </div>
-        <div className="hidden md:flex items-center gap-1">
-          <button className="w-4 h-4 bg-[#ECE9D8] hover:bg-white text-black font-bold text-[10px] flex items-center justify-center border border-black cursor-pointer shadow-xs">_</button>
-          <button className="w-4 h-4 bg-[#ECE9D8] hover:bg-white text-black font-bold text-[10px] flex items-center justify-center border border-black cursor-pointer shadow-xs">□</button>
-          <button className="w-4 h-4 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] flex items-center justify-center border border-black cursor-pointer shadow-xs">✕</button>
+          <span className="tracking-wide hidden md:inline">Aryan News Agency - Beawar, Rajasthan</span>
         </div>
       </div>
 

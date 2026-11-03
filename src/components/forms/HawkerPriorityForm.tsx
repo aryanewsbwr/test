@@ -75,8 +75,6 @@ export default function HawkerPriorityForm({ onClose }: HawkerPriorityFormProps)
           <span className="font-bold text-xs text-[#808080]">Hawker's Customer Priority</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">_</button>
-          <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">□</button>
           <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>

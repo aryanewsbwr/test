@@ -341,8 +341,6 @@ html.desktop2 .d2-window div:has(> input:only-child) > input:not([type='checkbox
   html.desktop2 .d2-desk { padding: 6px !important; }
   html.desktop2 .d2-window { width: 100% !important; max-width: 100% !important; max-height: none !important; border-radius: 12px; overflow-x: auto !important; }
   html.desktop2 .d2-window .d2-window { max-height: 85vh !important; }
-  /* Only the close button stays in a title bar; minimise and maximise do nothing on a phone */
-  html.desktop2 .d2-title div:has(> button + button) > button:not(:last-child) { display: none !important; }
   /* Big form headings fit on one or two lines */
   html.desktop2 .d2-window :is(h1, h2) { font-size: 19px !important; line-height: 1.25 !important; letter-spacing: 0.01em !important; }
   /* A row of buttons wraps onto a second line instead of running off the side */

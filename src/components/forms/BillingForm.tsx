@@ -261,8 +261,6 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
           <span>Bill Processing & Monthly Generation (बिल जेनरेशन)</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
-          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
           <button onClick={onClose} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>
@@ -417,7 +415,6 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
             <Database className="w-3.5 h-3.5 text-blue-700" />
             <span>Save & Commit generated bills to live Supabase Database (bill / billno tables)</span>
           </label>
-          <span className="text-slate-500 font-mono text-[10px]">VB6 2008 Precision Engine</span>
         </div>
 
         {/* Progress Bar & Status */}

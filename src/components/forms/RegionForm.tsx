@@ -122,8 +122,6 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
           <span>Region / Area Master (क्षेत्र विवरण) - ID #{selectedRegion.region_id}</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="vb-win-btn">_</button>
-          <button className="vb-win-btn">□</button>
           <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
         </div>
       </div>

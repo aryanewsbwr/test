@@ -97,8 +97,6 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
           <span>Publisher Newspaper Purchase & Supply Invoice (अखबार खरीद / आवक प्रविष्टि)</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="vb-win-btn">_</button>
-          <button className="vb-win-btn">□</button>
           <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
         </div>
       </div>

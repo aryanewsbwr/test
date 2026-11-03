@@ -334,9 +334,6 @@ export default function CounterSaleForm({
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-yellow-300" />
             <span className="tracking-wide">Counter & Walk-in Cash Sale Entry (काउंटर नकद खुदरा बिक्री)</span>
-            <span className="text-[10px] bg-blue-900/80 px-1.5 py-0.5 rounded-xs text-yellow-200 border border-blue-400">
-              VB6 Direct Mode
-            </span>
           </div>
           <button 
             onClick={onClose} 
