@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSecureWhatsAppToken } from '@/lib/whatsappService';
+import { saveIncoming, saveStatus } from '@/lib/whatsappInbox';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
           // 1. Handle Status Updates (sent / delivered / read / failed)
           const statuses = value.statuses || [];
           for (const s of statuses) {
+            await saveStatus(s);
             const wamid = s.id;
             const newStatus = s.status; // 'sent' | 'delivered' | 'read' | 'failed'
             const timestamp = s.timestamp ? new Date(Number(s.timestamp) * 1000).toISOString() : new Date().toISOString();
@@ -130,6 +132,7 @@ export async function POST(request: NextRequest) {
           // 2. Handle Inbound Customer Messages / Button Clicks ("भुगतान कर दिया")
           const messages = value.messages || [];
           for (const msg of messages) {
+            await saveIncoming(msg, value.contacts);
             const fromPhone = msg.from; // e.g. 919887500875
             let isPaidClick = false;
 

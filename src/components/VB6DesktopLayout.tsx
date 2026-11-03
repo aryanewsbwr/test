@@ -55,6 +55,7 @@ import CounterSaleForm from './forms/CounterSaleForm';
 import RetailSalePermanentForm from './forms/RetailSalePermanentForm';
 import PeriodForm from './forms/PeriodForm';
 import ReportsForm from './forms/ReportsForm';
+import WhatsAppRepliesForm from './forms/WhatsAppRepliesForm';
 import BackupRestoreModal from './forms/BackupRestoreModal';
 import DiscontinueForm from './forms/DiscontinueForm';
 import CompanyForm from './forms/CompanyForm';
@@ -616,6 +617,11 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
               <button onClick={() => { setSelectedReportType('collection_datewise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Collection Datewise
               </button>
+
+              {/* 17. WhatsApp Replies */}
+              <button onClick={() => { setActiveWindow('wareplies'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer border-t border-[#808080] mt-1 pt-1.5">
+                WhatsApp Replies (ग्राहकों के जवाब)
+              </button>
             </div>
           )}
         </div>
@@ -946,6 +952,11 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
             periodMonth={currentPeriod.month}
             periodStartYear={currentPeriod.startYear}
           />
+        )}
+
+        {/* 10a. WhatsApp Replies */}
+        {activeWindow === 'wareplies' && (
+          <WhatsAppRepliesForm onClose={() => setActiveWindow(null)} />
         )}
 
         {/* 10b. Bill Message Master Form */}
