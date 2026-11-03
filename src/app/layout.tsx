@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './desktop2-base.css';
+import './desktop2.css';
 
 export const metadata: Metadata = {
   title: 'Aryan News Agency Management System',

@@ -86,6 +86,16 @@ interface VB6DesktopLayoutProps {
 export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: VB6DesktopLayoutProps = {}) {
   // Active Form Window (starts null on clean MDI desktop)
   const [activeWindow, setActiveWindow] = useState<string | null>(null);
+  // Desktop 2 is the modern white look; each computer remembers its own choice
+  const [desktop2, setDesktop2] = useState(false);
+  useEffect(() => {
+    try { setDesktop2(localStorage.getItem('desktopLook') === '2'); } catch {}
+  }, []);
+  useEffect(() => {
+    document.documentElement.classList.toggle('desktop2', desktop2);
+    try { localStorage.setItem('desktopLook', desktop2 ? '2' : '1'); } catch {}
+    return () => document.documentElement.classList.remove('desktop2');
+  }, [desktop2]);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   // Core Static Lists
@@ -651,6 +661,13 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
               <span className="text-[10px] text-slate-500 font-normal">({user.role})</span>
             </div>
           )}
+          <button
+            onClick={() => setDesktop2(on => !on)}
+            title={desktop2 ? 'Back to the classic look' : 'Try the modern white look'}
+            className="px-2 py-0.5 bg-white text-[#000080] hover:bg-[#BCE5FF] border border-[#808080] text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            <span>🖥️ {desktop2 ? 'Desktop 1' : 'Desktop 2'}</span>
+          </button>
           {onSwitchToMobile && (
             <button 
               onClick={onSwitchToMobile}
