@@ -150,12 +150,18 @@ export function withoutHeldPapers(rows: any[], liveSubscriptions: any[]) {
   });
 }
 
-// Each software numbers receipts itself, so one payment typed into both looks like two receipts
+// Each software numbers receipts itself, so one payment typed into both looks like two receipts.
+// Equal payments are counted, so a second ₹155 the same month is still brought in.
 export function withoutRepeatedReceipts(rows: any[], liveReceipts: any[]) {
   const payment = (receipt: any) =>
     `${receipt.customer_id}|${monthCode(receipt.month)}|${Number(receipt.mal_recp_amt) || 0}|${Number(receipt.less_amt) || 0}`;
-  const held = new Set(liveReceipts.map(payment));
-  return rows.filter(row => !held.has(payment(row)));
+  const held = new Map<string, number>();
+  for (const receipt of liveReceipts) held.set(payment(receipt), (held.get(payment(receipt)) || 0) + 1);
+  return rows.filter(row => {
+    const left = held.get(payment(row)) || 0;
+    if (left > 0) held.set(payment(row), left - 1);
+    return left === 0;
+  });
 }
 
 // The old software keeps mobile numbers in their own table. They only fill a blank phone here,
