@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Download, Upload, Database, RefreshCw, FileText, ShieldCheck } from 'lucide-react';
-import { applyRestore, downloadBackup, planRestore, RestorePlan } from '@/lib/backupClient';
+import { applyRestore, downloadBackup, planRestore, readJson, RestorePlan } from '@/lib/backupClient';
 
 interface BackupRestoreModalProps {
   mode: 'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward';
@@ -101,6 +101,23 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
       }
     });
   };
+
+  // Shows what will be carried first, so nothing changes until staff agree
+  const handleBalanceForward = () => run(async () => {
+    working('हिसाब देखा जा रहा है...');
+    const ask = await fetch('/api/balance-forward').then(readJson);
+    const total = Number(ask.total).toLocaleString('en-IN');
+    if (!confirm(`${ask.from_label} का हिसाब बंद होकर ${ask.to_label} शुरू होगा।
+
+${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का बकाया आगे जाएगा, कुल ₹${total}।
+
+आगे बढ़ें?`)) {
+      return 'कुछ नहीं बदला।';
+    }
+    working('बैलेंस फॉरवर्ड हो रहा है...');
+    const done = await fetch('/api/balance-forward', { method: 'POST' }).then(readJson);
+    return `बैलेंस फॉरवर्ड पूरा हुआ: ${done.to_label} शुरू हो गया। ${Number(done.customers).toLocaleString('en-IN')} ग्राहकों का बकाया आगे गया, कुल ₹${Number(done.total).toLocaleString('en-IN')}।`;
+  });
 
   const tabButton = (tab: Tab, label: string, icon: React.ReactNode) => (
     <button
@@ -282,10 +299,18 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
 
           {activeTab === 'balance_forward' && (
             <div className="space-y-2 text-slate-700 leading-relaxed">
-              <p className="font-bold text-amber-900">Financial Year Balance Forward</p>
+              <p className="font-bold text-amber-900">Financial Year Balance Forward (बैलेंस फॉरवर्ड)</p>
               <p>
-                This is done once a year, after the March bills, in the Supabase SQL Editor with the script <code>supabase/year_end_rollover.sql</code>. It cannot run from this screen because it creates the new year&apos;s tables.
+                साल में एक बार, मार्च के बिल बनने के बाद। हर ग्राहक का बचा हुआ बकाया नए साल में चला जाता है और नए साल की सारी टेबल अपने आप बन जाती हैं। पहले कुल रकम दिखेगी, आपके हाँ कहने पर ही कुछ बदलेगा।
               </p>
+              <button
+                onClick={handleBalanceForward}
+                disabled={isProcessing}
+                className="vb-btn bg-amber-100 hover:bg-amber-200 px-4 py-1.5 text-xs font-bold cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>{isProcessing ? 'Working...' : 'बैलेंस फॉरवर्ड करें'}</span>
+              </button>
             </div>
           )}
 

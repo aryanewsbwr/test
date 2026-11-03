@@ -13,7 +13,7 @@ const PARALLEL_WRITES = 4;
 
 type Progress = (message: string) => void;
 
-async function readJson(res: Response) {
+export async function readJson(res: Response) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Server returned ${res.status}`);
   return data;

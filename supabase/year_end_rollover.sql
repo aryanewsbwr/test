@@ -4,24 +4,28 @@
 -- Closing balance = Dues + bills + delivery - discount - receipts - less amount.
 -- Customers in the Court region are left out, because the old software never carried theirs.
 --
--- Run this file once, after the March bills are generated. Then, in the SQL Editor:
---
---   SELECT year_end_rollover('20262027', '20272028');         -- preview, changes nothing
---   SELECT year_end_rollover('20262027', '20272028', false);  -- does it
---
+-- Run this file once in the SQL Editor. After that staff open each new year from
+-- Tools > Balance Forward, which previews the total first and then does it.
 -- It is all or nothing, and refuses to run twice for the same year.
 
-CREATE OR REPLACE FUNCTION year_end_rollover(from_fy text, to_fy text, preview boolean DEFAULT true)
-RETURNS text
+DROP FUNCTION IF EXISTS year_end_rollover(text, text, boolean);
+
+CREATE FUNCTION year_end_rollover(from_fy text, to_fy text, preview boolean DEFAULT true)
+RETURNS jsonb
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   yearly_table text;
+  old_table text;
   new_table text;
   has_march boolean;
   already_done boolean;
   carried bigint;
   total numeric;
+  grant_row record;
+  policy_row record;
 BEGIN
   IF from_fy !~ '^\d{8}$' OR to_fy !~ '^\d{8}$'
      OR substr(from_fy, 5, 4) <> substr(to_fy, 1, 4)
@@ -33,14 +37,14 @@ BEGIN
   EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE lower(trim(month)) = ''march'')', 'billno' || from_fy)
     INTO has_march;
   IF NOT has_march THEN
-    RAISE EXCEPTION 'No March bills in billno%. Generate them first, so the closing balances are complete', from_fy;
+    RAISE EXCEPTION 'NO_MARCH_BILLS';
   END IF;
 
   IF to_regclass('public.billno' || to_fy) IS NOT NULL THEN
     EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE lower(trim(month)) = ''dues'')', 'billno' || to_fy)
       INTO already_done;
     IF already_done THEN
-      RAISE EXCEPTION 'billno% already has Dues rows, so this year is already open', to_fy;
+      RAISE EXCEPTION 'ALREADY_OPEN';
     END IF;
   END IF;
 
@@ -74,14 +78,34 @@ BEGIN
   SELECT count(*), coalesce(sum(due_amt), 0) INTO carried, total FROM rollover_dues;
 
   IF preview THEN
-    RETURN format('Preview only: %s customers, opening Dues %s', carried, total);
+    RETURN jsonb_build_object('done', false, 'from_fy', from_fy, 'to_fy', to_fy, 'customers', carried, 'total', total);
   END IF;
 
-  FOREACH yearly_table IN ARRAY ARRAY['billno', 'bill', 'billdel', 'receipt', 'retailsale'] LOOP
+  -- Each new table gets the same access as last year's, so every screen keeps working
+  FOREACH yearly_table IN ARRAY ARRAY['billno', 'bill', 'billdel', 'receipt', 'retailsale', 'receiptissue'] LOOP
+    old_table := yearly_table || from_fy;
     new_table := yearly_table || to_fy;
-    EXECUTE format('CREATE TABLE IF NOT EXISTS %I (LIKE %I INCLUDING ALL)', new_table, yearly_table || from_fy);
-    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', new_table);
-    EXECUTE format('REVOKE ALL ON %I FROM anon, authenticated', new_table);
+    CONTINUE WHEN to_regclass('public.' || old_table) IS NULL OR to_regclass('public.' || new_table) IS NOT NULL;
+    EXECUTE format('CREATE TABLE %I (LIKE %I INCLUDING ALL)', new_table, old_table);
+
+    FOR grant_row IN
+      SELECT grantee, privilege_type FROM information_schema.role_table_grants
+      WHERE table_schema = 'public' AND table_name = old_table
+    LOOP
+      EXECUTE format('GRANT %s ON %I TO %s', grant_row.privilege_type, new_table,
+        CASE WHEN grant_row.grantee = 'PUBLIC' THEN 'PUBLIC' ELSE quote_ident(grant_row.grantee) END);
+    END LOOP;
+
+    IF (SELECT relrowsecurity FROM pg_class WHERE oid = ('public.' || old_table)::regclass) THEN
+      EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', new_table);
+    END IF;
+    FOR policy_row IN SELECT * FROM pg_policies WHERE schemaname = 'public' AND tablename = old_table LOOP
+      EXECUTE format('CREATE POLICY %I ON %I AS %s FOR %s TO %s %s %s',
+        policy_row.policyname, new_table, policy_row.permissive, policy_row.cmd,
+        array_to_string(policy_row.roles, ', '),
+        CASE WHEN policy_row.qual IS NOT NULL THEN 'USING (' || policy_row.qual || ')' ELSE '' END,
+        CASE WHEN policy_row.with_check IS NOT NULL THEN 'WITH CHECK (' || policy_row.with_check || ')' ELSE '' END);
+    END LOOP;
   END LOOP;
 
   EXECUTE format(
@@ -90,8 +114,9 @@ BEGIN
     'billno' || to_fy, substr(to_fy, 1, 4)
   );
 
-  RETURN format('Done: %s customers, opening Dues %s', carried, total);
+  RETURN jsonb_build_object('done', true, 'from_fy', from_fy, 'to_fy', to_fy, 'customers', carried, 'total', total);
 END;
 $$;
 
 REVOKE ALL ON FUNCTION year_end_rollover(text, text, boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION year_end_rollover(text, text, boolean) TO service_role;
