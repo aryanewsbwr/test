@@ -294,3 +294,16 @@ html.desktop2 .d2-loading .d2-loading-logo::after {
 html.desktop2 .d2-loading p { color: var(--d2-ink) !important; font-family: var(--d2-font) !important; }
 html.desktop2 .d2-loading p + p { color: var(--d2-muted) !important; font-weight: 600; }
 @keyframes d2-spin { to { transform: rotate(360deg); } }
+
+/* Plain white windows: the old pictures behind the forms (Region, Publisher, Holiday...) are left out */
+html.desktop2 .d2-window [style*="background-image"] { background-image: none !important; background-color: #FFFFFF !important; }
+html.desktop2 .d2-window img[src*="/legacy_images/"]:not([src$=".ico"]) { display: none !important; }
+
+/* Boxes the classic look drew inside a square frame: the frame goes, the rounded box stays */
+html.desktop2 .d2-window div:has(> input:only-child:not([type='checkbox']):not([type='radio'])) {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html.desktop2 .d2-window div:has(> input:only-child) > input:not([type='checkbox']):not([type='radio']) { padding: 3px 8px; }

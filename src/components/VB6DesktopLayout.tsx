@@ -103,9 +103,11 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       const desk = document.querySelector<HTMLElement>('.d2-desk');
       if (!desk) return;
       const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d2-z')) || 1;
-      const room = desk.clientHeight - 24;
-      desk.querySelectorAll<HTMLElement>('.d2-window').forEach(win => {
+      document.querySelectorAll<HTMLElement>('.d2-window').forEach(win => {
         if (win.parentElement?.closest('.d2-window')) return;
+        // A pop-up over the whole screen has the full height; a window on the desk has the desk's
+        const overlay = win.parentElement?.closest<HTMLElement>('.fixed');
+        const room = (overlay ? window.innerHeight - 32 : desk.clientHeight - 24);
         win.style.maxHeight = '';
         const current = parseFloat(getComputedStyle(win).zoom) || 1;
         const natural = win.getBoundingClientRect().height / current;

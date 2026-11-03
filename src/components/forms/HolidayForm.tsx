@@ -184,7 +184,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
   };
 
   return (
-    <div className="relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-[#808080] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-[#808080] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* Title Bar matching screenshot_07.jpg */}
       <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
@@ -215,7 +215,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
         </div>
 
         {/* Middle Section: Left Cartoon & Labels + Right Input Controls */}
-        <div className="flex gap-2 flex-1 overflow-hidden my-1">
+        <div className="flex gap-2 flex-1 overflow-hidden my-1 d2:flex-none d2:h-[330px]">
           
           {/* Left Graphic & Side Labels */}
           <div className="w-36 flex flex-col justify-start items-center relative select-none shrink-0 pt-2">
