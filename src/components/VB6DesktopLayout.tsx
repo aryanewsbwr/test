@@ -349,11 +349,9 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
     <div className="d2-app flex flex-col h-screen w-full select-none bg-[#3A6EA5] font-tahoma overflow-hidden">
       
       {/* 1. TOP WINDOW TITLE BAR */}
-      <div className="d2-apptitle vb-titlebar border-b border-black select-none">
+      <div className="d2-apptitle vb-titlebar border-b border-black select-none flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <div className="w-3.5 h-3.5 bg-yellow-400 border border-black rounded-xs flex items-center justify-center text-[9px] font-black text-black">
-            VB
-          </div>
+          <img src="/logo.png" alt="Aryan News Agency" className="d2-applogo h-3.5 w-auto shrink-0 bg-white rounded-xs px-px" />
           <span className="tracking-wide">Aryan News Agency (2008 Visual Basic Desktop Edition) - [Beawar, Rajasthan]</span>
         </div>
         <div className="flex items-center gap-1">
@@ -746,8 +744,8 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         {/* Clean MDI Desktop Wallpaper (When no form is open) */}
         {activeWindow === null && (
           <div className="d2-splash flex flex-col items-center justify-center text-center p-8 opacity-85 select-none pointer-events-none my-auto">
-            <div className="w-24 h-24 rounded-full bg-white/20 border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 backdrop-blur-xs">
-              <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider font-serif">ANA</span>
+            <div className="w-24 h-24 rounded-full bg-white border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 overflow-hidden">
+              <img src="/logo.png" alt="" className="h-[86%] w-auto" />
             </div>
             <h1 className="text-2xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-wide">
               ARYAN NEWS AGENCY

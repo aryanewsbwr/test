@@ -79,8 +79,8 @@ export default function HomePage() {
     return (
       <div className="d2-loading h-screen w-full bg-[#3A6EA5] flex flex-col items-center justify-center text-white font-tahoma">
         <div>
-        <div className="d2-loading-logo relative w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 animate-pulse">
-          <span className="text-2xl font-black text-white font-serif">ANA</span>
+        <div className="d2-loading-logo relative w-16 h-16 rounded-full bg-white border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 animate-pulse">
+          <img src="/logo.png" alt="" className="h-[86%] w-auto" />
         </div>
         <p className="text-sm font-bold text-yellow-200">Aryan News Agency System</p>
         <p className="text-xs text-white/75 mt-1 font-mono">Loading authentication session...</p>
