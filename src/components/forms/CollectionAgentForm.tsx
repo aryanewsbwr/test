@@ -169,10 +169,10 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
   );
 
   return (
-    <div className="relative w-full max-w-[620px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[620px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
       
       {/* Titlebar matching media_1791373601013.png */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
+      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -354,9 +354,9 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
       {/* Find Collection Agent Modal Dialog */}
       {isFindOpen && (
         <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-md space-y-2 text-xs flex flex-col max-h-[85vh]">
+          <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-md space-y-2 text-xs flex flex-col max-h-[85vh]">
             
-            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Find Collection Agent ({filteredAgents.length} Agents Found)</span>
               <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>

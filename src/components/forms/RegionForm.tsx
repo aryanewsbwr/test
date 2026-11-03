@@ -114,9 +114,9 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
   );
 
   return (
-    <div className="relative w-full max-w-[650px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[650px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma my-auto shrink-0">
       {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none shrink-0">
+      <div className="d2-title vb-titlebar-xp select-none shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span>Region / Area Master (क्षेत्र विवरण) - ID #{selectedRegion.region_id}</span>
@@ -201,8 +201,8 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
       {/* Find Region Modal */}
       {isFindOpen && (
         <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-[460px] h-[340px] bg-[#ECE9D8] vb-window flex flex-col">
-            <div className="vb-titlebar-xp">
+          <div className="d2-window w-[460px] h-[340px] bg-[#ECE9D8] vb-window flex flex-col">
+            <div className="d2-title vb-titlebar-xp">
               <span>Find Region / Zone</span>
               <button onClick={() => setIsFindOpen(false)} className="vb-win-btn vb-win-btn-close">✕</button>
             </div>

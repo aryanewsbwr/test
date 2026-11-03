@@ -1,55 +1,214 @@
-/* Desktop 2: the window frames, inputs, buttons and font of the modern white look.
-   Sizes stay the same as the classic look, so nothing moves. Only under html.desktop2. */
-html.desktop2 body {
-  background-color: #F1F5F9 !important;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', system-ui, 'Noto Sans Devanagari', sans-serif;
-  color: #0F172A;
+/* Desktop 2: a modern white look over the same layout. Everything here applies only under
+   html.desktop2; the d2-* marker classes do nothing in the classic look. */
+
+html.desktop2 {
+  --d2-font: 'Inter', 'Noto Sans Devanagari', 'Segoe UI', system-ui, sans-serif;
+  --d2-ink: #0F172A;
+  --d2-muted: #64748B;
+  --d2-line: #E2E8F0;
+  --d2-field: #CBD5E1;
+  --d2-blue: #2563EB;
+  --d2-blue-soft: #EFF6FF;
 }
-html.desktop2 .font-tahoma {
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', system-ui, sans-serif !important;
+
+/* Font everywhere, including form controls, which do not inherit it by themselves */
+html.desktop2 body,
+html.desktop2 .d2-app,
+html.desktop2 .font-tahoma,
+html.desktop2 .d2-app :is(button, input, select, textarea) {
+  font-family: var(--d2-font) !important;
 }
-html.desktop2 .vb-window {
-  background-color: #F8FAFC;
-  border-color: #FFFFFF #E2E8F0 #E2E8F0 #FFFFFF;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.08);
-}
-html.desktop2 .vb-titlebar-xp {
-  background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%);
-  font-weight: 600;
-  text-shadow: none;
-}
-html.desktop2 .vb-win-btn {
+html.desktop2 body { background-color: #F1F5F9 !important; color: var(--d2-ink); }
+html.desktop2 .d2-app { background-color: #F1F5F9 !important; -webkit-font-smoothing: antialiased; }
+
+/* Top title bar of the app */
+html.desktop2 .d2-apptitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
   background: #FFFFFF;
-  border-color: #CBD5E1;
-  border-radius: 4px;
+  color: var(--d2-ink);
+  border-bottom: 1px solid var(--d2-line) !important;
+  font-size: 13px;
+  font-weight: 600;
+}
+html.desktop2 .d2-apptitle > div:first-child > div:first-child {
+  background: var(--d2-blue) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
+}
+html.desktop2 .d2-apptitle button {
+  width: 26px !important;
+  height: 22px !important;
+  background: transparent !important;
+  color: var(--d2-muted) !important;
+  border: none !important;
+  border-radius: 6px;
+  box-shadow: none !important;
+}
+html.desktop2 .d2-apptitle button:hover { background: #F1F5F9 !important; }
+html.desktop2 .d2-apptitle button:last-child:hover { background: #EF4444 !important; color: #FFFFFF !important; }
+
+/* Menu bar and its drop-downs */
+html.desktop2 .d2-menubar {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid var(--d2-line) !important;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+html.desktop2 .d2-menubar > div.relative > button {
+  border-radius: 6px;
   color: #334155;
-  box-shadow: none;
+  font-weight: 500;
 }
-html.desktop2 .vb-win-btn:hover { background: #F1F5F9; }
-html.desktop2 .vb-win-btn-close { background: #EF4444; border-color: #DC2626; color: #FFFFFF; }
-html.desktop2 .vb-win-btn-close:hover { background: #DC2626; }
-html.desktop2 .vb-input {
-  border-color: #CBD5E1;
-  font-family: inherit;
-  color: #0F172A;
+html.desktop2 .d2-menubar > div.relative > button:hover,
+html.desktop2 .d2-menubar > div.relative > button.bg-\[\#316AC5\] {
+  background: var(--d2-blue-soft) !important;
+  color: #1D4ED8 !important;
 }
-html.desktop2 .vb-input:focus {
-  border-color: #3B82F6;
+html.desktop2 .d2-menubar .vb-box-outset {
+  background: #FFFFFF !important;
+  border-radius: 10px;
+  padding: 6px !important;
+  margin-top: 4px;
+  box-shadow: 0 0 0 1px var(--d2-line), 0 16px 32px -8px rgba(15, 23, 42, 0.18) !important;
+}
+html.desktop2 .d2-menubar .vb-box-outset button {
+  border-radius: 6px;
+  color: #1E293B;
+}
+html.desktop2 .d2-menubar .vb-box-outset button:hover {
+  background: var(--d2-blue-soft) !important;
+  color: #1D4ED8 !important;
+}
+html.desktop2 .d2-menubar .ml-auto button,
+html.desktop2 .d2-menubar .ml-auto > div {
+  border-radius: 8px;
+  border-color: var(--d2-line) !important;
+  box-shadow: none !important;
+}
+
+/* Home screen when no window is open */
+html.desktop2 .d2-splash { opacity: 1 !important; }
+html.desktop2 .d2-splash > div {
+  background: linear-gradient(135deg, #2563EB, #4F46E5) !important;
+  border: none !important;
+  box-shadow: 0 16px 32px -10px rgba(37, 99, 235, 0.55) !important;
+}
+html.desktop2 .d2-splash span:first-child { filter: none !important; text-shadow: none !important; }
+html.desktop2 .d2-splash h1 {
+  color: var(--d2-ink) !important;
+  filter: none !important;
+  letter-spacing: 0.02em;
+}
+html.desktop2 .d2-splash p { color: var(--d2-blue) !important; filter: none !important; font-weight: 600 !important; }
+html.desktop2 .d2-splash > span { color: var(--d2-muted) !important; font-family: var(--d2-font) !important; }
+
+/* Status bar */
+html.desktop2 .d2-statusbar {
+  background: #FFFFFF !important;
+  border-top: 1px solid var(--d2-line) !important;
+  color: #334155 !important;
+  padding: 4px 10px;
+}
+
+/* Windows: white cards with rounded corners */
+html.desktop2 .d2-window {
+  background-color: #FFFFFF !important;
+  border: 1px solid var(--d2-line) !important;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px -16px rgba(15, 23, 42, 0.22), 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Window title bars: white, dark text, blue icon */
+html.desktop2 .d2-title {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: var(--d2-ink) !important;
+  border-bottom: 1px solid var(--d2-line) !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+html.desktop2 .d2-title :is(span, div, h1, h2, h3) { color: var(--d2-ink) !important; }
+html.desktop2 .d2-title svg { color: var(--d2-blue) !important; }
+html.desktop2 .d2-title :is(button, .vb-win-btn) {
+  width: 24px !important;
+  height: 22px !important;
+  background: transparent !important;
+  color: var(--d2-muted) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+html.desktop2 .d2-title :is(button, .vb-win-btn):hover { background: #F1F5F9 !important; color: var(--d2-ink) !important; }
+html.desktop2 .d2-title :is(button, .vb-win-btn):last-child:hover { background: #EF4444 !important; color: #FFFFFF !important; }
+
+/* Inside windows: panels, fields, buttons and tables */
+html.desktop2 .d2-window :is(input:not([type='checkbox']):not([type='radio']), select, textarea) {
   background-color: #FFFFFF;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  border: 1px solid var(--d2-field) !important;
+  border-radius: 7px;
+  color: var(--d2-ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
+html.desktop2 .d2-window :is(input, select, textarea):read-only:not(select) { background-color: #F8FAFC; }
+html.desktop2 .d2-window :is(input:not([type='checkbox']):not([type='radio']), select, textarea):focus {
+  outline: none !important;
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+}
+html.desktop2 .d2-window :is(input[type='checkbox'], input[type='radio']) { accent-color: var(--d2-blue); }
+
+html.desktop2 .d2-window button:not(.d2-title button) {
+  border-radius: 8px;
+  font-weight: 600;
+  border-color: var(--d2-line);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+html.desktop2 .d2-window button:not(.d2-title button):hover { box-shadow: 0 2px 6px rgba(15, 23, 42, 0.10); }
+html.desktop2 .d2-window button:not(.d2-title button):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+/* The shortcut letter (<u>S</u>ave) joins its word again instead of standing apart */
+html.desktop2 .d2-window button u { text-decoration: none; display: contents; }
+
+html.desktop2 .d2-window :is(fieldset, .rounded-xs) { border-radius: 10px; }
+html.desktop2 .d2-window table { border-color: var(--d2-line) !important; }
+html.desktop2 .d2-window th {
+  background: #F8FAFC !important;
+  background-image: none !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  border-color: var(--d2-line) !important;
+}
+html.desktop2 .d2-window td { border-color: #F1F5F9 !important; }
+
+/* Classic helper classes, in the same look */
+html.desktop2 .vb-window { background-color: #FFFFFF; }
+html.desktop2 .vb-input { border: 1px solid var(--d2-field); border-radius: 7px; }
+html.desktop2 .vb-input:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18); background-color: #FFFFFF; }
 html.desktop2 .vb-action-btn {
   background: #FFFFFF;
-  border-color: #CBD5E1;
-  font-family: inherit;
-  font-weight: 600;
+  border: 1px solid var(--d2-line);
+  border-radius: 8px;
   color: #1E3A8A;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
-html.desktop2 .vb-action-btn:hover { background: #EFF6FF; border-color: #93C5FD; color: #1D4ED8; }
-html.desktop2 .vb-action-btn:active { border-color: #93C5FD; }
-html.desktop2 .vb-grid { border-color: #CBD5E1; }
-html.desktop2 .vb-grid th { background: #F1F5F9; border-color: #E2E8F0; color: #334155; font-weight: 600; }
+html.desktop2 .vb-action-btn:hover { background: var(--d2-blue-soft); border-color: #93C5FD; color: #1D4ED8; }
+html.desktop2 .vb-grid { border: 1px solid var(--d2-line); border-radius: 10px; overflow: hidden; }
+html.desktop2 .vb-grid th { background: #F8FAFC; border-color: var(--d2-line); color: #334155; font-weight: 600; }
 html.desktop2 .vb-grid td { border-color: #F1F5F9; }
-html.desktop2 .vb-grid tr.selected { background-color: #3B82F6; }
-html.desktop2 .vb-box-outset { box-shadow: 0 0 0 1px #E2E8F0, 0 10px 25px rgba(15, 23, 42, 0.12); }
+html.desktop2 .vb-grid tr.selected { background-color: var(--d2-blue); }
+html.desktop2 .vb-status-panel { border-radius: 6px; }

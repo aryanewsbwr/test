@@ -843,9 +843,9 @@ export default function PublicationForm({
   const permanentCount = pubList.filter(p => p.is_permanent).length;
 
   return (
-    <div className="relative w-full max-w-[780px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[780px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       {/* Title Bar */}
-      <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
+      <div className="d2-title bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm">📰</span>
           <span className="tracking-wide">
@@ -1808,9 +1808,9 @@ export default function PublicationForm({
       {/* Publication Discontinue Find Modal */}
       {isPubDisFindOpen && (
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-3 z-50">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-full h-[450px] flex flex-col font-tahoma text-xs">
+          <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-full h-[450px] flex flex-col font-tahoma text-xs">
             {/* Modal Title Bar */}
-            <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
               <span>Find Publication Discontinues (अखबार रोक सूची)</span>
               <button 
                 onClick={() => setIsPubDisFindOpen(false)}
@@ -1920,9 +1920,9 @@ export default function PublicationForm({
       {/* Find Publication Modal Dialog with Active / Closed Filters */}
       {isFindOpen && (
         <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-          <div className="w-[660px] max-h-[480px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
+          <div className="d2-window w-[660px] max-h-[480px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
             {/* Find Dialog Titlebar */}
-            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Find Publication ({filtered.length} Matching Records)</span>
               <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>
@@ -2052,9 +2052,9 @@ export default function PublicationForm({
       {/* Rate Change History Modal Dialog */}
       {isHistoryOpen && (
         <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-          <div className="w-[580px] max-h-[460px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
+          <div className="d2-window w-[580px] max-h-[460px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
             {/* Titlebar */}
-            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>📜 Rate Change History - {selectedPub.public_name} (#{selectedPub.publica_id})</span>
               <button onClick={() => setIsHistoryOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>

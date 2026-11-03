@@ -214,10 +214,10 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   );
 
   return (
-    <div className="relative w-full max-w-[700px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[700px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
       
       {/* Titlebar matching media_1791373522564.png */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
+      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -317,7 +317,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
 
           {/* Right Region Allotment Checklist Box */}
           <div className="sm:col-span-4 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white shadow-inner flex flex-col h-[180px]">
-            <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 font-bold text-[11px] text-slate-800 flex justify-between items-center shrink-0">
+            <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 font-bold text-[11px] text-slate-800 flex justify-between items-center shrink-0">
               <span className="font-bold text-black">Region Allotment</span>
               <span className="text-[10px] text-[#000080]">({allottedRegions.length} checked)</span>
             </div>
@@ -438,9 +438,9 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
       {/* Find Hawker Modal Dialog */}
       {isFindOpen && (
         <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-lg space-y-2 text-xs flex flex-col max-h-[85vh]">
+          <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-lg space-y-2 text-xs flex flex-col max-h-[85vh]">
             
-            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Find Hawker ({filteredHawkers.length} Hawkers Found)</span>
               <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>

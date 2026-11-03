@@ -57,9 +57,9 @@ export default function DailyProcessForm({
   const totalCopies = results.reduce((acc, r) => acc + (r.copies || 0), 0);
 
   return (
-    <div className="relative w-full max-w-[750px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[750px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma my-auto shrink-0">
       {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none shrink-0">
+      <div className="d2-title vb-titlebar-xp select-none shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span>Daily Hawker Distribution Process (दैनिक वितरण पर्ची)</span>

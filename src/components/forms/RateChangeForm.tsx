@@ -322,10 +322,10 @@ export default function RateChangeForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 select-none">
-      <div className="w-[720px] max-w-full bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
+      <div className="d2-window w-[720px] max-w-full bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
         
         {/* Title Bar */}
-        <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2.5 py-1 font-bold flex justify-between items-center shadow-xs">
+        <div className="d2-title bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2.5 py-1 font-bold flex justify-between items-center shadow-xs">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-yellow-300" />
             <span>Rate Change Master (अखबार / पत्रिका दर परिवर्तन मास्टर)</span>
@@ -500,8 +500,8 @@ export default function RateChangeForm({
         {/* Rate Change History Modal Dialog */}
         {isHistoryOpen && selectedPub && (
           <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-            <div className="w-[620px] max-h-[480px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
-              <div className="bg-[#0A246A] text-white px-2.5 py-1 font-bold flex justify-between items-center shadow-xs">
+            <div className="d2-window w-[620px] max-h-[480px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
+              <div className="d2-title bg-[#0A246A] text-white px-2.5 py-1 font-bold flex justify-between items-center shadow-xs">
                 <span>📜 Rate Change History - {selectedPub.public_name} (#{selectedPub.publica_id})</span>
                 <button onClick={() => setIsHistoryOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
               </div>

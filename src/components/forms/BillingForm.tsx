@@ -250,7 +250,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
     <div className={`relative w-full ${showGrid ? 'max-w-[920px]' : 'max-w-[600px]'} max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0 transition-all duration-200`}>
       
       {/* Title Bar matching screenshot_14.jpg */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
+      <div className="d2-title bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -596,9 +596,9 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
       {/* Breakup Modal */}
       {breakupCustomer && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[85vh]">
+          <div className="d2-window w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[85vh]">
             
-            <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold text-xs mb-2">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold text-xs mb-2">
               <span>Itemized Billing Breakup - Customer #{breakupCustomer.customer_id}: {breakupCustomer.name_eng}</span>
               <button onClick={() => setBreakupCustomer(null)} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center">✕</button>
             </div>

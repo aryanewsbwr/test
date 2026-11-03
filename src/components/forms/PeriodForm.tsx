@@ -91,10 +91,10 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
 
   return (
     <div className="fixed inset-0 z-50 bg-[#3A6EA5]/80 backdrop-blur-xs flex items-center justify-center p-4 select-none font-tahoma">
-      <div className="w-full max-w-md bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col overflow-hidden">
+      <div className="d2-window w-full max-w-md bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col overflow-hidden">
         
         {/* Title Bar matching screenshot_15.jpg */}
-        <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs">
+        <div className="d2-title bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs">
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-yellow-300" />
             <span>Period</span>

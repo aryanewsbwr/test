@@ -25,9 +25,9 @@ export default function CompanyForm({ onClose }: CompanyFormProps) {
   };
 
   return (
-    <div className="relative w-[720px] h-[520px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
+    <div className="d2-window relative w-[720px] h-[520px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
       {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none">
+      <div className="d2-title vb-titlebar-xp select-none">
         <div className="flex items-center gap-1.5">
           <Building2 className="w-3.5 h-3.5" />
           <span>Company & Agency Profile Setup (फर्म विवरण एवं बिलिंग नियम)</span>

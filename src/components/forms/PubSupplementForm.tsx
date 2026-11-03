@@ -398,10 +398,10 @@ export default function PubSupplementForm({
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 select-none">
       
       {/* 3D Classic Windows Dialog Window */}
-      <div className="w-[580px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col">
+      <div className="d2-window w-[580px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col">
         
         {/* Title Bar */}
-        <div className="bg-[#0A246A] text-white px-2 py-1 flex justify-between items-center select-none font-bold">
+        <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex justify-between items-center select-none font-bold">
           <div className="flex items-center gap-1.5 text-xs">
             <img 
               src="/legacy_images/paper.ico" 
@@ -655,10 +655,10 @@ export default function PubSupplementForm({
       {/* Find & History Modal */}
       {isFindOpen && (
         <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4 select-none">
-          <div className="w-full max-w-xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 space-y-2 text-xs font-tahoma">
+          <div className="d2-window w-full max-w-xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 space-y-2 text-xs font-tahoma">
             
             {/* Title */}
-            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Publication Supplement History ({supplementsHistory.length})</span>
               <button 
                 type="button" 

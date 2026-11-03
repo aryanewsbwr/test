@@ -655,10 +655,10 @@ export default function RetailSalePermanentForm({
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 select-none">
       
       {/* 3D Classic Windows Dialog Window matching screenshot_09.jpg */}
-      <div className="w-[560px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col">
+      <div className="d2-window w-[560px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col">
         
         {/* Title Bar matching screenshot_09.jpg */}
-        <div className="bg-[#0A246A] text-white px-2 py-1 flex justify-between items-center select-none font-bold">
+        <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex justify-between items-center select-none font-bold">
           <div className="flex items-center gap-1.5 text-xs">
             <img 
               src="/legacy_images/paper.ico" 
@@ -742,7 +742,7 @@ export default function RetailSalePermanentForm({
                     <div 
                       key={c.customer_id}
                       onMouseDown={() => handleSelectCustomer(c)}
-                      className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center text-left"
+                      className="d2-title p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center text-left"
                     >
                       <div>
                         <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
@@ -1004,7 +1004,7 @@ export default function RetailSalePermanentForm({
       {/* Process During the Month and Year Modal */}
       {isProcessModalOpen && (
         <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center select-none p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[440px] p-3 font-tahoma">
+          <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[440px] p-3 font-tahoma">
             <div className="border border-[#808080] p-4 relative pt-6 bg-[#ECE9D8]">
               <span className="absolute -top-2.5 left-3 bg-[#ECE9D8] px-1 text-xs font-bold text-[#800000]">
                 Process During the Month and Year
@@ -1064,8 +1064,8 @@ export default function RetailSalePermanentForm({
       {/* Caution Dialog: Customer Publication is Closed */}
       {showCautionClosed && (
         <div className="fixed inset-0 z-70 bg-black/40 flex items-center justify-center select-none p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[380px] p-1 font-tahoma">
-            <div className="bg-[#0A246A] text-white px-2 py-0.5 flex justify-between items-center font-bold text-xs select-none">
+          <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[380px] p-1 font-tahoma">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-0.5 flex justify-between items-center font-bold text-xs select-none">
               <span>Caution</span>
               <button 
                 type="button"
@@ -1102,8 +1102,8 @@ export default function RetailSalePermanentForm({
       {/* Customer / Voucher Find Search Modal */}
       {isFindOpen && (
         <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4 select-none">
-          <div className="w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 space-y-2 text-xs font-tahoma">
-            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+          <div className="d2-window w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 space-y-2 text-xs font-tahoma">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Find Retail Sale / Permanent Customer</span>
               <button 
                 type="button" 
@@ -1250,7 +1250,7 @@ export default function RetailSalePermanentForm({
                       handleSelectCustomer(c);
                       setIsFindOpen(false);
                     }}
-                    className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center"
+                    className="d2-title p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center"
                   >
                     <div>
                       <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong> - {c.name_eng}

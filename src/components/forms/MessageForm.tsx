@@ -64,10 +64,10 @@ export default function MessageForm({ onClose }: Props) {
   };
 
   return (
-    <div className="relative w-[540px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
+    <div className="d2-window relative w-[540px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
       
       {/* Title Bar */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold">
+      <div className="d2-title bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold">
         <div className="flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5" />
           <span>Bill Message Master (संदेश प्रविष्टि)</span>

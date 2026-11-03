@@ -362,10 +362,10 @@ export default function ReportsForm({
   // =========================================================================
   if (viewMode === 'criteria') {
     return (
-      <div className="w-[540px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none text-xs">
+      <div className="d2-window w-[540px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none text-xs">
         
         {/* VB6 Dialog Titlebar */}
-        <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold">
+        <div className="d2-title bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold">
           <div className="flex items-center gap-1.5">
             <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
             <span className="tracking-wide">{currentMeta.title}</span>
@@ -728,10 +728,10 @@ export default function ReportsForm({
   // VIEW 2: AUTHENTIC CRYSTAL REPORTS 8.5/9.0 VIEWER (frmMultiPgPreview)
   // =========================================================================
   return (
-    <div className="max-w-[1040px] w-full max-h-[88vh] h-[88vh] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
+    <div className="d2-window max-w-[1040px] w-full max-h-[88vh] h-[88vh] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
       
       {/* 1. Crystal Reports Classic Title Bar */}
-      <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
+      <div className="d2-title bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span>Crystal Report Viewer - Aryan News Agency [Beawar] - [{currentMeta.title}]</span>
@@ -744,7 +744,7 @@ export default function ReportsForm({
       </div>
 
       {/* 2. Top Toolbar with All 16 Report Selectors & Parameters Button */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] p-1 flex items-center justify-between font-bold gap-2 flex-wrap shrink-0">
+      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] p-1 flex items-center justify-between font-bold gap-2 flex-wrap shrink-0">
         
         <div className="flex items-center gap-2 flex-wrap">
           {/* Back to Parameters Button */}

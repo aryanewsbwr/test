@@ -143,8 +143,8 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-2.5 flex flex-col font-tahoma text-black">
-        <div className="vb-titlebar-xp select-none mb-2">
+      <div className="d2-window w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-2.5 flex flex-col font-tahoma text-black">
+        <div className="d2-title vb-titlebar-xp select-none mb-2">
           <div className="flex items-center gap-1.5 font-bold">
             <Database className="w-4 h-4 text-white" />
             <span>Backup & Restore (डाटा बैकअप एवं रिस्टोर)</span>

@@ -1299,10 +1299,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   }, [customerId, customerName, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo, narration, isUpdateModalOpen, updateRepId, updateRecpNo, updateBillAmt, updateMalRecpAmt, updateLessAmt, updatePaymentMode, updateChequeNo, updateChequeDate, updateNarration, customerReceipts, selectedReceiptId]);
 
   return (
-    <div className="relative w-full max-w-[920px] max-h-[calc(100vh-40px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[920px] max-h-[calc(100vh-40px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* 1. Classic Windows Title Bar matching RecieptEntryRecording.mp4 */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs shrink-0">
+      <div className="d2-title bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 

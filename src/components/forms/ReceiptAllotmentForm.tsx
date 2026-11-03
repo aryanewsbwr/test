@@ -303,10 +303,10 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   }, [collectorName, receiptFrom, receiptTo, allotDate, recDate, isEditing, editingSno]);
 
   return (
-    <div className="relative w-[620px] max-w-[95vw] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto">
+    <div className="d2-window relative w-[620px] max-w-[95vw] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto">
       
       {/* 1. Classic Title Bar (Matching media_1791524917718_364a84c2.png) */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
+      <div className="d2-title bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 

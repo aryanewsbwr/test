@@ -177,8 +177,8 @@ export default function NumbersForm({ onClose, regions = [] }: NumbersFormProps)
   };
 
   return (
-    <div className="relative w-full max-w-[1000px] self-stretch min-h-0 bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma overflow-hidden">
-      <div className="shrink-0 bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] px-2 py-1 flex items-center justify-between">
+    <div className="d2-window relative w-full max-w-[1000px] self-stretch min-h-0 bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma overflow-hidden">
+      <div className="d2-title shrink-0 bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] px-2 py-1 flex items-center justify-between">
         <span className="font-bold text-sm text-white">Customer Numbers</span>
         <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
       </div>

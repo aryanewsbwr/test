@@ -38,9 +38,9 @@ export default function SubscriptionsModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 font-tahoma">
-      <div className="relative w-[820px] h-[580px] vb-window flex flex-col shadow-2xl overflow-hidden">
+      <div className="d2-window relative w-[820px] h-[580px] vb-window flex flex-col shadow-2xl overflow-hidden">
         {/* Title Bar */}
-        <div className="vb-titlebar-xp select-none">
+        <div className="d2-title vb-titlebar-xp select-none">
           <div className="flex items-center gap-1.5">
             <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
             <span>Customer Subscribed Papers & Delivery Schedule - ID #{customer.customer_id}</span>

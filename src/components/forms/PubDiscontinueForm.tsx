@@ -98,10 +98,10 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
   };
 
   return (
-    <div className="relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* Title Bar matching screenshot_11.jpg */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
+      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span className="font-bold text-xs text-[#808080]">Publication Info</span>

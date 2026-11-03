@@ -452,10 +452,10 @@ export default function DiscontinueForm({
   }, [showFindModal, showCustSuggestions, selectedCust, selectedPubId, fromDate, toDate, holdType]);
 
   return (
-    <div className="relative w-full max-w-[590px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs my-auto shrink-0">
+    <div className="d2-window relative w-full max-w-[590px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs my-auto shrink-0">
       
       {/* Title Bar matching screenshot_10.jpg */}
-      <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
+      <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -570,7 +570,7 @@ export default function DiscontinueForm({
                       <div 
                         key={c.customer_id}
                         onClick={() => handleSelectCustomer(c)}
-                        className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs"
+                        className="d2-title p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs"
                       >
                         <div>
                           <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
@@ -872,10 +872,10 @@ export default function DiscontinueForm({
       {/* Find Modal Dialog (Search / Delete Discontinue Entries for Customer Discontinue) */}
       {showFindModal && (
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-3 z-50">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-full h-[450px] flex flex-col font-tahoma text-xs">
+          <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-full h-[450px] flex flex-col font-tahoma text-xs">
             
             {/* Modal Title Bar */}
-            <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
               <span>Find Customer Discontinues (ग्राहक रोक सूची)</span>
               <button 
                 onClick={() => setShowFindModal(false)}

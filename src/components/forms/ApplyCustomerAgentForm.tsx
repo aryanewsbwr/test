@@ -33,10 +33,10 @@ export default function ApplyCustomerAgentForm({ onClose }: ApplyCustomerAgentFo
   };
 
   return (
-    <div className="relative w-[520px] h-[360px] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
+    <div className="d2-window relative w-[520px] h-[360px] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
       
       {/* Title Bar */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between">
+      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span className="font-bold text-xs text-[#808080]">Apply Customer Agent</span>

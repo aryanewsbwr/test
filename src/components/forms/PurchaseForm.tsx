@@ -89,9 +89,9 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   };
 
   return (
-    <div className="relative w-[880px] h-[580px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
+    <div className="d2-window relative w-[880px] h-[580px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
       {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none">
+      <div className="d2-title vb-titlebar-xp select-none">
         <div className="flex items-center gap-1.5">
           <Truck className="w-3.5 h-3.5" />
           <span>Publisher Newspaper Purchase & Supply Invoice (अखबार खरीद / आवक प्रविष्टि)</span>

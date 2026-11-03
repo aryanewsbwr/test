@@ -187,7 +187,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
     <div className="relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-[#808080] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* Title Bar matching screenshot_07.jpg */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
+      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -418,9 +418,9 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
       {/* Find Modal Dialog */}
       {isFindOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 font-tahoma">
-          <div className="w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[80vh]">
+          <div className="d2-window w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[80vh]">
             
-            <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold text-xs mb-2">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold text-xs mb-2">
               <span>Saved Holiday List ({existingHolidays.length} Records)</span>
               <button onClick={() => setIsFindOpen(false)} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center">✕</button>
             </div>

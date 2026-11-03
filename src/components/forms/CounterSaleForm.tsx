@@ -328,9 +328,9 @@ export default function CounterSaleForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3">
-      <div className="w-full max-w-4xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col max-h-[95vh]">
+      <div className="d2-window w-full max-w-4xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col max-h-[95vh]">
         {/* VB6 Window Titlebar */}
-        <div className="bg-linear-to-r from-[#0A246A] via-[#0A246A] to-[#A6CAF0] text-white px-3 py-1.5 flex items-center justify-between font-bold text-xs select-none shadow-xs">
+        <div className="d2-title bg-linear-to-r from-[#0A246A] via-[#0A246A] to-[#A6CAF0] text-white px-3 py-1.5 flex items-center justify-between font-bold text-xs select-none shadow-xs">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-yellow-300" />
             <span className="tracking-wide">Counter & Walk-in Cash Sale Entry (काउंटर नकद खुदरा बिक्री)</span>

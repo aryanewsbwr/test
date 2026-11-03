@@ -57,10 +57,10 @@ export default function LoginModal({ isOpen, onLoginSuccess }: Props) {
 
   return (
     <div className="fixed inset-0 z-100 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 select-none">
-      <div className="w-full max-w-sm bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma text-xs overflow-hidden flex flex-col">
+      <div className="d2-window w-full max-w-sm bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma text-xs overflow-hidden flex flex-col">
         
         {/* Titlebar */}
-        <div className="bg-[#0A246A] text-white px-2.5 py-1.5 flex items-center justify-between font-bold">
+        <div className="d2-title bg-[#0A246A] text-white px-2.5 py-1.5 flex items-center justify-between font-bold">
           <div className="flex items-center gap-1.5">
             <img 
               src="/legacy_images/paper.ico" 

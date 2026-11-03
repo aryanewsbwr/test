@@ -93,9 +93,13 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('desktop2', desktop2);
-    try { localStorage.setItem('desktopLook', desktop2 ? '2' : '1'); } catch {}
     return () => document.documentElement.classList.remove('desktop2');
   }, [desktop2]);
+  const switchLook = () => {
+    const on = !desktop2;
+    setDesktop2(on);
+    try { localStorage.setItem('desktopLook', on ? '2' : '1'); } catch {}
+  };
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   // Core Static Lists
@@ -301,10 +305,10 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
   }, [editingRates, activeMenu, isSubsModalOpen, isRateMatrixOpen, isCollectionAgentsOpen, isUserPermOpen, isCounterSaleOpen, isRetailSalePermanentOpen, isMessageOpen, backupModalMode, isPeriodOpen, activeWindow]);
 
   return (
-    <div className="flex flex-col h-screen w-full select-none bg-[#3A6EA5] font-tahoma overflow-hidden">
+    <div className="d2-app flex flex-col h-screen w-full select-none bg-[#3A6EA5] font-tahoma overflow-hidden">
       
       {/* 1. TOP WINDOW TITLE BAR */}
-      <div className="vb-titlebar border-b border-black select-none">
+      <div className="d2-apptitle vb-titlebar border-b border-black select-none">
         <div className="flex items-center gap-2">
           <div className="w-3.5 h-3.5 bg-yellow-400 border border-black rounded-xs flex items-center justify-center text-[9px] font-black text-black">
             VB
@@ -319,7 +323,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       </div>
 
       {/* Classic VB6 Top Menu Bar */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-0.5 flex items-center gap-1 text-xs select-none relative z-40">
+      <div className="d2-menubar bg-[#ECE9D8] border-b border-[#808080] px-2 py-0.5 flex items-center gap-1 text-xs select-none relative z-40">
         
         {/* 1. Master Menu */}
         <div className="relative">
@@ -662,7 +666,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
             </div>
           )}
           <button
-            onClick={() => setDesktop2(on => !on)}
+            onClick={switchLook}
             title={desktop2 ? 'Back to the classic look' : 'Try the modern white look'}
             className="px-2 py-0.5 bg-white text-[#000080] hover:bg-[#BCE5FF] border border-[#808080] text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
           >
@@ -695,7 +699,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         
         {/* Clean MDI Desktop Wallpaper (When no form is open) */}
         {activeWindow === null && (
-          <div className="flex flex-col items-center justify-center text-center p-8 opacity-85 select-none pointer-events-none my-auto">
+          <div className="d2-splash flex flex-col items-center justify-center text-center p-8 opacity-85 select-none pointer-events-none my-auto">
             <div className="w-24 h-24 rounded-full bg-white/20 border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 backdrop-blur-xs">
               <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider font-serif">ANA</span>
             </div>
@@ -1035,7 +1039,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       </div>
 
       {/* 5. CLASSIC STATUS BAR */}
-      <div className="bg-[#ECE9D8] border-t border-[#808080] p-1 flex items-center gap-2 text-[11px] text-slate-800">
+      <div className="d2-statusbar bg-[#ECE9D8] border-t border-[#808080] p-1 flex items-center gap-2 text-[11px] text-slate-800">
         <div className="vb-status-panel flex-1 truncate">
           <strong>Status:</strong> {statusMessage}
         </div>

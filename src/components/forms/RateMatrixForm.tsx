@@ -85,9 +85,9 @@ export default function RateMatrixForm({ isOpen, onClose, publications, rates, r
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div className="w-full max-w-3xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col max-h-[90vh]">
+      <div className="d2-window w-full max-w-3xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col max-h-[90vh]">
         {/* Titlebar */}
-        <div className="bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-3 py-1 flex items-center justify-between font-bold text-xs select-none">
+        <div className="d2-title bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-3 py-1 flex items-center justify-between font-bold text-xs select-none">
           <div className="flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-yellow-300" />
             <span>7-Day Pricing Matrix & Rate Revision Master (दैनिक दर निर्धारण)</span>
