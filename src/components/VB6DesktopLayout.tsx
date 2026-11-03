@@ -701,7 +701,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       </div>
 
       {/* 3. MAIN MDI DESKTOP CANVAS */}
-      <div className="flex-1 p-1 sm:p-2 md:p-3 overflow-auto flex justify-center items-start relative min-h-0">
+      <div className={`d2-desk ${activeWindow ? 'd2-busy ' : ''}flex-1 p-1 sm:p-2 md:p-3 overflow-auto flex justify-center items-start relative min-h-0`}>
         
         {/* Clean MDI Desktop Wallpaper (When no form is open) */}
         {activeWindow === null && (

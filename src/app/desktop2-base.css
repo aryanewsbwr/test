@@ -93,8 +93,30 @@ html.desktop2 .d2-menubar .ml-auto > div {
   box-shadow: none !important;
 }
 
-/* Home screen when no window is open */
-html.desktop2 .d2-splash { opacity: 1 !important; }
+/* The shop photo behind everything; darker while a window is open so the window stands out */
+html.desktop2 .d2-desk {
+  background: linear-gradient(rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.25)),
+              url('/storefront-bg.jpg') center 30% / cover no-repeat fixed #CBD5E1;
+}
+html.desktop2 .d2-desk.d2-busy {
+  background: linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)),
+              url('/storefront-bg.jpg') center 30% / cover no-repeat fixed #CBD5E1;
+}
+
+/* Home screen when no window is open: a frosted card low down, so the shop sign stays in view */
+html.desktop2 .d2-splash {
+  opacity: 1 !important;
+  margin: auto auto 28px !important;
+  padding: 20px 36px !important;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.35);
+}
+html.desktop2 .d2-splash > div { width: 64px !important; height: 64px !important; margin-bottom: 8px !important; }
+html.desktop2 .d2-splash > div span { font-size: 20px !important; }
 html.desktop2 .d2-splash > div {
   background: linear-gradient(135deg, #2563EB, #4F46E5) !important;
   border: none !important;
