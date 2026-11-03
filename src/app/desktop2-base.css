@@ -253,10 +253,44 @@ html.desktop2 .d2-app ::placeholder { font-weight: 500; }
 html.desktop2 .d2-window select { font-weight: 600 !important; letter-spacing: -0.01em; padding-left: 6px; padding-right: 2px; }
 html.desktop2 .d2-window select.w-20 { width: 6.25rem; }
 
-/* A window never grows past the screen: its height limit is divided by its own zoom, and long
-   lists inside it scroll instead. A pop-up inside a window is not enlarged a second time. */
+/* The script in VB6DesktopLayout shrinks a window that is taller than the screen. A pop-up inside a
+   window is not enlarged a second time, and stays within the screen. */
 html.desktop2 { --d2-z: 1; }
 @media (min-width: 1400px) { html.desktop2 { --d2-z: 1.15; } }
 @media (min-width: 1700px) { html.desktop2 { --d2-z: 1.3; } }
-html.desktop2 .d2-window { max-height: calc((100dvh - 150px) / var(--d2-z)) !important; }
 html.desktop2 .d2-window .d2-window { zoom: 1; max-height: calc((100dvh - 180px) / var(--d2-z)) !important; }
+
+/* Loading screen */
+html.desktop2 .d2-loading {
+  background: linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)),
+              url('/storefront-bg.jpg') center 30% / cover no-repeat #CBD5E1 !important;
+  font-family: var(--d2-font) !important;
+}
+html.desktop2 .d2-loading > div {
+  padding: 28px 44px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+html.desktop2 .d2-loading .d2-loading-logo {
+  background: linear-gradient(135deg, #2563EB, #4F46E5) !important;
+  border: none !important;
+  animation: none !important;
+}
+html.desktop2 .d2-loading .d2-loading-logo::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  border: 3px solid rgba(37, 99, 235, 0.2);
+  border-top-color: #2563EB;
+  animation: d2-spin 0.9s linear infinite;
+}
+html.desktop2 .d2-loading p { color: var(--d2-ink) !important; font-family: var(--d2-font) !important; }
+html.desktop2 .d2-loading p + p { color: var(--d2-muted) !important; font-weight: 600; }
+@keyframes d2-spin { to { transform: rotate(360deg); } }

@@ -88,13 +88,47 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
   // Active Form Window (starts null on clean MDI desktop)
   const [activeWindow, setActiveWindow] = useState<string | null>(null);
   // Desktop 2 is the modern white look; each computer remembers its own choice
-  const [desktop2, setDesktop2] = useState(false);
-  useEffect(() => {
-    try { setDesktop2(localStorage.getItem('desktopLook') === '2'); } catch {}
-  }, []);
+  // layout.tsx already turned the look on before the first paint, so it starts from there without a flash
+  const [desktop2, setDesktop2] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('desktop2'));
   useEffect(() => {
     document.documentElement.classList.toggle('desktop2', desktop2);
     return () => document.documentElement.classList.remove('desktop2');
+  }, [desktop2]);
+  // Desktop 2 enlarges windows; one taller than the screen is shrunk just enough to fit (down to
+  // 85%), and only past that does it get a height limit so its list scrolls inside it
+  useEffect(() => {
+    if (!desktop2) return;
+    let frame = 0;
+    const fit = () => {
+      const desk = document.querySelector<HTMLElement>('.d2-desk');
+      if (!desk) return;
+      const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d2-z')) || 1;
+      const room = desk.clientHeight - 24;
+      desk.querySelectorAll<HTMLElement>('.d2-window').forEach(win => {
+        if (win.parentElement?.closest('.d2-window')) return;
+        win.style.maxHeight = '';
+        const current = parseFloat(getComputedStyle(win).zoom) || 1;
+        const natural = win.getBoundingClientRect().height / current;
+        const zoom = Math.max(0.85, Math.min(base, room / natural));
+        win.style.zoom = String(zoom);
+        win.style.maxHeight = natural * zoom > room ? `${room / zoom}px` : '';
+      });
+    };
+    const refit = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(fit); };
+    const sizes = new ResizeObserver(refit);
+    const watch = () => document.querySelectorAll('.d2-window').forEach(w => sizes.observe(w));
+    const added = new MutationObserver(() => { watch(); refit(); });
+    added.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', refit);
+    watch();
+    refit();
+    return () => {
+      cancelAnimationFrame(frame);
+      sizes.disconnect();
+      added.disconnect();
+      window.removeEventListener('resize', refit);
+      document.querySelectorAll<HTMLElement>('.d2-window').forEach(w => { w.style.zoom = ''; w.style.maxHeight = ''; });
+    };
   }, [desktop2]);
   const switchLook = () => {
     const on = !desktop2;
