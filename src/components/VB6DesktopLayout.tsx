@@ -108,10 +108,14 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         // A pop-up over the whole screen has the full height; a window on the desk has the desk's
         const overlay = win.parentElement?.closest<HTMLElement>('.fixed');
         const room = (overlay ? window.innerHeight - 32 : desk.clientHeight - 24);
+        // A window stretched to the desk's height (Numbers) always fits, and its height follows its
+        // zoom, so fitting it would only make it shrink and grow in turn
+        if (getComputedStyle(win).alignSelf === 'stretch') return;
         win.style.maxHeight = '';
         const current = parseFloat(getComputedStyle(win).zoom) || 1;
         const natural = win.getBoundingClientRect().height / current;
-        const zoom = Math.max(0.85, Math.min(base, room / natural));
+        let zoom = Math.max(0.85, Math.min(base, room / natural));
+        if (Math.abs(zoom - current) < 0.02) zoom = current;
         win.style.zoom = String(zoom);
         win.style.maxHeight = natural * zoom > room ? `${room / zoom}px` : '';
       });
