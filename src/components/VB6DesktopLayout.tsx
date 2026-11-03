@@ -692,8 +692,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
           )}
         </div>
 
-        {/* 6. Exit Menu */}
-        <div className="relative">
+        {/* 6. Exit Menu (left out on a phone, where Logout sits in the title row) */}
+        <div className="relative d2-exitmenu">
           <button 
             onClick={() => {
               if (confirm('Are you sure you want to exit Aryan News Software?')) {

@@ -144,3 +144,6 @@ body {
   color: #FFFFFF;
   font-weight: bold;
 }
+
+/* The home-screen card makes way for any open window, including the ones opened as pop-ups */
+.d2-desk:has(.d2-window) > .d2-splash { display: none !important; }

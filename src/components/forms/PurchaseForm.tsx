@@ -117,7 +117,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
         </div>
 
         {/* Invoice Meta Controls */}
-        <div className="bg-white p-2.5 vb-box-inset my-1 text-xs font-bold grid grid-cols-4 gap-3 items-center">
+        <div className="bg-white p-2.5 vb-box-inset my-1 text-xs font-bold grid grid-cols-4 max-md:grid-cols-2 gap-3 items-center">
           <div>
             <label className="block text-[#8B0000] mb-0.5">Supply Date:</label>
             <input 
