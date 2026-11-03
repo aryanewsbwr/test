@@ -81,10 +81,9 @@ const LEGACY_DAYS = [
 interface VB6DesktopLayoutProps {
   user?: AppUser | null;
   onLogout?: () => void;
-  onSwitchToMobile?: () => void;
 }
 
-export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: VB6DesktopLayoutProps = {}) {
+export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutProps = {}) {
   // Active Form Window (starts null on clean MDI desktop)
   const [activeWindow, setActiveWindow] = useState<string | null>(null);
   // Desktop 2 is the modern white look; each computer remembers its own choice
@@ -100,6 +99,11 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
     if (!desktop2) return;
     let frame = 0;
     const fit = () => {
+      // On a phone a window keeps its natural size and the screen scrolls
+      if (window.innerWidth < 768) {
+        document.querySelectorAll<HTMLElement>('.d2-window').forEach(w => { w.style.zoom = ''; w.style.maxHeight = ''; });
+        return;
+      }
       const desk = document.querySelector<HTMLElement>('.d2-desk');
       if (!desk) return;
       const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d2-z')) || 1;
@@ -352,9 +356,10 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       <div className="d2-apptitle vb-titlebar border-b border-black select-none flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Aryan News Agency" className="d2-applogo h-3.5 w-auto shrink-0 bg-white rounded-xs px-px" />
-          <span className="tracking-wide">Aryan News Agency (2008 Visual Basic Desktop Edition) - [Beawar, Rajasthan]</span>
+          <span className="tracking-wide md:hidden">Aryan News Agency</span>
+          <span className="tracking-wide hidden md:inline">Aryan News Agency (2008 Visual Basic Desktop Edition) - [Beawar, Rajasthan]</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-1">
           <button className="w-4 h-4 bg-[#ECE9D8] hover:bg-white text-black font-bold text-[10px] flex items-center justify-center border border-black cursor-pointer shadow-xs">_</button>
           <button className="w-4 h-4 bg-[#ECE9D8] hover:bg-white text-black font-bold text-[10px] flex items-center justify-center border border-black cursor-pointer shadow-xs">□</button>
           <button className="w-4 h-4 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] flex items-center justify-center border border-black cursor-pointer shadow-xs">✕</button>
@@ -712,19 +717,10 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
           <button
             onClick={switchLook}
             title={desktop2 ? 'Back to the classic look' : 'Try the modern white look'}
-            className="px-2 py-0.5 bg-white text-[#000080] hover:bg-[#BCE5FF] border border-[#808080] text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+            className="px-2 py-0.5 bg-white text-[#000080] hover:bg-[#BCE5FF] border border-[#808080] text-xs font-bold hidden md:flex items-center gap-1 shadow-xs cursor-pointer"
           >
             <span>🖥️ {desktop2 ? 'Desktop 1' : 'Desktop 2'}</span>
           </button>
-          {onSwitchToMobile && (
-            <button 
-              onClick={onSwitchToMobile}
-              title="Switch to Touch Mobile View"
-              className="px-2 py-0.5 bg-[#006699] text-white hover:bg-[#004466] border border-black text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-            >
-              <span>📱 Mobile View</span>
-            </button>
-          )}
           {onLogout && (
             <button 
               onClick={onLogout}

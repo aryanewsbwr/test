@@ -26,6 +26,7 @@ module.exports = {
       }
     },
   },
-  // d2: applies a class only in the Desktop 2 look (html.desktop2), e.g. d2:grid-cols-2
-  plugins: [function ({ addVariant }) { addVariant('d2', 'html.desktop2 &'); }],
+  // d2: applies a class only in the Desktop 2 look on a computer screen (html.desktop2, 768px and
+  // wider), e.g. d2:grid-cols-2; phones keep the stacked layout
+  plugins: [function ({ addVariant }) { addVariant('d2', '@media (min-width: 768px) { html.desktop2 & }'); }],
 }

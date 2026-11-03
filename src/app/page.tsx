@@ -8,7 +8,6 @@ import { AppUser } from '@/lib/auth';
 
 export default function HomePage() {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -24,15 +23,6 @@ export default function HomePage() {
         const { user: savedUser }: { user: AppUser } = await res.json();
         localStorage.setItem('news_auth_user', JSON.stringify(savedUser));
         setUser(savedUser);
-
-        // Smart device mode detection:
-        // Hawkers ALWAYS default to mobile touch portal.
-        // On phones/tablets (< 768px), default to mobile touch view.
-        if (savedUser.role === 'hawker' || window.innerWidth < 768) {
-          setViewMode('mobile');
-        } else {
-          setViewMode('desktop');
-        }
       } catch (e) {
         console.error('Failed to check auth session:', e);
       } finally {
@@ -57,11 +47,6 @@ export default function HomePage() {
 
   const handleLoginSuccess = (loggedInUser: AppUser) => {
     setUser(loggedInUser);
-    if (loggedInUser.role === 'hawker' || (typeof window !== 'undefined' && window.innerWidth < 768)) {
-      setViewMode('mobile');
-    } else {
-      setViewMode('desktop');
-    }
   };
 
   const handleLogout = () => {
@@ -101,23 +86,11 @@ export default function HomePage() {
     );
   }
 
-  // Logged in as Hawker or switched to Mobile View
-  if (viewMode === 'mobile' || user.role === 'hawker') {
-    return (
-      <HawkerMobilePortal 
-        user={user} 
-        onLogout={handleLogout} 
-        onSwitchToDesktop={user.role !== 'hawker' ? () => setViewMode('desktop') : undefined}
-      />
-    );
+  // Hawkers have their own simple delivery and collection portal
+  if (user.role === 'hawker') {
+    return <HawkerMobilePortal user={user} onLogout={handleLogout} />;
   }
 
-  // Desktop MDI View (for Admin / Staff / Operator)
-  return (
-    <VB6DesktopLayout 
-      user={user}
-      onLogout={handleLogout}
-      onSwitchToMobile={() => setViewMode('mobile')}
-    />
-  );
+  // Everyone else gets the full software, which fits phones as well as computers
+  return <VB6DesktopLayout user={user} onLogout={handleLogout} />;
 }

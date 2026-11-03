@@ -299,3 +299,45 @@ html.desktop2 .d2-window div:has(> input:only-child:not([type='checkbox']):not([
   box-shadow: none !important;
 }
 html.desktop2 .d2-window div:has(> input:only-child) > input:not([type='checkbox']):not([type='radio']) { padding: 3px 8px; }
+
+/* ---------- Phones (narrower than 768px) ---------- */
+@media (max-width: 767px) {
+  /* The top bar wraps: menus on the first row, user and Logout on the next */
+  html.desktop2 .d2-menubar { flex-wrap: wrap; row-gap: 4px; padding-left: 6px; padding-right: 6px; }
+  html.desktop2 .d2-menubar > div.relative > button { padding: 6px 8px; font-size: 14px; }
+  html.desktop2 .d2-menubar .ml-auto { margin-left: 0; width: 100%; justify-content: flex-end; }
+
+  /* A menu opens as a full-width list under the bar; sub-menus are listed inside it instead of
+     flying out to the right, off the screen */
+  html.desktop2 .d2-menubar > div.relative > .vb-box-outset {
+    position: fixed !important;
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    min-width: 0 !important;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  html.desktop2 .d2-menubar .vb-box-outset button { padding-top: 9px; padding-bottom: 9px; font-size: 14px; white-space: normal; }
+  html.desktop2 .d2-menubar .vb-box-outset .vb-box-outset {
+    position: static !important;
+    display: flex !important;
+    min-width: 0 !important;
+    margin: 0 0 4px 12px !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-left: 2px solid var(--d2-line) !important;
+    border-radius: 0 !important;
+  }
+  html.desktop2 .d2-menubar .vb-box-outset .group\/sub > button { color: var(--d2-muted) !important; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  html.desktop2 .d2-menubar .vb-box-outset .group\/sub > button > span:last-child { display: none; }
+
+  /* Windows fill the width; a window wider than the phone scrolls sideways inside itself */
+  html.desktop2 .d2-desk { padding: 6px !important; }
+  html.desktop2 .d2-window { width: 100% !important; max-width: 100% !important; max-height: none !important; border-radius: 12px; overflow-x: auto !important; }
+  html.desktop2 .d2-window .d2-window { max-height: 85vh !important; }
+  /* One short line at the bottom: the period and user; the long status message is left out */
+  html.desktop2 .d2-statusbar { flex-wrap: nowrap; font-size: 11px; padding: 3px 8px; overflow: hidden; }
+  html.desktop2 .d2-statusbar > :first-child { display: none !important; }
+  html.desktop2 .d2-statusbar > * { white-space: nowrap; }
+}

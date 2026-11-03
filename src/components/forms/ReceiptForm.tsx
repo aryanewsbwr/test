@@ -1326,10 +1326,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         <div className="space-y-1 text-xs bg-[#D4E8FA]">
           
           {/* Row 1: Pr., Id, Collection Agent & Active Range */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 max-md:flex-wrap max-md:gap-y-1.5">
             
             {/* Pr. & Id */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-md:flex-wrap">
               <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080]">Pr.</label>
                 <input 
@@ -1359,7 +1359,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             </div>
 
             {/* Collection Section: Exactly 2 controls matching video (Collection Name & Collection No. / Book Range) */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-md:flex-wrap">
               <label className="font-bold text-[#000080]">Collection</label>
 
               {/* 1. Collection Name Custom Dropdown */}
@@ -1540,10 +1540,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           </div>
 
           {/* Row 2: Customer Name Autocomplete Search & Month */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 max-md:flex-wrap max-md:gap-y-1.5">
             
             {/* Customer Search Autocomplete Input */}
-            <div className="flex items-center gap-2 flex-1 relative" ref={dropdownRef}>
+            <div className="flex items-center gap-2 flex-1 relative max-md:basis-full" ref={dropdownRef}>
               <label className="font-bold text-[#000080] shrink-0">Customer</label>
               
               <div className="relative flex-1">
@@ -1649,10 +1649,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         </div>
 
         {/* MIDDLE TWO-PANEL GRIDS matching RecieptEntryRecording.mp4 */}
-        <div className="flex gap-2 flex-1 my-0.5 overflow-hidden" style={{ minHeight: '190px', maxHeight: '250px' }}>
+        <div className="flex gap-2 flex-1 my-0.5 overflow-hidden min-h-[190px] max-h-[250px] max-md:flex-col max-md:max-h-none">
           
           {/* Left Grid: Bills History (28% width) with Footer Total */}
-          <div className="w-[28%] bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
+          <div className="w-[28%] max-md:w-full max-md:h-40 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
             <div className="bg-[#0080FF] text-white text-[11px] font-bold grid grid-cols-4 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Bill No</span>
               <span className="border-r border-black">Year</span>
@@ -1694,7 +1694,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           </div>
 
           {/* Right Grid: Receipts History (72% width) with Footer Total */}
-          <div className="flex-1 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
+          <div className="flex-1 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden max-md:flex-none max-md:h-52 max-md:overflow-x-auto max-md:[&>*]:min-w-[640px]">
             <div className="bg-[#0080FF] text-white text-[10px] font-bold grid grid-cols-10 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Rep. Id</span>
               <span className="border-r border-black">Bill No</span>
@@ -1762,7 +1762,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           {/* Clean Ledger Grid: 5 columns aligned vertically across Row 1, Row 2, Row 3 */}
           <div className="space-y-1.5 max-w-4xl">
             {/* Control Row 1: Low Opacity for uneditable/system-locked fields */}
-            <div className="grid grid-cols-[auto_auto_auto_auto_auto] gap-x-3 items-center opacity-70">
+            <div className="grid grid-cols-[auto_auto_auto_auto_auto] max-md:grid-cols-2 max-md:gap-y-1.5 gap-x-3 items-center opacity-70">
               <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080] text-xs w-16 shrink-0">Recp. No</label>
                 <input 
@@ -1810,7 +1810,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             </div>
 
             {/* Control Row 2: Active inputs & Read-only Amounts */}
-            <div className="grid grid-cols-[auto_auto_auto_auto_auto] gap-x-3 items-center">
+            <div className="grid grid-cols-[auto_auto_auto_auto_auto] max-md:grid-cols-2 max-md:gap-y-1.5 gap-x-3 items-center">
               <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080] text-xs w-16 shrink-0">Month</label>
                 <select 
@@ -1920,7 +1920,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             </div>
 
             {/* Control Row 3: Mal. Recp, Total Amt, Total Dues */}
-            <div className="grid grid-cols-[auto_auto_auto_auto_auto] gap-x-3 items-center">
+            <div className="grid grid-cols-[auto_auto_auto_auto_auto] max-md:grid-cols-2 max-md:gap-y-1.5 gap-x-3 items-center">
               <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080] text-xs w-16 shrink-0 truncate">Mal. Recp</label>
                 <input 
