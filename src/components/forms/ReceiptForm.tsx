@@ -194,7 +194,20 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const chequeNoRef = useRef<HTMLInputElement>(null);
   const chequeDateRef = useRef<HTMLInputElement>(null);
   const applyBtnRef = useRef<HTMLButtonElement>(null);
-  
+
+  // Shift+Tab goes back along the same boxes Enter and Tab go forward through,
+  // skipping any that are hidden, locked or read only
+  const ENTRY_ORDER = [customerInputRef, monthSelectRef, manualRcpAmtRef, lessAmtRef, revAmtRef, manualRecpNoRef, manualRecpDateRef, chequeNoRef, chequeDateRef, applyBtnRef];
+  const focusPrevious = (from: React.RefObject<HTMLElement>) => {
+    for (let i = ENTRY_ORDER.indexOf(from as any) - 1; i >= 0; i--) {
+      const box = ENTRY_ORDER[i].current as (HTMLInputElement | null);
+      if (box && box.offsetParent !== null && !box.disabled && !box.readOnly) {
+        box.focus();
+        return;
+      }
+    }
+  };
+
   // Custom dropdown states for Collection Name and Allotted Books
   const [isCollectionDropdownOpen, setIsCollectionDropdownOpen] = useState(true);
   const [highlightedCollectionIndex, setHighlightedCollectionIndex] = useState(0);
@@ -482,7 +495,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   };
 
   // 3. Load Customer Details & Unpaid Bills & Previous Receipts
-  const handleSelectCustomer = async (cust: Customer) => {
+  const handleSelectCustomer = async (cust: Customer, stayInSearch = false) => {
     setIsCustomerDropdownOpen(false);
     setCustomerSearchQuery(cust.name_eng || cust.name_hindi || '');
     setCustomerName(cust.name_eng || cust.name_hindi || '');
@@ -668,10 +681,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       }
       handleSelectMonth(pendingMonth, bList, rList, calculatedDues);
 
-      // Focus directly to Month dropdown as requested by workflow
+      // Enter keeps the cursor in the search, with the name selected so typing starts a new search.
+      // Tab or a click goes on to the Month.
       setTimeout(() => {
-        if (monthSelectRef.current) {
-          monthSelectRef.current.focus();
+        if (stayInSearch) {
+          customerInputRef.current?.focus();
+          customerInputRef.current?.select();
+        } else {
+          monthSelectRef.current?.focus();
         }
       }, 50);
 
@@ -1535,7 +1552,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   type="text" 
                   value={customerSearchQuery}
                   onChange={(e) => handleCustomerSearchChange(e.target.value)}
-                  onFocus={() => {
+                  onFocus={(e) => {
+                    e.target.select();
                     if (customerSearchQuery.trim()) setIsCustomerDropdownOpen(true);
                   }}
                   onKeyDown={(e) => {
@@ -1565,11 +1583,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                         setHighlightedCustomerIndex(prev => (prev - 1 + filteredCustomerSuggestions.length) % filteredCustomerSuggestions.length);
                       } else if (e.key === 'Enter') {
                         e.preventDefault();
-                        handleSelectCustomer(filteredCustomerSuggestions[highlightedCustomerIndex]);
+                        handleSelectCustomer(filteredCustomerSuggestions[highlightedCustomerIndex], true);
                       }
                     } else if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (monthSelectRef.current) monthSelectRef.current.focus();
+                      customerInputRef.current?.select();
                     }
                   }}
                   placeholder="Type Customer Name to search (e.g. Rajeev, Prabha, Dinesh, Tara)..."
@@ -1810,6 +1828,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       e.preventDefault();
                       const prevIdx = (currentIndex - 1 + len) % len;
                       handleSelectMonth(availableMonths[prevIdx]);
+                    } else if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(monthSelectRef);
                     } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
@@ -1842,7 +1863,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   placeholder="0"
                   onChange={(e) => handleManualRcpAmtChange(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(manualRcpAmtRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (lessAmtRef.current) lessAmtRef.current.focus();
                     }
@@ -1860,7 +1884,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   placeholder="0"
                   onChange={(e) => handleLessAmtChange(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(lessAmtRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (revAmtRef.current) revAmtRef.current.focus();
                       else if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
@@ -1879,7 +1906,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   placeholder="0"
                   onChange={(e) => handleRevAmtChange(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(revAmtRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
                     }
@@ -1899,7 +1929,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   value={manualRecpNo}
                   onChange={(e) => setManualRecpNo(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(manualRecpNoRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
                     }
@@ -1917,7 +1950,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   value={manualRecpDate}
                   onChange={(e) => setManualRecpDate(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(manualRecpDateRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (paymentMode === 'Cheque') {
                         if (chequeNoRef.current) chequeNoRef.current.focus();
@@ -2007,7 +2043,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   value={chequeNo}
                   onChange={(e) => setChequeNo(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(chequeNoRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (chequeDateRef.current) chequeDateRef.current.focus();
                     }
@@ -2023,7 +2062,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   value={chequeDate}
                   onChange={(e) => setChequeDate(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      focusPrevious(chequeDateRef);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
                       if (applyBtnRef.current) applyBtnRef.current.focus();
                     }
@@ -2038,6 +2080,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <div className="flex items-center gap-2">
               <button 
                 ref={applyBtnRef}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' && e.shiftKey) {
+                    e.preventDefault();
+                    focusPrevious(applyBtnRef);
+                  }
+                }}
                 onClick={handleApply}
                 disabled={isSaving}
                 className="px-4 py-1 bg-white hover:bg-blue-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs disabled:opacity-50 min-w-[70px] focus:ring-2 focus:ring-blue-600 focus:outline-none"
