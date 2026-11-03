@@ -234,3 +234,21 @@ html.desktop2 .vb-grid th { background: #F8FAFC; border-color: var(--d2-line); c
 html.desktop2 .vb-grid td { border-color: #F1F5F9; }
 html.desktop2 .vb-grid tr.selected { background-color: var(--d2-blue); }
 html.desktop2 .vb-status-panel { border-radius: 6px; }
+
+/* Bolder text everywhere; text that was already bold keeps its own weight */
+html.desktop2 .d2-app { font-weight: 700; }
+html.desktop2 .d2-app :is(.font-normal, .font-medium, .font-light, .font-semibold) { font-weight: 700 !important; }
+html.desktop2 .d2-app ::placeholder { font-weight: 500; }
+
+/* Bigger windows, menu and status bar on large screens; a scroll bar appears if a window is taller than the screen */
+@media (min-width: 1400px) {
+  html.desktop2 .d2-window { zoom: 1.15; }
+  html.desktop2 :is(.d2-menubar, .d2-statusbar) { zoom: 1.1; }
+}
+@media (min-width: 1700px) {
+  html.desktop2 .d2-window { zoom: 1.3; }
+  html.desktop2 :is(.d2-menubar, .d2-statusbar) { zoom: 1.15; }
+}
+/* Drop-downs have fixed widths, so their text stays a little lighter and tighter to fit (e.g. "November") */
+html.desktop2 .d2-window select { font-weight: 600 !important; letter-spacing: -0.01em; padding-left: 6px; padding-right: 2px; }
+html.desktop2 .d2-window select.w-20 { width: 6.25rem; }
