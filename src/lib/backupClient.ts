@@ -2,7 +2,7 @@ import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, Row
 import { roundToFoxProRule } from './billingEngine';
 import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
-import { OLD_FOOTER, OLD_HEADER, OldFileCount, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
+import { indexOldSections, OLD_FOOTER, OLD_HEADER, OldFileCount, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
 
 const BILL_FIX_BATCH = 50;
 const FILE_FORMAT = 'aryan-news-backup';
@@ -80,9 +80,73 @@ export async function downloadBackup(includeOlderYears: boolean, onProgress: Pro
   return Object.values(tables).reduce((sum, rows) => sum + rows.length, 0);
 }
 
-// A complete backup for the old software, made from this website alone. Its restore replaces the
-// whole database, so the file holds every table it has: the masters, then each year from 2007-08
-// read, written and let go one at a time. Chrome and Edge write the file straight to disk; other
+// The old software's history (years and tables this website never held) is kept once, gzipped,
+// in a private storage bucket, in pieces under the upload limit
+const HISTORY_PIECE = 32 * 1024 * 1024;
+
+export async function oldHistoryInfo(): Promise<{ missing?: boolean; name?: string; saved_at?: string; size?: number }> {
+  return fetch('/api/old-software-base').then(readJson);
+}
+
+export async function saveOldHistory(file: File, onProgress: Progress) {
+  const head = new TextDecoder().decode(await file.slice(0, 40).arrayBuffer());
+  if (!head.startsWith('-- MySQL')) throw new Error('यह पुराने सॉफ्टवेयर की बैकअप (.sql) फाइल नहीं है');
+  if (!(await indexOldSections(file)).has('customer')) throw new Error('इस फाइल में customer टेबल नहीं मिली, यह पूरी बैकअप फाइल नहीं लगती');
+  const folder = `v${Date.now()}`;
+  const reader = file.stream().pipeThrough(new CompressionStream('gzip')).getReader();
+  let pending: Uint8Array[] = [];
+  let pendingSize = 0;
+  let index = 0;
+  const upload = async () => {
+    onProgress(`पुराना इतिहास वेबसाइट पर रखा जा रहा है... (हिस्सा ${index + 1})`);
+    const { url } = await fetch('/api/old-software-base', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'part', folder, index })
+    }).then(readJson);
+    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/gzip' }, body: new Blob(pending as BlobPart[]) });
+    if (!res.ok) throw new Error(`Upload of piece ${index + 1} failed (${res.status})`);
+    pending = [];
+    pendingSize = 0;
+    index++;
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (value) {
+      pending.push(value);
+      pendingSize += value.length;
+      if (pendingSize >= HISTORY_PIECE) await upload();
+    }
+    if (done) break;
+  }
+  if (pendingSize > 0) await upload();
+  return fetch('/api/old-software-base', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'finish', folder, parts: index, name: file.name, size: file.size })
+  }).then(readJson);
+}
+
+async function loadOldHistory(onProgress: Progress): Promise<Blob | null> {
+  const meta = await fetch('/api/old-software-base?links=1').then(readJson);
+  if (meta.missing) return null;
+  const pieces: Blob[] = [];
+  for (let i = 0; i < meta.links.length; i++) {
+    onProgress(`पुराना इतिहास आ रहा है... (${i + 1} / ${meta.links.length})`);
+    const res = await fetch(meta.links[i]);
+    if (!res.ok) throw new Error(`History piece ${i + 1} could not be read (${res.status})`);
+    pieces.push(await res.blob());
+  }
+  onProgress('पुराना इतिहास खोला जा रहा है...');
+  const history = await new Response(new Blob(pieces).stream().pipeThrough(new DecompressionStream('gzip'))).blob();
+  if (meta.size && history.size !== meta.size) throw new Error('पुराना इतिहास पूरा नहीं आया');
+  return history;
+}
+
+// A complete backup for the old software. Its restore replaces the whole database, so the file
+// holds every table it has: the masters, then each year from 2007-08 read, written and let go one
+// at a time, from this website's data; a table the website has nothing for is copied as it is from
+// the old software's history kept here. Chrome and Edge write the file straight to disk; other
 // browsers build it in memory first.
 export async function downloadOldSoftwareFile(onProgress: Progress) {
   const fileName = `AryanNews_ForOldSoftware_${new Date().toISOString().slice(0, 10)}.sql`;
@@ -98,15 +162,30 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
     }
   }
   const parts: BlobPart[] = [];
-  const write = async (pieces: Iterable<string>) => {
+  let history: Blob | null = null;
+  let sections = new Map<string, [number, number]>();
+  const write = async (pieces: Iterable<string | { copy: string }>) => {
     for (const piece of pieces) {
-      if (writable) await writable.write(piece);
-      else parts.push(piece);
+      let out: string | Uint8Array;
+      if (typeof piece === 'string') {
+        out = piece;
+      } else {
+        const [start, end] = sections.get(piece.copy)!;
+        out = new Uint8Array(await history!.slice(start, end).arrayBuffer());
+      }
+      if (writable) await writable.write(out);
+      else parts.push(out as BlobPart);
     }
   };
 
   try {
-    const count: OldFileCount = { filled: [], empty: [] };
+    history = await loadOldHistory(onProgress);
+    if (history) {
+      onProgress('पुराने इतिहास की टेबल ढूँढी जा रही हैं...');
+      sections = await indexOldSections(history);
+    }
+    const inHistory = (name: string) => sections.has(name);
+    const count: OldFileCount = { filled: [], copied: [], empty: [] };
     let rows = 0;
     const read = async (names: string[], label: string) => {
       const tables: Record<string, any[]> = {};
@@ -121,12 +200,19 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
 
     await write([OLD_HEADER]);
     const masters = await read(oldSoftwareSourceTables([]), 'Masters');
-    await write(oldSoftwarePart(masters, null, count));
+    await write(oldSoftwarePart(masters, null, count, inHistory));
     for (const year of oldSoftwareYears()) {
       const label = `${year.slice(0, 4)}-${year.slice(6)}`;
       const yearly = await read(oldSoftwareSourceTables([year]).filter(name => /\d{8}$/.test(name)), label);
       onProgress(`${label}: writing...`);
-      await write(oldSoftwarePart({ ...masters, ...yearly }, year, count));
+      await write(oldSoftwarePart({ ...masters, ...yearly }, year, count, inHistory));
+    }
+    // Tables the old software made after the layouts here were taken come across from its history too
+    const written = new Set([...count.filled, ...count.copied, ...count.empty].map(name => name.toLowerCase()));
+    for (const name of Array.from(sections.keys())) {
+      if (written.has(name)) continue;
+      await write([{ copy: name }]);
+      count.copied.push(name);
     }
     await write([OLD_FOOTER]);
 
@@ -142,7 +228,7 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
-    return { rows, ...count };
+    return { rows, history: !!history, ...count };
   } catch (err) {
     await writable?.abort?.().catch(() => {});
     throw err;

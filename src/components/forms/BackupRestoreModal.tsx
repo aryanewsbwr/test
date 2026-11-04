@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Download, Upload, Database, RefreshCw, FileText, ShieldCheck } from 'lucide-react';
-import { applyRestore, downloadBackup, downloadOldSoftwareFile, planRestore, readJson, RestorePlan } from '@/lib/backupClient';
+import { applyRestore, downloadBackup, downloadOldSoftwareFile, oldHistoryInfo, planRestore, readJson, RestorePlan, saveOldHistory } from '@/lib/backupClient';
 
 interface BackupRestoreModalProps {
   mode: 'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward';
@@ -32,6 +32,11 @@ const plainName = (table: string) => PLAIN_NAMES.find(([pattern]) => pattern.tes
 export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(mode === 'balance_forward' ? 'balance_forward' : mode === 'restore' ? 'restore' : 'backup');
   const [includeOlderYears, setIncludeOlderYears] = useState(false);
+  const [historyInfo, setHistoryInfo] = useState<{ missing?: boolean; name?: string; saved_at?: string } | null>(null);
+
+  useEffect(() => {
+    oldHistoryInfo().then(setHistoryInfo).catch(() => setHistoryInfo(null));
+  }, []);
 
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,7 +62,13 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
 
   const handleOldSoftwareFile = () => run(async () => {
     const done = await downloadOldSoftwareFile(working);
-    return `पुराने सॉफ्टवेयर की पूरी बैकअप फाइल बन गई: ${done.filled.length} टेबल में ${done.rows.toLocaleString()} रिकॉर्ड, ${done.empty.length} टेबल खाली (वेबसाइट पर इनका डाटा नहीं है)। पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
+    return `पुराने सॉफ्टवेयर की पूरी बैकअप फाइल बन गई: वेबसाइट से ${done.filled.length} टेबल (${done.rows.toLocaleString()} रिकॉर्ड), पुराने इतिहास से ${done.copied.length} टेबल, खाली ${done.empty.length} टेबल।${done.history ? '' : ' पुराना इतिहास वेबसाइट पर नहीं है, इसलिए पुराने साल खाली हैं।'} पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
+  });
+
+  const handleSaveHistory = (file: File) => run(async () => {
+    const meta = await saveOldHistory(file, working);
+    setHistoryInfo(meta);
+    return `पुराना इतिहास वेबसाइट पर रख लिया गया (${meta.name})। अब "पुराने सॉफ्टवेयर के लिए बैकअप" पूरी बनेगी, फाइल दोबारा नहीं माँगेगी।`;
   });
 
   const handleChooseFile = (file: File) => {
@@ -195,7 +206,10 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
                   <span>{isProcessing ? 'Working...' : 'पुराने सॉफ्टवेयर के लिए बैकअप (Backup for old software)'}</span>
                 </button>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  पुराने सॉफ्टवेयर की पूरी बैकअप फाइल, सिर्फ वेबसाइट के डाटा से: पुराने सॉफ्टवेयर की हर टेबल उसी ढाँचे में, और वेबसाइट पर जितने साल का डाटा है वह सब। पुराने सॉफ्टवेयर के Restore से चलाएँ।
+                  पुराने सॉफ्टवेयर की पूरी बैकअप फाइल: वेबसाइट का डाटा, और जो वेबसाइट पर नहीं है (पुराने साल, पुराने सॉफ्टवेयर की अपनी टेबल) वह वेबसाइट पर रखे पुराने इतिहास से। पुराने सॉफ्टवेयर के Restore से चलाएँ।
+                  {historyInfo && (historyInfo.missing
+                    ? <b className="text-red-700"> पुराना इतिहास अभी वेबसाइट पर नहीं है: Restore टैब में एक बार रखें।</b>
+                    : <> पुराना इतिहास: {historyInfo.name} ({new Date(historyInfo.saved_at || '').toLocaleDateString('en-IN')})।</>)}
                 </p>
               </div>
             </div>
@@ -203,6 +217,14 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
 
           {activeTab === 'restore' && (
             <div className="space-y-3">
+              <div className="border border-blue-300 bg-blue-50 p-2 rounded text-[11px] space-y-1.5">
+                <div className="font-bold text-blue-900">पुराना इतिहास वेबसाइट पर रखें (सिर्फ एक बार)</div>
+                <div className="text-slate-700">
+                  पुराने सॉफ्टवेयर की पूरी बैकअप फाइल (जैसे New Project 20261104 1222.sql) चुनें। इससे 2007-08 से 2018-19 के साल और पुराने सॉफ्टवेयर की अपनी टेबल वेबसाइट पर रख ली जाती हैं, ताकि "पुराने सॉफ्टवेयर के लिए बैकअप" पूरी बने। वेबसाइट का कोई डाटा नहीं बदलता।
+                  {historyInfo && !historyInfo.missing && <> अभी रखा है: <b>{historyInfo.name}</b> ({new Date(historyInfo.saved_at || '').toLocaleDateString('en-IN')})।</>}
+                </div>
+                <input type="file" disabled={isProcessing} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleSaveHistory(f); }} className="text-[11px]" />
+              </div>
               <div className="bg-amber-50 border border-amber-300 p-2 rounded text-[11px] text-amber-950 flex items-start gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>फाइल चुनने से कुछ नहीं बदलता। पहले अंतर दिखेगा, फिर आप तय करेंगे। बदलने से पहले सेफ्टी कॉपी अपने आप डाउनलोड होगी।</span>

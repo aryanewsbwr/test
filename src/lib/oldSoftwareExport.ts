@@ -403,7 +403,43 @@ const OLD_TABLES = (schema as { tables: { name: string; body: string; engine: st
 
 export interface OldFileCount {
   filled: string[];
+  // Taken whole from the old software's history kept on the website (older years, its own tables)
+  copied: string[];
   empty: string[];
+}
+
+// Where each table's part of an old software dump begins and ends, so it can be copied byte for byte
+const SECTION = /\r?\n--\r?\n-- (?:Table structure for table `[^`]*`\.`([^`]+)`|View structure for view|Temporary table structure|Function|Procedure|Definition of)/g;
+
+export async function indexOldSections(file: Blob): Promise<Map<string, [number, number]>> {
+  const PIECE = 16 * 1024 * 1024;
+  const sections = new Map<string, [number, number]>();
+  let open: { name: string; start: number } | null = null;
+  const close = (end: number) => {
+    if (open) sections.set(open.name, [open.start, end]);
+    open = null;
+  };
+  let carry = '';
+  let carryAt = 0;
+  for (let offset = 0; offset < file.size; offset += PIECE) {
+    const bytes = new Uint8Array(await file.slice(offset, offset + PIECE).arrayBuffer());
+    let piece = '';
+    for (let i = 0; i < bytes.length; i += 32768) piece += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768) as unknown as number[]);
+    const text = carry + piece;
+    const base = carryAt;
+    // A marker cut by the piece's end is found in the next round
+    const limit = offset + PIECE >= file.size ? text.length : Math.max(0, text.length - 200);
+    SECTION.lastIndex = 0;
+    for (let m = SECTION.exec(text); m && m.index < limit; m = SECTION.exec(text)) {
+      const start = base + m.index + m[0].indexOf('-');
+      close(start);
+      if (m[1]) open = { name: m[1].toLowerCase(), start };
+    }
+    carry = text.slice(limit);
+    carryAt = base + limit;
+  }
+  close(file.size);
+  return sections;
 }
 
 /**
@@ -413,7 +449,12 @@ export interface OldFileCount {
  * keeps are filled from it, the rest go in empty so the old software still opens.
  * The file is OLD_HEADER, the masters, each year in turn, then OLD_FOOTER.
  */
-export function* oldSoftwarePart(tables: Record<string, any[]>, year: string | null, count: OldFileCount): Generator<string> {
+export function* oldSoftwarePart(
+  tables: Record<string, any[]>,
+  year: string | null,
+  count: OldFileCount,
+  inHistory: (name: string) => boolean = () => false
+): Generator<string | { copy: string }> {
   const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix()).map(s => [s.name.toLowerCase(), s]));
   // A name ending in a date, like customer_backup_20261028, is not a year's table
   const years = oldSoftwareYears();
@@ -429,6 +470,12 @@ export function* oldSoftwarePart(tables: Record<string, any[]>, year: string | n
   for (const table of layouts) {
     const name = table.name;
     const spec = specs.get(name.toLowerCase());
+    // Nothing here for it, but the old software's history has it: that part goes in as it is
+    if (!(spec && spec.rows.length) && inHistory(name.toLowerCase())) {
+      yield { copy: name.toLowerCase() };
+      count.copied.push(name);
+      continue;
+    }
     yield `--\n-- Table structure for table \`test\`.\`${name}\`\n--\n\nDROP TABLE IF EXISTS \`${name}\`;\nCREATE TABLE \`${name}\` (\n${table.body}\n) ${table.engine};\n\n`;
     yield `--\n-- Dumping data for table \`test\`.\`${name}\`\n--\n\n/*!40000 ALTER TABLE \`${name}\` DISABLE KEYS */;\n`;
     if (spec && spec.rows.length) {
