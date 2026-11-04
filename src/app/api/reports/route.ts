@@ -29,17 +29,30 @@ interface CacheData {
   publicationdis?: any[];
 }
 
-// Every row, in a fixed order so pages never overlap, failing loudly rather than returning part
+// Every row, in a fixed order so pages never overlap, failing loudly rather than returning part.
+// The row count comes first so the pages are read several at a time instead of one after another.
 async function fetchAllFromSupabase(table: string, order: string[], columns = '*'): Promise<any[]> {
-  const all: any[] = [];
   const PAGE_SIZE = 1000;
-  for (let from = 0; ; from += PAGE_SIZE) {
+  const AT_ONCE = 8;
+  const { count, error: countError } = await supabase.from(table).select(order[0], { count: 'exact', head: true });
+  if (countError) throw new Error(`Could not read ${table}: ${countError.message}`);
+  const page = async (from: number) => {
     let query = supabase.from(table).select(columns);
     for (const column of order) query = query.order(column, { ascending: true });
     const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`Could not read ${table}: ${error.message}`);
-    all.push(...(data || []));
-    if (!data || data.length < PAGE_SIZE) return all;
+    return data || [];
+  };
+  const all: any[] = [];
+  const starts = Array.from({ length: Math.ceil((count || 0) / PAGE_SIZE) }, (_, i) => i * PAGE_SIZE);
+  for (let i = 0; i < starts.length; i += AT_ONCE) {
+    for (const rows of await Promise.all(starts.slice(i, i + AT_ONCE).map(page))) all.push(...rows);
+  }
+  // Rows added while reading land past the counted pages
+  for (let from = starts.length * PAGE_SIZE; ; from += PAGE_SIZE) {
+    const rows = await page(from);
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) return all;
   }
 }
 
@@ -114,7 +127,8 @@ export async function GET(request: NextRequest) {
     data.publications = await fetchPublications();
     data.regions = await fetchRegions();
     // Bill printing reads its own rows from the database, so it skips this slower load
-    if (!reportType.startsWith('bill_print') && reportType !== 'bill_paid_report') await loadLiveData(data);
+    // and the due summary reads only the few columns it needs
+    if (!reportType.startsWith('bill_print') && reportType !== 'bill_paid_report' && reportType !== 'due_region_summary') await loadLiveData(data);
     const custMap = new Map<number, any>(data.customers.map(c => [c.customer_id, c]));
     const pubMap = new Map<number, any>(data.publications.map(p => [p.publica_id, p]));
     const hwMap = new Map<number, any>(data.hawkers.map(h => [h.hawker_id, h]));
@@ -265,11 +279,15 @@ export async function GET(request: NextRequest) {
     // since bills made on this website also keep the carried balance in due_amt.
     if (reportType === 'due_region_summary') {
       const suffix = fySuffix();
-      const [headers, lines, deliveries] = await Promise.all([
+      const [customers, headers, lines, deliveries, receipts] = await Promise.all([
+        fetchAllFromSupabase('customer', ['customer_id'], 'customer_id, name_eng, name_hindi, name_hindi_unicode, hindi_add, add1, add2, region_id, priority')
+          .catch(() => fetchAllFromSupabase('customer', ['customer_id'])),
         fetchAllFromSupabase(`billno${suffix}`, ['bill_id'], 'customer_id, month, due_amt, dis_amt'),
         fetchAllFromSupabase(`bill${suffix}`, ['id'], 'customer_id, total_amt'),
-        fetchAllFromSupabase(`billdel${suffix}`, ['id'], 'customer_id, dely')
+        fetchAllFromSupabase(`billdel${suffix}`, ['id'], 'customer_id, dely'),
+        fetchAllFromSupabase(`receipt${suffix}`, ['id'], 'customer_id, mal_recp_amt, less_amt')
       ]);
+      data.customers = customers;
       const parts = new Map<number, { dues: number; bill: number; delivery: number; receipt: number; less: number }>();
       const part = (id: any) => {
         const key = Number(id);
@@ -282,7 +300,7 @@ export async function GET(request: NextRequest) {
       }
       for (const l of lines) part(l.customer_id).bill += Number(l.total_amt || 0);
       for (const d of deliveries) part(d.customer_id).delivery += Number(d.dely || 0);
-      for (const r of data.receipts) {
+      for (const r of receipts) {
         part(r.customer_id).receipt += Number(r.mal_recp_amt || 0);
         part(r.customer_id).less += Number(r.less_amt || 0);
       }
