@@ -88,11 +88,11 @@ html.desktop2 .d2-menubar .ml-auto > div {
 /* The shop photo behind everything; darker while a window is open so the window stands out */
 html.desktop2 .d2-desk {
   background: linear-gradient(rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.25)),
-              url('/storefront-bg.jpg') center 30% / cover no-repeat fixed #CBD5E1;
+              url('/shop-bg.jpg') center 35% / cover no-repeat fixed #CBD5E1;
 }
 html.desktop2 .d2-desk:is(.d2-busy, :has(.d2-window)) {
   background: linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)),
-              url('/storefront-bg.jpg') center 30% / cover no-repeat fixed #CBD5E1;
+              url('/shop-bg.jpg') center 35% / cover no-repeat fixed #CBD5E1;
 }
 
 /* Home screen when no window is open: a frosted card low down, so the shop sign stays in view */
@@ -257,7 +257,7 @@ html.desktop2 .d2-window .d2-window { zoom: 1; max-height: calc((100dvh - 180px)
 /* Loading screen */
 html.desktop2 .d2-loading {
   background: linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)),
-              url('/storefront-bg.jpg') center 30% / cover no-repeat #CBD5E1 !important;
+              url('/shop-bg.jpg') center 35% / cover no-repeat #CBD5E1 !important;
   font-family: var(--d2-font) !important;
 }
 html.desktop2 .d2-loading > div {
