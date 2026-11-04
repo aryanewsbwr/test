@@ -229,10 +229,11 @@ export function oldSoftwareTables(): OldTable[] {
   const suffix = fySuffix();
 
   return [
-    plain('customer', { fonttype: 'font_type', govtsupply: 'govt_supply', is_inactive: '' }),
+    // is_inactive and the hawker's region_id are kept here since old_software_marks.sql added them
+    plain('customer', { fonttype: 'font_type', govtsupply: 'govt_supply' }),
     // The database numbers subscriptions itself, so the old sno is not kept
     { source: 'customer_detail', target: 'customer_detail', map: datesOf(['s_date', 'c_date'], renamed({ sno: '' })) },
-    plain('hawker', { region_id: '' }),
+    plain('hawker'),
     plain('publication', { typep: 'type_p', magzineday: 'magzine_day', magzinemonth: 'magzine_month', chrdel: 'chr_del' }),
     plain('publisher'),
     plain('regiond'),
