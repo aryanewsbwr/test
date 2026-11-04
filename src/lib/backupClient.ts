@@ -2,6 +2,7 @@ import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, Row
 import { roundToFoxProRule } from './billingEngine';
 import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
+import { oldSoftwareSourceTables, oldSoftwareSql } from './oldSoftwareExport';
 
 const BILL_FIX_BATCH = 50;
 const FILE_FORMAT = 'aryan-news-backup';
@@ -76,6 +77,27 @@ export async function downloadBackup(includeOlderYears: boolean, onProgress: Pro
 
   onProgress('Compressing the file...');
   await saveBackupFile(tables, `AryanNews_Backup_${new Date().toISOString().slice(0, 10)}.json.gz`);
+  return Object.values(tables).reduce((sum, rows) => sum + rows.length, 0);
+}
+
+// The running year and the masters, written as a file the old software's MySQL Administrator restores
+export async function downloadOldSoftwareFile(onProgress: Progress) {
+  const names = oldSoftwareSourceTables();
+  const tables: Record<string, any[]> = {};
+  for (let i = 0; i < names.length; i++) {
+    onProgress(`Reading ${names[i]} (${i + 1} of ${names.length})...`);
+    tables[names[i]] = (await fetchTable(names[i])).rows;
+  }
+  onProgress('Writing the file for the old software...');
+  const blob = new Blob(oldSoftwareSql(tables), { type: 'application/sql' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `AryanNews_ForOldSoftware_${new Date().toISOString().slice(0, 10)}.sql`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
   return Object.values(tables).reduce((sum, rows) => sum + rows.length, 0);
 }
 

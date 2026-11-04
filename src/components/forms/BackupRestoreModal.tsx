@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Download, Upload, Database, RefreshCw, FileText, ShieldCheck } from 'lucide-react';
-import { applyRestore, downloadBackup, planRestore, readJson, RestorePlan } from '@/lib/backupClient';
+import { applyRestore, downloadBackup, downloadOldSoftwareFile, planRestore, readJson, RestorePlan } from '@/lib/backupClient';
 
 interface BackupRestoreModalProps {
   mode: 'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward';
@@ -52,6 +52,11 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
   const handleBackup = () => run(async () => {
     const rows = await downloadBackup(includeOlderYears, working);
     return `Backup downloaded: ${rows.toLocaleString()} rows, checked against the database. Keep the file safe.`;
+  });
+
+  const handleOldSoftwareFile = () => run(async () => {
+    const rows = await downloadOldSoftwareFile(working);
+    return `पुराने सॉफ्टवेयर की फाइल डाउनलोड हुई: ${rows.toLocaleString()} रिकॉर्ड। पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
   });
 
   const handleChooseFile = (file: File) => {
@@ -179,6 +184,19 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
               <p className="text-[10px] text-slate-500">
                 This file restores into this software only, not into the old software. Login accounts are not included.
               </p>
+              <div className="border-t border-slate-300 pt-3 space-y-2">
+                <button
+                  onClick={handleOldSoftwareFile}
+                  disabled={isProcessing}
+                  className="w-full vb-btn bg-white hover:bg-slate-50 text-blue-900 border border-blue-800 font-bold py-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isProcessing ? 'Working...' : 'पुराने सॉफ्टवेयर के लिए फाइल (Backup for old software .sql)'}</span>
+                </button>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  पुराने सॉफ्टवेयर में MySQL Administrator → Restore से यह फाइल चलाएँ। इसमें ग्राहक, सब्सक्रिप्शन, पेपर, दरें, हॉकर और इस साल के बिल व रसीदें हैं; पुराने साल और बाकी टेबल वैसे ही रहते हैं। ग्राहक का inactive निशान और हॉकर का region पुराने सॉफ्टवेयर में जैसा है वैसा रहता है।
+                </p>
+              </div>
             </div>
           )}
 
