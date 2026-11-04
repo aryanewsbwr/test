@@ -80,6 +80,8 @@ export default function ReportsForm({
   periodStartYear
 }: ReportsFormProps) {
   const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
+  // Where the bill previews put their Prev / Next, WhatsApp and Print buttons
+  const [billBarSlot, setBillBarSlot] = useState<HTMLDivElement | null>(null);
   const [activeReport, setActiveReport] = useState<string>(initialReport);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -884,7 +886,10 @@ export default function ReportsForm({
             </div>
           )}
 
-          {/* Action Buttons */}
+          {activeReport.includes('bill_print') && <div ref={setBillBarSlot} className="contents" />}
+
+          {/* Action Buttons (bill printing has its own Print and Print All in the bill buttons) */}
+          {!activeReport.includes('bill_print') && (
           <button 
             onClick={handlePrint}
             className={`px-2 py-0.5 border flex items-center gap-1 cursor-pointer font-bold ${
@@ -909,6 +914,7 @@ export default function ReportsForm({
                 : 'Print'}
             </span>
           </button>
+          )}
 
           <button 
             onClick={handleExportCSV}
@@ -1088,6 +1094,7 @@ export default function ReportsForm({
                     zoomLevel={zoomLevel}
                     initialPrintMode={billPrintMode}
                     onBillsSent={handleBillsSent}
+                    toolbarSlot={billBarSlot}
                   />
                 ) : (
                   <Bill4in1Preview
@@ -1095,6 +1102,7 @@ export default function ReportsForm({
                     title={currentMeta.title} 
                     zoomLevel={zoomLevel} 
                     initialPrintMode={billPrintMode}
+                    toolbarSlot={billBarSlot}
                   />
                 )
               )}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
 import { 
   BillRecord, 
@@ -15,6 +16,8 @@ interface Bill4in1PreviewProps {
   title?: string;
   zoomLevel?: number;
   initialPrintMode?: BillPrintMode;
+  // When given, the page and print buttons sit in the report's own toolbar instead of above the pages
+  toolbarSlot?: HTMLElement | null;
 }
 
 function formatMoney(n: number | undefined | null): string {
@@ -26,7 +29,8 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
   bills,
   title = 'Region Wise Bill Printing (4 in 1 A4)',
   zoomLevel = 100,
-  initialPrintMode = 'simple'
+  initialPrintMode = 'simple',
+  toolbarSlot
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'single_sheet' | 'all_sheets'>('single_sheet');
@@ -54,9 +58,12 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
     printBills4in1(bills, title, printMode);
   };
 
+  const inToolbar = (bar: React.ReactElement) => (toolbarSlot ? createPortal(<div className="bill-bar-light contents">{bar}</div>, toolbarSlot) : bar);
+
   return (
     <div className="flex flex-col items-center w-full">
-      {/* 4-IN-1 TOOLBAR */}
+      {/* 4-IN-1 TOOLBAR, in the report toolbar when there is one */}
+      {inToolbar(
       <div className="w-full max-w-4xl bg-slate-800 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs mb-3 rounded-t-sm shadow-md print:hidden">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-amber-400" />
@@ -67,7 +74,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
         </div>
 
         {/* Print Mode Selector: Simple (Delivery merged) vs Detail (Delivery separate) */}
-        <div className="flex items-center bg-slate-900/90 p-0.5 rounded border border-slate-700">
+        <div className="bill-bar-format flex items-center bg-slate-900/90 p-0.5 rounded border border-slate-700">
           <button
             onClick={() => setPrintMode('simple')}
             className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
@@ -138,6 +145,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* A4 PAGES CONTAINER */}
       <div 

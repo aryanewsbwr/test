@@ -147,3 +147,14 @@ body {
 
 /* The home-screen card makes way for any open window, including the ones opened as pop-ups */
 .d2-desk:has(.d2-window) > .d2-splash { display: none !important; }
+
+/* Bill buttons moved into the report toolbar: no dark bar of their own, and the toolbar's
+   Simple / Detail is the one that counts */
+.bill-bar-light > div { position: static !important; width: auto !important; max-width: none !important; margin: 0 !important; padding: 0 !important;
+  background: transparent !important; box-shadow: none !important; color: #1E293B !important; display: contents !important; }
+.bill-bar-light > div > div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bill-bar-light .bill-bar-format { display: none !important; }
+.bill-bar-light :is(.bg-slate-900, .bg-slate-900\/90) { background: #FFFFFF !important; border-color: #CBD5E1 !important; }
+.bill-bar-light .bg-slate-700 { background: #F1F5F9 !important; color: #1E293B !important; border: 1px solid #CBD5E1; }
+.bill-bar-light :is(.text-slate-300, .text-slate-400) { color: #475569 !important; }
+.bill-bar-light .text-amber-400 { color: #B45309 !important; }

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
@@ -13,6 +14,8 @@ interface BillThermalPreviewProps {
   zoomLevel?: number;
   initialPrintMode?: BillPrintMode;
   onBillsSent?: (bills: BillRecord[]) => void;
+  // When given, the bill buttons sit in the report's own toolbar instead of above the bills
+  toolbarSlot?: HTMLElement | null;
 }
 
 function formatMoney(n: number | undefined | null): string {
@@ -73,10 +76,13 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   title = 'Aryan News Agency - Monthly Bills',
   zoomLevel = 100,
   initialPrintMode = 'simple',
-  onBillsSent
+  onBillsSent,
+  toolbarSlot
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
+  // The toolbar's Simple / Detail choice applies here too
+  useEffect(() => { setPrintMode(initialPrintMode); }, [initialPrintMode]);
   const [viewAll, setViewAll] = useState(false);
   const [scale, setScale] = useState(1);
   const [isSendingWa, setIsSendingWa] = useState(false);
@@ -665,10 +671,12 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     );
   };
 
+  const inToolbar = (bar: React.ReactElement) => (toolbarSlot ? createPortal(<div className="bill-bar-light contents">{bar}</div>, toolbarSlot) : bar);
+
   return (
     <div className="flex flex-col items-center w-full">
-      {/* 58MM / SLIP TOOLBAR */}
-      {/* Stays at the top of the report while the bills scroll under it */}
+      {/* 58MM / SLIP TOOLBAR, in the report toolbar when there is one */}
+      {inToolbar(
       <div className="sticky top-0 z-20 w-full max-w-2xl bg-slate-800 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs mb-3 rounded-t-sm shadow-md print:hidden [&_button]:whitespace-nowrap">
         <div className="flex items-center gap-2">
           <span className="font-bold text-slate-300">Bill {currentIndex + 1} of {bills.length}</span>
@@ -714,7 +722,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center bg-slate-900 px-1 py-0.5 rounded border border-slate-700">
+          <div className="bill-bar-format flex items-center bg-slate-900 px-1 py-0.5 rounded border border-slate-700">
             <button
               onClick={() => setPrintMode('simple')}
               className={`px-2 py-0.5 text-[11px] font-bold rounded cursor-pointer ${
@@ -790,6 +798,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* WhatsApp Status Alert Toast */}
       {waStatus && (
