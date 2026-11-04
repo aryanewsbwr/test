@@ -80,10 +80,71 @@ export async function downloadBackup(includeOlderYears: boolean, onProgress: Pro
   return Object.values(tables).reduce((sum, rows) => sum + rows.length, 0);
 }
 
-// A complete backup for the old software: the old software's last backup file with this website's
-// tables written in, since its restore replaces the whole database. Chrome and Edge write the
-// file straight to disk; other browsers build it in memory first.
-export async function downloadOldSoftwareFile(base: File, onProgress: Progress) {
+// The old software's last complete backup is kept gzipped in storage, in pieces under the upload limit
+const BASE_PIECE = 32 * 1024 * 1024;
+
+export async function oldBaseInfo(): Promise<{ missing?: boolean; name?: string; saved_at?: string; size?: number }> {
+  return fetch('/api/old-software-base').then(readJson);
+}
+
+export async function saveOldBase(file: File, onProgress: Progress) {
+  const head = new TextDecoder().decode(await file.slice(0, 40).arrayBuffer());
+  if (!head.startsWith('-- MySQL')) throw new Error('यह पुराने सॉफ्टवेयर की बैकअप (.sql) फाइल नहीं है');
+  const folder = `v${Date.now()}`;
+  const reader = file.stream().pipeThrough(new CompressionStream('gzip')).getReader();
+  let pending: Uint8Array[] = [];
+  let pendingSize = 0;
+  let index = 0;
+  const upload = async () => {
+    onProgress(`पुराने सॉफ्टवेयर की कॉपी सेव हो रही है... (हिस्सा ${index + 1})`);
+    const { url } = await fetch('/api/old-software-base', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'part', folder, index })
+    }).then(readJson);
+    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/gzip' }, body: new Blob(pending as BlobPart[]) });
+    if (!res.ok) throw new Error(`Upload of piece ${index + 1} failed (${res.status})`);
+    pending = [];
+    pendingSize = 0;
+    index++;
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (value) {
+      pending.push(value);
+      pendingSize += value.length;
+      if (pendingSize >= BASE_PIECE) await upload();
+    }
+    if (done) break;
+  }
+  if (pendingSize > 0) await upload();
+  return fetch('/api/old-software-base', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'finish', folder, parts: index, name: file.name, size: file.size })
+  }).then(readJson);
+}
+
+async function loadOldBase(onProgress: Progress): Promise<Blob> {
+  const meta = await fetch('/api/old-software-base?links=1').then(readJson);
+  if (meta.missing) throw new Error('पुराने सॉफ्टवेयर की कॉपी अभी सेव नहीं है');
+  const pieces: Blob[] = [];
+  for (let i = 0; i < meta.links.length; i++) {
+    onProgress(`पुराने सॉफ्टवेयर की कॉपी आ रही है... (${i + 1} / ${meta.links.length})`);
+    const res = await fetch(meta.links[i]);
+    if (!res.ok) throw new Error(`Piece ${i + 1} could not be read (${res.status})`);
+    pieces.push(await res.blob());
+  }
+  onProgress('पुराने सॉफ्टवेयर की कॉपी खोली जा रही है...');
+  const base = await new Response(new Blob(pieces).stream().pipeThrough(new DecompressionStream('gzip'))).blob();
+  if (meta.size && base.size !== meta.size) throw new Error('पुराने सॉफ्टवेयर की कॉपी पूरी नहीं आई');
+  return base;
+}
+
+// A complete backup for the old software: its last backup with this website's tables written in,
+// since the old software's restore replaces the whole database. Chrome and Edge write the file
+// straight to disk; other browsers build it in memory first.
+export async function downloadOldSoftwareFile(onProgress: Progress) {
   const fileName = `AryanNews_ForOldSoftware_${new Date().toISOString().slice(0, 10)}.sql`;
   let writable: any = null;
   const picker = (window as any).showSaveFilePicker;
@@ -98,6 +159,7 @@ export async function downloadOldSoftwareFile(base: File, onProgress: Progress) 
   }
 
   try {
+    const base = await loadOldBase(onProgress);
     const names = oldSoftwareSourceTables();
     const tables: Record<string, any[]> = {};
     for (let i = 0; i < names.length; i++) {
