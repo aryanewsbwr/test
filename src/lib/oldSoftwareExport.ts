@@ -36,6 +36,18 @@ function pick(row: any, name: string) {
   return undefined;
 }
 const first = (...values: any[]) => values.find(v => v !== undefined && v !== null && v !== '');
+
+// The old software spells bill months its own way; bills made here say "August", "September"
+const OLD_MONTH: Record<string, string> = {
+  due: 'Dues', apr: 'April', may: 'May', jun: 'June', jul: 'July', aug: 'Aug', sep: 'Sept', oct: 'Oct',
+  nov: 'Nov', dec: 'Dec', jan: 'Jan', feb: 'Feb', mar: 'March'
+};
+const oldMonth = (month: any) => OLD_MONTH[monthCode(month)] ?? month;
+// Its year is the year the month falls in; some of this website's tables left it empty
+const yearOf = (row: any, startYear: number) =>
+  first(pick(row, 'year'), ['jan', 'feb', 'mar'].includes(monthCode(pick(row, 'month'))) ? String(startYear + 1) : String(startYear));
+// Nothing charged is NULL in the old software, not 0
+const orNull = (value: any) => (value === null || value === undefined || value === '' || Number(value) === 0 ? null : value);
 const col = (oldName: string, kind: Kind = 'n', from?: string): Column => [oldName, kind, row => pick(row, from || oldName)];
 
 function isoDate(value: any): string | null {
@@ -245,7 +257,8 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       mode: 'replace',
       create: "`Publica_id` int(11) default NULL,\n  `Rate` float default NULL,\n  `Dayofweek` int(11) default NULL",
       columns: [col('Publica_id'), col('Rate'), col('Dayofweek')],
-      rows: get('rate')
+      // Repeated rows for one paper and day: billing here takes the first, so that one goes
+      rows: get('rate').filter((r, i, all) => all.findIndex(o => pick(o, 'publica_id') === pick(r, 'publica_id') && pick(o, 'dayofweek') === pick(r, 'dayofweek')) === i)
     },
     {
       name: 'ratechange',
@@ -297,8 +310,9 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         col('Bill_id'), col('Customer_id'), col('Region_id'),
         // An older year still in the old software's own names was billed there, so its figures stay as they are
         ['Due_Amt', 'n', r => ('Due_Amt' in r ? r.Due_Amt : monthCode(pick(r, 'month')) === 'due' ? pick(r, 'due_amt') : null)],
-        col('Del_Amt'), col('Dis_Amt'), col('Month', 's'), col('year', 's'),
-        ['Balance', 'n', r => ('Balance' in r ? r.Balance : monthCode(pick(r, 'month')) === 'due' ? pick(r, 'balance') ?? null : dueBefore(r))]
+        ['Del_Amt', 'n', r => ('Del_Amt' in r ? r.Del_Amt : orNull(pick(r, 'del_amt')))], ['Dis_Amt', 'n', r => ('Dis_Amt' in r ? r.Dis_Amt : orNull(pick(r, 'dis_amt')))],
+        ['Month', 's', r => oldMonth(pick(r, 'month'))], ['year', 's', r => yearOf(r, startYear)],
+        ['Balance', 'n', r => ('Balance' in r ? r.Balance : monthCode(pick(r, 'month')) === 'due' ? orNull(pick(r, 'balance')) : dueBefore(r))]
       ],
       rows: headers
     },
@@ -308,7 +322,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       create: "`Bill_id` int(11) default NULL,\n  `Customer_id` int(11) default NULL,\n  `Publica_id` int(11) default NULL,\n  `Region_id` int(11) default NULL,\n  `Qty` int(11) default NULL,\n  `Rate` float default NULL,\n  `D_Charges` float default NULL,\n  `TotalAmt` float default NULL,\n  `Month` text,\n  `year` text,\n  `sno` int(11) default NULL,\n  KEY `idx_custid_month` (`Customer_id`,`Month`(10))",
       columns: [
         col('Bill_id'), col('Customer_id'), col('Publica_id'), col('Region_id'), col('Qty'), col('Rate'), col('D_Charges'),
-        col('TotalAmt', 'n', 'total_amt'), col('Month', 's'), col('year', 's'), ['sno', 'n', lineSno]
+        col('TotalAmt', 'n', 'total_amt'), ['Month', 's', r => oldMonth(pick(r, 'month'))], ['year', 's', r => yearOf(r, startYear)], ['sno', 'n', lineSno]
       ],
       rows: lines
     },
@@ -316,7 +330,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       name: `billdel${suffix}`,
       mode: 'replace',
       create: "`Customer_id` int(11) default NULL,\n  `Region_id` int(11) default NULL,\n  `Publica_id` int(11) default NULL,\n  `month` text,\n  `year` text,\n  `Dely` int(11) default NULL,\n  `sno` int(11) default NULL,\n  KEY `idx_custid_month` (`Customer_id`,`month`(10))",
-      columns: [col('Customer_id'), col('Region_id'), col('Publica_id'), col('month', 's'), col('year', 's'), col('Dely'), ['sno', 'n', lineSno]],
+      columns: [col('Customer_id'), col('Region_id'), col('Publica_id'), ['month', 's', r => oldMonth(pick(r, 'month'))], ['year', 's', r => yearOf(r, startYear)], col('Dely'), ['sno', 'n', lineSno]],
       rows: deliveries
     },
     {
@@ -330,7 +344,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['ManualRepNo', 'n', r => first(remarksOf(r).manual_rep_no, remarksOf(r).mal_rep_no, pick(r, 'ManualRepNo'))],
         ['BillDate', 'dmy', r => first(r.recp_date, pick(r, 'BillDate'))], ['BillAmt', 'n', r => first(r.bill_amt, pick(r, 'BillAmt'))],
         ['MalRecpDt', 'dmy', r => first(remarksOf(r).mal_recp_dt, pick(r, 'MalRecpDt'), r.recp_date)],
-        ['Month', 's', r => pick(r, 'month')], ['Year', 's', r => pick(r, 'year')], ['DueAmt', 'n', r => pick(r, 'DueAmt') ?? null],
+        ['Month', 's', r => oldMonth(pick(r, 'month'))], ['Year', 's', r => yearOf(r, startYear)], ['DueAmt', 'n', r => pick(r, 'DueAmt') ?? null],
         ['MalRecpAmt', 'n', r => first(r.mal_recp_amt, pick(r, 'MalRecpAmt'))],
         ['Balance', 'n', r => first(remarksOf(r).balance, pick(r, 'Balance'), 0)], ['LessAmt', 'n', r => first(pick(r, 'less_amt'), 0)],
         ['RAmt', 'n', r => first(remarksOf(r).r_amt, pick(r, 'RAmt'), r.mal_recp_amt)],
