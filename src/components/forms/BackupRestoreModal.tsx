@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Download, Upload, Database, RefreshCw, FileText, ShieldCheck } from 'lucide-react';
-import { applyRestore, downloadBackup, downloadOldSoftwareFile, oldBaseInfo, planRestore, readJson, RestorePlan, saveOldBase } from '@/lib/backupClient';
+import { applyRestore, downloadBackup, downloadOldSoftwareFile, planRestore, readJson, RestorePlan } from '@/lib/backupClient';
 
 interface BackupRestoreModalProps {
   mode: 'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward';
@@ -32,13 +32,7 @@ const plainName = (table: string) => PLAIN_NAMES.find(([pattern]) => pattern.tes
 export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(mode === 'balance_forward' ? 'balance_forward' : mode === 'restore' ? 'restore' : 'backup');
   const [includeOlderYears, setIncludeOlderYears] = useState(false);
-  const [baseInfo, setBaseInfo] = useState<{ missing?: boolean; name?: string; saved_at?: string } | null>(null);
-  const baseInput = useRef<HTMLInputElement>(null);
-  const chosenFile = useRef<File | null>(null);
 
-  useEffect(() => {
-    oldBaseInfo().then(setBaseInfo).catch(() => setBaseInfo(null));
-  }, []);
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<{ text: string; kind: 'working' | 'done' | 'error' } | null>(null);
@@ -61,27 +55,12 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     return `Backup downloaded: ${rows.toLocaleString()} rows, checked against the database. Keep the file safe.`;
   });
 
-  // Only the first time: the website needs one copy of the old software's backup to build on
-  const handleOldSoftwareFile = () => {
-    if (!baseInfo || baseInfo.missing) {
-      setStatus({ text: 'सिर्फ पहली बार: पुराने सॉफ्टवेयर की आखिरी पूरी बैकअप फाइल (जैसे 01112026) चुनें।', kind: 'working' });
-      baseInput.current?.click();
-      return;
-    }
-    run(async () => {
-      const done = await downloadOldSoftwareFile(working);
-      return `पूरी बैकअप फाइल बन गई: वेबसाइट की ${done.replaced.length + done.added.length} टेबल (${done.rows.toLocaleString()} रिकॉर्ड) नई, बाकी ${done.copied} टेबल पुराने सॉफ्टवेयर जैसी। पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
-    });
-  };
-
-  const handleSaveBase = (file: File) => run(async () => {
-    const meta = await saveOldBase(file, working);
-    setBaseInfo(meta);
-    return `पुराने सॉफ्टवेयर की कॉपी सेव हो गई (${meta.name})। अब "पुराने सॉफ्टवेयर के लिए बैकअप" दबाएँ।`;
+  const handleOldSoftwareFile = () => run(async () => {
+    const done = await downloadOldSoftwareFile(working);
+    return `पुराने सॉफ्टवेयर की पूरी बैकअप फाइल बन गई: ${done.filled.length} टेबल में ${done.rows.toLocaleString()} रिकॉर्ड, ${done.empty.length} टेबल खाली (वेबसाइट पर इनका डाटा नहीं है)। पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
   });
 
   const handleChooseFile = (file: File) => {
-    chosenFile.current = file;
     setPlan(null);
     run(async () => {
       const result = await planRestore(file, working);
@@ -122,14 +101,6 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
         const { saved, problems } = await applyRestore(plan, working);
         setPlan(null);
         if (problems.length > 0) throw new Error(`${saved} rows saved, but: ${problems.join('; ')}`);
-        // The newest old software file becomes the copy its complete backups are built on
-        if (plan.kind === 'old' && chosenFile.current) {
-          try {
-            setBaseInfo(await saveOldBase(chosenFile.current, working));
-          } catch (err: any) {
-            return `रिस्टोर पूरा हुआ: ${saved.toLocaleString()} रिकॉर्ड सेव। पर पुराने सॉफ्टवेयर की कॉपी सेव नहीं हुई: ${err.message}`;
-          }
-        }
         return `रिस्टोर पूरा हुआ (Restore finished): ${saved.toLocaleString()} रिकॉर्ड सेव और जाँचे गए।`;
       } catch (err: any) {
         throw new Error(`${err.message}. जो सेव हो गया वह सुरक्षित है। वही फाइल दोबारा चुनकर रिस्टोर पूरा करें, कुछ भी दो बार नहीं जुड़ेगा।`);
@@ -215,7 +186,6 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
                 This file restores into this software only, not into the old software. Login accounts are not included.
               </p>
               <div className="border-t border-slate-300 pt-3 space-y-2">
-                <input ref={baseInput} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleSaveBase(f); }} />
                 <button
                   onClick={handleOldSoftwareFile}
                   disabled={isProcessing}
@@ -225,10 +195,7 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
                   <span>{isProcessing ? 'Working...' : 'पुराने सॉफ्टवेयर के लिए बैकअप (Backup for old software)'}</span>
                 </button>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  पूरी बैकअप फाइल बनती है जो पुराने सॉफ्टवेयर के Restore से चलती है: पुराने साल और पुराने सॉफ्टवेयर की हर टेबल वैसी ही, और ग्राहक, पेपर, दरें, हॉकर व इस साल के बिल-रसीदें वेबसाइट से।
-                  {baseInfo && !baseInfo.missing && (
-                    <> पुराने सॉफ्टवेयर की कॉपी: {baseInfo.name} ({new Date(baseInfo.saved_at || '').toLocaleDateString('en-IN')}) · <button type="button" disabled={isProcessing} onClick={() => baseInput.current?.click()} className="underline text-blue-800 cursor-pointer">बदलें</button></>
-                  )}
+                  पुराने सॉफ्टवेयर की पूरी बैकअप फाइल, सिर्फ वेबसाइट के डाटा से: पुराने सॉफ्टवेयर की हर टेबल उसी ढाँचे में, और वेबसाइट पर जितने साल का डाटा है वह सब। पुराने सॉफ्टवेयर के Restore से चलाएँ।
                 </p>
               </div>
             </div>

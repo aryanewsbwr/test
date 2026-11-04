@@ -1,14 +1,14 @@
 import { fyLabel, fySuffix } from './financialYear';
 import { monthCode } from './backupTables';
 import { unicodeToSusha } from './sushaEncode';
+import schema from './oldSoftwareSchema.json';
 
 // Writes this website's data as a MySQL file the old software (MySQL Administrator, MySQL 5.0)
 // can restore. It is the reverse of oldSoftwareFile.ts, and follows the old software's own rules:
 // - opening dues sit only on the 'Dues' bill row, and a bill's Balance is the due before that month
 // - each customer's subscriptions are numbered 1, 2, 3 and bill lines point at that number
 // - dates are dd/mm/yyyy where the old software keeps them as text
-// - customer and hawker rows are updated in place, so the old software keeps what only it holds
-//   (a customer's inactive mark, a hawker's region); every other table is replaced whole.
+// - a customer's inactive mark and a hawker's region come from columns old_software_marks.sql adds
 
 type Kind = 'n' | 's' | 'hindi' | 'dmy' | 'date';
 type Column = [oldName: string, kind: Kind, value: (row: any) => any];
@@ -16,8 +16,7 @@ type Column = [oldName: string, kind: Kind, value: (row: any) => any];
 interface OldTableSpec {
   name: string;
   create: string;
-  // 'update' keeps the old rows and columns this website does not hold
-  mode: 'replace' | 'update';
+  mode: 'replace';
   columns: Column[];
   rows: any[];
 }
@@ -163,18 +162,21 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
   const dueBefore = previousDues(headers, lines, deliveries, receipts);
   const lineSno = (row: any) => details.subscriptionFor(pick(row, 'customer_id'), pick(row, 'publica_id'), pick(row, 'month'))?.sno ?? pick(row, 'sno');
   const label = fyLabel(new Date(Date.UTC(startYear, 5, 1)));
+  const openSubscriptions = new Set(get('customer_detail').filter(d => !isoDate(pick(d, 'c_date'))).map(d => Number(pick(d, 'customer_id'))));
 
   return [
     {
       name: 'customer',
-      mode: 'update',
+      mode: 'replace',
       create: "`Customer_id` int(11) NOT NULL auto_increment,\n  `name_eng` varchar(50) default NULL,\n  `Type_Cust` tinyint(1) default NULL,\n  `name_hindi` varchar(50) default NULL,\n  `add1` text,\n  `add2` text,\n  `phone` tinytext,\n  `Security_Deposit` int(11) default NULL,\n  `Type` tinytext,\n  `Priority` int(11) default NULL,\n  `Self_Agent` tinyint(1) default NULL,\n  `FontType` tinyint(1) default NULL,\n  `dueamount` float default NULL,\n  `Region_id` int(11) default NULL,\n  `Paid` text,\n  `Delivery` int(11) default NULL,\n  `Discount` int(11) default NULL,\n  `GovtSupply` tinyint(1) default NULL,\n  `Hindi_Add` text,\n  `Cbal` float default NULL,\n  `pmonth` text,\n  `pyear` text,\n  `is_inactive` tinyint(1) NOT NULL default '0',\n  PRIMARY KEY  (`Customer_id`),\n  KEY `idx_inactive_region` (`is_inactive`,`Region_id`)",
       columns: [
         col('Customer_id'), col('name_eng', 's'), col('Type_Cust'),
         ['name_hindi', 'hindi', r => (pick(r, 'name_hindi') || pick(r, 'name_hindi_unicode') || null)],
         col('add1', 's'), col('add2', 's'), col('phone', 's'), col('Security_Deposit'), col('Type', 's'), col('Priority'),
         col('Self_Agent'), col('FontType', 'n', 'font_type'), col('dueamount'), col('Region_id'), col('Paid', 's'), col('Delivery'),
-        col('Discount'), col('GovtSupply', 'n', 'govt_supply'), col('Hindi_Add', 'hindi', 'hindi_add'), col('Cbal'), col('pmonth', 's'), col('pyear', 's')
+        col('Discount'), col('GovtSupply', 'n', 'govt_supply'), col('Hindi_Add', 'hindi', 'hindi_add'), col('Cbal'), col('pmonth', 's'), col('pyear', 's'),
+        // Kept by the website once old_software_marks.sql has run; until then a customer with no running paper counts as inactive
+        ['is_inactive', 'n', r => pick(r, 'is_inactive') ?? (openSubscriptions.has(Number(pick(r, 'customer_id'))) ? 0 : 1)]
       ],
       rows: get('customer')
     },
@@ -191,9 +193,9 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
     },
     {
       name: 'hawker',
-      mode: 'update',
+      mode: 'replace',
       create: "`Hawker_id` int(11) NOT NULL auto_increment,\n  `name` varchar(50) default NULL,\n  `address` text,\n  `city` varchar(50) default NULL,\n  `phone` tinytext,\n  `mobile` tinytext,\n  `Region_id` int(11) default NULL,\n  PRIMARY KEY  (`Hawker_id`)",
-      columns: [col('Hawker_id'), col('name', 's'), col('address', 's'), col('city', 's'), col('phone', 's'), col('mobile', 's')],
+      columns: [col('Hawker_id'), col('name', 's'), col('address', 's'), col('city', 's'), col('phone', 's'), col('mobile', 's'), col('Region_id')],
       rows: get('hawker')
     },
     {
@@ -274,7 +276,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['Hawker_id', 'n', r => pick(r, 'hawker_id') ?? (details.lookup.get(`${Number(pick(r, 'customer_id'))}|${pick(r, 'publica_id')}`) || [])
           .find(s => s.start === isoDate(pick(r, 's_date')))?.hawker ?? null]
       ],
-      rows: get('discontinue').filter(r => !r.financial_year || r.financial_year === label)
+      rows: get('discontinue').filter(r => r.financial_year === label || (!r.financial_year && suffix === fySuffix()))
     },
     {
       name: `billno${suffix}`,
@@ -338,142 +340,77 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
   ];
 }
 
-// The tables the export reads from this website
-export function oldSoftwareSourceTables(suffix = fySuffix()): string[] {
-  return ['customer', 'customer_detail', 'hawker', 'publication', 'publisher', 'regiond', 'collect', 'rate', 'ratechange', 'holiday',
-    'publicationdis', 'publicationsup', 'discontinue', `billno${suffix}`, `bill${suffix}`, `billdel${suffix}`, `receipt${suffix}`,
-    `retailsale${suffix}`, `receiptissue${suffix}`];
+// Every year the old software has tables for, from 2007-08 to the running one
+export function oldSoftwareYears(): string[] {
+  const years: string[] = [];
+  for (let start = 2007; start <= Number(fySuffix().slice(0, 4)); start++) years.push(`${start}${start + 1}`);
+  return years;
 }
 
-interface TableBlock {
-  name: string;
-  mode: 'replace' | 'update';
-  text: string[];
+const YEARLY = ['billno', 'bill', 'billdel', 'receipt', 'retailsale', 'receiptissue'];
+const MASTERS = ['customer', 'customer_detail', 'hawker', 'publication', 'publisher', 'regiond', 'collect', 'rate', 'ratechange',
+  'holiday', 'publicationdis', 'publicationsup', 'discontinue'];
+
+// The tables the export reads from this website; years it has no table for are skipped
+export function oldSoftwareSourceTables(years = oldSoftwareYears()): string[] {
+  return [...MASTERS, ...years.flatMap(year => YEARLY.map(name => `${name}${year}`))];
 }
 
-// Each table as the old dump writes it: structure, then its rows
-export function oldSoftwareBlocks(tables: Record<string, any[]>, suffix = fySuffix()): TableBlock[] {
-  return oldSoftwareSpecs(tables, suffix).map(spec => {
-    const names = spec.columns.map(c => `\`${c[0]}\``).join(',');
-    // An update follows the old file's own block of that table, so it must not start a second one
-    const text = [
-      spec.mode === 'replace'
-        ? `--\n-- Table structure for table \`test\`.\`${spec.name}\`\n--\n\n`
-        : `--\n-- Website changes for table \`test\`.\`${spec.name}\`\n--\n\n`,
-      spec.mode === 'replace'
-        ? `DROP TABLE IF EXISTS \`${spec.name}\`;\nCREATE TABLE \`${spec.name}\` (\n  ${spec.create}\n) ENGINE=MyISAM DEFAULT CHARSET=latin1;\n\n`
-        : `CREATE TABLE IF NOT EXISTS \`${spec.name}\` (\n  ${spec.create}\n) ENGINE=MyISAM DEFAULT CHARSET=latin1;\n\n`,
-      `--\n-- Dumping data for table \`test\`.\`${spec.name}\`\n--\n\n/*!40000 ALTER TABLE \`${spec.name}\` DISABLE KEYS */;\n`
-    ];
-    const update = spec.mode === 'update'
-      ? ' ON DUPLICATE KEY UPDATE ' + spec.columns.slice(1).map(c => `\`${c[0]}\`=VALUES(\`${c[0]}\`)`).join(',')
-      : '';
-    for (let i = 0; i < spec.rows.length; i += BATCH) {
-      const values = spec.rows.slice(i, i + BATCH).map(row => ' (' + spec.columns.map(([, kind, value]) => sqlValue(value(row), kind)).join(',') + ')');
-      text.push(`INSERT INTO \`${spec.name}\` (${names}) VALUES \n${values.join(',\n')}${update};\n`);
-    }
-    text.push(`/*!40000 ALTER TABLE \`${spec.name}\` ENABLE KEYS */;\n\n\n`);
-    return { name: spec.name, mode: spec.mode, text };
-  });
-}
-
-const HEADER = [
+export const OLD_HEADER = [
+  '-- MySQL Administrator dump 1.4\n--\n-- ------------------------------------------------------\n-- Made by the Aryan News Agency website\n\n\n',
   '/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\n/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;\n/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\n/*!40101 SET NAMES utf8 */;\n\n',
   "/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;\n/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;\n/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;\n\n\n",
   '--\n-- Create schema test\n--\n\nCREATE DATABASE /*!32312 IF NOT EXISTS*/ test;\nUSE test;\n\n'
-];
-const FOOTER = '/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;\n/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;\n/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;\n/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;\n/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;\n/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;\n';
+].join('');
+// The old software's view and function, then the closing settings
+export const OLD_FOOTER = (schema as { tail: string }).tail +
+  '/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;\n/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;\n/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;\n/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;\n/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;\n/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;\n';
 
-// Only the website's tables, laid out like a MySQL Administrator 1.4 dump of the old 'test' database
-export function oldSoftwareSql(tables: Record<string, any[]>, suffix = fySuffix(), takenAt = new Date()): string[] {
-  return [
-    `-- MySQL Administrator dump 1.4\n--\n-- ------------------------------------------------------\n-- Made by the Aryan News Agency website on ${takenAt.toISOString()}\n-- Holds only the tables below; every other table of the old software is left as it is.\n\n\n`,
-    ...HEADER,
-    ...oldSoftwareBlocks(tables, suffix).flatMap(b => b.text),
-    FOOTER
-  ];
-}
+const OLD_TABLES = (schema as { tables: { name: string; body: string; engine: string }[] }).tables;
 
-// Where each part of an old dump begins: a table, a view, a function or procedure
-// The old software writes Windows line ends
-const SECTION = /\r?\n--\r?\n-- (?:Table structure for table `[^`]*`\.`([^`]+)`|View structure for view|Temporary table structure|Function|Procedure|Definition of)/g;
-const PIECE = 16 * 1024 * 1024;
-
-function bytesToText(bytes: Uint8Array): string {
-  const parts: string[] = [];
-  for (let i = 0; i < bytes.length; i += 32768) parts.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 32768) as unknown as number[]));
-  return parts.join('');
+export interface OldFileCount {
+  filled: string[];
+  empty: string[];
 }
 
 /**
- * A complete old software backup: every table, view and function of the old file copied byte for
- * byte, except the website's own tables, which are written from the website in their place.
- * Customer and hawker keep the old block, with the website's rows applied after it.
- * Returns the tables taken from the website and those copied from the old file.
+ * One part of a complete backup for the old software, made from this website alone: the master
+ * tables (year = null) or one year's tables. Every table the old software has (oldSoftwareSchema.json,
+ * its structure only, from its 1 Nov 2026 backup) is written in its own layout; tables this website
+ * keeps are filled from it, the rest go in empty so the old software still opens.
+ * The file is OLD_HEADER, the masters, each year in turn, then OLD_FOOTER.
  */
-export async function mergeIntoOldBackup(
-  base: Blob,
-  blocks: TableBlock[],
-  write: (part: string | Uint8Array) => Promise<void>,
-  onProgress: (percent: number) => void
-): Promise<{ replaced: string[]; copied: number; added: string[] }> {
-  const head = bytesToText(new Uint8Array(await base.slice(0, 200).arrayBuffer()));
-  if (!head.startsWith('-- MySQL Administrator dump') && !head.startsWith('-- MySQL dump')) {
-    throw new Error('यह पुराने सॉफ्टवेयर की बैकअप (.sql) फाइल नहीं है');
-  }
-  const byName = new Map(blocks.map(b => [b.name.toLowerCase(), b]));
-  const done = new Set<string>();
-  let copied = 0;
-  let keep = true;
-  let current = '';
-  let reachedEnd = false;
-  let sawCustomer = false;
-  const added: string[] = [];
-
-  // Website tables the old file does not have go in before its views and functions
-  const writeMissing = async () => {
-    if (reachedEnd) return;
-    reachedEnd = true;
-    for (const b of blocks) if (!done.has(b.name.toLowerCase())) { for (const t of b.text) await write(t); done.add(b.name.toLowerCase()); added.push(b.name); }
-  };
-  const startSection = async (table: string | undefined) => {
-    if (current && byName.get(current)?.mode === 'update' && !done.has(current)) {
-      for (const t of byName.get(current)!.text) await write(t);
-      done.add(current);
+export function* oldSoftwarePart(tables: Record<string, any[]>, year: string | null, count: OldFileCount): Generator<string> {
+  const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix()).map(s => [s.name.toLowerCase(), s]));
+  // A name ending in a date, like customer_backup_20261028, is not a year's table
+  const years = oldSoftwareYears();
+  const mine = (name: string) => (year ? name.endsWith(year) : !years.some(y => name.endsWith(y)));
+  const layouts = OLD_TABLES.filter(t => mine(t.name.toLowerCase()));
+  // A year the old software never had, such as one opened on this website after it stopped
+  for (const [name, spec] of Array.from(specs)) {
+    if (mine(name) && spec.rows.length && !layouts.some(t => t.name.toLowerCase() === name)) {
+      layouts.push({ name: spec.name, body: '  ' + spec.create, engine: 'ENGINE=MyISAM DEFAULT CHARSET=latin1' });
     }
-    current = (table || '').toLowerCase();
-    if (!table) { await writeMissing(); keep = true; return; }
-    if (current === 'customer') sawCustomer = true;
-    const block = byName.get(current);
-    keep = !block || block.mode === 'update';
-    if (keep && !block) copied++;
-    if (block && block.mode === 'replace') { for (const t of block.text) await write(t); done.add(current); }
-  };
-
-  let carry = new Uint8Array(0);
-  for (let offset = 0; offset < base.size; offset += PIECE) {
-    const piece = new Uint8Array(await base.slice(offset, offset + PIECE).arrayBuffer());
-    const bytes = new Uint8Array(carry.length + piece.length);
-    bytes.set(carry);
-    bytes.set(piece, carry.length);
-    const isLast = offset + PIECE >= base.size;
-    const text = bytesToText(bytes);
-    // A marker cut by the piece's end is found in the next round
-    const limit = isLast ? text.length : Math.max(0, text.length - 200);
-    let from = 0;
-    SECTION.lastIndex = 0;
-    for (let m = SECTION.exec(text); m; m = SECTION.exec(text)) {
-      if (m.index >= limit) break;
-      const start = m.index + m[0].indexOf('-');
-      if (keep) await write(bytes.slice(from, start));
-      from = start;
-      await startSection(m[1]);
-    }
-    if (keep) await write(bytes.slice(from, limit));
-    carry = bytes.slice(limit);
-    onProgress(Math.min(100, Math.round(((offset + piece.length) / base.size) * 100)));
   }
-  if (!sawCustomer) throw new Error('इस फाइल में customer टेबल नहीं मिली, यह पूरी बैकअप फाइल नहीं लगती');
-  await startSection(undefined);
-  return { replaced: blocks.map(b => b.name).filter(n => !added.includes(n)), copied, added };
+
+  for (const table of layouts) {
+    const name = table.name;
+    const spec = specs.get(name.toLowerCase());
+    yield `--\n-- Table structure for table \`test\`.\`${name}\`\n--\n\nDROP TABLE IF EXISTS \`${name}\`;\nCREATE TABLE \`${name}\` (\n${table.body}\n) ${table.engine};\n\n`;
+    yield `--\n-- Dumping data for table \`test\`.\`${name}\`\n--\n\n/*!40000 ALTER TABLE \`${name}\` DISABLE KEYS */;\n`;
+    if (spec && spec.rows.length) {
+      // Only the columns this table's layout has (one old year's receipts have no RAmt)
+      const present = new Set(Array.from(table.body.matchAll(/^\s*`([^`]+)`/gm), m => m[1].toLowerCase()));
+      const columns = spec.columns.filter(c => present.has(c[0].toLowerCase()));
+      const names = columns.map(c => `\`${c[0]}\``).join(',');
+      for (let i = 0; i < spec.rows.length; i += BATCH) {
+        const values = spec.rows.slice(i, i + BATCH).map(row => ' (' + columns.map(([, kind, value]) => sqlValue(value(row), kind)).join(',') + ')');
+        yield `INSERT INTO \`${name}\` (${names}) VALUES \n${values.join(',\n')};\n`;
+      }
+      count.filled.push(name);
+    } else {
+      count.empty.push(name);
+    }
+    yield `/*!40000 ALTER TABLE \`${name}\` ENABLE KEYS */;\n\n\n`;
+  }
 }
