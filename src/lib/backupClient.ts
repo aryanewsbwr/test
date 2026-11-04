@@ -2,7 +2,7 @@ import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, Row
 import { roundToFoxProRule } from './billingEngine';
 import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
-import { oldSoftwareSourceTables, oldSoftwareSql } from './oldSoftwareExport';
+import { mergeIntoOldBackup, oldSoftwareBlocks, oldSoftwareSourceTables } from './oldSoftwareExport';
 
 const BILL_FIX_BATCH = 50;
 const FILE_FORMAT = 'aryan-news-backup';
@@ -80,25 +80,55 @@ export async function downloadBackup(includeOlderYears: boolean, onProgress: Pro
   return Object.values(tables).reduce((sum, rows) => sum + rows.length, 0);
 }
 
-// The running year and the masters, written as a file the old software's MySQL Administrator restores
-export async function downloadOldSoftwareFile(onProgress: Progress) {
-  const names = oldSoftwareSourceTables();
-  const tables: Record<string, any[]> = {};
-  for (let i = 0; i < names.length; i++) {
-    onProgress(`Reading ${names[i]} (${i + 1} of ${names.length})...`);
-    tables[names[i]] = (await fetchTable(names[i])).rows;
+// A complete backup for the old software: the old software's last backup file with this website's
+// tables written in, since its restore replaces the whole database. Chrome and Edge write the
+// file straight to disk; other browsers build it in memory first.
+export async function downloadOldSoftwareFile(base: File, onProgress: Progress) {
+  const fileName = `AryanNews_ForOldSoftware_${new Date().toISOString().slice(0, 10)}.sql`;
+  let writable: any = null;
+  const picker = (window as any).showSaveFilePicker;
+  if (picker) {
+    try {
+      const handle = await picker({ suggestedName: fileName, types: [{ description: 'MySQL backup', accept: { 'application/sql': ['.sql'] } }] });
+      writable = await handle.createWritable();
+    } catch (err: any) {
+      if (err?.name === 'AbortError') throw new Error('फाइल सेव करने की जगह नहीं चुनी गई');
+      writable = null;
+    }
   }
-  onProgress('Writing the file for the old software...');
-  const blob = new Blob(oldSoftwareSql(tables), { type: 'application/sql' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `AryanNews_ForOldSoftware_${new Date().toISOString().slice(0, 10)}.sql`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  return Object.values(tables).reduce((sum, rows) => sum + rows.length, 0);
+
+  try {
+    const names = oldSoftwareSourceTables();
+    const tables: Record<string, any[]> = {};
+    for (let i = 0; i < names.length; i++) {
+      onProgress(`Reading ${names[i]} (${i + 1} of ${names.length})...`);
+      tables[names[i]] = (await fetchTable(names[i])).rows;
+    }
+
+    const parts: BlobPart[] = [];
+    const write = async (part: string | Uint8Array) => {
+      if (writable) await writable.write(part);
+      else parts.push(part as BlobPart);
+    };
+    const result = await mergeIntoOldBackup(base, oldSoftwareBlocks(tables), write, percent => onProgress(`Writing the complete file... ${percent}%`));
+
+    if (writable) {
+      await writable.close();
+    } else {
+      const url = URL.createObjectURL(new Blob(parts, { type: 'application/sql' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    return { rows: Object.values(tables).reduce((sum, rows) => sum + rows.length, 0), ...result };
+  } catch (err) {
+    await writable?.abort?.().catch(() => {});
+    throw err;
+  }
 }
 
 export interface RestoreItem extends RowDifference {

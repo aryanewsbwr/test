@@ -32,6 +32,7 @@ const plainName = (table: string) => PLAIN_NAMES.find(([pattern]) => pattern.tes
 export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(mode === 'balance_forward' ? 'balance_forward' : mode === 'restore' ? 'restore' : 'backup');
   const [includeOlderYears, setIncludeOlderYears] = useState(false);
+  const [oldBase, setOldBase] = useState<File | null>(null);
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<{ text: string; kind: 'working' | 'done' | 'error' } | null>(null);
@@ -54,10 +55,16 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     return `Backup downloaded: ${rows.toLocaleString()} rows, checked against the database. Keep the file safe.`;
   });
 
-  const handleOldSoftwareFile = () => run(async () => {
-    const rows = await downloadOldSoftwareFile(working);
-    return `पुराने सॉफ्टवेयर की फाइल डाउनलोड हुई: ${rows.toLocaleString()} रिकॉर्ड। पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
-  });
+  const handleOldSoftwareFile = () => {
+    if (!oldBase) {
+      setStatus({ text: 'पहले पुराने सॉफ्टवेयर की आखिरी पूरी बैकअप फाइल चुनें।', kind: 'error' });
+      return;
+    }
+    run(async () => {
+      const done = await downloadOldSoftwareFile(oldBase, working);
+      return `पूरी बैकअप फाइल बन गई: वेबसाइट की ${done.replaced.length + done.added.length} टेबल (${done.rows.toLocaleString()} रिकॉर्ड) नई, बाकी ${done.copied} टेबल पुरानी फाइल से वैसी ही। पहले किसी दूसरे कंप्यूटर पर आज़माएँ।`;
+    });
+  };
 
   const handleChooseFile = (file: File) => {
     setPlan(null);
@@ -185,16 +192,22 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
                 This file restores into this software only, not into the old software. Login accounts are not included.
               </p>
               <div className="border-t border-slate-300 pt-3 space-y-2">
+                <div className="font-bold text-blue-900">पुराने सॉफ्टवेयर के लिए पूरी बैकअप (Complete backup for old software)</div>
+                <label className="block">
+                  <span className="block mb-1">1. पुराने सॉफ्टवेयर की आखिरी पूरी बैकअप फाइल चुनें (जैसे 01112026):</span>
+                  <input type="file" disabled={isProcessing} onChange={e => setOldBase(e.target.files?.[0] || null)} className="text-[11px]" />
+                </label>
+                <span className="block">2. बटन दबाएँ, फिर नई फाइल सेव करने की जगह चुनें:</span>
                 <button
                   onClick={handleOldSoftwareFile}
                   disabled={isProcessing}
                   className="w-full vb-btn bg-white hover:bg-slate-50 text-blue-900 border border-blue-800 font-bold py-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isProcessing ? 'Working...' : 'पुराने सॉफ्टवेयर के लिए फाइल (Backup for old software .sql)'}</span>
+                  <span>{isProcessing ? 'Working...' : 'पूरी बैकअप फाइल बनाएँ (Make complete backup .sql)'}</span>
                 </button>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  पुराने सॉफ्टवेयर में MySQL Administrator → Restore से यह फाइल चलाएँ। इसमें ग्राहक, सब्सक्रिप्शन, पेपर, दरें, हॉकर और इस साल के बिल व रसीदें हैं; पुराने साल और बाकी टेबल वैसे ही रहते हैं। ग्राहक का inactive निशान और हॉकर का region पुराने सॉफ्टवेयर में जैसा है वैसा रहता है।
+                  नई फाइल में पुरानी फाइल की हर टेबल, view और function वैसे ही रहते हैं (पुराने साल भी)। सिर्फ ग्राहक, सब्सक्रिप्शन, पेपर, दरें, हॉकर और इस साल के बिल, रसीदें वगैरह वेबसाइट से आते हैं। ग्राहक का inactive निशान और हॉकर का region पुरानी फाइल जैसा रहता है। पुराने सॉफ्टवेयर के Restore से चलाएँ।
                 </p>
               </div>
             </div>

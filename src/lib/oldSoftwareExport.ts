@@ -345,32 +345,135 @@ export function oldSoftwareSourceTables(suffix = fySuffix()): string[] {
     `retailsale${suffix}`, `receiptissue${suffix}`];
 }
 
-// The file, in pieces, laid out like a MySQL Administrator 1.4 dump of the old 'test' database
-export function oldSoftwareSql(tables: Record<string, any[]>, suffix = fySuffix(), takenAt = new Date()): string[] {
-  const out: string[] = [
-    `-- MySQL Administrator dump 1.4\n--\n-- ------------------------------------------------------\n-- Made by the Aryan News Agency website on ${takenAt.toISOString()}\n-- Holds only the tables below; every other table of the old software is left as it is.\n\n\n`,
-    '/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\n/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;\n/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\n/*!40101 SET NAMES utf8 */;\n\n',
-    "/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;\n/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;\n/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;\n\n\n",
-    '--\n-- Create schema test\n--\n\nCREATE DATABASE /*!32312 IF NOT EXISTS*/ test;\nUSE test;\n\n'
-  ];
+interface TableBlock {
+  name: string;
+  mode: 'replace' | 'update';
+  text: string[];
+}
 
-  for (const spec of oldSoftwareSpecs(tables, suffix)) {
+// Each table as the old dump writes it: structure, then its rows
+export function oldSoftwareBlocks(tables: Record<string, any[]>, suffix = fySuffix()): TableBlock[] {
+  return oldSoftwareSpecs(tables, suffix).map(spec => {
     const names = spec.columns.map(c => `\`${c[0]}\``).join(',');
-    out.push(`--\n-- Table structure for table \`test\`.\`${spec.name}\`\n--\n\n`);
-    out.push(spec.mode === 'replace'
-      ? `DROP TABLE IF EXISTS \`${spec.name}\`;\nCREATE TABLE \`${spec.name}\` (\n  ${spec.create}\n) ENGINE=MyISAM DEFAULT CHARSET=latin1;\n\n`
-      : `CREATE TABLE IF NOT EXISTS \`${spec.name}\` (\n  ${spec.create}\n) ENGINE=MyISAM DEFAULT CHARSET=latin1;\n\n`);
-    out.push(`--\n-- Dumping data for table \`test\`.\`${spec.name}\`\n--\n\n/*!40000 ALTER TABLE \`${spec.name}\` DISABLE KEYS */;\n`);
+    // An update follows the old file's own block of that table, so it must not start a second one
+    const text = [
+      spec.mode === 'replace'
+        ? `--\n-- Table structure for table \`test\`.\`${spec.name}\`\n--\n\n`
+        : `--\n-- Website changes for table \`test\`.\`${spec.name}\`\n--\n\n`,
+      spec.mode === 'replace'
+        ? `DROP TABLE IF EXISTS \`${spec.name}\`;\nCREATE TABLE \`${spec.name}\` (\n  ${spec.create}\n) ENGINE=MyISAM DEFAULT CHARSET=latin1;\n\n`
+        : `CREATE TABLE IF NOT EXISTS \`${spec.name}\` (\n  ${spec.create}\n) ENGINE=MyISAM DEFAULT CHARSET=latin1;\n\n`,
+      `--\n-- Dumping data for table \`test\`.\`${spec.name}\`\n--\n\n/*!40000 ALTER TABLE \`${spec.name}\` DISABLE KEYS */;\n`
+    ];
     const update = spec.mode === 'update'
       ? ' ON DUPLICATE KEY UPDATE ' + spec.columns.slice(1).map(c => `\`${c[0]}\`=VALUES(\`${c[0]}\`)`).join(',')
       : '';
     for (let i = 0; i < spec.rows.length; i += BATCH) {
       const values = spec.rows.slice(i, i + BATCH).map(row => ' (' + spec.columns.map(([, kind, value]) => sqlValue(value(row), kind)).join(',') + ')');
-      out.push(`INSERT INTO \`${spec.name}\` (${names}) VALUES \n${values.join(',\n')}${update};\n`);
+      text.push(`INSERT INTO \`${spec.name}\` (${names}) VALUES \n${values.join(',\n')}${update};\n`);
     }
-    out.push(`/*!40000 ALTER TABLE \`${spec.name}\` ENABLE KEYS */;\n\n\n`);
-  }
+    text.push(`/*!40000 ALTER TABLE \`${spec.name}\` ENABLE KEYS */;\n\n\n`);
+    return { name: spec.name, mode: spec.mode, text };
+  });
+}
 
-  out.push('/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;\n/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;\n/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;\n/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;\n/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;\n/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;\n');
-  return out;
+const HEADER = [
+  '/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\n/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;\n/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\n/*!40101 SET NAMES utf8 */;\n\n',
+  "/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;\n/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;\n/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;\n\n\n",
+  '--\n-- Create schema test\n--\n\nCREATE DATABASE /*!32312 IF NOT EXISTS*/ test;\nUSE test;\n\n'
+];
+const FOOTER = '/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;\n/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;\n/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;\n/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;\n/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;\n/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;\n';
+
+// Only the website's tables, laid out like a MySQL Administrator 1.4 dump of the old 'test' database
+export function oldSoftwareSql(tables: Record<string, any[]>, suffix = fySuffix(), takenAt = new Date()): string[] {
+  return [
+    `-- MySQL Administrator dump 1.4\n--\n-- ------------------------------------------------------\n-- Made by the Aryan News Agency website on ${takenAt.toISOString()}\n-- Holds only the tables below; every other table of the old software is left as it is.\n\n\n`,
+    ...HEADER,
+    ...oldSoftwareBlocks(tables, suffix).flatMap(b => b.text),
+    FOOTER
+  ];
+}
+
+// Where each part of an old dump begins: a table, a view, a function or procedure
+// The old software writes Windows line ends
+const SECTION = /\r?\n--\r?\n-- (?:Table structure for table `[^`]*`\.`([^`]+)`|View structure for view|Temporary table structure|Function|Procedure|Definition of)/g;
+const PIECE = 16 * 1024 * 1024;
+
+function bytesToText(bytes: Uint8Array): string {
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += 32768) parts.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 32768) as unknown as number[]));
+  return parts.join('');
+}
+
+/**
+ * A complete old software backup: every table, view and function of the old file copied byte for
+ * byte, except the website's own tables, which are written from the website in their place.
+ * Customer and hawker keep the old block, with the website's rows applied after it.
+ * Returns the tables taken from the website and those copied from the old file.
+ */
+export async function mergeIntoOldBackup(
+  base: Blob,
+  blocks: TableBlock[],
+  write: (part: string | Uint8Array) => Promise<void>,
+  onProgress: (percent: number) => void
+): Promise<{ replaced: string[]; copied: number; added: string[] }> {
+  const head = bytesToText(new Uint8Array(await base.slice(0, 200).arrayBuffer()));
+  if (!head.startsWith('-- MySQL Administrator dump') && !head.startsWith('-- MySQL dump')) {
+    throw new Error('यह पुराने सॉफ्टवेयर की बैकअप (.sql) फाइल नहीं है');
+  }
+  const byName = new Map(blocks.map(b => [b.name.toLowerCase(), b]));
+  const done = new Set<string>();
+  let copied = 0;
+  let keep = true;
+  let current = '';
+  let reachedEnd = false;
+  let sawCustomer = false;
+  const added: string[] = [];
+
+  // Website tables the old file does not have go in before its views and functions
+  const writeMissing = async () => {
+    if (reachedEnd) return;
+    reachedEnd = true;
+    for (const b of blocks) if (!done.has(b.name.toLowerCase())) { for (const t of b.text) await write(t); done.add(b.name.toLowerCase()); added.push(b.name); }
+  };
+  const startSection = async (table: string | undefined) => {
+    if (current && byName.get(current)?.mode === 'update' && !done.has(current)) {
+      for (const t of byName.get(current)!.text) await write(t);
+      done.add(current);
+    }
+    current = (table || '').toLowerCase();
+    if (!table) { await writeMissing(); keep = true; return; }
+    if (current === 'customer') sawCustomer = true;
+    const block = byName.get(current);
+    keep = !block || block.mode === 'update';
+    if (keep && !block) copied++;
+    if (block && block.mode === 'replace') { for (const t of block.text) await write(t); done.add(current); }
+  };
+
+  let carry = new Uint8Array(0);
+  for (let offset = 0; offset < base.size; offset += PIECE) {
+    const piece = new Uint8Array(await base.slice(offset, offset + PIECE).arrayBuffer());
+    const bytes = new Uint8Array(carry.length + piece.length);
+    bytes.set(carry);
+    bytes.set(piece, carry.length);
+    const isLast = offset + PIECE >= base.size;
+    const text = bytesToText(bytes);
+    // A marker cut by the piece's end is found in the next round
+    const limit = isLast ? text.length : Math.max(0, text.length - 200);
+    let from = 0;
+    SECTION.lastIndex = 0;
+    for (let m = SECTION.exec(text); m; m = SECTION.exec(text)) {
+      if (m.index >= limit) break;
+      const start = m.index + m[0].indexOf('-');
+      if (keep) await write(bytes.slice(from, start));
+      from = start;
+      await startSection(m[1]);
+    }
+    if (keep) await write(bytes.slice(from, limit));
+    carry = bytes.slice(limit);
+    onProgress(Math.min(100, Math.round(((offset + piece.length) / base.size) * 100)));
+  }
+  if (!sawCustomer) throw new Error('इस फाइल में customer टेबल नहीं मिली, यह पूरी बैकअप फाइल नहीं लगती');
+  await startSection(undefined);
+  return { replaced: blocks.map(b => b.name).filter(n => !added.includes(n)), copied, added };
 }
