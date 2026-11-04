@@ -41,7 +41,7 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   hawker_magazine_qty: { title: 'Quantity of Magazine', category: 'Hawker Wise Report', hasHawker: true, hasPeriod: true },
   dues_ledger: { title: 'Customer Outstanding Dues Ledger', category: 'Outstanding Report', hasRegion: true },
   previous_dues_wise: { title: 'Previous Dues Wise Report', category: 'Outstanding Report', hasRegion: true },
-  due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report' },
+  due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report', hasRegion: true, hasPeriod: false },
   collection_agent_dues: { title: 'Collection Agent Dues Report', category: 'Outstanding Report', hasPeriod: true },
   cust_detail_month: { title: 'Customer Detail / Month Register', category: 'Customer', hasRegion: true, hasPeriod: true },
   cust_pub_starting: { title: 'Customer Publication Starting', category: 'Customer', hasPub: true, hasHawker: true },
@@ -262,6 +262,11 @@ export default function ReportsForm({
     }
   }, [viewMode, fetchReport]);
 
+  // "All Regions (Customer List)" belongs to the due summary only
+  useEffect(() => {
+    if (activeReport !== 'due_region_summary' && selectedRegion === 'all_list') setSelectedRegion('all');
+  }, [activeReport, selectedRegion]);
+
   const now = new Date();
   const printDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
 
@@ -402,7 +407,8 @@ export default function ReportsForm({
                   onChange={(e) => setSelectedRegion(e.target.value)}
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
-                  <option value="all">-- All Regions --</option>
+                  <option value="all">{activeReport === 'due_region_summary' ? '-- All Regions (Summary) --' : '-- All Regions --'}</option>
+                  {activeReport === 'due_region_summary' && <option value="all_list">-- All Regions (Customer List) --</option>}
                   {[...regions]
                     .filter(r => activeReport !== 'bill_print_region' || !isHiddenBillRegion(r.region_name || r.name))
                     .sort((a, b) => String(a.region_name || a.name || '').localeCompare(String(b.region_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
@@ -1284,7 +1290,56 @@ export default function ReportsForm({
               {/* ========================================================================= */}
               {/* REPORT 4: DUE REGION WISE SUMMARY */}
               {/* ========================================================================= */}
-              {activeReport === 'due_region_summary' && (
+              {activeReport === 'due_region_summary' && reportData.view === 'customers' && (
+                <table className="w-full text-xs border-collapse border border-black">
+                  <thead>
+                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="p-1 text-center border-r border-black w-14">Cust ID</th>
+                      <th className="p-1 text-center border-r border-black w-10">Pr.</th>
+                      <th className="p-1 text-left border-r border-black">Customer Name</th>
+                      <th className="p-1 text-left border-r border-black">Address</th>
+                      {selectedRegion === 'all_list' && <th className="p-1 text-center border-r border-black w-20">Region</th>}
+                      <th className="p-1 text-right border-r border-black w-20">Year End Dues</th>
+                      <th className="p-1 text-right border-r border-black w-20">Bill</th>
+                      <th className="p-1 text-right border-r border-black w-16">Delivery</th>
+                      <th className="p-1 text-right border-r border-black w-20">Receipt</th>
+                      <th className="p-1 text-right border-r border-black w-14">Less</th>
+                      <th className="p-1 text-right font-black w-24">Balance (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.rows.map((c: any) => (
+                      <tr key={c.customer_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{c.customer_id}</td>
+                        <td className="p-1 text-center border-r border-slate-300 font-mono">{c.priority || ''}</td>
+                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">
+                          <div>{c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, c.name) : c.name}</div>
+                          {c.name_hindi && <div className="text-[10px] text-slate-600 font-normal">{c.name}</div>}
+                        </td>
+                        <td className="p-1 border-r border-slate-300 text-slate-700 max-w-[200px]">{cleanOrTransliterateHindi(c.address || '', '')}</td>
+                        {selectedRegion === 'all_list' && <td className="p-1 border-r border-slate-300 text-center text-slate-600 text-[10px]">{c.region_name}</td>}
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.year_end_dues).toFixed(2)}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_bill).toFixed(2)}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_delivery).toFixed(2)}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_receipt).toFixed(2)}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_less).toFixed(2)}</td>
+                        <td className={`p-1 text-right font-mono font-black ${c.final_balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>
+                          ₹{Number(c.final_balance).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                    {reportData.summary && (
+                      <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                        <td colSpan={selectedRegion === 'all_list' ? 10 : 9} className="p-1.5 text-left border-r border-black">
+                          {reportData.total_rows} customers · Due {reportData.summary.due_customers} (₹{Number(reportData.summary.total_due_amount).toFixed(2)}) · Advance {reportData.summary.advance_customers} (₹{Number(reportData.summary.total_advance_amount).toFixed(2)})
+                        </td>
+                        <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.summary.net_outstanding).toFixed(2)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+              {activeReport === 'due_region_summary' && reportData.view !== 'customers' && (
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
                     <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
@@ -1292,6 +1347,7 @@ export default function ReportsForm({
                       <th className="p-1 text-left border-r border-black">Region / Area Name</th>
                       <th className="p-1 text-right border-r border-black">Total Cust</th>
                       <th className="p-1 text-right border-r border-black">Due Cust</th>
+                      <th className="p-1 text-right border-r border-black">Adv Cust</th>
                       <th className="p-1 text-right border-r border-black">Total Dues (₹)</th>
                       <th className="p-1 text-right border-r border-black">Total Adv (₹)</th>
                       <th className="p-1 text-right font-black">Net Receivable (₹)</th>
@@ -1304,6 +1360,7 @@ export default function ReportsForm({
                         <td className="p-1 border-r border-slate-300 font-bold text-blue-950">{r.region_name}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono">{r.totalCust}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono text-red-800">{r.dueCust}</td>
+                        <td className="p-1 border-r border-slate-300 text-right font-mono text-emerald-800">{r.advCust}</td>
                         <td className="p-1 border-r border-slate-300 text-right font-mono font-bold text-red-900">
                           ₹{Number(r.totalDue).toFixed(2)}
                         </td>
@@ -1320,6 +1377,7 @@ export default function ReportsForm({
                         <td colSpan={2} className="p-1.5 text-left uppercase border-r border-black">Grand Total:</td>
                         <td className="p-1.5 text-right font-mono border-r border-black">{reportData.summary.total_customers}</td>
                         <td className="p-1.5 text-right font-mono border-r border-black text-red-900">{reportData.summary.due_customers}</td>
+                        <td className="p-1.5 text-right font-mono border-r border-black text-emerald-800">{reportData.summary.advance_customers}</td>
                         <td className="p-1.5 text-right font-mono border-r border-black text-red-900">₹{Number(reportData.summary.total_due_amount).toFixed(2)}</td>
                         <td className="p-1.5 text-right font-mono border-r border-black text-emerald-800">₹{Number(reportData.summary.total_advance_amount).toFixed(2)}</td>
                         <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.summary.net_outstanding).toFixed(2)}</td>

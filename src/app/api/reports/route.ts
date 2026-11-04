@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { fySuffix } from '@/lib/financialYear';
+import { monthCode } from '@/lib/backupTables';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi, getReliableHindiName, storedHindiName } from '@/lib/transliteration';
@@ -29,11 +30,11 @@ interface CacheData {
 }
 
 // Every row, in a fixed order so pages never overlap, failing loudly rather than returning part
-async function fetchAllFromSupabase(table: string, order: string[]): Promise<any[]> {
+async function fetchAllFromSupabase(table: string, order: string[], columns = '*'): Promise<any[]> {
   const all: any[] = [];
   const PAGE_SIZE = 1000;
   for (let from = 0; ; from += PAGE_SIZE) {
-    let query = supabase.from(table).select('*');
+    let query = supabase.from(table).select(columns);
     for (const column of order) query = query.order(column, { ascending: true });
     const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`Could not read ${table}: ${error.message}`);
@@ -259,78 +260,96 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 3. Due Region Wise Summary
+    // 3. Due Region Wise Summary: the old software's due query, worked out from this year's bills and receipts:
+    // opening dues + paper bills + delivery - receipts - less. Only the 'Dues' row holds the opening dues,
+    // since bills made on this website also keep the carried balance in due_amt.
     if (reportType === 'due_region_summary') {
-      const regStats: Record<number, { region_id: number; region_name: string; totalCust: number; dueCust: number; totalDue: number; totalAdv: number }> = {};
-      
-      data.regions.forEach(r => {
-        regStats[r.region_id] = {
-          region_id: r.region_id,
-          region_name: r.region_name || `Region #${r.region_id}`,
-          totalCust: 0,
-          dueCust: 0,
-          totalDue: 0,
-          totalAdv: 0
+      const suffix = fySuffix();
+      const [headers, lines, deliveries] = await Promise.all([
+        fetchAllFromSupabase(`billno${suffix}`, ['bill_id'], 'customer_id, month, due_amt, dis_amt'),
+        fetchAllFromSupabase(`bill${suffix}`, ['id'], 'customer_id, total_amt'),
+        fetchAllFromSupabase(`billdel${suffix}`, ['id'], 'customer_id, dely')
+      ]);
+      const parts = new Map<number, { dues: number; bill: number; delivery: number; receipt: number; less: number }>();
+      const part = (id: any) => {
+        const key = Number(id);
+        if (!parts.has(key)) parts.set(key, { dues: 0, bill: 0, delivery: 0, receipt: 0, less: 0 });
+        return parts.get(key)!;
+      };
+      for (const h of headers) {
+        if (monthCode(h.month) === 'due') part(h.customer_id).dues += Number(h.due_amt || 0);
+        else part(h.customer_id).bill -= Number(h.dis_amt || 0);
+      }
+      for (const l of lines) part(l.customer_id).bill += Number(l.total_amt || 0);
+      for (const d of deliveries) part(d.customer_id).delivery += Number(d.dely || 0);
+      for (const r of data.receipts) {
+        part(r.customer_id).receipt += Number(r.mal_recp_amt || 0);
+        part(r.customer_id).less += Number(r.less_amt || 0);
+      }
+      const round = (n: number) => Math.round(n * 100) / 100;
+
+      const balances = data.customers.map(c => {
+        const p = parts.get(Number(c.customer_id)) || { dues: 0, bill: 0, delivery: 0, receipt: 0, less: 0 };
+        return {
+          customer_id: c.customer_id,
+          priority: Number(c.priority || 0),
+          region_id: c.region_id || 1,
+          region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
+          name: c.name_eng || `Customer #${c.customer_id}`,
+          name_hindi: storedHindiName(c),
+          address: c.hindi_add || [c.add1, c.add2].filter(Boolean).join(', '),
+          year_end_dues: round(p.dues),
+          total_bill: round(p.bill),
+          total_delivery: round(p.delivery),
+          total_receipt: round(p.receipt),
+          total_less: round(p.less),
+          final_balance: round(p.dues + p.bill + p.delivery - p.receipt - p.less)
         };
       });
-
-      data.customers.forEach(c => {
-        const rid = c.region_id || 1;
-        if (!regStats[rid]) {
-          regStats[rid] = {
-            region_id: rid,
-            region_name: regMap.get(rid)?.region_name || `Region #${rid}`,
-            totalCust: 0,
-            dueCust: 0,
-            totalDue: 0,
-            totalAdv: 0
-          };
-        }
-        regStats[rid].totalCust++;
-
-        const rawCbal = Number(c.cbal || 0);
-        const rawDueAmt = Number(c.dueamount ?? c.due_amount ?? 0);
-        const paidStatus = String(c.paid || '').trim().toUpperCase();
-
-        let due = 0;
-        let adv = 0;
-        if (rawCbal < 0) {
-          due = -rawCbal;
-        } else if (rawCbal > 0) {
-          adv = rawCbal;
-        } else if (rawDueAmt > 0 && paidStatus !== 'P') {
-          due = rawDueAmt;
-        }
-
-        if (due > 0) {
-          regStats[rid].dueCust++;
-          regStats[rid].totalDue += due;
-        } else if (adv > 0) {
-          regStats[rid].totalAdv += adv;
-        }
+      const owing = balances.filter(b => b.final_balance !== 0);
+      const totals = (rows: typeof owing) => ({
+        due_customers: rows.filter(b => b.final_balance > 0).length,
+        advance_customers: rows.filter(b => b.final_balance < 0).length,
+        total_due_amount: round(rows.reduce((s, b) => s + Math.max(b.final_balance, 0), 0)),
+        total_advance_amount: round(rows.reduce((s, b) => s - Math.min(b.final_balance, 0), 0)),
+        net_outstanding: round(rows.reduce((s, b) => s + b.final_balance, 0))
       });
 
-      let rows = Object.values(regStats).filter(r => r.totalCust > 0).sort((a, b) => b.totalDue - a.totalDue);
+      // One region, or every region, customer by customer in the order the hawker goes
+      if (regionId && regionId !== 'all') {
+        let rows = regionId === 'all_list' ? owing : owing.filter(b => b.region_id === parseInt(regionId, 10));
+        if (search) rows = rows.filter(b => b.name.toLowerCase().includes(search) || String(b.customer_id).includes(search));
+        rows.sort((a, b) => a.region_id - b.region_id || a.priority - b.priority || a.customer_id - b.customer_id);
+        return NextResponse.json({
+          report_title: regionId === 'all_list' ? 'DUE LIST - ALL REGIONS' : `DUE LIST - ${regMap.get(parseInt(regionId, 10))?.region_name || `Region #${regionId}`}`,
+          view: 'customers',
+          rows,
+          total_rows: rows.length,
+          summary: totals(rows)
+        });
+      }
+
+      const byRegion = new Map<number, any>();
+      for (const b of balances) {
+        if (!byRegion.has(b.region_id)) byRegion.set(b.region_id, { region_id: b.region_id, region_name: b.region_name, totalCust: 0, owing: [] });
+        const r = byRegion.get(b.region_id);
+        r.totalCust++;
+        if (b.final_balance !== 0) r.owing.push(b);
+      }
+      let rows = Array.from(byRegion.values()).map(({ owing: list, ...r }) => {
+        const t = totals(list);
+        return { ...r, dueCust: t.due_customers, advCust: t.advance_customers, totalDue: t.total_due_amount, totalAdv: t.total_advance_amount };
+      }).filter(r => r.dueCust > 0 || r.advCust > 0).sort((a, b) => String(a.region_name).localeCompare(String(b.region_name), undefined, { numeric: true }));
       if (search) {
         rows = rows.filter(r => r.region_name.toLowerCase().includes(search) || String(r.region_id).includes(search));
       }
-
-      const totalCustAll = rows.reduce((s, r) => s + r.totalCust, 0);
-      const totalDueCustAll = rows.reduce((s, r) => s + r.dueCust, 0);
-      const totalDueAmtAll = rows.reduce((s, r) => s + r.totalDue, 0);
-      const totalAdvAmtAll = rows.reduce((s, r) => s + r.totalAdv, 0);
-
+      const shown = new Set(rows.map(r => r.region_id));
       return NextResponse.json({
         report_title: 'DUE REGION-WISE SUMMARY REPORT',
+        view: 'regions',
         rows,
         total_rows: rows.length,
-        summary: {
-          total_customers: totalCustAll,
-          due_customers: totalDueCustAll,
-          total_due_amount: totalDueAmtAll,
-          total_advance_amount: totalAdvAmtAll,
-          net_outstanding: totalDueAmtAll - totalAdvAmtAll
-        }
+        summary: { total_customers: rows.reduce((s, r) => s + r.totalCust, 0), ...totals(owing.filter(b => shown.has(b.region_id))) }
       });
     }
 
