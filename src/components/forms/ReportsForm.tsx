@@ -740,7 +740,7 @@ export default function ReportsForm({
       </div>
 
       {/* 2. Top Toolbar with All 16 Report Selectors & Parameters Button */}
-      <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] p-1 flex items-center justify-between font-bold gap-2 flex-wrap shrink-0">
+      <div className="bg-[#ECE9D8] border-b border-[#808080] p-1 flex items-center justify-between font-bold gap-2 flex-wrap shrink-0">
         
         <div className="flex items-center gap-2 flex-wrap">
           {/* Back to Parameters Button */}

@@ -668,7 +668,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   return (
     <div className="flex flex-col items-center w-full">
       {/* 58MM / SLIP TOOLBAR */}
-      <div className="w-full max-w-2xl bg-slate-800 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs mb-3 rounded-t-sm shadow-md print:hidden">
+      {/* Stays at the top of the report while the bills scroll under it */}
+      <div className="sticky top-0 z-20 w-full max-w-2xl bg-slate-800 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs mb-3 rounded-t-sm shadow-md print:hidden [&_button]:whitespace-nowrap">
         <div className="flex items-center gap-2">
           <span className="font-bold text-slate-300">Bill {currentIndex + 1} of {bills.length}</span>
           <button 
@@ -690,7 +691,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
 
         {/* Format Selector: Simple vs Detail & View Mode */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View Toggle: Single vs All Bills */}
           <div className="flex items-center bg-slate-900 px-1 py-0.5 rounded border border-slate-700">
             <button
