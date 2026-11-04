@@ -24,8 +24,18 @@ interface OldTableSpec {
 const FY_MONTHS = ['due', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'jan', 'feb', 'mar'];
 const BATCH = 400;
 
-// The website's column name is the old name in small letters, unless a table says otherwise
-const pick = (row: any, name: string) => (row[name] !== undefined ? row[name] : row[name.toLowerCase()]);
+// The website's column name is the old name in small letters, unless a table says otherwise.
+// Older years kept the old software's own names, so capitals and underscores do not matter.
+const squash = (name: string) => name.toLowerCase().replace(/_/g, '');
+function pick(row: any, name: string) {
+  if (row[name] !== undefined) return row[name];
+  const lower = name.toLowerCase();
+  if (row[lower] !== undefined) return row[lower];
+  const wanted = squash(name);
+  for (const key in row) if (squash(key) === wanted) return row[key];
+  return undefined;
+}
+const first = (...values: any[]) => values.find(v => v !== undefined && v !== null && v !== '');
 const col = (oldName: string, kind: Kind = 'n', from?: string): Column => [oldName, kind, row => pick(row, from || oldName)];
 
 function isoDate(value: any): string | null {
@@ -130,7 +140,7 @@ function previousDues(headers: any[], lines: any[], deliveries: any[], receipts:
   }
   for (const l of lines) add(pick(l, 'customer_id'), pick(l, 'month'), money(pick(l, 'total_amt')));
   for (const d of deliveries) add(pick(d, 'customer_id'), pick(d, 'month'), money(pick(d, 'dely')));
-  for (const r of receipts) add(r.customer_id, r.month, -(money(r.mal_recp_amt) + money(r.less_amt)));
+  for (const r of receipts) add(pick(r, 'customer_id'), pick(r, 'month'), -(money(first(r.mal_recp_amt, pick(r, 'MalRecpAmt'))) + money(pick(r, 'less_amt'))));
 
   // A bill made here stores the amount payable after the month (Balance = -(due before + this month)),
   // a bill from the old software the due before it. Either becomes the old meaning; a figure that
@@ -160,7 +170,8 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
   const deliveries = get(`billdel${suffix}`);
   const receipts = get(`receipt${suffix}`);
   const dueBefore = previousDues(headers, lines, deliveries, receipts);
-  const lineSno = (row: any) => details.subscriptionFor(pick(row, 'customer_id'), pick(row, 'publica_id'), pick(row, 'month'))?.sno ?? pick(row, 'sno');
+  // Lines of an older year in the old software's own names keep their own numbers
+  const lineSno = (row: any) => ('Customer_id' in row) ? row.sno : details.subscriptionFor(pick(row, 'customer_id'), pick(row, 'publica_id'), pick(row, 'month'))?.sno ?? pick(row, 'sno');
   const label = fyLabel(new Date(Date.UTC(startYear, 5, 1)));
   const openSubscriptions = new Set(get('customer_detail').filter(d => !isoDate(pick(d, 'c_date'))).map(d => Number(pick(d, 'customer_id'))));
 
@@ -284,9 +295,10 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       create: "`Bill_id` int(11) NOT NULL auto_increment,\n  `Customer_id` int(11) default NULL,\n  `Region_id` int(11) default NULL,\n  `Due_Amt` float default NULL,\n  `Del_Amt` float default NULL,\n  `Dis_Amt` float default NULL,\n  `Month` text,\n  `year` text,\n  `Balance` float default NULL,\n  PRIMARY KEY  (`Bill_id`),\n  KEY `idx_custid_month` (`Customer_id`,`Month`(10))",
       columns: [
         col('Bill_id'), col('Customer_id'), col('Region_id'),
-        ['Due_Amt', 'n', r => (monthCode(pick(r, 'month')) === 'due' ? pick(r, 'due_amt') : null)],
+        // An older year still in the old software's own names was billed there, so its figures stay as they are
+        ['Due_Amt', 'n', r => ('Due_Amt' in r ? r.Due_Amt : monthCode(pick(r, 'month')) === 'due' ? pick(r, 'due_amt') : null)],
         col('Del_Amt'), col('Dis_Amt'), col('Month', 's'), col('year', 's'),
-        ['Balance', 'n', r => (monthCode(pick(r, 'month')) === 'due' ? pick(r, 'balance') ?? null : dueBefore(r))]
+        ['Balance', 'n', r => ('Balance' in r ? r.Balance : monthCode(pick(r, 'month')) === 'due' ? pick(r, 'balance') ?? null : dueBefore(r))]
       ],
       rows: headers
     },
@@ -312,14 +324,21 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       mode: 'replace',
       create: "`Receipt_id` int(11) NOT NULL auto_increment,\n  `Bill_id` int(11) default NULL,\n  `ReceiptNo` int(11) default NULL,\n  `ManualRepNo` int(11) default NULL,\n  `BillDate` varchar(10) default NULL,\n  `BillAmt` float default NULL,\n  `MalRecpDt` varchar(10) default NULL,\n  `Month` tinytext,\n  `Year` tinytext,\n  `DueAmt` float default NULL,\n  `MalRecpAmt` float default NULL,\n  `Balance` float default NULL,\n  `LessAmt` float default NULL,\n  `RAmt` float default NULL,\n  `ChequeNo` tinytext,\n  `ChequeDate` varchar(10) default NULL,\n  `Debit` float default NULL,\n  `Credit` float default NULL,\n  `Cash_Chq` tinytext,\n  `Narr` text,\n  `customer_id` int(11) default NULL,\n  PRIMARY KEY  (`Receipt_id`),\n  KEY `idx_custid` (`customer_id`)",
       columns: [
-        ['Receipt_id', 'n', r => r.id], ['Bill_id', 'n', r => remarksOf(r).bill_no], ['ReceiptNo', 'n', r => r.recp_no],
-        ['ManualRepNo', 'n', r => remarksOf(r).manual_rep_no ?? remarksOf(r).mal_rep_no], ['BillDate', 'dmy', r => r.recp_date],
-        ['BillAmt', 'n', r => r.bill_amt], ['MalRecpDt', 'dmy', r => remarksOf(r).mal_recp_dt || r.recp_date],
-        ['Month', 's', r => r.month], ['Year', 's', r => r.year], ['DueAmt', 'n', () => null], ['MalRecpAmt', 'n', r => r.mal_recp_amt],
-        ['Balance', 'n', r => remarksOf(r).balance ?? 0], ['LessAmt', 'n', r => r.less_amt ?? 0], ['RAmt', 'n', r => remarksOf(r).r_amt ?? r.mal_recp_amt],
-        ['ChequeNo', 's', r => remarksOf(r).cheque_no || ''], ['ChequeDate', 's', r => (isoDate(remarksOf(r).cheque_date) ? dmy(remarksOf(r).cheque_date) : '__/__/____')],
-        ['Debit', 'n', r => r.bill_amt], ['Credit', 'n', r => r.mal_recp_amt], ['Cash_Chq', 's', r => remarksOf(r).cash_chq || 'Cash'],
-        ['Narr', 's', r => remarksOf(r).narr || ''], ['customer_id', 'n', r => r.customer_id]
+        // A receipt made or restored here keeps its book details in remarks; an older year's has the old columns
+        ['Receipt_id', 'n', r => first(r.id, pick(r, 'Receipt_id'))], ['Bill_id', 'n', r => first(remarksOf(r).bill_no, pick(r, 'Bill_id'))],
+        ['ReceiptNo', 'n', r => first(r.recp_no, pick(r, 'ReceiptNo'))],
+        ['ManualRepNo', 'n', r => first(remarksOf(r).manual_rep_no, remarksOf(r).mal_rep_no, pick(r, 'ManualRepNo'))],
+        ['BillDate', 'dmy', r => first(r.recp_date, pick(r, 'BillDate'))], ['BillAmt', 'n', r => first(r.bill_amt, pick(r, 'BillAmt'))],
+        ['MalRecpDt', 'dmy', r => first(remarksOf(r).mal_recp_dt, pick(r, 'MalRecpDt'), r.recp_date)],
+        ['Month', 's', r => pick(r, 'month')], ['Year', 's', r => pick(r, 'year')], ['DueAmt', 'n', r => pick(r, 'DueAmt') ?? null],
+        ['MalRecpAmt', 'n', r => first(r.mal_recp_amt, pick(r, 'MalRecpAmt'))],
+        ['Balance', 'n', r => first(remarksOf(r).balance, pick(r, 'Balance'), 0)], ['LessAmt', 'n', r => first(pick(r, 'less_amt'), 0)],
+        ['RAmt', 'n', r => first(remarksOf(r).r_amt, pick(r, 'RAmt'), r.mal_recp_amt)],
+        ['ChequeNo', 's', r => first(remarksOf(r).cheque_no, pick(r, 'ChequeNo'), '')],
+        ['ChequeDate', 's', r => (isoDate(remarksOf(r).cheque_date) ? dmy(remarksOf(r).cheque_date) : first(pick(r, 'ChequeDate'), '__/__/____'))],
+        ['Debit', 'n', r => first(pick(r, 'Debit'), r.bill_amt)], ['Credit', 'n', r => first(pick(r, 'Credit'), r.mal_recp_amt)],
+        ['Cash_Chq', 's', r => first(remarksOf(r).cash_chq, pick(r, 'Cash_Chq'), 'Cash')],
+        ['Narr', 's', r => first(remarksOf(r).narr, pick(r, 'Narr'), '')], ['customer_id', 'n', r => pick(r, 'customer_id')]
       ],
       rows: receipts
     },

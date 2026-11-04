@@ -52,10 +52,22 @@ export async function GET(req: NextRequest) {
     if (!table) return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
 
     const from = Number(req.nextUrl.searchParams.get('from') || 0);
-    let query = supabaseAdmin.from(table.name).select('*', { count: 'exact' });
-    for (const column of table.key) query = query.order(column, { ascending: true });
+    const page = (order: string[]) => {
+      let query = supabaseAdmin.from(table.name).select('*', { count: 'exact' });
+      for (const column of order) query = query.order(column, { ascending: true });
+      return query.range(from, from + PAGE_SIZE - 1);
+    };
 
-    const { data, count, error } = await query.range(from, from + PAGE_SIZE - 1);
+    let { data, count, error } = await page(table.key);
+    // Older years were brought in with the old software's own column names (Bill_id, not bill_id),
+    // so the key is looked up in that table's columns, or every column keeps the order fixed
+    if (error?.code === '42703') {
+      const { data: sample } = await supabaseAdmin.from(table.name).select('*').limit(1);
+      const columns = Object.keys(sample?.[0] || {});
+      const same = (a: string, b: string) => a.toLowerCase().replace(/_/g, '') === b.toLowerCase().replace(/_/g, '');
+      const key = table.key.map(k => columns.find(c => same(c, k)));
+      ({ data, count, error } = await page(key.every(Boolean) ? (key as string[]) : columns));
+    }
     if (error) {
       // Some yearly tables were never created
       if (error.code === 'PGRST205' || error.code === '42P01') return NextResponse.json({ rows: [], total: 0, missing: true });
