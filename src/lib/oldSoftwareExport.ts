@@ -415,16 +415,17 @@ function numberSubscriptions(details: any[], startYear: number, old?: OldRows) {
   for (const [customer, rows] of Array.from(byCustomer).sort((a, b) => a[0] - b[0])) {
     rows.sort((a, b) => (Number(pick(a, 'sno')) || 0) - (Number(pick(b, 'sno')) || 0) || String(isoDate(pick(a, 's_date'))).localeCompare(String(isoDate(pick(b, 's_date')))));
     const theirs = before.get(customer) || [];
-    const taken = new Set<number>();
+    // The old software repeats a number for a customer's different papers, so each of its rows is taken once
+    const taken = new Set<(typeof theirs)[number]>();
     let next = Math.max(0, ...theirs.map(t => t.sno || 0));
     const numbers = rows.map(row => {
       if (!theirs.length) return 0;
       const start = sameMeaning(pick(row, 's_date'));
       const score = (t: (typeof theirs)[number]) =>
         (t.start === start ? 4 : 0) + (t.qty === Number(pick(row, 'qty')) ? 2 : 0) + (t.hawker === Number(pick(row, 'hawker_id')) ? 1 : 0) + (t.end === sameMeaning(pick(row, 'c_date')) ? 1 : 0);
-      const best = theirs.filter(t => t.publica === Number(pick(row, 'publica_id')) && !taken.has(t.sno) && score(t) >= 3).sort((a, b) => score(b) - score(a))[0];
+      const best = theirs.filter(t => t.publica === Number(pick(row, 'publica_id')) && !taken.has(t) && score(t) >= 3).sort((a, b) => score(b) - score(a))[0];
       if (!best) return 0;
-      taken.add(best.sno);
+      taken.add(best);
       return best.sno;
     });
     rows.forEach((row, i) => {
