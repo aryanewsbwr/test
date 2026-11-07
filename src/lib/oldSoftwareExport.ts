@@ -184,6 +184,8 @@ const SAME_AS: Record<string, Record<string, string[]>> = {
 // Still empty after that: the value of another column (a receipt's RAmt is what was received)
 const OR_ELSE: Record<string, Record<string, string>> = { receipt: { ramt: 'malrecpamt' } };
 // What makes a row the same row when its number differs (renumbered on the website)
+// Failing that, the same line changed on the website (a free paper billed as rate 5 less 100%)
+const CHANGED_ROW: Record<string, string[]> = { bill: ['customer_id', 'publica_id', 'month'] };
 const SAME_ROW: Record<string, string[]> = {
   receipt: ['customer_id', 'receiptno', 'malrecpdt', 'malrecpamt'],
   billno: ['customer_id', 'month'],
@@ -252,6 +254,22 @@ function matchOldRows(name: string, body: string, columns: Column[], rows: any[]
     return { values, tokens, match, mine, same };
   });
 
+  // Second look, once every exact match is taken: the same line, changed here
+  const loose = (CHANGED_ROW[base] || []).filter(n => at.has(n) && names.includes(n));
+  if (loose.length) {
+    const byLoose = new Map<string, number[]>();
+    decoded.forEach((r, i) => {
+      if (used.has(i)) return;
+      const k = loose.map(n => meaning(r, n)).join('|');
+      byLoose.set(k, [...(byLoose.get(k) || []), i]);
+    });
+    for (const x of list) {
+      if (x.match !== undefined) continue;
+      const i = (byLoose.get(loose.map(n => x.mine(n)).join('|')) || []).find(j => !used.has(j));
+      if (i !== undefined) { x.match = i; used.add(i); }
+    }
+  }
+
   // Numbers: the old software's for its rows; a new row's own unless the old software already uses it
   const numbers = new Map<number, string>();
   if (pk) {
@@ -292,9 +310,15 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
     if (!o) m.names.forEach((n, i) => {
       if (orElse[n] && sameMeaning(tokenValue(tokens[i])) === '') tokens[i] = tokens[m.names.indexOf(orElse[n])];
     });
-    return { order: x.match ?? Infinity, line: ' (' + tokens.join(',') + ')' };
+    return { order: x.match, line: ' (' + tokens.join(',') + ')' };
   });
-  const out = lines.map((l, i) => ({ ...l, i })).sort((a, b) => a.order - b.order || a.i - b.i).map(l => l.line);
+  // A row the old software lacks goes right after the row before it here, not to the end
+  let previous = -1;
+  const placed = lines.map((l, i) => {
+    if (l.order !== undefined) previous = l.order;
+    return { line: l.line, order: l.order ?? previous + 0.5, i };
+  });
+  const out = placed.sort((a, b) => a.order - b.order || a.i - b.i).map(l => l.line);
   return { out, fromOld: m.list.filter(x => x.match !== undefined).length };
 }
 
@@ -560,6 +584,37 @@ function customerMobiles(customers: any[], old?: OldRows) {
   return rows.sort((a, b) => a.id - b.id);
 }
 
+/**
+ * The old software bills a month's retail sales of one paper at one rate as a single line (Qty added up).
+ * The website may keep one line per sale; those are joined. Subscription lines (with a number) stay as
+ * they are, since the old software splits those itself (a rate change in the month).
+ */
+function oneLinePerSale(lines: any[], lineSno: (row: any) => any) {
+  const out: any[] = [];
+  const joined = new Map<string, any>();
+  const add = (a: any, b: any, name: string) => {
+    const key = Object.keys(a).find(k => squash(k) === squash(name));
+    if (key) a[key] = round2((Number(a[key]) || 0) + (Number(pick(b, name)) || 0));
+  };
+  for (const line of lines) {
+    const sno = lineSno(line);
+    if (sno !== null && sno !== undefined && sno !== '') {
+      out.push(line);
+      continue;
+    }
+    const key = [pick(line, 'bill_id'), pick(line, 'publica_id'), Number(pick(line, 'rate')) || 0].join('|');
+    const first = joined.get(key);
+    if (!first) {
+      const copy = { ...line };
+      joined.set(key, copy);
+      out.push(copy);
+      continue;
+    }
+    for (const name of ['qty', 'total_amt', 'd_charges']) add(first, line, name);
+  }
+  return out;
+}
+
 export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffix(), old?: Map<string, OldRows>): OldTableSpec[] {
   const startYear = Number(suffix.slice(0, 4));
   const get = (name: string) => tables[name] || [];
@@ -733,7 +788,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         col('Bill_id'), col('Customer_id'), col('Publica_id'), col('Region_id'), col('Qty'), col('Rate'), col('D_Charges'),
         col('TotalAmt', 'n', 'total_amt'), ['Month', 's', r => oldMonth(pick(r, 'month'))], ['year', 's', r => yearOf(r, startYear)], ['sno', 'n', lineSno]
       ],
-      rows: lines
+      rows: oneLinePerSale(lines, lineSno)
     },
     {
       name: `billdel${suffix}`,
