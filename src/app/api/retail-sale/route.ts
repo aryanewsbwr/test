@@ -142,6 +142,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer ID is required.' }, { status: 400 });
     }
 
+    // A sale is saved in this financial year's table, so its date must be in this year
+    const day = /^\d{4}-\d{2}-\d{2}/.test(String(vr_date)) ? String(vr_date).slice(0, 10) : '';
+    const start = `${fySuffix().slice(0, 4)}-04-01`;
+    const end = `${fySuffix().slice(4)}-03-31`;
+    if (!day || day < start || day > end) {
+      return NextResponse.json({
+        error: `तारीख ${vr_date} इस साल (${start.slice(0, 4)}-${end.slice(2, 4)}) की नहीं है। रिटेल सेल सिर्फ इसी साल की तारीख से सेव होती है।`
+      }, { status: 400 });
+    }
+
     // Determine highest retail_id from Supabase across all retail tables
     let maxId = 1200;
     try {

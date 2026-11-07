@@ -448,6 +448,7 @@ export default function RetailSalePermanentForm({
     try {
       const targetIso = getIsoDate(vrDateStr);
       let successCount = 0;
+      let reason = '';
 
       for (const row of rows) {
         const payload = {
@@ -468,11 +469,12 @@ export default function RetailSalePermanentForm({
         });
 
         if (res.ok) successCount++;
+        else if (!reason) reason = (await res.json().catch(() => ({}))).error || '';
       }
 
       const failedCount = rows.length - successCount;
       setStatusMsg(failedCount > 0
-        ? { text: `${failedCount} of ${rows.length} retail sale item(s) were NOT saved. Check the list and save them again.`, isError: true }
+        ? { text: `${failedCount} of ${rows.length} retail sale item(s) were NOT saved.${reason ? ` ${reason}` : ' Check the list and save them again.'}`, isError: true }
         : { text: `✓ Successfully saved ${successCount} retail sale item(s) for #${selectedCust.customer_id} ${selectedCust.name_eng}!`, isError: false });
 
       // Refresh customer sales

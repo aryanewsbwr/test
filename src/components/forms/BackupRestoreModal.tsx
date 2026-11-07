@@ -74,7 +74,9 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     if (!validDatabaseName(database)) throw new Error('डाटाबेस के नाम में सिर्फ अंग्रेज़ी अक्षर, अंक और _ हो सकते हैं');
     if (historyStale && !confirm('पुराना इतिहास आखिरी रिस्टोर की फाइल से पुराना है। इस बैकअप में पुराने सॉफ्टवेयर की अपनी टेबल (purchase, area, mobile...) पुरानी आएँगी।\n\nफिर भी बैकअप बनाएँ?')) return 'कुछ नहीं बना।';
     const done = await downloadOldSoftwareFile(working, database);
-    return `पुराने सॉफ्टवेयर की पूरी बैकअप फाइल बन गई: वेबसाइट से ${done.filled.length} टेबल (${done.rows.toLocaleString()} रिकॉर्ड), पुराने इतिहास से ${done.copied.length} टेबल, खाली ${done.empty.length} टेबल।${done.history ? '' : ' पुराना इतिहास वेबसाइट पर नहीं है, इसलिए पुराने साल खाली हैं।'}${database === 'test' ? ' पहले किसी दूसरे कंप्यूटर पर आज़माएँ।' : ` यह फाइल "${database}" डाटाबेस में जाएगी, असली "test" नहीं बदलेगा।`}`;
+    return `पुराने सॉफ्टवेयर की पूरी बैकअप फाइल बन गई: वेबसाइट से ${done.filled.length} टेबल (${done.rows.toLocaleString()} रिकॉर्ड), पुराने इतिहास से ${done.copied.length} टेबल, खाली ${done.empty.length} टेबल।${done.history ? '' : ' पुराना इतिहास वेबसाइट पर नहीं है, इसलिए पुराने साल खाली हैं।'}${database === 'test' ? ' पहले किसी दूसरे कंप्यूटर पर आज़माएँ।' : ` यह फाइल "${database}" डाटाबेस में जाएगी, असली "test" नहीं बदलेगा।`}${done.notes?.length ? `
+
+जाँच (वेबसाइट के डाटा में देखें): ${done.notes.join(' | ')}` : ' डाटा की जाँच: सब ठीक।'}`;
   });
 
   const handleSaveHistory = (file: File) => run(async () => {
@@ -385,7 +387,7 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
           )}
 
           {status && (
-            <div className={`p-2 border font-bold text-[11px] rounded ${
+            <div className={`p-2 border font-bold text-[11px] rounded whitespace-pre-line ${
               status.kind === 'done' ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
                 : status.kind === 'error' ? 'bg-red-100 text-red-900 border-red-400'
                 : 'bg-blue-100 text-blue-900 border-blue-400 animate-pulse'

@@ -200,7 +200,7 @@ export async function downloadOldSoftwareFile(onProgress: Progress, database = '
     const savedAt = history ? (await oldHistoryInfo().catch(() => ({} as { saved_at?: string }))).saved_at : undefined;
     const historyYear = savedAt ? fySuffix(new Date(savedAt)) : '';
     const closed = (year: string) => isClosedYear(year, historyYear);
-    const count: OldFileCount = { filled: [], copied: [], empty: [] };
+    const count: OldFileCount = { filled: [], copied: [], empty: [], notes: [] };
     let rows = 0;
     const read = async (names: string[], label: string) => {
       const tables: Record<string, any[]> = {};

@@ -303,7 +303,7 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
  * right one: a website bill the old software has takes its number. A receipt keeps pointing at its own
  * customer's bill, whether it carries the website's number or the old software's (restored from it).
  */
-function billNumbers(specs: Map<string, OldTableSpec>, year: string, old: OldRows) {
+function billNumbers(specs: Map<string, OldTableSpec>, year: string, old: OldRows, lost: Set<string>) {
   const headers = specs.get(`billno${year}`);
   if (!headers) return;
   const m = matchOldRows(headers.name, headers.create, headers.columns, headers.rows, old);
@@ -333,7 +333,9 @@ function billNumbers(specs: Map<string, OldTableSpec>, year: string, old: OldRow
         const who = Number(cId(row));
         if (website.get(bill)?.customer === who) return website.get(bill)!.to;
         if (written.get(bill) === who) return bill;
-        return byMonth.get(`${who}|${sameMeaning(cMonth(row))}`) ?? before(row);
+        const found = byMonth.get(`${who}|${sameMeaning(cMonth(row))}`);
+        if (found === undefined) lost.add(`${spec.name}: customer ${who}, bill ${bill}`);
+        return found ?? before(row);
       }] as Column;
     });
   };
@@ -832,6 +834,8 @@ export interface OldFileCount {
   // Taken whole from the old software's history kept on the website (older years, its own tables)
   copied: string[];
   empty: string[];
+  // Things in the website's data the file had to work around, for staff to look at
+  notes?: string[];
 }
 
 // Where each table's part of an old software dump begins and ends, so it can be copied byte for byte
@@ -884,7 +888,18 @@ export function* oldSoftwarePart(
   historyYear = ''
 ): Generator<string | { copy: string }> {
   const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix(), old).map(s => [s.name.toLowerCase(), s]));
-  if (year && old.has(`billno${year}`)) billNumbers(specs, year, old.get(`billno${year}`)!);
+  const lost = new Set<string>();
+  if (year && old.has(`billno${year}`)) billNumbers(specs, year, old.get(`billno${year}`)!, lost);
+  // What the website's data has that the old software cannot take as it is
+  const notes = (count.notes = count.notes || []);
+  if (year && !isClosedYear(year, historyYear)) {
+    const sales = tables[`retailsale${year}`] || [];
+    const kept = specs.get(`retailsale${year}`)?.rows.length ?? sales.length;
+    if (sales.length > kept) notes.push(`retailsale${year}: ${sales.length - kept} बिक्री दूसरे साल की तारीख की है, फाइल में नहीं डाली गई`);
+    const label = fyLabel(new Date(Date.UTC(Number(year.slice(0, 4)), 5, 1)));
+    const allPapers = (tables.discontinue || []).filter(r => !Number(pick(r, 'publica_id')) && (r.financial_year === label || (!r.financial_year && year === fySuffix())));
+    if (allPapers.length) notes.push(`${allPapers.length} "सभी पेपर" बंद (customer ${allPapers.slice(0, 5).map(r => pick(r, 'customer_id')).join(', ')}) हर पेपर की अलग लाइन बनकर गए`);
+  }
   // A name ending in a date, like customer_backup_20261028, is not a year's table
   const years = oldSoftwareYears();
   const mine = (name: string) => (year ? name.endsWith(year) : !years.some(y => name.endsWith(y)));
@@ -926,4 +941,6 @@ export function* oldSoftwarePart(
     }
     yield `/*!40000 ALTER TABLE \`${name}\` ENABLE KEYS */;\n\n\n`;
   }
+  // Known only once the rows are written
+  if (lost.size) notes.push(`${lost.size} रसीद/बिल लाइन का बिल उसी ग्राहक का नहीं मिला: ${Array.from(lost).slice(0, 5).join('; ')}`);
 }
