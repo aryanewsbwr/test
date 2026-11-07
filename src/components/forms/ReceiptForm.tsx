@@ -53,6 +53,13 @@ const getFyMonthIndex = (mStr?: string | null): number => {
 
 // Remarks hold saved details as JSON, with the typed note in narr. Older updates nested
 // the JSON inside narr again, so unwrap until only the note is left.
+// Dates are kept as 2026-11-04; staff read them as 04/11/2026
+const showDate = (value: any): string => {
+  const text = String(value ?? '').trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : text || '-';
+};
+
 const plainNarration = (value: any): string => {
   let text = String(value ?? '');
   while (text.trim().startsWith('{')) {
@@ -1724,10 +1731,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       <span className="border-r border-slate-200">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
                       <span className="border-r border-slate-200">{(r.month || r.Month || '').slice(0, 4)}</span>
                       <span className="border-r border-slate-200">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
-                      <span className="border-r border-slate-200">{r.mal_recp_dt || '-'}</span>
+                      <span className="border-r border-slate-200">{showDate(r.mal_recp_dt)}</span>
                       <span className="border-r border-slate-200">{r.mal_recp_amt ?? r.bill_amt ?? r.Bill_amt ?? 0}</span>
                       <span className="border-r border-slate-200">{r.less_amt || r.Less_amt || 0}</span>
-                      <span className="border-r border-slate-200">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
+                      <span className="border-r border-slate-200">{showDate(r.recp_date || r.bill_date || r.Bill_date)}</span>
                       <span className={`border-r border-slate-200 font-bold ${isSelected ? 'text-yellow-300' : 'text-blue-700'}`}>{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
                       <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
                     </div>
