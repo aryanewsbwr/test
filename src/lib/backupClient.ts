@@ -185,6 +185,10 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
       sections = await indexOldSections(history);
     }
     const inHistory = (name: string) => sections.has(name);
+    // The year the history was saved in: years closed before it are the old software's own
+    const savedAt = history ? (await oldHistoryInfo().catch(() => ({} as { saved_at?: string }))).saved_at : undefined;
+    const historyYear = savedAt ? fySuffix(new Date(savedAt)) : '';
+    const closed = (year: string) => isClosedYear(year, historyYear);
     const count: OldFileCount = { filled: [], copied: [], empty: [] };
     let rows = 0;
     const read = async (names: string[], label: string) => {
@@ -220,12 +224,12 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
     for (const year of oldSoftwareYears()) {
       const label = `${year.slice(0, 4)}-${year.slice(6)}`;
       // A closed year the history has is copied from it, so it is not fetched
-      const names = oldSoftwareSourceTables([year]).filter(name => /\d{8}$/.test(name) && !(isClosedYear(year) && inHistory(name.toLowerCase())));
+      const names = oldSoftwareSourceTables([year]).filter(name => /\d{8}$/.test(name) && !(closed(year) && inHistory(name.toLowerCase())));
       const yearly = await read(names, label);
-      const yearRows = isClosedYear(year) ? new Map<string, OldRows>() : await oldRows([...Object.keys(yearly), `discontinue${year}`]);
+      const yearRows = closed(year) ? new Map<string, OldRows>() : await oldRows([...Object.keys(yearly), `discontinue${year}`]);
       if (subscriptions) yearRows.set('customer_detail', subscriptions);
       onProgress(`${label}: writing...`);
-      await write(oldSoftwarePart({ ...masters, ...yearly }, year, count, inHistory, yearRows));
+      await write(oldSoftwarePart({ ...masters, ...yearly }, year, count, inHistory, yearRows, historyYear));
     }
     // Tables the old software made after the layouts here were taken come across from its history too
     const written = new Set([...count.filled, ...count.copied, ...count.empty].map(name => name.toLowerCase()));

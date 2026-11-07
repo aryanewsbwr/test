@@ -570,8 +570,10 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
 }
 
 // Every year the old software has tables for, from 2007-08 to the running one
-// A year before this one: the old software closed it, so its own copy is the right one
-export const isClosedYear = (year: string | null) => !!year && year < fySuffix();
+// A year the old software had already closed when its history was saved here (historyYear is the year it
+// was saved in): the old software's own copy is the right one. A year worked on here, such as 2026-27,
+// always comes from this website, even after it closes.
+export const isClosedYear = (year: string | null, historyYear: string) => !!year && !!historyYear && year < historyYear;
 
 export function oldSoftwareYears(): string[] {
   const years: string[] = [];
@@ -653,7 +655,8 @@ export function* oldSoftwarePart(
   year: string | null,
   count: OldFileCount,
   inHistory: (name: string) => boolean = () => false,
-  old: Map<string, OldRows> = new Map()
+  old: Map<string, OldRows> = new Map(),
+  historyYear = ''
 ): Generator<string | { copy: string }> {
   const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix(), old).map(s => [s.name.toLowerCase(), s]));
   // A name ending in a date, like customer_backup_20261028, is not a year's table
@@ -672,7 +675,7 @@ export function* oldSoftwarePart(
     const spec = specs.get(name.toLowerCase());
     // Nothing here for it, but the old software's history has it: that part goes in as it is
     // A closed year is the old software's own: it goes in exactly as the old software kept it
-    if ((!(spec && spec.rows.length) || isClosedYear(year)) && inHistory(name.toLowerCase())) {
+    if ((!(spec && spec.rows.length) || isClosedYear(year, historyYear)) && inHistory(name.toLowerCase())) {
       yield { copy: name.toLowerCase() };
       count.copied.push(name);
       continue;
