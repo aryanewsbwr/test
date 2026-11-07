@@ -171,7 +171,7 @@ function sameMeaning(value: any): string {
 // - SAME_AS: two values the website and the old software use for the same thing
 const OLD_ONLY: Record<string, string[]> = {
   receipt: ['debit', 'credit'], bill: ['sno'], billdel: ['sno'], billno: ['balance'],
-  customer_detail: ['dis'], discontinue: ['hawker_id']
+  customer_detail: ['dis'], discontinue: ['hawker_id'], receiptissue: ['sno']
 };
 const ALWAYS_OLD: Record<string, string[]> = { customer: ['paid'], holiday: ['occasion'] };
 const FILL_FROM_OLD: Record<string, string[]> = {
@@ -192,7 +192,9 @@ const SAME_ROW: Record<string, string[]> = {
   customer_detail: ['customer_id', 'publica_id', 'sno'],
   rate: ['publica_id', 'dayofweek'],
   ratechange: ['publica_id', 'dayofweek', 'dated'],
-  holiday: ['oc_date', 'publica_id']
+  holiday: ['oc_date', 'publica_id'],
+  discontinue: ['customer_id', 'publica_id', 'temp_from'],
+  receiptissue: ['collect_id', 'receiptfrom', 'receiptto', 'issuedate']
 };
 
 /**
@@ -259,7 +261,7 @@ function matchOldRows(name: string, body: string, columns: Column[], rows: any[]
     let next = Math.max(0, ...all);
     list.forEach((x, i) => {
       if (x.match !== undefined) numbers.set(i, old.rows[x.match][at.get(pk)!]);
-      else if (taken.has(x.mine(pk))) numbers.set(i, String(++next));
+      else if (x.mine(pk) === '' || taken.has(x.mine(pk))) numbers.set(i, String(++next));
       else taken.add(x.mine(pk));
     });
   }
@@ -487,6 +489,36 @@ function previousDues(headers: any[], lines: any[], deliveries: any[], receipts:
  * second number stays); one with a number it lacks gets the website's numbers; one with no number here
  * keeps what the old software had.
  */
+/**
+ * A stop of all papers (paper 0 here) is written as the old software writes it: one row for each paper
+ * it stopped. A permanent one stopped the subscriptions it closed that day, a temporary one those running
+ * then. A paper whose stop that day is already written is not written twice; one it did not stop is left out.
+ */
+function perPaperStops(stops: any[], subscriptions: any[]) {
+  const day = (v: any) => isoDate(v) || '';
+  const explicit = new Set(stops.filter(r => Number(pick(r, 'publica_id'))).map(r => `${Number(pick(r, 'customer_id'))}|${Number(pick(r, 'publica_id'))}|${day(pick(r, 'temp_from'))}`));
+  const out: any[] = [];
+  for (const stop of stops) {
+    if (Number(pick(stop, 'publica_id'))) {
+      out.push(stop);
+      continue;
+    }
+    const customer = Number(pick(stop, 'customer_id'));
+    const from = day(pick(stop, 'temp_from'));
+    const permanent = /^p/i.test(String(pick(stop, 'temp_perma') || ''));
+    for (const sub of subscriptions) {
+      if (Number(pick(sub, 'customer_id')) !== customer) continue;
+      const start = day(pick(sub, 's_date')), end = day(pick(sub, 'c_date'));
+      const stopped = permanent ? end === from : start <= from && (!end || end >= from);
+      const paper = Number(pick(sub, 'publica_id'));
+      if (!stopped || explicit.has(`${customer}|${paper}|${from}`)) continue;
+      explicit.add(`${customer}|${paper}|${from}`);
+      out.push({ ...stop, discontinue_id: null, publica_id: paper, hawker_id: pick(sub, 'hawker_id'), s_date: pick(sub, 's_date'), c_date: permanent ? from : pick(stop, 'c_date') });
+    }
+  }
+  return out;
+}
+
 // The 10-digit mobile numbers in a phone field ("919413079793, 9414866528")
 const tenDigitMobiles = (phone: any) =>
   Array.from(new Set(Array.from(String(phone ?? '').matchAll(/(?:\+?91|0)?[\s-]*([6-9]\d{9})(?!\d)/g), x => x[1])));
@@ -675,7 +707,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['Hawker_id', 'n', r => pick(r, 'hawker_id') ?? (details.lookup.get(`${Number(pick(r, 'customer_id'))}|${pick(r, 'publica_id')}`) || [])
           .find(s => s.start === isoDate(pick(r, 's_date')))?.hawker ?? null]
       ],
-      rows: get('discontinue').filter(r => r.financial_year === label || (!r.financial_year && suffix === fySuffix()))
+      rows: perPaperStops(get('discontinue').filter(r => r.financial_year === label || (!r.financial_year && suffix === fySuffix())), get('customer_detail'))
     },
     {
       name: `billno${suffix}`,
