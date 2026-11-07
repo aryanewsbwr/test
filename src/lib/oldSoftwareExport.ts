@@ -243,6 +243,19 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
   return { out, fromOld };
 }
 
+// A receipt edited before the receipt screen was fixed kept its saved details inside the narration, again and again
+function plainNarration(value: any): string {
+  let text = String(value ?? '');
+  while (text.trim().startsWith('{')) {
+    try {
+      text = String(JSON.parse(text).narr ?? '');
+    } catch {
+      break;
+    }
+  }
+  return text;
+}
+
 function remarksOf(r: any): any {
   try {
     return typeof r.remarks === 'string' && r.remarks.trim().startsWith('{') ? JSON.parse(r.remarks) : {};
@@ -535,7 +548,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['ChequeDate', 's', r => (isoDate(remarksOf(r).cheque_date) ? dmy(remarksOf(r).cheque_date) : first(pick(r, 'ChequeDate'), '__/__/____'))],
         ['Debit', 'n', r => first(pick(r, 'Debit'), r.bill_amt)], ['Credit', 'n', r => first(pick(r, 'Credit'), r.mal_recp_amt)],
         ['Cash_Chq', 's', r => first(remarksOf(r).cash_chq, pick(r, 'Cash_Chq'), 'Cash')],
-        ['Narr', 's', r => first(remarksOf(r).narr, pick(r, 'Narr'), '')], ['customer_id', 'n', r => pick(r, 'customer_id')]
+        ['Narr', 's', r => plainNarration(first(remarksOf(r).narr, pick(r, 'Narr'), ''))], ['customer_id', 'n', r => pick(r, 'customer_id')]
       ],
       rows: receipts
     },
