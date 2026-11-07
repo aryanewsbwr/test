@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
 // directly; this route only hands out short-lived links and records which copy is current.
 const BUCKET = 'old-software-base';
 const META = 'current.json';
+// The last old software file restored on the website, so a stale history can be shown
+const RESTORED = 'restored.json';
 
 async function ensureBucket() {
   const { data } = await supabaseAdmin.storage.getBucket(BUCKET);
@@ -18,8 +20,8 @@ async function ensureBucket() {
   if (error && !/exists/i.test(error.message)) throw new Error(error.message);
 }
 
-async function readMeta(): Promise<any | null> {
-  const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(META);
+async function readMeta(path = META): Promise<any | null> {
+  const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(path);
   if (error || !data) return null;
   try {
     return JSON.parse(await data.text());
@@ -34,8 +36,10 @@ export async function GET(req: NextRequest) {
   if (refused) return refused;
   await ensureBucket();
   const meta = await readMeta();
-  if (!meta) return NextResponse.json({ missing: true });
-  if (new URL(req.url).searchParams.get('links') !== '1') return NextResponse.json(meta);
+  const restored = await readMeta(RESTORED);
+  const last = restored ? { restored_at: restored.at, restored_name: restored.name } : {};
+  if (!meta) return NextResponse.json({ missing: true, ...last });
+  if (new URL(req.url).searchParams.get('links') !== '1') return NextResponse.json({ ...meta, ...last });
   const links: string[] = [];
   for (const path of meta.parts) {
     const { data, error } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, 3600);
@@ -51,6 +55,17 @@ export async function POST(req: NextRequest) {
   const refused = await refuseWithout(req, 'can_manage_users');
   if (refused) return refused;
   const body = await req.json().catch(() => ({}));
+
+  // POST { action: 'restored', name } -> notes that an old software file was just restored here
+  if (body.action === 'restored') {
+    await ensureBucket();
+    const note = { name: String(body.name || '').slice(0, 200), at: new Date().toISOString() };
+    const { error } = await supabaseAdmin.storage.from(BUCKET)
+      .upload(RESTORED, new Blob([JSON.stringify(note)], { type: 'application/json' }), { upsert: true, contentType: 'application/json' });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(note);
+  }
+
   const folder = String(body.folder || '');
   if (!/^v\d{13}$/.test(folder)) return NextResponse.json({ error: 'folder is required' }, { status: 400 });
   await ensureBucket();

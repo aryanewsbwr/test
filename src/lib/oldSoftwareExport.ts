@@ -369,6 +369,47 @@ function previousDues(headers: any[], lines: any[], deliveries: any[], receipts:
   };
 }
 
+/**
+ * The old software's customer_mobile table (91 + 10 digits, one row per number) with the phone numbers
+ * kept on this website. A customer whose website numbers it already has keeps its rows as they are (so a
+ * second number stays); one with a number it lacks gets the website's numbers; one with no number here
+ * keeps what the old software had.
+ */
+function customerMobiles(customers: any[], old?: OldRows) {
+  const theirs = new Map<number, { id: number; mobile: string }[]>();
+  let next = 0;
+  if (old) {
+    const [i, c, m] = ['id', 'customer_id', 'mobile'].map(n => old.columns.indexOf(n));
+    for (const raw of old.rows) {
+      const r = raw.map(tokenValue);
+      const row = { id: Number(r[i]), mobile: String(r[m] ?? '') };
+      next = Math.max(next, row.id || 0);
+      theirs.set(Number(r[c]), [...(theirs.get(Number(r[c])) || []), row]);
+    }
+  }
+  const ten = (text: string) => text.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+  const rows: { id: number; customer_id: number; mobile: string }[] = [];
+  const done = new Set<number>();
+  for (const customer of customers) {
+    const id = Number(pick(customer, 'customer_id'));
+    const mine = Array.from(new Set(Array.from(String(pick(customer, 'phone') ?? '').matchAll(/(?:\+?91|0)?[\s-]*([6-9]\d{9})(?!\d)/g), x => x[1])));
+    const had = theirs.get(id) || [];
+    const hadTen = new Set(had.map(h => ten(h.mobile)));
+    done.add(id);
+    if (!mine.length || mine.every(n => hadTen.has(n))) {
+      had.forEach(h => rows.push({ id: h.id, customer_id: id, mobile: h.mobile }));
+      continue;
+    }
+    for (const n of mine) {
+      const same = had.find(h => ten(h.mobile) === n);
+      rows.push({ id: same ? same.id : ++next, customer_id: id, mobile: same ? same.mobile : `91${n}` });
+    }
+  }
+  // Numbers of a customer this website does not have stay as the old software kept them
+  theirs.forEach((had, id) => { if (!done.has(id)) had.forEach(h => rows.push({ id: h.id, customer_id: id, mobile: h.mobile })); });
+  return rows.sort((a, b) => a.id - b.id);
+}
+
 export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffix(), old?: Map<string, OldRows>): OldTableSpec[] {
   const startYear = Number(suffix.slice(0, 4));
   const get = (name: string) => tables[name] || [];
@@ -409,6 +450,13 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['From_Day', 's', r => pick(r.row, 'from_day')], ['Hawk_Sub', 'n', r => pick(r.row, 'hawk_sub')], ['Dis', 's', r => pick(r.row, 'dis') ?? ''], ['Dely', 'n', r => pick(r.row, 'dely')]
       ],
       rows: details.numbered
+    },
+    {
+      name: 'customer_mobile',
+      mode: 'replace',
+      create: "`id` int(11) NOT NULL auto_increment,\n  `customer_id` int(11) default NULL,\n  `mobile` varchar(15) default NULL,\n  PRIMARY KEY  (`id`),\n  UNIQUE KEY `uk_cust_mobile` (`customer_id`,`mobile`),\n  KEY `customer_id` (`customer_id`),\n  KEY `idx_custid` (`customer_id`)",
+      columns: [col('id'), col('customer_id'), col('mobile', 's')],
+      rows: customerMobiles(get('customer'), old?.get('customer_mobile'))
     },
     {
       name: 'hawker',
@@ -588,6 +636,16 @@ const MASTERS = ['customer', 'customer_detail', 'hawker', 'publication', 'publis
 // The tables the export reads from this website; years it has no table for are skipped
 export function oldSoftwareSourceTables(years = oldSoftwareYears()): string[] {
   return [...MASTERS, ...years.flatMap(year => YEARLY.map(name => `${name}${year}`))];
+}
+
+// A database name MySQL takes as it is: letters, digits and _
+export const validDatabaseName = (name: string) => /^[A-Za-z0-9_]{1,64}$/.test(name);
+
+// The file's opening. It makes the database and uses it: test (the live one), or another name such as
+// test_check to restore next to the live one and compare before replacing it.
+export function oldHeader(database = 'test'): string {
+  if (!validDatabaseName(database)) throw new Error(`Database name "${database}" can only have letters, digits and _`);
+  return OLD_HEADER.replace(/\btest\b/g, database);
 }
 
 export const OLD_HEADER = [

@@ -2,7 +2,7 @@ import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, Row
 import { roundToFoxProRule } from './billingEngine';
 import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
-import { indexOldSections, isClosedYear, OLD_FOOTER, OLD_HEADER, OldFileCount, OldRows, oldRowsOf, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
+import { indexOldSections, isClosedYear, OLD_FOOTER, oldHeader, OldFileCount, OldRows, oldRowsOf, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
 
 const BILL_FIX_BATCH = 50;
 const FILE_FORMAT = 'aryan-news-backup';
@@ -84,7 +84,17 @@ export async function downloadBackup(includeOlderYears: boolean, onProgress: Pro
 // in a private storage bucket, in pieces under the upload limit
 const HISTORY_PIECE = 32 * 1024 * 1024;
 
-export async function oldHistoryInfo(): Promise<{ missing?: boolean; name?: string; saved_at?: string; size?: number }> {
+export interface OldHistoryInfo {
+  missing?: boolean;
+  name?: string;
+  saved_at?: string;
+  size?: number;
+  // The last old software file restored on this website
+  restored_at?: string;
+  restored_name?: string;
+}
+
+export async function oldHistoryInfo(): Promise<OldHistoryInfo> {
   return fetch('/api/old-software-base').then(readJson);
 }
 
@@ -148,8 +158,9 @@ async function loadOldHistory(onProgress: Progress): Promise<Blob | null> {
 // at a time, from this website's data; a table the website has nothing for is copied as it is from
 // the old software's history kept here. Chrome and Edge write the file straight to disk; other
 // browsers build it in memory first.
-export async function downloadOldSoftwareFile(onProgress: Progress) {
-  const fileName = `AryanNews_ForOldSoftware_${new Date().toISOString().slice(0, 10)}.sql`;
+export async function downloadOldSoftwareFile(onProgress: Progress, database = 'test') {
+  const header = oldHeader(database);
+  const fileName = `AryanNews_ForOldSoftware_${database === 'test' ? '' : database + '_'}${new Date().toISOString().slice(0, 10)}.sql`;
   let writable: any = null;
   const picker = (window as any).showSaveFilePicker;
   if (picker) {
@@ -215,9 +226,9 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
       return found;
     };
 
-    await write([OLD_HEADER]);
+    await write([header]);
     const masters = await read(oldSoftwareSourceTables([]), 'Masters');
-    const masterRows = await oldRows(Object.keys(masters));
+    const masterRows = await oldRows([...Object.keys(masters), 'customer_mobile']);
     const subscriptions = masterRows.get('customer_detail');
     await write(oldSoftwarePart(masters, null, count, inHistory, masterRows));
     masterRows.clear();
@@ -271,6 +282,8 @@ export interface RestoreItem extends RowDifference {
 
 export interface RestorePlan {
   kind: 'backup' | 'old';
+  // The old software file itself, kept as the history once it is restored
+  file?: File;
   takenAt?: string;
   items: RestoreItem[];
   billFixes?: any[];
@@ -553,7 +566,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
           [...(receiptItem?.live || []), ...(receiptItem?.add || [])]
         )
       : [];
-    return { kind: 'old', items, billFixes };
+    return { kind: 'old', items, billFixes, file };
   }
 
   onProgress('Reading the backup file...');
@@ -684,6 +697,21 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
 
   onProgress('Checking the result...');
   const problems: string[] = [];
+
+  // The restored file becomes the kept history, so the old software's own tables (purchase, areas,
+  // customer_mobile...) and closed years in the next backup for it are this file's, not an older one's
+  if (plan.kind === 'old' && plan.file) {
+    try {
+      await fetch('/api/old-software-base', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restored', name: plan.file.name })
+      }).then(readJson);
+      await saveOldHistory(plan.file, onProgress);
+    } catch (err: any) {
+      problems.push(`पुराना इतिहास अपडेट नहीं हुआ (${err.message}): Restore टैब के नीले बॉक्स में यही फाइल दोबारा रखें`);
+    }
+  }
   for (const item of chosen) {
     const notSaved = refused.get(item.table.name) || [];
     if (notSaved.length > 0) {
