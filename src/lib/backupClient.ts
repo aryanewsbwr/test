@@ -2,7 +2,7 @@ import { backupTables, BackupTable, compareRows, findBackupTable, monthCode, Row
 import { roundToFoxProRule } from './billingEngine';
 import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
-import { indexOldSections, OLD_FOOTER, OLD_HEADER, OldFileCount, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
+import { indexOldSections, isClosedYear, OLD_FOOTER, OLD_HEADER, OldFileCount, OldRows, oldRowsOf, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
 
 const BILL_FIX_BATCH = 50;
 const FILE_FORMAT = 'aryan-news-backup';
@@ -198,14 +198,34 @@ export async function downloadOldSoftwareFile(onProgress: Progress) {
       return tables;
     };
 
+    // The old software's own rows for these tables, so each unchanged row is written exactly as it had it
+    const utf8 = new TextDecoder('utf-8');
+    const oldRows = async (names: string[]) => {
+      const found = new Map<string, OldRows>();
+      for (const name of names.map(n => n.toLowerCase())) {
+        const at = sections.get(name);
+        if (!at || found.has(name)) continue;
+        onProgress(`पुराने इतिहास से मिलाया जा रहा है: ${name}...`);
+        found.set(name, oldRowsOf(utf8.decode(await history!.slice(at[0], at[1]).arrayBuffer())));
+      }
+      return found;
+    };
+
     await write([OLD_HEADER]);
     const masters = await read(oldSoftwareSourceTables([]), 'Masters');
-    await write(oldSoftwarePart(masters, null, count, inHistory));
+    const masterRows = await oldRows(Object.keys(masters));
+    const subscriptions = masterRows.get('customer_detail');
+    await write(oldSoftwarePart(masters, null, count, inHistory, masterRows));
+    masterRows.clear();
     for (const year of oldSoftwareYears()) {
       const label = `${year.slice(0, 4)}-${year.slice(6)}`;
-      const yearly = await read(oldSoftwareSourceTables([year]).filter(name => /\d{8}$/.test(name)), label);
+      // A closed year the history has is copied from it, so it is not fetched
+      const names = oldSoftwareSourceTables([year]).filter(name => /\d{8}$/.test(name) && !(isClosedYear(year) && inHistory(name.toLowerCase())));
+      const yearly = await read(names, label);
+      const yearRows = isClosedYear(year) ? new Map<string, OldRows>() : await oldRows([...Object.keys(yearly), `discontinue${year}`]);
+      if (subscriptions) yearRows.set('customer_detail', subscriptions);
       onProgress(`${label}: writing...`);
-      await write(oldSoftwarePart({ ...masters, ...yearly }, year, count, inHistory));
+      await write(oldSoftwarePart({ ...masters, ...yearly }, year, count, inHistory, yearRows));
     }
     // Tables the old software made after the layouts here were taken come across from its history too
     const written = new Set([...count.filled, ...count.copied, ...count.empty].map(name => name.toLowerCase()));

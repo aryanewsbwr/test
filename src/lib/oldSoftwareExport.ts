@@ -1,6 +1,7 @@
 import { fyLabel, fySuffix } from './financialYear';
 import { monthCode } from './backupTables';
 import { unicodeToSusha } from './sushaEncode';
+import { sushaToUnicode } from './transliteration';
 import schema from './oldSoftwareSchema.json';
 
 // Writes this website's data as a MySQL file the old software (MySQL Administrator, MySQL 5.0)
@@ -91,6 +92,157 @@ const round2 = (n: number) => {
   return r === 0 ? 0 : r;
 };
 
+// ---- The old software's own rows, from its history kept on the website ----
+
+// One table's rows from an old software dump, each value exactly as the dump wrote it ('text', 12, NULL)
+export interface OldRows {
+  columns: string[];
+  rows: string[][];
+}
+
+export function oldRowsOf(text: string): OldRows {
+  let columns: string[] = [];
+  const rows: string[][] = [];
+  const INSERT = /INSERT INTO `[^`]+` \(([^)]*)\) VALUES/g;
+  for (let m = INSERT.exec(text); m; m = INSERT.exec(text)) {
+    if (!columns.length) columns = Array.from(m[1].matchAll(/`([^`]+)`/g), c => c[1].toLowerCase());
+    let pos = INSERT.lastIndex;
+    while (pos < text.length) {
+      while (pos < text.length && text[pos] !== '(' && text[pos] !== ';') pos++;
+      if (pos >= text.length || text[pos] === ';') break;
+      const tokens: string[] = [];
+      pos++;
+      while (pos < text.length) {
+        while (text[pos] === ' ') pos++;
+        const begin = pos;
+        if (text[pos] === "'") {
+          pos++;
+          while (pos < text.length) {
+            if (text[pos] === '\\') pos += 2;
+            else if (text[pos] === "'" && text[pos + 1] === "'") pos += 2;
+            else if (text[pos] === "'") { pos++; break; }
+            else pos++;
+          }
+          tokens.push(text.slice(begin, pos));
+        } else {
+          while (pos < text.length && text[pos] !== ',' && text[pos] !== ')') pos++;
+          tokens.push(text.slice(begin, pos).trim());
+        }
+        while (text[pos] === ' ') pos++;
+        if (text[pos] === ')') { pos++; break; }
+        pos++;
+      }
+      rows.push(tokens);
+    }
+    INSERT.lastIndex = pos;
+  }
+  return { columns, rows };
+}
+
+const UNESCAPE: Record<string, string> = { n: '\n', r: '\r', t: '\t', '0': '\0', Z: '\x1a' };
+function tokenValue(token: string): any {
+  if (token === 'NULL') return null;
+  if (token[0] !== "'") return token;
+  return token.slice(1, -1).replace(/\\([\s\S])|''/g, (all, ch) => (ch === undefined ? "'" : UNESCAPE[ch] ?? ch));
+}
+
+// The same meaning written two ways counts as the same: NULL, '' and 0; 'As Per Norm' and 'AsPerNorm'; 02/04/2026 and 2026-04-02
+function sameMeaning(value: any): string {
+  if (value === null || value === undefined) return '';
+  const s = String(value).trim();
+  if (s === '' || s === '__/__/____') return '';
+  const n = Number(s);
+  if (!Number.isNaN(n)) return n === 0 ? '' : String(Math.round(n * 100) / 100);
+  if (/^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}$/.test(s)) return isoDate(s) || s.split(/[/.-]/).map(Number).sort((a, b) => a - b).join('.');
+  return s.toLowerCase().replace(/\s+/g, '');
+}
+
+// Columns this website never kept for the old software's rows; the old software's value stays
+// while the rest of the row is unchanged
+const OLD_ONLY: Record<string, string[]> = { receipt: ['debit', 'credit'], bill: ['sno'], billdel: ['sno'] };
+// Lost on the way to the website: an empty value here takes the old software's
+const FILL_FROM_OLD: Record<string, string[]> = { receipt: ['narr'], customer_detail: ['s_date'], discontinue: ['s_date'] };
+// What makes a row the same row when its number differs (renumbered on the website)
+const SAME_ROW: Record<string, string[]> = {
+  receipt: ['customer_id', 'receiptno', 'malrecpdt', 'malrecpamt'],
+  billno: ['customer_id', 'month'],
+  bill: ['customer_id', 'publica_id', 'month', 'qty', 'totalamt'],
+  billdel: ['customer_id', 'publica_id', 'month'],
+  customer_detail: ['customer_id', 'publica_id', 'sno'],
+  rate: ['publica_id', 'dayofweek'],
+  ratechange: ['publica_id', 'dayofweek', 'dated']
+};
+
+/**
+ * Each website row's values, written the old software's way: where the old software has the same row,
+ * every value with the same meaning is taken exactly as the old software wrote it, and so are the
+ * columns the website never kept. What the website changed or added stays the website's.
+ */
+function withOldValues(name: string, body: string, columns: Column[], rows: any[], old: OldRows) {
+  const base = name.toLowerCase().replace(/\d{8}$/, '');
+  const names = columns.map(c => c[0].toLowerCase());
+  const at = new Map(old.columns.map((c, i) => [c, i]));
+  const pk = body.match(/PRIMARY KEY\s*\(`([^`]+)`\)/)?.[1]?.toLowerCase();
+  const oldOnly = new Set(OLD_ONLY[base] || []);
+  const fill = new Set(FILL_FROM_OLD[base] || []);
+  // A table with its own number (customer, hawker...) is matched by that number alone
+  const identity = (SAME_ROW[base] || (pk ? [] : names)).filter(n => at.has(n) && names.includes(n));
+  const rest = names.filter(n => at.has(n) && n !== pk && n !== 'bill_id' && !oldOnly.has(n) && !fill.has(n));
+  const decoded = old.rows.map(r => r.map(tokenValue));
+  const meaning = (row: any[], n: string) => sameMeaning(row[at.get(n)!]);
+  const key = (get: (n: string) => string) => identity.map(get).join('|');
+
+  const byPk = new Map<string, number>();
+  const byKey = new Map<string, number[]>();
+  decoded.forEach((r, i) => {
+    if (pk && at.has(pk)) byPk.set(meaning(r, pk), i);
+    const k = key(n => meaning(r, n));
+    byKey.set(k, [...(byKey.get(k) || []), i]);
+  });
+  const used = new Set<number>();
+  let fromOld = 0;
+
+  const out = rows.map(row => {
+    const values = columns.map(([, kind, value]) => value(row));
+    const tokens = values.map((v, i) => sqlValue(v, columns[i][1]));
+    // The website's value read back as the file has it, so both are compared the same way
+    const mine = (n: string) => {
+      const i = names.indexOf(n);
+      const [, kind] = columns[i];
+      return sameMeaning(kind === 'hindi' ? values[i] : tokenValue(tokens[i]));
+    };
+    const theirs = (r: any[], n: string) => {
+      const i = names.indexOf(n);
+      return columns[i][1] === 'hindi' ? sameMeaning(sushaToUnicode(String(r[at.get(n)!] ?? ''))) : meaning(r, n);
+    };
+    // Hindi is the same when either way of reading it agrees
+    const same = (o: any[], n: string) => {
+      if (mine(n) === theirs(o, n)) return true;
+      const i = names.indexOf(n);
+      return columns[i][1] === 'hindi' && sameMeaning(tokenValue(tokens[i])) === meaning(o, n);
+    };
+    const k = key(mine);
+    let match = pk && at.has(pk) && names.includes(pk) ? byPk.get(mine(pk)) : undefined;
+    if (match !== undefined && (used.has(match) || !identity.every(n => same(decoded[match!], n)))) match = undefined;
+    if (match === undefined && identity.length) match = (byKey.get(k) || []).find(i => !used.has(i));
+    if (match === undefined) return ' (' + tokens.join(',') + ')';
+
+    used.add(match);
+    fromOld++;
+    const o = decoded[match];
+    const unchanged = rest.every(n => same(o, n));
+    return ' (' + names.map((n, i) => {
+      if (!at.has(n)) return tokens[i];
+      const oldToken = old.rows[match!][at.get(n)!];
+      if (oldOnly.has(n)) return unchanged ? oldToken : tokens[i];
+      if (same(o, n)) return oldToken;
+      if (fill.has(n) && mine(n) === '') return oldToken;
+      return tokens[i];
+    }).join(',') + ')';
+  });
+  return { out, fromOld };
+}
+
 function remarksOf(r: any): any {
   try {
     return typeof r.remarks === 'string' && r.remarks.trim().startsWith('{') ? JSON.parse(r.remarks) : {};
@@ -111,7 +263,24 @@ function monthRange(code: string, startYear: number): [string, string] | null {
 }
 
 // Each customer's subscriptions numbered 1, 2, 3, and a way to find the one a bill line belongs to
-function numberSubscriptions(details: any[], startYear: number) {
+// A subscription the old software already had keeps its number there, so its older bills still point at it
+function oldNumbers(old?: OldRows) {
+  const byCustomer = new Map<number, { publica: number; start: string; end: string; qty: number; hawker: number; sno: number }[]>();
+  if (!old) return byCustomer;
+  const at = (n: string) => old.columns.indexOf(n);
+  const [c, p, s, e, q, h, n] = ['customer_id', 'publica_id', 's_date', 'c_date', 'qty', 'hawker_id', 'sno'].map(at);
+  if (c < 0 || n < 0) return byCustomer;
+  for (const raw of old.rows) {
+    const r = raw.map(tokenValue);
+    const id = Number(r[c]);
+    const entry = { publica: Number(r[p]), start: sameMeaning(r[s]), end: sameMeaning(r[e]), qty: Number(r[q]), hawker: Number(r[h]), sno: Number(r[n]) };
+    byCustomer.set(id, [...(byCustomer.get(id) || []), entry]);
+  }
+  return byCustomer;
+}
+
+function numberSubscriptions(details: any[], startYear: number, old?: OldRows) {
+  const before = oldNumbers(old);
   const byCustomer = new Map<number, any[]>();
   for (const d of details) {
     const id = Number(pick(d, 'customer_id'));
@@ -121,10 +290,24 @@ function numberSubscriptions(details: any[], startYear: number) {
   const lookup = new Map<string, { sno: number; start: string; end: string | null; hawker: any }[]>();
   for (const [customer, rows] of Array.from(byCustomer).sort((a, b) => a[0] - b[0])) {
     rows.sort((a, b) => (Number(pick(a, 'sno')) || 0) - (Number(pick(b, 'sno')) || 0) || String(isoDate(pick(a, 's_date'))).localeCompare(String(isoDate(pick(b, 's_date')))));
+    const theirs = before.get(customer) || [];
+    const taken = new Set<number>();
+    let next = Math.max(0, ...theirs.map(t => t.sno || 0));
+    const numbers = rows.map(row => {
+      if (!theirs.length) return 0;
+      const start = sameMeaning(pick(row, 's_date'));
+      const score = (t: (typeof theirs)[number]) =>
+        (t.start === start ? 4 : 0) + (t.qty === Number(pick(row, 'qty')) ? 2 : 0) + (t.hawker === Number(pick(row, 'hawker_id')) ? 1 : 0) + (t.end === sameMeaning(pick(row, 'c_date')) ? 1 : 0);
+      const best = theirs.filter(t => t.publica === Number(pick(row, 'publica_id')) && !taken.has(t.sno) && score(t) >= 3).sort((a, b) => score(b) - score(a))[0];
+      if (!best) return 0;
+      taken.add(best.sno);
+      return best.sno;
+    });
     rows.forEach((row, i) => {
-      numbered.push({ row, sno: i + 1 });
+      const sno = theirs.length ? numbers[i] || ++next : i + 1;
+      numbered.push({ row, sno });
       const key = `${customer}|${pick(row, 'publica_id')}`;
-      lookup.set(key, [...(lookup.get(key) || []), { sno: i + 1, start: isoDate(pick(row, 's_date')) || '0000-00-00', end: isoDate(pick(row, 'c_date')), hawker: pick(row, 'hawker_id') }]);
+      lookup.set(key, [...(lookup.get(key) || []), { sno, start: isoDate(pick(row, 's_date')) || '0000-00-00', end: isoDate(pick(row, 'c_date')), hawker: pick(row, 'hawker_id') }]);
     });
   }
   const subscriptionFor = (customer: any, publica: any, month: any) => {
@@ -173,10 +356,10 @@ function previousDues(headers: any[], lines: any[], deliveries: any[], receipts:
   };
 }
 
-export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffix()): OldTableSpec[] {
+export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffix(), old?: Map<string, OldRows>): OldTableSpec[] {
   const startYear = Number(suffix.slice(0, 4));
   const get = (name: string) => tables[name] || [];
-  const details = numberSubscriptions(get('customer_detail'), startYear);
+  const details = numberSubscriptions(get('customer_detail'), startYear, old?.get('customer_detail'));
   const headers = get(`billno${suffix}`);
   const lines = get(`bill${suffix}`);
   const deliveries = get(`billdel${suffix}`);
@@ -374,6 +557,9 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
 }
 
 // Every year the old software has tables for, from 2007-08 to the running one
+// A year before this one: the old software closed it, so its own copy is the right one
+export const isClosedYear = (year: string | null) => !!year && year < fySuffix();
+
 export function oldSoftwareYears(): string[] {
   const years: string[] = [];
   for (let start = 2007; start <= Number(fySuffix().slice(0, 4)); start++) years.push(`${start}${start + 1}`);
@@ -453,9 +639,10 @@ export function* oldSoftwarePart(
   tables: Record<string, any[]>,
   year: string | null,
   count: OldFileCount,
-  inHistory: (name: string) => boolean = () => false
+  inHistory: (name: string) => boolean = () => false,
+  old: Map<string, OldRows> = new Map()
 ): Generator<string | { copy: string }> {
-  const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix()).map(s => [s.name.toLowerCase(), s]));
+  const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix(), old).map(s => [s.name.toLowerCase(), s]));
   // A name ending in a date, like customer_backup_20261028, is not a year's table
   const years = oldSoftwareYears();
   const mine = (name: string) => (year ? name.endsWith(year) : !years.some(y => name.endsWith(y)));
@@ -471,7 +658,8 @@ export function* oldSoftwarePart(
     const name = table.name;
     const spec = specs.get(name.toLowerCase());
     // Nothing here for it, but the old software's history has it: that part goes in as it is
-    if (!(spec && spec.rows.length) && inHistory(name.toLowerCase())) {
+    // A closed year is the old software's own: it goes in exactly as the old software kept it
+    if ((!(spec && spec.rows.length) || isClosedYear(year)) && inHistory(name.toLowerCase())) {
       yield { copy: name.toLowerCase() };
       count.copied.push(name);
       continue;
@@ -483,9 +671,12 @@ export function* oldSoftwarePart(
       const present = new Set(Array.from(table.body.matchAll(/^\s*`([^`]+)`/gm), m => m[1].toLowerCase()));
       const columns = spec.columns.filter(c => present.has(c[0].toLowerCase()));
       const names = columns.map(c => `\`${c[0]}\``).join(',');
-      for (let i = 0; i < spec.rows.length; i += BATCH) {
-        const values = spec.rows.slice(i, i + BATCH).map(row => ' (' + columns.map(([, kind, value]) => sqlValue(value(row), kind)).join(',') + ')');
-        yield `INSERT INTO \`${name}\` (${names}) VALUES \n${values.join(',\n')};\n`;
+      const history = old.get(name.toLowerCase());
+      const all = history
+        ? withOldValues(name, table.body, columns, spec.rows, history).out
+        : spec.rows.map(row => ' (' + columns.map(([, kind, value]) => sqlValue(value(row), kind)).join(',') + ')');
+      for (let i = 0; i < all.length; i += BATCH) {
+        yield `INSERT INTO \`${name}\` (${names}) VALUES \n${all.slice(i, i + BATCH).join(',\n')};\n`;
       }
       count.filled.push(name);
     } else {
