@@ -60,6 +60,22 @@ const showDate = (value: any): string => {
   return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : text || '-';
 };
 
+// A receipt's saved details, also those an earlier edit buried inside the narration; the outer ones win
+const savedDetails = (remarks: any): Record<string, any> => {
+  const found: Record<string, any> = {};
+  let text = typeof remarks === 'string' ? remarks : '';
+  for (let depth = 0; depth < 20 && text.trim().startsWith('{'); depth++) {
+    try {
+      const details = JSON.parse(text);
+      for (const [key, value] of Object.entries(details)) if (key !== 'narr' && !(key in found)) found[key] = value;
+      text = typeof details.narr === 'string' ? details.narr : '';
+    } catch {
+      break;
+    }
+  }
+  return found;
+};
+
 const plainNarration = (value: any): string => {
   let text = String(value ?? '');
   while (text.trim().startsWith('{')) {
@@ -1100,7 +1116,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const numRev = Number(updateMalRecpAmt) || 0;
       const numBal = Number(updateBal) || 0;
 
+      // Details saved earlier that this screen does not show (the old software's RAmt, the agent) stay
+      const before = customerReceipts.find(r => String(r.recp_no || r.receipt_no) === String(updateRecpNo));
+      const kept = savedDetails(before?.remarks);
+      if (before && Number(before.mal_recp_amt) !== numRev) delete kept.r_amt;
       const metadata = {
+        ...kept,
         bill_no: updateBillNo ? parseInt(String(updateBillNo), 10) : null,
         manual_rep_no: updateMalRecpNo || null,
         mal_recp_dt: updateMalRecpDt || updateRecpDate,

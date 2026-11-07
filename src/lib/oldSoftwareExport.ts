@@ -62,7 +62,10 @@ function isoDate(value: any): string | null {
 // A date the old software typed wrongly ("03/07/201 ") goes back as it was
 function dmy(value: any): string {
   const iso = isoDate(value);
-  return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : String(value ?? '');
+  if (iso) return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  // One kept here year first (204-01-01) is still written day first, as the old software typed it
+  const parts = String(value ?? '').match(/^(\d{1,3})-(\d{1,2})-(\d{1,2})$/);
+  return parts ? `${parts[3]}/${parts[2]}/${parts[1]}` : String(value ?? '');
 }
 
 function sqlValue(value: any, kind: Kind): string {
@@ -153,15 +156,33 @@ function sameMeaning(value: any): string {
   if (s === '' || s === '__/__/____') return '';
   const n = Number(s);
   if (!Number.isNaN(n)) return n === 0 ? '' : String(Math.round(n * 100) / 100);
-  if (/^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}$/.test(s)) return isoDate(s) || s.split(/[/.-]/).map(Number).sort((a, b) => a - b).join('.');
+  if (/^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}$/.test(s)) {
+    const iso = isoDate(s);
+    return iso && Number(iso.slice(0, 4)) >= 1900 ? iso : s.split(/[/.-]/).map(Number).sort((a, b) => a - b).join('.');
+  }
   return s.toLowerCase().replace(/\s+/g, '');
 }
 
-// Columns this website never kept for the old software's rows; the old software's value stays
-// while the rest of the row is unchanged
-const OLD_ONLY: Record<string, string[]> = { receipt: ['debit', 'credit'], bill: ['sno'], billdel: ['sno'] };
-// Lost on the way to the website: an empty value here takes the old software's
-const FILL_FROM_OLD: Record<string, string[]> = { receipt: ['narr'], customer_detail: ['s_date'], discontinue: ['s_date'] };
+// How each column of a row the old software already has is written. By default a value with the same
+// meaning is written exactly as the old software has it, and a changed value is the website's.
+// - OLD_ONLY: the website never kept it truly; the old software's value stays while the rest of the row is unchanged
+// - ALWAYS_OLD: the website holds only a default for it (every customer 'P'); the old software's value stays
+// - FILL_FROM_OLD: lost on the way to the website; an empty value here takes the old software's
+// - SAME_AS: two values the website and the old software use for the same thing
+const OLD_ONLY: Record<string, string[]> = {
+  receipt: ['debit', 'credit'], bill: ['sno'], billdel: ['sno'], billno: ['balance'],
+  customer_detail: ['dis'], discontinue: ['hawker_id']
+};
+const ALWAYS_OLD: Record<string, string[]> = { customer: ['paid'], holiday: ['occasion'] };
+const FILL_FROM_OLD: Record<string, string[]> = {
+  receipt: ['narr', 'ramt'], customer_detail: ['s_date'], discontinue: ['s_date'], customer: ['phone']
+};
+const SAME_AS: Record<string, Record<string, string[]>> = {
+  customer_detail: { from_day: ['', '1-7'] },
+  publication: { circulation: ['', 'morning'] }
+};
+// Still empty after that: the value of another column (a receipt's RAmt is what was received)
+const OR_ELSE: Record<string, Record<string, string>> = { receipt: { ramt: 'malrecpamt' } };
 // What makes a row the same row when its number differs (renumbered on the website)
 const SAME_ROW: Record<string, string[]> = {
   receipt: ['customer_id', 'receiptno', 'malrecpdt', 'malrecpamt'],
@@ -170,77 +191,153 @@ const SAME_ROW: Record<string, string[]> = {
   billdel: ['customer_id', 'publica_id', 'month'],
   customer_detail: ['customer_id', 'publica_id', 'sno'],
   rate: ['publica_id', 'dayofweek'],
-  ratechange: ['publica_id', 'dayofweek', 'dated']
+  ratechange: ['publica_id', 'dayofweek', 'dated'],
+  holiday: ['oc_date', 'publica_id']
 };
 
 /**
- * Each website row's values, written the old software's way: where the old software has the same row,
- * every value with the same meaning is taken exactly as the old software wrote it, and so are the
- * columns the website never kept. What the website changed or added stays the website's.
+ * Finds, for each website row, the same row in the old software's table: by its number when the rest
+ * agrees, otherwise by what makes it the same row. A row the old software has keeps the old software's
+ * number; a new row keeps the website's, or gets the next free one if the old software uses it already.
  */
-function withOldValues(name: string, body: string, columns: Column[], rows: any[], old: OldRows) {
+function matchOldRows(name: string, body: string, columns: Column[], rows: any[], old: OldRows) {
   const base = name.toLowerCase().replace(/\d{8}$/, '');
   const names = columns.map(c => c[0].toLowerCase());
   const at = new Map(old.columns.map((c, i) => [c, i]));
-  const pk = body.match(/PRIMARY KEY\s*\(`([^`]+)`\)/)?.[1]?.toLowerCase();
+  const found = body.match(/PRIMARY KEY\s*\(`([^`]+)`\)/)?.[1]?.toLowerCase();
+  const pk = found && at.has(found) && names.includes(found) ? found : undefined;
   const oldOnly = new Set(OLD_ONLY[base] || []);
+  const alwaysOld = new Set(ALWAYS_OLD[base] || []);
   const fill = new Set(FILL_FROM_OLD[base] || []);
+  const sameAs = SAME_AS[base] || {};
   // A table with its own number (customer, hawker...) is matched by that number alone
   const identity = (SAME_ROW[base] || (pk ? [] : names)).filter(n => at.has(n) && names.includes(n));
-  const rest = names.filter(n => at.has(n) && n !== pk && n !== 'bill_id' && !oldOnly.has(n) && !fill.has(n));
+  const rest = names.filter(n => at.has(n) && n !== pk && n !== 'bill_id' && !oldOnly.has(n) && !alwaysOld.has(n) && !fill.has(n));
   const decoded = old.rows.map(r => r.map(tokenValue));
-  const meaning = (row: any[], n: string) => sameMeaning(row[at.get(n)!]);
+  const plain = (n: string, v: string) => (sameAs[n]?.includes(v) ? sameAs[n][0] : v);
+  const meaning = (row: any[], n: string) => plain(n, sameMeaning(row[at.get(n)!]));
   const key = (get: (n: string) => string) => identity.map(get).join('|');
 
   const byPk = new Map<string, number>();
   const byKey = new Map<string, number[]>();
   decoded.forEach((r, i) => {
-    if (pk && at.has(pk)) byPk.set(meaning(r, pk), i);
+    if (pk) byPk.set(meaning(r, pk), i);
     const k = key(n => meaning(r, n));
     byKey.set(k, [...(byKey.get(k) || []), i]);
   });
   const used = new Set<number>();
-  let fromOld = 0;
 
-  const out = rows.map(row => {
-    const values = columns.map(([, kind, value]) => value(row));
+  const list = rows.map(row => {
+    const values = columns.map(([, , value]) => value(row));
     const tokens = values.map((v, i) => sqlValue(v, columns[i][1]));
     // The website's value read back as the file has it, so both are compared the same way
     const mine = (n: string) => {
       const i = names.indexOf(n);
-      const [, kind] = columns[i];
-      return sameMeaning(kind === 'hindi' ? values[i] : tokenValue(tokens[i]));
+      return plain(n, sameMeaning(columns[i][1] === 'hindi' ? values[i] : tokenValue(tokens[i])));
     };
-    const theirs = (r: any[], n: string) => {
-      const i = names.indexOf(n);
-      return columns[i][1] === 'hindi' ? sameMeaning(sushaToUnicode(String(r[at.get(n)!] ?? ''))) : meaning(r, n);
-    };
+    const theirs = (r: any[], n: string) =>
+      columns[names.indexOf(n)][1] === 'hindi' ? sameMeaning(sushaToUnicode(String(r[at.get(n)!] ?? ''))) : meaning(r, n);
     // Hindi is the same when either way of reading it agrees
     const same = (o: any[], n: string) => {
       if (mine(n) === theirs(o, n)) return true;
       const i = names.indexOf(n);
       return columns[i][1] === 'hindi' && sameMeaning(tokenValue(tokens[i])) === meaning(o, n);
     };
-    const k = key(mine);
-    let match = pk && at.has(pk) && names.includes(pk) ? byPk.get(mine(pk)) : undefined;
+    let match = pk ? byPk.get(mine(pk)) : undefined;
     if (match !== undefined && (used.has(match) || !identity.every(n => same(decoded[match!], n)))) match = undefined;
-    if (match === undefined && identity.length) match = (byKey.get(k) || []).find(i => !used.has(i));
-    if (match === undefined) return ' (' + tokens.join(',') + ')';
-
-    used.add(match);
-    fromOld++;
-    const o = decoded[match];
-    const unchanged = rest.every(n => same(o, n));
-    return ' (' + names.map((n, i) => {
-      if (!at.has(n)) return tokens[i];
-      const oldToken = old.rows[match!][at.get(n)!];
-      if (oldOnly.has(n)) return unchanged ? oldToken : tokens[i];
-      if (same(o, n)) return oldToken;
-      if (fill.has(n) && mine(n) === '') return oldToken;
-      return tokens[i];
-    }).join(',') + ')';
+    if (match === undefined && identity.length) match = (byKey.get(key(mine)) || []).find(i => !used.has(i));
+    if (match !== undefined) used.add(match);
+    return { values, tokens, match, mine, same };
   });
-  return { out, fromOld };
+
+  // Numbers: the old software's for its rows; a new row's own unless the old software already uses it
+  const numbers = new Map<number, string>();
+  if (pk) {
+    const p = names.indexOf(pk);
+    const taken = new Set(list.filter(x => x.match !== undefined).map(x => meaning(decoded[x.match!], pk)));
+    const all = [...decoded.map(r => Number(r[at.get(pk)!]) || 0), ...list.map(x => Number(tokenValue(x.tokens[p])) || 0)];
+    let next = Math.max(0, ...all);
+    list.forEach((x, i) => {
+      if (x.match !== undefined) numbers.set(i, old.rows[x.match][at.get(pk)!]);
+      else if (taken.has(x.mine(pk))) numbers.set(i, String(++next));
+      else taken.add(x.mine(pk));
+    });
+  }
+  return { names, at, pk, decoded, list, numbers, rest, oldOnly, alwaysOld, fill, base };
+}
+
+/**
+ * Each website row written the old software's way (see OLD_ONLY and the rest above), in the old
+ * software's order: its rows first as it has them, then the rows new on the website.
+ */
+function withOldValues(name: string, body: string, columns: Column[], rows: any[], old: OldRows) {
+  const m = matchOldRows(name, body, columns, rows, old);
+  const orElse = OR_ELSE[m.base] || {};
+  const lines = m.list.map((x, r) => {
+    const o = x.match === undefined ? null : m.decoded[x.match];
+    const unchanged = !!o && m.rest.every(n => x.same(o, n));
+    const tokens = m.names.map((n, i) => {
+      if (n === m.pk && m.numbers.has(r)) return m.numbers.get(r)!;
+      if (!o || !m.at.has(n)) return x.tokens[i];
+      const oldToken = old.rows[x.match!][m.at.get(n)!];
+      if (m.alwaysOld.has(n)) return oldToken;
+      if (m.oldOnly.has(n)) return unchanged ? oldToken : x.tokens[i];
+      if (x.same(o, n)) return oldToken;
+      if (m.fill.has(n) && x.mine(n) === '') return oldToken;
+      return x.tokens[i];
+    });
+    // Only for a row the old software does not have; its own value (even 0) stands
+    if (!o) m.names.forEach((n, i) => {
+      if (orElse[n] && sameMeaning(tokenValue(tokens[i])) === '') tokens[i] = tokens[m.names.indexOf(orElse[n])];
+    });
+    return { order: x.match ?? Infinity, line: ' (' + tokens.join(',') + ')' };
+  });
+  const out = lines.map((l, i) => ({ ...l, i })).sort((a, b) => a.order - b.order || a.i - b.i).map(l => l.line);
+  return { out, fromOld: m.list.filter(x => x.match !== undefined).length };
+}
+
+/**
+ * A year's bills numbered as the old software has them, and every receipt and bill line pointed at the
+ * right one: a website bill the old software has takes its number. A receipt keeps pointing at its own
+ * customer's bill, whether it carries the website's number or the old software's (restored from it).
+ */
+function billNumbers(specs: Map<string, OldTableSpec>, year: string, old: OldRows) {
+  const headers = specs.get(`billno${year}`);
+  if (!headers) return;
+  const m = matchOldRows(headers.name, headers.create, headers.columns, headers.rows, old);
+  const value = (spec: OldTableSpec, column: string) => {
+    const c = spec.columns.find(x => x[0].toLowerCase() === column);
+    return (row: any) => (c ? c[2](row) : undefined);
+  };
+  const id = value(headers, 'bill_id'), customer = value(headers, 'customer_id'), month = value(headers, 'month');
+  const website = new Map<number, { to: number; customer: number }>();
+  const written = new Map<number, number>();
+  const byMonth = new Map<string, number>();
+  headers.rows.forEach((row, i) => {
+    const mine = Number(id(row));
+    const to = Number(m.numbers.get(i) ?? mine);
+    website.set(mine, { to, customer: Number(customer(row)) });
+    written.set(to, Number(customer(row)));
+    byMonth.set(`${Number(customer(row))}|${sameMeaning(month(row))}`, to);
+  });
+  const point = (spec: OldTableSpec | undefined) => {
+    if (!spec) return;
+    const cId = value(spec, 'customer_id'), cMonth = value(spec, 'month');
+    spec.columns = spec.columns.map(c => {
+      if (c[0].toLowerCase() !== 'bill_id') return c;
+      const before = c[2];
+      return [c[0], c[1], (row: any) => {
+        const bill = Number(before(row));
+        const who = Number(cId(row));
+        if (website.get(bill)?.customer === who) return website.get(bill)!.to;
+        if (written.get(bill) === who) return bill;
+        return byMonth.get(`${who}|${sameMeaning(cMonth(row))}`) ?? before(row);
+      }] as Column;
+    });
+  };
+  point(headers);
+  point(specs.get(`bill${year}`));
+  point(specs.get(`receipt${year}`));
 }
 
 // A receipt edited before the receipt screen was fixed kept its saved details inside the narration, again and again
@@ -254,6 +351,20 @@ function plainNarration(value: any): string {
     }
   }
   return text;
+}
+
+// One saved detail of a receipt, looking also inside a narration an earlier edit filled with the details
+function savedDetail(r: any, key: string): any {
+  let details = remarksOf(r);
+  for (let depth = 0; depth < 20 && details && typeof details === 'object'; depth++) {
+    if (details[key] !== undefined && details[key] !== null && details[key] !== '') return details[key];
+    try {
+      details = typeof details.narr === 'string' && details.narr.trim().startsWith('{') ? JSON.parse(details.narr) : null;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 function remarksOf(r: any): any {
@@ -375,6 +486,10 @@ function previousDues(headers: any[], lines: any[], deliveries: any[], receipts:
  * second number stays); one with a number it lacks gets the website's numbers; one with no number here
  * keeps what the old software had.
  */
+// The 10-digit mobile numbers in a phone field ("919413079793, 9414866528")
+const tenDigitMobiles = (phone: any) =>
+  Array.from(new Set(Array.from(String(phone ?? '').matchAll(/(?:\+?91|0)?[\s-]*([6-9]\d{9})(?!\d)/g), x => x[1])));
+
 function customerMobiles(customers: any[], old?: OldRows) {
   const theirs = new Map<number, { id: number; mobile: string }[]>();
   let next = 0;
@@ -392,7 +507,7 @@ function customerMobiles(customers: any[], old?: OldRows) {
   const done = new Set<number>();
   for (const customer of customers) {
     const id = Number(pick(customer, 'customer_id'));
-    const mine = Array.from(new Set(Array.from(String(pick(customer, 'phone') ?? '').matchAll(/(?:\+?91|0)?[\s-]*([6-9]\d{9})(?!\d)/g), x => x[1])));
+    const mine = tenDigitMobiles(pick(customer, 'phone'));
     const had = theirs.get(id) || [];
     const hadTen = new Set(had.map(h => ten(h.mobile)));
     done.add(id);
@@ -422,6 +537,21 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
   // Lines of an older year in the old software's own names keep their own numbers
   const lineSno = (row: any) => ('Customer_id' in row) ? row.sno : details.subscriptionFor(pick(row, 'customer_id'), pick(row, 'publica_id'), pick(row, 'month'))?.sno ?? pick(row, 'sno');
   const label = fyLabel(new Date(Date.UTC(startYear, 5, 1)));
+  // The old software keeps mobile numbers in customer_mobile, not in the customer's phone
+  const mobilesThere = new Map<number, Set<string>>();
+  const kept = old?.get('customer_mobile');
+  if (kept) {
+    const [c, m] = ['customer_id', 'mobile'].map(n => kept.columns.indexOf(n));
+    for (const raw of kept.rows) {
+      const id = Number(tokenValue(raw[c]));
+      mobilesThere.set(id, (mobilesThere.get(id) || new Set()).add(String(tokenValue(raw[m]) ?? '').replace(/\D/g, '').slice(-10)));
+    }
+  }
+  const phoneHere = (r: any) => {
+    const numbers = tenDigitMobiles(pick(r, 'phone'));
+    const there = mobilesThere.get(Number(pick(r, 'customer_id')));
+    return numbers.length && there && numbers.every(n => there.has(n)) ? '' : pick(r, 'phone');
+  };
   const openSubscriptions = new Set(get('customer_detail').filter(d => !isoDate(pick(d, 'c_date'))).map(d => Number(pick(d, 'customer_id'))));
 
   return [
@@ -432,7 +562,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       columns: [
         col('Customer_id'), col('name_eng', 's'), col('Type_Cust'),
         ['name_hindi', 'hindi', r => (pick(r, 'name_hindi') || pick(r, 'name_hindi_unicode') || null)],
-        col('add1', 's'), col('add2', 's'), col('phone', 's'), col('Security_Deposit'), col('Type', 's'), col('Priority'),
+        col('add1', 's'), col('add2', 's'), ['phone', 's', phoneHere], col('Security_Deposit'), col('Type', 's'), col('Priority'),
         col('Self_Agent'), col('FontType', 'n', 'font_type'), col('dueamount'), col('Region_id'), col('Paid', 's'), col('Delivery'),
         col('Discount'), col('GovtSupply', 'n', 'govt_supply'), col('Hindi_Add', 'hindi', 'hindi_add'), col('Cbal'), col('pmonth', 's'), col('pyear', 's'),
         // Kept by the website once old_software_marks.sql has run; until then a customer with no running paper counts as inactive
@@ -591,7 +721,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['Month', 's', r => oldMonth(pick(r, 'month'))], ['Year', 's', r => yearOf(r, startYear)], ['DueAmt', 'n', r => pick(r, 'DueAmt') ?? null],
         ['MalRecpAmt', 'n', r => first(r.mal_recp_amt, pick(r, 'MalRecpAmt'))],
         ['Balance', 'n', r => first(remarksOf(r).balance, pick(r, 'Balance'), 0)], ['LessAmt', 'n', r => first(pick(r, 'less_amt'), 0)],
-        ['RAmt', 'n', r => first(remarksOf(r).r_amt, pick(r, 'RAmt'), r.mal_recp_amt)],
+        ['RAmt', 'n', r => first(savedDetail(r, 'r_amt'), pick(r, 'RAmt')) ?? null],
         ['ChequeNo', 's', r => first(remarksOf(r).cheque_no, pick(r, 'ChequeNo'), '')],
         ['ChequeDate', 's', r => (isoDate(remarksOf(r).cheque_date) ? dmy(remarksOf(r).cheque_date) : first(pick(r, 'ChequeDate'), '__/__/____'))],
         ['Debit', 'n', r => first(pick(r, 'Debit'), r.bill_amt)], ['Credit', 'n', r => first(pick(r, 'Credit'), r.mal_recp_amt)],
@@ -605,7 +735,11 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       mode: 'replace',
       create: "`Retail_id` int(11) NOT NULL auto_increment,\n  `Vr_Date` date default NULL,\n  `Customer_id` int(11) default NULL,\n  `Publica_id` int(11) default NULL,\n  `Copies` int(11) default NULL,\n  `Rate` float default NULL,\n  `Amt` float default NULL,\n  `Narr` text,\n  PRIMARY KEY  (`Retail_id`)",
       columns: [col('Retail_id'), col('Vr_Date', 'date'), col('Customer_id'), col('Publica_id'), col('Copies'), col('Rate'), col('Amt'), col('Narr', 's')],
-      rows: get(`retailsale${suffix}`)
+      // A sale dated in another year (last year's copied in) is that year's, not this one's
+      rows: get(`retailsale${suffix}`).filter(r => {
+        const day = isoDate(pick(r, 'vr_date'));
+        return !day || (day >= `${startYear}-04-01` && day <= `${startYear + 1}-03-31`);
+      })
     },
     {
       name: `receiptissue${suffix}`,
@@ -717,6 +851,7 @@ export function* oldSoftwarePart(
   historyYear = ''
 ): Generator<string | { copy: string }> {
   const specs = new Map(oldSoftwareSpecs(tables, year || fySuffix(), old).map(s => [s.name.toLowerCase(), s]));
+  if (year && old.has(`billno${year}`)) billNumbers(specs, year, old.get(`billno${year}`)!);
   // A name ending in a date, like customer_backup_20261028, is not a year's table
   const years = oldSoftwareYears();
   const mine = (name: string) => (year ? name.endsWith(year) : !years.some(y => name.endsWith(y)));
