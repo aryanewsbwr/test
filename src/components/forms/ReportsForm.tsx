@@ -16,7 +16,7 @@ import { reminderAmount, reminderText } from '@/lib/paymentReminder';
 
 // A due-list customer with a mobile number a reminder can go to
 const hasMobile = (c: any) => /(?<!\d)[6-9]\d{9}(?!\d)/.test(String(c.phone || '').replace(/\b91(?=[6-9]\d{9}\b)/g, ''));
-const REMINDERS_AT_ONCE = 25;
+const REMINDERS_AT_ONCE = 10;
 
 interface ReportsFormProps {
   onClose: () => void;
@@ -348,7 +348,7 @@ export default function ReportsForm({
         const res = await fetch('/api/whatsapp/reminder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customers: list.slice(i, i + REMINDERS_AT_ONCE).map(c => ({ customer_id: c.customer_id, amount: c.final_balance })) })
+          body: JSON.stringify({ customer_ids: list.slice(i, i + REMINDERS_AT_ONCE).map(c => c.customer_id) })
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Reminder not sent.');
@@ -2121,8 +2121,13 @@ export default function ReportsForm({
                 <b>{remindAsk.length}</b> ग्राहक, कुल बकाया <b>₹{reminderAmount(remindAsk.reduce((sum, c) => sum + Number(c.final_balance || 0), 0))}</b>.
                 {' '}मोबाइल नंबर वाले: <b>{remindAsk.filter(hasMobile).length}</b> (बाकी छोड़ दिए जाएँगे)। आज जिन्हें भेज चुके हैं उन्हें दोबारा नहीं जाएगा।
               </div>
-              <div className="font-bold">ग्राहक को ऐसा संदेश जाएगा:</div>
-              <div className="bg-[#DCF8C6] border border-[#B2D8A0] rounded p-2 whitespace-pre-line text-[12px] leading-snug text-black">
+              <div className="font-bold">ग्राहक को ऐसा संदेश जाएगा (रिमाइंडर बिल के साथ):</div>
+              <div className="bg-[#DCF8C6] border border-[#B2D8A0] rounded p-2 whitespace-pre-line text-[12px] leading-snug text-black max-h-[60vh] overflow-y-auto">
+                <img
+                  src={`/api/whatsapp/reminder?customer_id=${remindAsk[0].customer_id}`}
+                  alt="रिमाइंडर बिल"
+                  className="w-[220px] mx-auto mb-2 border border-[#B2D8A0] bg-white"
+                />
                 {reminderText(
                   remindAsk[0].name_hindi ? cleanOrTransliterateHindi(remindAsk[0].name_hindi, remindAsk[0].name) : remindAsk[0].name,
                   remindAsk[0].customer_id,

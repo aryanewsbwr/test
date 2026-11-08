@@ -1,6 +1,7 @@
 // The payment reminder sent on WhatsApp from the Due Region Wise Summary. WhatsApp only lets a
 // business start a chat with a template Meta has approved, so this text is submitted once in
-// WhatsApp Manager under the name below (category Utility, language Hindi) and must match it.
+// WhatsApp Manager under the name below (category Utility, language Hindi, header: Image, the
+// reminder bill from reminderBillImage.ts) and must match it. Bills keep their own monthly_bill_hi.
 export const REMINDER_TEMPLATE_NAME = 'payment_reminder_hi';
 
 export const REMINDER_TEMPLATE_TEXT =

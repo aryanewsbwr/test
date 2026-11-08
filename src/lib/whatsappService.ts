@@ -298,8 +298,8 @@ export function whatsAppDisplayName(rawName: string | undefined | null, rawHindi
 }
 
 /**
- * Sends the approved payment reminder template (see paymentReminder.ts): name, customer number,
- * date and amount due, with no image.
+ * Sends the approved payment reminder template (see paymentReminder.ts): the reminder bill image
+ * as its header, then name, customer number, date and amount due.
  */
 export async function sendWhatsAppReminderMessage(params: {
   toPhone: string;
@@ -307,6 +307,7 @@ export async function sendWhatsAppReminderMessage(params: {
   customerId: string;
   date: string;
   amount: string;
+  image: Buffer;
 }): Promise<WhatsAppSendResult> {
   const token = getSecureWhatsAppToken();
   const phoneId = process.env.WA_PHONE_NUMBER_ID || '867112479817671';
@@ -321,6 +322,12 @@ export async function sendWhatsAppReminderMessage(params: {
     return { success: false, errorCode: 'INVALID_PHONE', errorJson: { message: `Invalid phone format: ${params.toPhone}` } };
   }
 
+  const upload = await uploadWhatsAppMedia(params.image, `Reminder_${params.customerId}.png`);
+  if (!upload.success || !upload.mediaId) {
+    return { success: false, errorCode: 'MEDIA_UPLOAD_FAILED', errorJson: upload.error };
+  }
+  const mediaId = upload.mediaId;
+
   const payload = {
     messaging_product: 'whatsapp',
     to: cleanPhone,
@@ -329,6 +336,9 @@ export async function sendWhatsAppReminderMessage(params: {
       name: templateName,
       language: { code: 'hi' },
       components: [{
+        type: 'header',
+        parameters: [{ type: 'image', image: { id: mediaId } }]
+      }, {
         type: 'body',
         parameters: [params.customerName || 'ग्राहक', params.customerId, params.date, params.amount]
           .map(text => ({ type: 'text', text: String(text).trim() || '0' }))
@@ -343,10 +353,10 @@ export async function sendWhatsAppReminderMessage(params: {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (res.ok && data.messages?.[0]?.id) return { success: true, wamid: data.messages[0].id };
+    if (res.ok && data.messages?.[0]?.id) return { success: true, wamid: data.messages[0].id, mediaId };
     const errObj = data?.error || data;
-    return { success: false, errorCode: String(errObj?.code || 'SEND_FAILED'), errorJson: errObj };
+    return { success: false, mediaId, errorCode: String(errObj?.code || 'SEND_FAILED'), errorJson: errObj };
   } catch (err: any) {
-    return { success: false, errorCode: 'NETWORK_ERROR', errorJson: { message: err?.message || String(err) } };
+    return { success: false, mediaId, errorCode: 'NETWORK_ERROR', errorJson: { message: err?.message || String(err) } };
   }
 }

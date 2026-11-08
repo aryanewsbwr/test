@@ -153,8 +153,10 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
 
   // Real Dynamic UPI QR Code
   const upiQrSvgRaw = generateDynamicUpiQrSvg(Number(totalAmt), billNo, month, 140, 0);
+  // The code is drawn in its own small units (one per square), so it is scaled up to fill the box
+  const qrUnits = Number(upiQrSvgRaw.match(/viewBox="0 0 (\d+(?:\.\d+)?)/)?.[1]) || 140;
   const upiQrSvgInner = upiQrSvgRaw
-    ? upiQrSvgRaw.trim().replace(/^<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '')
+    ? `<g transform="scale(${140 / qrUnits})">${upiQrSvgRaw.trim().replace(/^<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '')}</g>`
     : '';
 
   // High-resolution thermal bill slip SVG layout
