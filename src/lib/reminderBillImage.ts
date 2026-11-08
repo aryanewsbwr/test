@@ -81,7 +81,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="200" y="81" font-size="12" class="r" fill="#222" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
 
     <rect x="16" y="94" width="368" height="44" rx="6" fill="#FEF2F2" stroke="#B91C1C" stroke-width="2"/>
-    <text x="200" y="114" font-size="16" class="b" fill="#B91C1C" text-anchor="middle">भुगतान अनुस्मारक</text>
+    <text x="200" y="114" font-size="16" class="b" fill="#B91C1C" text-anchor="middle">पेमेंट रिमाइंडर</text>
     <text x="200" y="131" font-size="11.5" class="b" fill="#B91C1C" text-anchor="middle" letter-spacing="2">PAYMENT REMINDER</text>
 
     <text x="16" y="164" font-size="14" class="b">A/c No: ${xml(s.customerId)}</text>
