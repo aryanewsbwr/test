@@ -39,8 +39,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
   const font = `'Mangal', Arial, sans-serif`;
   const lines: { label: string; hindi: string; amount: number; minus?: boolean }[] = [
     { label: 'Previous Year Dues', hindi: 'पिछला बकाया', amount: s.yearEndDues },
-    { label: 'Newspaper Bills', hindi: 'अखबार बिल', amount: s.bills },
-    { label: 'Delivery Charge', hindi: 'डिलीवरी चार्ज', amount: s.delivery },
+    { label: 'Newspaper Bills', hindi: 'अखबार बिल', amount: s.bills + s.delivery },
     { label: 'Received', hindi: 'जमा राशि', amount: s.received, minus: true },
     { label: 'Less / Discount', hindi: 'छूट', amount: s.less, minus: true }
   ].filter(l => Math.abs(l.amount) >= 0.005);
@@ -114,7 +113,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="200" y="${footY + 15}" font-size="11.5" class="r" fill="#333" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
     <line x1="16" y1="${footY + 30}" x2="384" y2="${footY + 30}" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
     <text x="200" y="${footY + 52}" font-size="12.5" class="b" text-anchor="middle">कृपया शीघ्र भुगतान करें। भुगतान के बाद स्क्रीनशॉट भेजें।</text>
-    <text x="200" y="${footY + 71}" font-size="11" class="r" fill="#333" text-anchor="middle">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</text>
+    <text x="200" y="${footY + 71}" font-size="11.5" class="b" fill="#B91C1C" text-anchor="middle">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</text>
     <text x="200" y="${footY + 94}" font-size="13" class="b" text-anchor="middle">धन्यवाद! Thank You!</text>
   </svg>`;
 
