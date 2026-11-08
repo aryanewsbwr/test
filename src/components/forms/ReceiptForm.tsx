@@ -10,6 +10,8 @@ import { mobilesIn, withoutMobiles } from '@/lib/phoneNumbers';
 
 interface ReceiptFormProps {
   onClose: () => void;
+  // Opened from a report's Paid button: this customer is chosen as soon as the lists load
+  initialCustomerId?: number;
 }
 
 interface AllotmentInfo {
@@ -116,7 +118,7 @@ const getCurrentMonthName = () => {
   return calMonths[mIndex] || 'October';
 };
 
-export default function ReceiptForm({ onClose }: ReceiptFormProps) {
+export default function ReceiptForm({ onClose, initialCustomerId }: ReceiptFormProps) {
   const now = new Date();
   const defDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
@@ -733,6 +735,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       }
     }
   };
+
+  // Opened for one customer (the Paid button of the due list): choose them once the lists are in
+  const openedFor = useRef(false);
+  useEffect(() => {
+    if (!initialCustomerId || openedFor.current || allCustomers.length === 0 || allRegions.length === 0) return;
+    const match = allCustomers.find(c => c.customer_id === initialCustomerId);
+    if (!match) return;
+    openedFor.current = true;
+    handleSelectCustomer(match);
+  }, [initialCustomerId, allCustomers, allRegions]);
 
   // 4. Select Bill from Left Grid
   const handleSelectBill = (b: any) => {

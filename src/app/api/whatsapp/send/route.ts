@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken } from '@/lib/whatsappService';
+import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken, whatsAppDisplayName } from '@/lib/whatsappService';
 import { getThermalPublicationDisplayName } from '@/lib/billThermalExport';
 import { billRoundOff, formatRoundOff } from '@/lib/billingEngine';
-import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
+import { storedHindiName } from '@/lib/transliteration';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
 import sharp from 'sharp';
@@ -37,55 +37,6 @@ function escapeXml(unsafe: string | number | undefined | null): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
-}
-
-/**
- * Cleanly formats the customer's name for the approved WhatsApp template 'monthly_bill_hi'.
- * NOTE: The approved Meta template text is already:
- * "नमस्ते {{1}} जी,\nआर्यन न्यूज़ एजेंसी..."
- * So variable {{1}} MUST contain only the customer's clean name WITHOUT any "ji", "jee", or "जी".
- * That way, WhatsApp renders: "नमस्ते " + name + " जी," (never duplicate "जी जी").
- * 
- * E.g. "M A Rehmani ji" -> "M A Rehmani" (renders as "नमस्ते M A Rehmani जी,")
- *      "Lakshay ji Bhati" -> "Lakshay Bhati" (renders as "नमस्ते Lakshay Bhati जी,")
- *      "Ganpati Enterprises" -> "Ganpati Enterprises" (renders as "नमस्ते Ganpati Enterprises जी,")
- */
-function formatWhatsAppCustomerName(rawName: string | undefined | null): string {
-  if (!rawName) return 'ग्राहक';
-  let clean = String(rawName).trim().replace(/\s+crd\b/i, '').trim();
-  // Strip trailing regional tags / numbers
-  clean = clean.replace(/\s+(Df|3IMB|5AN|5dn|Hb|Scl|Mr1|Mr2|Sr2|Ag|NN|Gpr|Br)$/i, '').trim();
-  clean = clean.replace(/\s+\d+$/i, '').trim();
-
-  // Strip all occurrences of ji, jee, and जी (case-insensitive) anywhere in the name
-  clean = clean.replace(/\b(ji|jee|ji\.|jee\.)\b/gi, ' ');
-  clean = clean.replace(/(\s|^)जी(\s|$)/g, ' ');
-  // Also strip if attached to word end
-  clean = clean.replace(/(जी)+$/g, '');
-  clean = clean.replace(/\s+/g, ' ').trim();
-
-  return clean || 'ग्राहक';
-}
-
-/**
- * Name used for the WhatsApp template variable {{1}} (chat text, rendered by Meta,
- * so Devanagari is safe here). Prefers a trustworthy Hindi name; falls back to the
- * clean English name when no reliable Hindi exists. The approved template already
- * appends " जी," so any trailing जी is stripped to avoid "जी जी".
- */
-function whatsAppDisplayName(rawName: string | undefined | null, rawHindi?: string | undefined | null): string {
-  const hindi = getReliableHindiName(rawHindi || '', rawName || '');
-  if (hindi) {
-    // Legacy names carry route codes (सी38, 1.41, 201) and a जी mid-name (संजय जी गुप्ता)
-    const stripped = hindi
-      .replace(/\s+[ऀ-ॿ]{1,3}\d+\s*$/, '')
-      .replace(/\s+\d[\d./]*\s*$/, '')
-      .replace(/(^|\s)जी(?=\s|$)/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (stripped) return stripped;
-  }
-  return formatWhatsAppCustomerName(rawName);
 }
 
 /**

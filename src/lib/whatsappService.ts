@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { getReliableHindiName } from '@/lib/transliteration';
+import { REMINDER_TEMPLATE_NAME } from '@/lib/paymentReminder';
 
 /**
  * WhatsApp Cloud API Service Helper (Server-Side Only)
@@ -243,5 +245,108 @@ export async function sendWhatsAppBillMessage(params: WhatsAppBillTemplateParams
       errorCode: 'NETWORK_ERROR',
       errorJson: { message: err?.message || String(err) }
     };
+  }
+}
+
+/**
+ * Cleanly formats the customer's name for the approved WhatsApp template 'monthly_bill_hi'.
+ * NOTE: The approved Meta template text is already:
+ * "नमस्ते {{1}} जी,\nआर्यन न्यूज़ एजेंसी..."
+ * So variable {{1}} MUST contain only the customer's clean name WITHOUT any "ji", "jee", or "जी".
+ * That way, WhatsApp renders: "नमस्ते " + name + " जी," (never duplicate "जी जी").
+ * 
+ * E.g. "M A Rehmani ji" -> "M A Rehmani" (renders as "नमस्ते M A Rehmani जी,")
+ *      "Lakshay ji Bhati" -> "Lakshay Bhati" (renders as "नमस्ते Lakshay Bhati जी,")
+ *      "Ganpati Enterprises" -> "Ganpati Enterprises" (renders as "नमस्ते Ganpati Enterprises जी,")
+ */
+export function formatWhatsAppCustomerName(rawName: string | undefined | null): string {
+  if (!rawName) return 'ग्राहक';
+  let clean = String(rawName).trim().replace(/\s+crd\b/i, '').trim();
+  // Strip trailing regional tags / numbers
+  clean = clean.replace(/\s+(Df|3IMB|5AN|5dn|Hb|Scl|Mr1|Mr2|Sr2|Ag|NN|Gpr|Br)$/i, '').trim();
+  clean = clean.replace(/\s+\d+$/i, '').trim();
+
+  // Strip all occurrences of ji, jee, and जी (case-insensitive) anywhere in the name
+  clean = clean.replace(/\b(ji|jee|ji\.|jee\.)\b/gi, ' ');
+  clean = clean.replace(/(\s|^)जी(\s|$)/g, ' ');
+  // Also strip if attached to word end
+  clean = clean.replace(/(जी)+$/g, '');
+  clean = clean.replace(/\s+/g, ' ').trim();
+
+  return clean || 'ग्राहक';
+}
+
+/**
+ * Name used for the WhatsApp template variable {{1}} (chat text, rendered by Meta,
+ * so Devanagari is safe here). Prefers a trustworthy Hindi name; falls back to the
+ * clean English name when no reliable Hindi exists. The approved template already
+ * appends " जी," so any trailing जी is stripped to avoid "जी जी".
+ */
+export function whatsAppDisplayName(rawName: string | undefined | null, rawHindi?: string | undefined | null): string {
+  const hindi = getReliableHindiName(rawHindi || '', rawName || '');
+  if (hindi) {
+    // Legacy names carry route codes (सी38, 1.41, 201) and a जी mid-name (संजय जी गुप्ता)
+    const stripped = hindi
+      .replace(/\s+[ऀ-ॿ]{1,3}\d+\s*$/, '')
+      .replace(/\s+\d[\d./]*\s*$/, '')
+      .replace(/(^|\s)जी(?=\s|$)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (stripped) return stripped;
+  }
+  return formatWhatsAppCustomerName(rawName);
+}
+
+/**
+ * Sends the approved payment reminder template (see paymentReminder.ts): name, customer number,
+ * date and amount due, with no image.
+ */
+export async function sendWhatsAppReminderMessage(params: {
+  toPhone: string;
+  customerName: string;
+  customerId: string;
+  date: string;
+  amount: string;
+}): Promise<WhatsAppSendResult> {
+  const token = getSecureWhatsAppToken();
+  const phoneId = process.env.WA_PHONE_NUMBER_ID || '867112479817671';
+  const apiVersion = process.env.WA_API_VERSION || 'v25.0';
+  const templateName = process.env.WA_REMINDER_TEMPLATE_NAME || REMINDER_TEMPLATE_NAME;
+
+  if (!token) {
+    return { success: false, errorCode: 'NO_TOKEN', errorJson: { message: 'WhatsApp API credentials could not be loaded securely' } };
+  }
+  const cleanPhone = formatWhatsAppPhone(params.toPhone);
+  if (!cleanPhone) {
+    return { success: false, errorCode: 'INVALID_PHONE', errorJson: { message: `Invalid phone format: ${params.toPhone}` } };
+  }
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: cleanPhone,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'hi' },
+      components: [{
+        type: 'body',
+        parameters: [params.customerName || 'ग्राहक', params.customerId, params.date, params.amount]
+          .map(text => ({ type: 'text', text: String(text).trim() || '0' }))
+      }]
+    }
+  };
+
+  try {
+    const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.messages?.[0]?.id) return { success: true, wamid: data.messages[0].id };
+    const errObj = data?.error || data;
+    return { success: false, errorCode: String(errObj?.code || 'SEND_FAILED'), errorJson: errObj };
+  } catch (err: any) {
+    return { success: false, errorCode: 'NETWORK_ERROR', errorJson: { message: err?.message || String(err) } };
   }
 }

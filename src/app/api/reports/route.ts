@@ -280,7 +280,7 @@ export async function GET(request: NextRequest) {
     if (reportType === 'due_region_summary') {
       const suffix = fySuffix();
       const [customers, headers, lines, deliveries, receipts] = await Promise.all([
-        fetchAllFromSupabase('customer', ['customer_id'], 'customer_id, name_eng, name_hindi, name_hindi_unicode, hindi_add, add1, add2, region_id, priority')
+        fetchAllFromSupabase('customer', ['customer_id'], 'customer_id, name_eng, name_hindi, name_hindi_unicode, hindi_add, add1, add2, region_id, priority, phone')
           .catch(() => fetchAllFromSupabase('customer', ['customer_id'])),
         fetchAllFromSupabase(`billno${suffix}`, ['bill_id'], 'customer_id, month, due_amt, dis_amt'),
         fetchAllFromSupabase(`bill${suffix}`, ['id'], 'customer_id, total_amt'),
@@ -316,6 +316,7 @@ export async function GET(request: NextRequest) {
           name: c.name_eng || `Customer #${c.customer_id}`,
           name_hindi: storedHindiName(c),
           address: c.hindi_add || [c.add1, c.add2].filter(Boolean).join(', '),
+          phone: c.phone || '',
           year_end_dues: round(p.dues),
           total_bill: round(p.bill),
           total_delivery: round(p.delivery),

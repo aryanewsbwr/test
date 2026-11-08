@@ -11,6 +11,12 @@ import { Bill4in1Preview } from '@/components/reports/Bill4in1Preview';
 import { BillThermalPreview } from '@/components/reports/BillThermalPreview';
 import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
+import ReceiptForm from '@/components/forms/ReceiptForm';
+import { reminderAmount, reminderText } from '@/lib/paymentReminder';
+
+// A due-list customer with a mobile number a reminder can go to
+const hasMobile = (c: any) => /(?<!\d)[6-9]\d{9}(?!\d)/.test(String(c.phone || '').replace(/\b91(?=[6-9]\d{9}\b)/g, ''));
+const REMINDERS_AT_ONCE = 25;
 
 interface ReportsFormProps {
   onClose: () => void;
@@ -115,6 +121,13 @@ export default function ReportsForm({
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Due list: WhatsApp payment reminders and the Paid button (one customer's receipt entry)
+  const [remindPicked, setRemindPicked] = useState<Set<number>>(new Set());
+  const [remindAsk, setRemindAsk] = useState<any[] | null>(null);
+  const [remindBusy, setRemindBusy] = useState(false);
+  const [remindStatus, setRemindStatus] = useState('');
+  const [paidFor, setPaidFor] = useState<any | null>(null);
 
   const loadWaRegionStatus = useCallback(async () => {
     const cacheKey = `${selectedMonth}|${selectedYear}`;
@@ -321,6 +334,37 @@ export default function ReportsForm({
 
   const handleShowPreview = () => {
     setViewMode('preview');
+  };
+
+  // Sends the reminder a few customers at a time and says how it went
+  const sendReminders = async (list: any[]) => {
+    setRemindAsk(null);
+    setRemindBusy(true);
+    let sent = 0, skipped = 0, failed = 0;
+    const reasons = new Map<string, number>();
+    try {
+      for (let i = 0; i < list.length; i += REMINDERS_AT_ONCE) {
+        setRemindStatus(`भेज रहे हैं... ${i} / ${list.length}`);
+        const res = await fetch('/api/whatsapp/reminder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customers: list.slice(i, i + REMINDERS_AT_ONCE).map(c => ({ customer_id: c.customer_id, amount: c.final_balance })) })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Reminder not sent.');
+        sent += json.sent; skipped += json.skipped; failed += json.failed;
+        for (const r of json.results || []) {
+          if (r.status !== 'sent' && r.reason) reasons.set(String(r.reason), (reasons.get(String(r.reason)) || 0) + 1);
+        }
+      }
+      const why = Array.from(reasons.entries()).map(([r, n]) => `${r}: ${n}`).join(' · ');
+      setRemindStatus(`रिमाइंडर भेजे: ${sent} · छोड़े: ${skipped} · नहीं गए: ${failed}${why ? `\n${why}` : ''}`);
+      setRemindPicked(new Set());
+    } catch (err: any) {
+      setRemindStatus(`रिमाइंडर रुक गया (${sent} भेजे जा चुके): ${err.message || err}`);
+    } finally {
+      setRemindBusy(false);
+    }
   };
 
   const handlePrint = () => {
@@ -1290,10 +1334,41 @@ export default function ReportsForm({
               {/* ========================================================================= */}
               {/* REPORT 4: DUE REGION WISE SUMMARY */}
               {/* ========================================================================= */}
-              {activeReport === 'due_region_summary' && reportData.view === 'customers' && (
+              {activeReport === 'due_region_summary' && reportData.view === 'customers' && (() => {
+                const dueRows = reportData.rows.filter((c: any) => c.final_balance > 0);
+                const picked = dueRows.filter((c: any) => remindPicked.has(c.customer_id));
+                const allPicked = dueRows.length > 0 && picked.length === dueRows.length;
+                return (
+                <>
+                <div className="print:hidden mb-2 p-2 border border-[#25D366] bg-[#F0FFF4] flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-bold text-[#075E54]">WhatsApp भुगतान रिमाइंडर:</span>
+                  <button
+                    disabled={remindBusy || dueRows.length === 0}
+                    onClick={() => setRemindAsk(dueRows)}
+                    className="px-2 py-1 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-50 text-white font-bold border border-[#128C7E] cursor-pointer"
+                  >
+                    सभी बकाया वालों को भेजें ({dueRows.filter(hasMobile).length} मोबाइल)
+                  </button>
+                  <button
+                    disabled={remindBusy || picked.length === 0}
+                    onClick={() => setRemindAsk(picked)}
+                    className="px-2 py-1 bg-white hover:bg-green-50 disabled:opacity-50 text-[#075E54] font-bold border border-[#128C7E] cursor-pointer"
+                  >
+                    चुने हुओं को भेजें ({picked.length})
+                  </button>
+                  {remindStatus && <span className="whitespace-pre-line text-slate-800">{remindStatus}</span>}
+                </div>
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
                     <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                      <th className="print:hidden p-1 text-center border-r border-black w-6">
+                        <input
+                          type="checkbox"
+                          title="सभी बकाया वाले चुनें"
+                          checked={allPicked}
+                          onChange={() => setRemindPicked(allPicked ? new Set() : new Set(dueRows.map((c: any) => c.customer_id)))}
+                        />
+                      </th>
                       <th className="p-1 text-center border-r border-black w-14">Cust ID</th>
                       <th className="p-1 text-center border-r border-black w-10">Pr.</th>
                       <th className="p-1 text-left border-r border-black">Customer Name</th>
@@ -1305,11 +1380,25 @@ export default function ReportsForm({
                       <th className="p-1 text-right border-r border-black w-20">Receipt</th>
                       <th className="p-1 text-right border-r border-black w-14">Less</th>
                       <th className="p-1 text-right font-black w-24">Balance (₹)</th>
+                      <th className="print:hidden p-1 text-center border-l border-black w-28">रिमाइंडर / पेमेंट</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.rows.map((c: any) => (
                       <tr key={c.customer_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                        <td className="print:hidden p-1 text-center border-r border-slate-300">
+                          {c.final_balance > 0 && (
+                            <input
+                              type="checkbox"
+                              checked={remindPicked.has(c.customer_id)}
+                              onChange={() => setRemindPicked(prev => {
+                                const next = new Set(prev);
+                                if (next.has(c.customer_id)) next.delete(c.customer_id); else next.add(c.customer_id);
+                                return next;
+                              })}
+                            />
+                          )}
+                        </td>
                         <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{c.customer_id}</td>
                         <td className="p-1 text-center border-r border-slate-300 font-mono">{c.priority || ''}</td>
                         <td className="p-1 border-r border-slate-300 font-bold text-blue-950">
@@ -1326,19 +1415,44 @@ export default function ReportsForm({
                         <td className={`p-1 text-right font-mono font-black ${c.final_balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>
                           ₹{Number(c.final_balance).toFixed(2)}
                         </td>
+                        <td className="print:hidden p-1 text-center border-l border-slate-300 whitespace-nowrap">
+                          {c.final_balance > 0 && (
+                            <div className="flex gap-1 justify-center">
+                              <button
+                                disabled={remindBusy || !hasMobile(c)}
+                                title={hasMobile(c) ? 'WhatsApp पर रिमाइंडर भेजें' : 'मोबाइल नंबर नहीं है'}
+                                onClick={() => setRemindAsk([c])}
+                                className="px-1.5 py-0.5 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-[10px]"
+                              >
+                                रिमाइंडर
+                              </button>
+                              <button
+                                title="इस ग्राहक की पेमेंट रसीद बनाएँ"
+                                onClick={() => setPaidFor(c)}
+                                className="px-1.5 py-0.5 bg-[#0A246A] hover:bg-[#1B3D8F] text-white font-bold border border-black cursor-pointer text-[10px]"
+                              >
+                                Paid
+                              </button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {reportData.summary && (
                       <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                        <td className="print:hidden border-r border-black"></td>
                         <td colSpan={selectedRegion === 'all_list' ? 10 : 9} className="p-1.5 text-left border-r border-black">
                           {reportData.total_rows} customers · Due {reportData.summary.due_customers} (₹{Number(reportData.summary.total_due_amount).toFixed(2)}) · Advance {reportData.summary.advance_customers} (₹{Number(reportData.summary.total_advance_amount).toFixed(2)})
                         </td>
                         <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.summary.net_outstanding).toFixed(2)}</td>
+                        <td className="print:hidden border-l border-black"></td>
                       </tr>
                     )}
                   </tbody>
                 </table>
-              )}
+                </>
+                );
+              })()}
               {activeReport === 'due_region_summary' && reportData.view !== 'customers' && (
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
@@ -1997,6 +2111,48 @@ export default function ReportsForm({
 
       </div>
 
+      {/* Reminder: what will be sent, asked once before sending */}
+      {remindAsk && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 print:hidden">
+          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[460px] max-w-[95vw] text-xs">
+            <div className="bg-gradient-to-r from-[#075E54] to-[#25D366] text-white px-2 py-1 font-bold">WhatsApp भुगतान रिमाइंडर</div>
+            <div className="p-3 space-y-2">
+              <div>
+                <b>{remindAsk.length}</b> ग्राहक, कुल बकाया <b>₹{reminderAmount(remindAsk.reduce((sum, c) => sum + Number(c.final_balance || 0), 0))}</b>.
+                {' '}मोबाइल नंबर वाले: <b>{remindAsk.filter(hasMobile).length}</b> (बाकी छोड़ दिए जाएँगे)। आज जिन्हें भेज चुके हैं उन्हें दोबारा नहीं जाएगा।
+              </div>
+              <div className="font-bold">ग्राहक को ऐसा संदेश जाएगा:</div>
+              <div className="bg-[#DCF8C6] border border-[#B2D8A0] rounded p-2 whitespace-pre-line text-[12px] leading-snug text-black">
+                {reminderText(
+                  remindAsk[0].name_hindi ? cleanOrTransliterateHindi(remindAsk[0].name_hindi, remindAsk[0].name) : remindAsk[0].name,
+                  remindAsk[0].customer_id,
+                  Number(remindAsk[0].final_balance)
+                )}
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setRemindAsk(null)} className="px-3 py-1 bg-[#ECE9D8] border border-[#404040] cursor-pointer">रद्द करें</button>
+                <button
+                  disabled={remindAsk.filter(hasMobile).length === 0}
+                  onClick={() => sendReminders(remindAsk)}
+                  className="px-3 py-1 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-50 text-white font-bold border border-[#128C7E] cursor-pointer"
+                >
+                  भेजें
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paid: the receipt entry for this one customer; the due list is worked out again after it */}
+      {paidFor && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-2 print:hidden">
+          <ReceiptForm
+            initialCustomerId={Number(paidFor.customer_id)}
+            onClose={() => { setPaidFor(null); fetchReport(); }}
+          />
+        </div>
+      )}
     </div>
   );
 }
