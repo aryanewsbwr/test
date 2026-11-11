@@ -6,7 +6,7 @@ import { billRoundOff, formatRoundOff } from '@/lib/billingEngine';
 import { storedHindiName } from '@/lib/transliteration';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
-import sharp from 'sharp';
+import { svgToPng } from '@/lib/svgToPng';
 import fs from 'fs';
 import path from 'path';
 
@@ -278,7 +278,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   </svg>
   `;
 
-  return await sharp(Buffer.from(svg)).png().toBuffer();
+  return svgToPng(svg);
 }
 
 /**

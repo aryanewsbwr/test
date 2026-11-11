@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import { svgToPng } from '@/lib/svgToPng';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 
@@ -117,5 +117,5 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="200" y="${footY + 94}" font-size="13" class="b" text-anchor="middle">धन्यवाद! Thank You!</text>
   </svg>`;
 
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  return svgToPng(svg);
 }
