@@ -1169,7 +1169,7 @@ export default function ReportsForm({
           {/* Header */}
           <div className="text-center pb-3 border-b-2 border-black space-y-1">
             <h1 className="text-xl font-black tracking-wider uppercase">ARYAN NEWS AGENCY</h1>
-            <p className="text-[11px] text-slate-700 font-sans font-bold">Main Market, Near Clock Tower, Beawar (Raj.) - 305901 • Ph: 01462-250000</p>
+            <p className="text-[11px] text-slate-700 font-sans font-bold">5(1), Old Bus Stand, Beawar (Raj.) 305901 • WhatsApp: 9462558949 • Ph: 9829058949</p>
             <h2 className="text-sm font-black text-[#000080] underline tracking-wide uppercase pt-1 font-sans">
               {reportData?.report_title || currentMeta.title}
             </h2>
@@ -1178,6 +1178,11 @@ export default function ReportsForm({
               <span>Financial Period: {selectedMonth} {selectedYear}</span>
               <span>Page: {currentPage} of {totalPages}</span>
             </div>
+            {reportData?.report_note && (
+              <div className="text-[11px] font-sans font-bold text-[#8B0000] bg-[#FFF8DC] border border-[#E0C060] px-2 py-1 inline-block">
+                {reportData.report_note}
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -2000,11 +2005,11 @@ export default function ReportsForm({
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
                     <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
-                      <th className="p-1.5 text-left border-r border-black">Publisher / Press Name</th>
+                      <th className="p-1.5 text-left border-r border-black">{activeReport === 'purchase_datewise' ? 'Date — Publisher' : 'Publisher / Press Name'}</th>
                       <th className="p-1.5 text-left border-r border-black">Contact Person / Phone</th>
                       <th className="p-1.5 text-left border-r border-black">Station / City</th>
-                      <th className="p-1.5 text-right border-r border-black w-28">Monthly Copies</th>
-                      <th className="p-1.5 text-right font-black w-36">Est. Purchase (₹)</th>
+                      <th className="p-1.5 text-right border-r border-black w-28">Copies</th>
+                      <th className="p-1.5 text-right font-black w-36">Purchase Amount (₹)</th>
                     </tr>
                   </thead>
                   <tbody>

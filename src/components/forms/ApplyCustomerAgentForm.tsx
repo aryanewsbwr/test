@@ -27,9 +27,9 @@ export default function ApplyCustomerAgentForm({ onClose }: ApplyCustomerAgentFo
       .catch(() => {});
   }, []);
 
+  // This screen does not write anything yet, so it must not claim it did.
   const handleApply = async () => {
-    setMsg(`Collection Agent ${selectedAgent} applied to customers in selected range.`);
-    setTimeout(() => setMsg(''), 3000);
+    alert('यह स्क्रीन अभी कुछ सेव नहीं करती। ग्राहकों पर एजेंट पुराने सॉफ्टवेयर से लगाएँ — वेबसाइट पर यह सुविधा चाहिए तो बताइए।');
   };
 
   return (

@@ -83,9 +83,10 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   const totalPaperAmount = items.reduce((sum, i) => sum + i.total_amount, 0);
   const grandTotal = totalPaperAmount + (parseFloat(freightCharges as any) || 0);
 
+  // This screen is a calculator only: purchase entries are made in the old software, and the
+  // website reads them from there for the Purchase reports. Saying "saved" here would be a lie.
   const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    alert('यह स्क्रीन अभी कुछ सेव नहीं करती।\n\nखरीद की एंट्री पुराने सॉफ्टवेयर में करें। वेबसाइट की Purchase रिपोर्ट वहीं से डेटा दिखाती है।');
   };
 
   return (

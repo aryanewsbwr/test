@@ -608,43 +608,75 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 10. Purchase Date Wise & Publisher Wise
+    // 10. Purchase Date Wise & Publisher Wise: the purchase and purchasedetail entries from the
+    // old software (brought over when its data was imported), never an estimate. Date Wise keeps
+    // only the chosen month; Publisher Wise shows everything, grouped by publisher.
     if (reportType === 'purchase_datewise' || reportType === 'purchase_publisherwise') {
+      const field = (row: any, name: string) => row?.[name] ?? row?.[name.toLowerCase()] ?? row?.[name.toUpperCase()];
+      const [purchases, details] = await Promise.all([
+        fetchAllFromSupabase('purchase', ['Purchase_id']).catch(() => [] as any[]),
+        fetchAllFromSupabase('purchasedetail', ['Purchase_id']).catch(() => [] as any[])
+      ]);
+
+      // The purchase date as year and month, from '2026-10-05' or '05/10/2026'
+      const yearMonthOf = (value: any): string => {
+        const t = String(value || '').split('T')[0];
+        let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[1]}-${m[2]}`;
+        m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (m) return `${m[3]}-${m[2].padStart(2, '0')}`;
+        return '';
+      };
+      const monthIdx = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(monthCode(month));
+      const startYear = parseInt(year, 10) || new Date().getFullYear();
+      const wantedYearMonth = `${monthIdx >= 0 && monthIdx <= 2 ? startYear + 1 : startYear}-${String(monthIdx + 1).padStart(2, '0')}`;
+
+      const copiesByPurchase = new Map<number, number>();
+      details.forEach(d => {
+        const pid = Number(field(d, 'Purchase_id'));
+        copiesByPurchase.set(pid, (copiesByPurchase.get(pid) || 0) + Number(field(d, 'Qty') || 0));
+      });
+
       const publrMap = new Map<number, any>(data.publishers.map(p => [p.publish_id || p.id, p]));
-      
-      // Aggregate purchase summary by publisher
-      const publrTotals: Record<number, { name: string; contact: string; city: string; totalCopies: number; totalAmount: number }> = {};
-      data.publishers.forEach(p => {
-        const pid = p.publish_id || p.id;
-        publrTotals[pid] = {
-          name: p.name || `Publisher #${pid}`,
-          contact: p.contact_pers || p.phone || '---',
-          city: p.city || 'Beawar',
-          totalCopies: 0,
-          totalAmount: 0
-        };
-      });
-
-      // Sum copies per publisher from active subscriptions
-      data.subscriptions.forEach(s => {
-        if (s.c_date) return;
-        const pub = pubMap.get(s.publica_id);
-        if (!pub || !pub.publish_id) return;
-        if (publrTotals[pub.publish_id]) {
-          const qty = s.qty || 1;
-          publrTotals[pub.publish_id].totalCopies += qty;
-          publrTotals[pub.publish_id].totalAmount += qty * 30 * 4.5; // Approx monthly billing
+      const groups = new Map<string, { name: string; contact: string; city: string; totalCopies: number; totalAmount: number }>();
+      let kept = 0;
+      purchases.forEach(row => {
+        const when = field(row, 'R_Date') || field(row, 'Bill_Date');
+        if (reportType === 'purchase_datewise' && monthIdx >= 0 && yearMonthOf(when) !== wantedYearMonth) return;
+        kept++;
+        const publisherId = Number(field(row, 'Publish_id') || 0);
+        const publisher = publrMap.get(publisherId);
+        const key = reportType === 'purchase_datewise' ? `${yearMonthOf(when)}|${String(when).split('T')[0]}|${publisherId}` : String(publisherId);
+        if (!groups.has(key)) {
+          groups.set(key, {
+            name: reportType === 'purchase_datewise'
+              ? `${String(when).split('T')[0]} — ${publisher?.name || `Publisher #${publisherId}`}`
+              : publisher?.name || `Publisher #${publisherId}`,
+            contact: publisher?.contact_pers || publisher?.phone || '---',
+            city: publisher?.city || '',
+            totalCopies: 0,
+            totalAmount: 0
+          });
         }
+        const g = groups.get(key)!;
+        g.totalCopies += copiesByPurchase.get(Number(field(row, 'Purchase_id'))) || 0;
+        const amount = Number(field(row, 'NetAmt') || 0) || Number(field(row, 'Total') || 0);
+        g.totalAmount += amount;
       });
 
-      const rows = Object.values(publrTotals).filter(p => p.totalCopies > 0);
+      const rows = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([, g]) => ({
+        ...g, totalAmount: Math.round(g.totalAmount * 100) / 100
+      }));
 
       return NextResponse.json({
-        report_title: reportType === 'purchase_publisherwise' ? 'PURCHASE PUBLISHER-WISE REPORT' : 'PURCHASE DATE-WISE REPORT',
+        report_title: reportType === 'purchase_publisherwise' ? 'PURCHASE PUBLISHER-WISE REPORT' : `PURCHASE DATE-WISE REPORT (${month.toUpperCase()} ${year})`,
         rows,
         total_rows: rows.length,
         total_copies: rows.reduce((s, r) => s + r.totalCopies, 0),
-        total_amount: rows.reduce((s, r) => s + r.totalAmount, 0)
+        total_amount: Math.round(rows.reduce((s, r) => s + r.totalAmount, 0) * 100) / 100,
+        report_note: purchases.length === 0
+          ? 'वेबसाइट पर कोई खरीद एंट्री नहीं है। खरीद पुराने सॉफ्टवेयर में दर्ज होती है।'
+          : kept === 0 && reportType === 'purchase_datewise' ? `${month} ${year} में कोई खरीद एंट्री नहीं मिली।` : undefined
       });
     }
 
@@ -742,33 +774,60 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 14. Consolidated Sale & Daily Sale Report
+    // 14. Consolidated Sale & Daily Sale Report: the chosen month's generated bills, delivery
+    // charges and counter sales, straight from the year's tables. Nothing is estimated: a month
+    // whose bills are not generated yet shows zero.
     if (reportType === 'consolidated_sale' || reportType === 'daily_sale') {
-      // Aggregate active subscription monthly totals
-      let totalPaperSales = 0;
-      let totalDeliveryCharges = 0;
-      data.subscriptions.forEach(s => {
-        if (!s.c_date) {
-          totalPaperSales += (s.qty || 1) * 30 * 4.5;
-          totalDeliveryCharges += (s.dely || 0);
-        }
-      });
+      const yStr = String(year);
+      const suffix = yStr.length === 8 ? yStr : `${parseInt(yStr, 10) || 2026}${(parseInt(yStr, 10) || 2026) + 1}`;
+      const monthStart3 = month.trim().slice(0, 3);
 
-      const totalCounterSale = data.countersale.reduce((s, c) => s + (c.amt || c.Amt || 0), 0);
-      const grandTotalSales = totalPaperSales + totalDeliveryCharges + totalCounterSale;
+      // Adds up one column of a year table for the chosen month, a page at a time
+      const sumMonth = async (table: string, column: string): Promise<number> => {
+        let total = 0;
+        for (let from = 0; ; from += 1000) {
+          const { data: rows, error } = await supabase.from(table).select(`${column}, month`)
+            .ilike('month', `${monthStart3}%`).range(from, from + 999);
+          if (error) throw new Error(`Could not read ${table}: ${error.message}`);
+          for (const r of rows || []) total += Number((r as any)[column] || 0);
+          if (!rows || rows.length < 1000) return Math.round(total * 100) / 100;
+        }
+      };
+
+      const [paperBills, discounts, delivery] = await Promise.all([
+        sumMonth(`bill${suffix}`, 'total_amt'),
+        sumMonth(`billno${suffix}`, 'dis_amt'),
+        sumMonth(`billdel${suffix}`, 'dely')
+      ]);
+
+      // Counter sales of that calendar month (vr_date is kept as DD/MM/YYYY)
+      const monthIdx = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(monthCode(month));
+      const startYear = parseInt(yStr.slice(0, 4), 10) || new Date().getFullYear();
+      const calendarYear = monthIdx >= 0 && monthIdx <= 2 ? startYear + 1 : startYear;
+      const totalCounterSale = Math.round(data.countersale.reduce((sum, c) => {
+        const part = String(c.vr_date || c.sale_date || c.Sale_Date || '').split('/');
+        const inMonth = part.length === 3 && Number(part[1]) === monthIdx + 1 && Number(part[2]) === calendarYear;
+        return inMonth ? sum + Number(c.amt || c.Amt || 0) : sum;
+      }, 0) * 100) / 100;
+
+      const netPaper = Math.round((paperBills - discounts) * 100) / 100;
+      const grandTotalSales = Math.round((netPaper + delivery + totalCounterSale) * 100) / 100;
+      const pct = (n: number) => (grandTotalSales > 0 ? `${((n / grandTotalSales) * 100).toFixed(1)}%` : '—');
 
       const summaryRows = [
-        { category: 'Permanent Customer Newspaper Distribution', amount: totalPaperSales, percentage: '88.5%' },
-        { category: 'Customer Delivery / Line Charges', amount: totalDeliveryCharges, percentage: '4.2%' },
-        { category: 'Counter Walk-in Cash Sales', amount: totalCounterSale || 1540.0, percentage: '2.1%' },
-        { category: 'Retail & Magazine Periodic Sales', amount: 4850.0, percentage: '5.2%' },
+        { category: 'Customer Newspaper Bills (after discount)', amount: netPaper, percentage: pct(netPaper) },
+        { category: 'Customer Delivery / Line Charges', amount: delivery, percentage: pct(delivery) },
+        { category: 'Counter Walk-in Cash Sales', amount: totalCounterSale, percentage: pct(totalCounterSale) }
       ];
 
       return NextResponse.json({
         report_title: `CONSOLIDATED SALE REPORT (${month} ${year})`,
         rows: summaryRows,
         grand_total: grandTotalSales,
-        total_rows: summaryRows.length
+        total_rows: summaryRows.length,
+        report_note: netPaper === 0 && delivery === 0
+          ? `${month} ${suffix.slice(0, 4)}-${suffix.slice(6)} के बिल अभी नहीं बने हैं (Process → Bill Generation), इसलिए रकम शून्य है।`
+          : undefined
       });
     }
 

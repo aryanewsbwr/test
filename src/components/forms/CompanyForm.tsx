@@ -11,17 +11,17 @@ export default function CompanyForm({ onClose }: CompanyFormProps) {
   const [agencyName, setAgencyName] = useState('ARYAN NEWS AGENCY');
   const [hindiName, setHindiName] = useState('आर्यन न्यूज एजेंसी');
   const [proprietor, setProprietor] = useState('Himanshu Agarwal');
-  const [address, setAddress] = useState('Main Market, Near Clock Tower, Beawar (Raj.) - 305901');
-  const [phone, setPhone] = useState('01462-254123, 98290XXXXX');
+  const [address, setAddress] = useState('5(1), Old Bus Stand, Beawar (Raj.) 305901');
+  const [phone, setPhone] = useState('9829058949, WhatsApp 9462558949');
   const [email, setEmail] = useState('aryanewsbwr@gmail.com');
   const [tagline, setTagline] = useState('Complete Newspaper & Periodical Distributors');
   const [billingTerms, setBillingTerms] = useState('1. Please pay your monthly bill before the 10th of every month.\n2. Please mention your Customer ID on all payment receipts.\n3. Inform in advance for vacation/temporary stops.');
   const [isSaved, setIsSaved] = useState(false);
 
+  // This screen only displays the firm's details; nothing typed here is kept anywhere yet.
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    alert('यह स्क्रीन अभी कुछ सेव नहीं करती। बिल और रिपोर्ट पर फर्म का पता कोड में तय है — बदलवाना हो तो बताइए।');
   };
 
   return (
