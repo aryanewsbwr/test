@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
+import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
+import { getEffectiveWeekdayRates, getLegacyDayOfWeek } from '@/lib/rateEngine';
 import { fySuffix } from '@/lib/financialYear';
 import { monthCode } from '@/lib/backupTables';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
@@ -1368,14 +1369,48 @@ export async function GET(request: NextRequest) {
         }
       });
 
+      // Each paper's rate on each day of the month, from the same rate tables billing reads
+      const [rateRows, changeRows] = await Promise.all([fetchAllRows('rate', 'id'), fetchAllRows('ratechange', 'id')]);
+      const rateList = rateRows.map((r: any) => ({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: Number(r.rate) }));
+      const changeList = changeRows.map((r: any) => {
+        const day = String(r.effective_date || '').split('T')[0];
+        return { id: r.id, publica_id: r.publica_id, dayofweek: r.dayofweek, oldrate: Number(r.oldrate || 0), new_rate: Number(r.newrate || 0), dated: day, effective_date: day };
+      });
+      const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(monthCode(month));
+      const yearNum = parseInt(year, 10);
+      const monthDays = monthIndex >= 0 && yearNum > 0 ? new Date(Date.UTC(yearNum, monthIndex + 1, 0)).getUTCDate() : 0;
+      const priced = new Map<number, { monthly: number; rates: number[] }>();
+      const priceOf = (pubId: number) => {
+        if (!priced.has(pubId)) {
+          const rates: number[] = [];
+          let monthly = 0;
+          for (let d = 1; d <= monthDays; d++) {
+            const date = new Date(Date.UTC(yearNum, monthIndex, d));
+            const iso = date.toISOString().split('T')[0];
+            const weekday = getLegacyDayOfWeek(new Date(yearNum, monthIndex, d));
+            const rate = getEffectiveWeekdayRates(pubId, iso, rateList as any, changeList as any, pubMap.get(pubId)?.magzine_day)[weekday] || 0;
+            monthly += rate;
+            if (rate > 0) rates.push(rate);
+          }
+          priced.set(pubId, { monthly: Math.round(monthly * 100) / 100, rates });
+        }
+        return priced.get(pubId)!;
+      };
+      // One rate, or the lowest to highest when it differs by weekday (Sunday edition)
+      const rateText = (rates: number[]) => {
+        if (!rates.length) return 'no rate';
+        const lo = Math.min(...rates), hi = Math.max(...rates);
+        return lo === hi ? `₹${lo.toFixed(2)}` : `₹${lo.toFixed(2)}-${hi.toFixed(2)}`;
+      };
+
       const paginated = rows.slice((page - 1) * limit, page * limit).map(c => {
         const subs = custSubsMap.get(c.customer_id) || [];
         const pubInfo = subs.map(s => {
           const p = pubMap.get(s.publica_id);
-          return `${p?.abrv || p?.public_name} (Qty: ${s.qty || 1}, Rate: ₹5.00)`;
+          return `${p?.abrv || p?.public_name} (Qty: ${s.qty || 1}, Rate: ${rateText(priceOf(s.publica_id).rates)})`;
         }).join('; ') || 'No active paper';
 
-        const totalAmt = subs.reduce((sum, s) => sum + (s.qty || 1) * 30 * 5.0, 0);
+        const totalAmt = subs.reduce((sum, s) => sum + (s.qty || 1) * priceOf(s.publica_id).monthly, 0);
 
         return {
           customer_id: c.customer_id,
@@ -1391,7 +1426,7 @@ export async function GET(request: NextRequest) {
 
       const totalEstimated = rows.reduce((acc, c) => {
         const subs = custSubsMap.get(c.customer_id) || [];
-        return acc + subs.reduce((sum, s) => sum + (s.qty || 1) * 30 * 5.0, 0);
+        return acc + subs.reduce((sum, s) => sum + (s.qty || 1) * priceOf(s.publica_id).monthly, 0);
       }, 0);
 
       return NextResponse.json({

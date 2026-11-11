@@ -12,7 +12,7 @@ import { BillThermalPreview } from '@/components/reports/BillThermalPreview';
 import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
-import { reminderAmount, reminderText } from '@/lib/paymentReminder';
+import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
 
 // A due-list customer with a mobile number a reminder can go to
 // A reminder sent this calendar month counts as already sent; the screen asks before sending again
@@ -20,6 +20,19 @@ const remindedThisMonth = (when?: string) => {
   if (!when) return false;
   const d = new Date(when), now = new Date();
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+};
+// A reminder in the last REMINDER_GAP_DAYS days blocks another one; the server checks it per number
+const remindedRecently = (when?: string) => !!when && Date.now() - new Date(when).getTime() < REMINDER_GAP_DAYS * 86400000;
+const HINDI_MONTH: Record<string, string> = {
+  apr: 'अप्रैल', may: 'मई', jun: 'जून', jul: 'जुलाई', aug: 'अगस्त', sep: 'सितंबर',
+  oct: 'अक्टूबर', nov: 'नवंबर', dec: 'दिसंबर', jan: 'जनवरी', feb: 'फरवरी', mar: 'मार्च'
+};
+// A date as the receipt was saved (2026-11-10 or 10/11/2026) or a time, shown as 10/11/2026
+const shortDate = (value: any) => {
+  const s = String(value || '').trim();
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return s || '-';
 };
 const remindDay = (when: string) => {
   const d = new Date(when);
@@ -165,9 +178,23 @@ export default function ReportsForm({
       setRemindRegions({});
     }
   }, []);
+  // The newest billed month (which can be left out), the last receipt and the last restore
+  const [remindOpts, setRemindOpts] = useState<{ latest_month?: string | null; last_receipt?: any; restored?: any } | null>(null);
+  const [leaveLatest, setLeaveLatest] = useState(true);
+  const [minDue, setMinDue] = useState(50);
+  const loadRemindOpts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/whatsapp/reminder?options=1', { cache: 'no-store' });
+      const json = await res.json();
+      setRemindOpts(res.ok ? json : null);
+    } catch {
+      setRemindOpts(null);
+    }
+  }, []);
   useEffect(() => {
-    if (activeReport === 'due_region_summary') loadRemindRegions();
-  }, [activeReport, loadRemindRegions]);
+    if (activeReport === 'due_region_summary') { loadRemindRegions(); loadRemindOpts(); }
+  }, [activeReport, loadRemindRegions, loadRemindOpts]);
+  const leaveOut = leaveLatest && remindOpts?.latest_month ? remindOpts.latest_month : '';
 
   useEffect(() => {
     if (activeReport === 'due_region_summary' && reportData?.view === 'customers') {
@@ -385,7 +412,7 @@ export default function ReportsForm({
   };
 
   // Sends the reminder a few customers at a time and says how it went
-  const sendReminders = async (list: any[], resend = false) => {
+  const sendReminders = async (list: any[]) => {
     setRemindAsk(null);
     setRemindBusy(true);
     let sent = 0, skipped = 0, failed = 0;
@@ -396,7 +423,7 @@ export default function ReportsForm({
         const res = await fetch('/api/whatsapp/reminder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer_ids: list.slice(i, i + REMINDERS_AT_ONCE).map(c => c.customer_id), resend })
+          body: JSON.stringify({ customer_ids: list.slice(i, i + REMINDERS_AT_ONCE).map(c => c.customer_id), leave_out: leaveOut, min_amount: minDue })
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Reminder not sent.');
@@ -1414,6 +1441,33 @@ export default function ReportsForm({
                     {' '}· बाकी: <b className="text-orange-700">{dueRows.filter((c: any) => hasMobile(c) && !remindedThisMonth(remindLast[String(c.customer_id)])).length}</b>
                   </span>
                   {remindStatus && <span className="whitespace-pre-line text-slate-800">{remindStatus}</span>}
+                  <div className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 border-t border-[#B2E5C4] text-slate-800">
+                    {remindOpts?.latest_month && (
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" checked={leaveLatest} onChange={e => setLeaveLatest(e.target.checked)} />
+                        {HINDI_MONTH[remindOpts.latest_month] || remindOpts.latest_month} का बिल छोड़ें (अभी भेजा गया बिल रिमाइंडर में न जोड़ें)
+                      </label>
+                    )}
+                    <label className="flex items-center gap-1">
+                      बकाया ₹
+                      <input
+                        type="number"
+                        min={0}
+                        value={minDue}
+                        onChange={e => setMinDue(Math.max(0, Number(e.target.value) || 0))}
+                        className="w-16 px-1 border border-[#7F9DB9] bg-white"
+                      />
+                      से ज़्यादा हो तभी भेजें
+                    </label>
+                    <span className="text-slate-600">एक नंबर पर {REMINDER_GAP_DAYS} दिन में एक ही रिमाइंडर जाएगा।</span>
+                  </div>
+                  <div className="w-full text-[11px] text-[#5C4400] bg-[#FFF8DC] border border-[#E0C060] px-2 py-1">
+                    बकाया वेबसाइट के डेटा से है। आखिरी रसीद:{' '}
+                    <b>{remindOpts?.last_receipt ? `${shortDate(remindOpts.last_receipt.date)} (#${remindOpts.last_receipt.customer_id}, ₹${reminderAmount(remindOpts.last_receipt.amount)})` : '-'}</b>
+                    {' '}· आखिरी रिस्टोर:{' '}
+                    <b>{remindOpts?.restored ? new Date(remindOpts.restored.at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</b>
+                    {' '}— पुराने सॉफ्टवेयर में डाली रसीदें यहाँ आने से पहले रिमाइंडर न भेजें।
+                  </div>
                 </div>
                 <table className="w-full text-xs border-collapse border border-black">
                   <thead>
@@ -1476,8 +1530,10 @@ export default function ReportsForm({
                           {c.final_balance > 0 && (
                             <div className="flex gap-1 justify-center">
                               <button
-                                disabled={remindBusy || !hasMobile(c)}
-                                title={hasMobile(c) ? 'WhatsApp पर रिमाइंडर भेजें' : 'मोबाइल नंबर नहीं है'}
+                                disabled={remindBusy || !hasMobile(c) || remindedRecently(remindLast[String(c.customer_id)])}
+                                title={!hasMobile(c) ? 'मोबाइल नंबर नहीं है'
+                                  : remindedRecently(remindLast[String(c.customer_id)]) ? `पिछले ${REMINDER_GAP_DAYS} दिन में भेजा जा चुका है`
+                                  : 'WhatsApp पर रिमाइंडर भेजें'}
                                 onClick={() => setRemindAsk([c])}
                                 className="px-1.5 py-0.5 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-[10px]"
                               >
@@ -2183,39 +2239,61 @@ export default function ReportsForm({
       {/* Reminder: what will be sent, asked once before sending */}
       {remindAsk && (() => {
         const withMobile = remindAsk.filter(hasMobile);
-        const sentBefore = withMobile.filter(c => remindedThisMonth(remindLast[String(c.customer_id)]));
-        const notYet = withMobile.filter(c => !remindedThisMonth(remindLast[String(c.customer_id)]));
+        // Reminded in the last few days: the server will not send to them, so they are not offered
+        const blocked = withMobile.filter(c => remindedRecently(remindLast[String(c.customer_id)]));
+        const open = withMobile.filter(c => !remindedRecently(remindLast[String(c.customer_id)]));
+        const sentBefore = open.filter(c => remindedThisMonth(remindLast[String(c.customer_id)]));
+        const notYet = open.filter(c => !remindedThisMonth(remindLast[String(c.customer_id)]));
+        const first = open[0] || remindAsk[0];
+        const leaveName = leaveOut ? (HINDI_MONTH[leaveOut] || leaveOut) : '';
         return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 print:hidden">
           <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[460px] max-w-[95vw] text-xs">
             <div className="bg-gradient-to-r from-[#075E54] to-[#25D366] text-white px-2 py-1 font-bold">WhatsApp भुगतान रिमाइंडर</div>
             <div className="p-3 space-y-2">
               <div>
-                <b>{remindAsk.length}</b> ग्राहक, कुल बकाया <b>₹{reminderAmount(remindAsk.reduce((sum, c) => sum + Number(c.final_balance || 0), 0))}</b>.
+                <b>{remindAsk.length}</b> ग्राहक, रिपोर्ट में कुल बकाया <b>₹{reminderAmount(remindAsk.reduce((sum, c) => sum + Number(c.final_balance || 0), 0))}</b>.
                 {' '}मोबाइल नंबर वाले: <b>{withMobile.length}</b>{withMobile.length < remindAsk.length ? ' (बाकी छोड़ दिए जाएँगे)' : ''}।
+                {leaveName && <> रकम में <b>{leaveName}</b> का बिल नहीं जोड़ा जाएगा।</>}
+                {' '}₹{minDue} या कम बकाया वालों को नहीं भेजा जाएगा।
               </div>
+              <div className="p-2 bg-[#FFF8DC] border border-[#E0C060] text-[#5C4400]">
+                आखिरी रसीद: <b>{remindOpts?.last_receipt ? shortDate(remindOpts.last_receipt.date) : '-'}</b>
+                {' '}· आखिरी रिस्टोर: <b>{remindOpts?.restored ? new Date(remindOpts.restored.at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</b>.
+                {' '}अगर इसके बाद पुराने सॉफ्टवेयर में रसीदें डाली गई हैं, तो पहले उन्हें यहाँ लाएँ, वरना पैसे दे चुके ग्राहकों को भी रिमाइंडर जाएगा।
+              </div>
+              {blocked.length > 0 && (
+                <div className="p-2 bg-[#FDECEC] border border-[#E0A0A0] text-[#7A1F1F]">
+                  ⛔ <b>{blocked.length}</b> ग्राहकों को पिछले {REMINDER_GAP_DAYS} दिन में रिमाइंडर भेजा जा चुका है ({blocked.slice(0, 5).map(c => `#${c.customer_id} ${remindDay(remindLast[String(c.customer_id)])}`).join(', ')}{blocked.length > 5 ? ' ...' : ''})। उन्हें अभी नहीं भेजा जाएगा।
+                </div>
+              )}
               {sentBefore.length > 0 && (
                 <div className="p-2 bg-[#FFF4CE] border border-[#E0B400] text-[#5C4400]">
-                  {sentBefore.length === 1 && withMobile.length === 1 ? (
-                    <>⚠ इस ग्राहक को <b>{remindDay(remindLast[String(sentBefore[0].customer_id)])}</b> को रिमाइंडर पहले ही भेजा जा चुका है। क्या दोबारा भेजना है?</>
+                  {sentBefore.length === 1 && open.length === 1 ? (
+                    <>⚠ इस ग्राहक को <b>{remindDay(remindLast[String(sentBefore[0].customer_id)])}</b> को इस महीने रिमाइंडर भेजा जा चुका है। क्या दोबारा भेजना है?</>
                   ) : (
-                    <>⚠ <b>{sentBefore.length}</b> ग्राहकों को इस महीने रिमाइंडर पहले ही भेजा जा चुका है ({sentBefore.slice(0, 5).map(c => `#${c.customer_id} ${remindDay(remindLast[String(c.customer_id)])}`).join(', ')}{sentBefore.length > 5 ? ' ...' : ''})। उन्हें दोबारा भेजना है?</>
+                    <>⚠ <b>{sentBefore.length}</b> ग्राहकों को इस महीने रिमाइंडर भेजा जा चुका है ({sentBefore.slice(0, 5).map(c => `#${c.customer_id} ${remindDay(remindLast[String(c.customer_id)])}`).join(', ')}{sentBefore.length > 5 ? ' ...' : ''})। उन्हें दोबारा भेजना है?</>
                   )}
                 </div>
               )}
-              <div className="font-bold">ग्राहक को ऐसा संदेश जाएगा (रिमाइंडर बिल के साथ):</div>
-              <div className="bg-[#DCF8C6] border border-[#B2D8A0] rounded p-2 whitespace-pre-line text-[12px] leading-snug text-black max-h-[60vh] overflow-y-auto">
-                <img
-                  src={`/api/whatsapp/reminder?customer_id=${remindAsk[0].customer_id}`}
-                  alt="रिमाइंडर बिल"
-                  className="w-[220px] mx-auto mb-2 border border-[#B2D8A0] bg-white"
-                />
-                {reminderText(
-                  remindAsk[0].name_hindi ? cleanOrTransliterateHindi(remindAsk[0].name_hindi, remindAsk[0].name) : remindAsk[0].name,
-                  remindAsk[0].customer_id,
-                  Number(remindAsk[0].final_balance)
-                )}
-              </div>
+              {open.length > 0 && (
+                <>
+                  <div className="font-bold">ग्राहक को ऐसा संदेश जाएगा (रिमाइंडर बिल के साथ):</div>
+                  <div className="bg-[#DCF8C6] border border-[#B2D8A0] rounded p-2 whitespace-pre-line text-[12px] leading-snug text-black max-h-[50vh] overflow-y-auto">
+                    <img
+                      src={`/api/whatsapp/reminder?customer_id=${first.customer_id}${leaveOut ? `&leave_out=${leaveOut}` : ''}`}
+                      alt="रिमाइंडर बिल"
+                      className="w-[220px] mx-auto mb-2 border border-[#B2D8A0] bg-white"
+                    />
+                    {reminderText(
+                      first.name_hindi ? cleanOrTransliterateHindi(first.name_hindi, first.name) : first.name,
+                      first.customer_id,
+                      Number(first.final_balance)
+                    )}
+                    {leaveName && <div className="mt-1 text-[11px] text-slate-600">(संदेश में रकम ऊपर बिल वाला "कुल बकाया" होगी, {leaveName} के बिल के बिना)</div>}
+                  </div>
+                </>
+              )}
               <div className="flex justify-end gap-2 pt-1">
                 <button onClick={() => setRemindAsk(null)} className="px-3 py-1 bg-[#ECE9D8] border border-[#404040] cursor-pointer">रद्द करें</button>
                 {sentBefore.length > 0 && notYet.length > 0 && (
@@ -2227,11 +2305,11 @@ export default function ReportsForm({
                   </button>
                 )}
                 <button
-                  disabled={withMobile.length === 0}
-                  onClick={() => sendReminders(withMobile, sentBefore.length > 0)}
+                  disabled={open.length === 0}
+                  onClick={() => sendReminders(open)}
                   className="px-3 py-1 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-50 text-white font-bold border border-[#128C7E] cursor-pointer"
                 >
-                  {sentBefore.length === 0 ? 'भेजें' : notYet.length > 0 ? `सभी ${withMobile.length} को भेजें (दोबारा भी)` : 'हाँ, दोबारा भेजें'}
+                  {sentBefore.length === 0 ? `भेजें (${open.length})` : notYet.length > 0 ? `सभी ${open.length} को भेजें (दोबारा भी)` : 'हाँ, दोबारा भेजें'}
                 </button>
               </div>
             </div>

@@ -10,10 +10,13 @@ export const REMINDER_TEMPLATE_TEXT =
   'कृपया सुविधानुसार भुगतान करने की कृपा करें। यदि आप भुगतान कर चुके हैं तो इस संदेश को अनदेखा करें।\n' +
   'धन्यवाद 🙏';
 
-// Today as the reminder shows it, 08/11/2026
+// Today as the reminder shows it, 08/11/2026, in India's time (the server runs on UTC)
 export function reminderDate(day = new Date()): string {
-  return `${String(day.getDate()).padStart(2, '0')}/${String(day.getMonth() + 1).padStart(2, '0')}/${day.getFullYear()}`;
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).format(day);
 }
+
+// A number is sent at most one reminder in this many days
+export const REMINDER_GAP_DAYS = 7;
 
 // The amount as the reminder shows it: whole rupees with Indian commas, paise only when there are any
 export function reminderAmount(amount: number): string {

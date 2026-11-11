@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { formatWhatsAppPhone, getSecureWhatsAppToken, sendWhatsAppReminderMessage, whatsAppDisplayName } from '@/lib/whatsappService';
 import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
-import { reminderAmount, reminderDate } from '@/lib/paymentReminder';
+import { REMINDER_GAP_DAYS, reminderAmount, reminderDate } from '@/lib/paymentReminder';
 import { reminderBillPng, ReminderStatement } from '@/lib/reminderBillImage';
 import { fySuffix } from '@/lib/financialYear';
 import { monthCode } from '@/lib/backupTables';
@@ -28,11 +28,22 @@ async function rowsFor(table: string, columns: string, ids: number[]): Promise<a
   }
 }
 
+// The newest month that has bills this year, 'oct', so the screen can offer to leave it out
+async function latestBilledMonth(): Promise<string | null> {
+  for (const m of [...FY_MONTHS].reverse()) {
+    const { data, error } = await supabaseAdmin.from(`billno${fySuffix()}`).select('month').ilike('month', `${m}%`).limit(1);
+    if (error) throw new Error(`Could not read bills: ${error.message}`);
+    if (data && data.length) return m;
+  }
+  return null;
+}
+
 /**
  * Each customer's account for this year, worked out the way the Due Region Wise Summary does:
  * opening dues + paper bills + delivery - receipts - less. Also the last month billed.
+ * leaveOut ('oct') leaves that month's bill out, so a bill just sent is not asked for yet.
  */
-async function statements(ids: number[]) {
+async function statements(ids: number[], leaveOut = '') {
   const suffix = fySuffix();
   const startYear = Number(suffix.slice(0, 4));
   const [headers, lines, deliveries, receipts] = await Promise.all([
@@ -54,16 +65,18 @@ async function statements(ids: number[]) {
     monthly.set(k, (monthly.get(k) || 0) + n);
   };
   const lastMonth = new Map<number, string>();
+  const kept = (month: any) => !leaveOut || monthCode(month) !== leaveOut;
   for (const h of headers) {
     const m = monthCode(h.month);
     if (m === 'due') { get(h.customer_id).yearEndDues += Number(h.due_amt || 0); continue; }
+    if (!kept(h.month)) continue;
     get(h.customer_id).bills -= Number(h.dis_amt || 0);
     add(h.customer_id, h.month, -Number(h.dis_amt || 0));
     const before = lastMonth.get(Number(h.customer_id));
     if (FY_MONTHS.includes(m) && (!before || FY_MONTHS.indexOf(m) > FY_MONTHS.indexOf(before))) lastMonth.set(Number(h.customer_id), m);
   }
-  for (const l of lines) { get(l.customer_id).bills += Number(l.total_amt || 0); add(l.customer_id, l.month, Number(l.total_amt || 0)); }
-  for (const d of deliveries) { get(d.customer_id).delivery += Number(d.dely || 0); add(d.customer_id, d.month, Number(d.dely || 0)); }
+  for (const l of lines.filter(l => kept(l.month))) { get(l.customer_id).bills += Number(l.total_amt || 0); add(l.customer_id, l.month, Number(l.total_amt || 0)); }
+  for (const d of deliveries.filter(d => kept(d.month))) { get(d.customer_id).delivery += Number(d.dely || 0); add(d.customer_id, d.month, Number(d.dely || 0)); }
   for (const r of receipts) {
     get(r.customer_id).received += Number(r.mal_recp_amt || 0);
     get(r.customer_id).less += Number(r.less_amt || 0);
@@ -141,13 +154,43 @@ async function remindedByRegion(): Promise<Record<string, number>> {
   return counts;
 }
 
+// How fresh the dues are: the newest receipt entered on the website and the last old software
+// restore. Receipts typed only in the old software are not counted until they reach the website.
+async function freshness() {
+  const [{ data: lastReceipt }, restored] = await Promise.all([
+    supabaseAdmin.from(`receipt${fySuffix()}`).select('*').order('id', { ascending: false }).limit(1).maybeSingle(),
+    supabaseAdmin.storage.from('old-software-base').download('restored.json')
+      .then(async ({ data }) => (data ? JSON.parse(await data.text()) : null)).catch(() => null)
+  ]);
+  return {
+    last_receipt: lastReceipt ? {
+      date: lastReceipt.mal_recp_dt || lastReceipt.recp_date || null,
+      customer_id: lastReceipt.customer_id,
+      amount: Number(lastReceipt.mal_recp_amt || 0)
+    } : null,
+    restored: restored?.at ? { at: restored.at, name: restored.name || '' } : null
+  };
+}
+
+// The month to leave out, as the screen sent it ('oct'), or none
+function leaveOutOf(value: unknown): string {
+  const m = monthCode(value);
+  return FY_MONTHS.includes(m) ? m : '';
+}
+
 /**
- * GET ?customer_id=: the reminder bill image as the customer would get it, for the check before sending.
+ * GET ?customer_id=&leave_out=: the reminder bill image as the customer would get it, for the check before sending.
  * GET ?sent_for=1,2,3: when each of those customers was last reminded, { last: { id: time } }.
+ * GET ?region_status=1: how many customers of each region were reminded this month.
+ * GET ?options=1: the newest billed month, the last receipt and the last restore, for the screen.
  */
 export async function GET(request: NextRequest) {
   try {
     const params = new URL(request.url).searchParams;
+    if (params.has('options')) {
+      const [latest, fresh] = await Promise.all([latestBilledMonth(), freshness()]);
+      return NextResponse.json({ latest_month: latest, gap_days: REMINDER_GAP_DAYS, ...fresh });
+    }
     if (params.has('region_status')) return NextResponse.json({ regions: await remindedByRegion() });
     if (params.has('sent_for')) {
       const ids = Array.from(new Set(String(params.get('sent_for')).split(',').map(Number).filter(id => id > 0)));
@@ -158,7 +201,7 @@ export async function GET(request: NextRequest) {
     const [{ data: cust }, regions, { out, year }] = await Promise.all([
       supabaseAdmin.from('customer').select('*').eq('customer_id', cid).maybeSingle(),
       fetchRegions().catch(() => [] as any[]),
-      statements([cid])
+      statements([cid], leaveOutOf(params.get('leave_out')))
     ]);
     if (!cust) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     const account = out.get(cid) || { yearEndDues: 0, bills: 0, delivery: 0, received: 0, less: 0, balance: 0 };
@@ -173,14 +216,16 @@ export async function GET(request: NextRequest) {
 
 /**
  * Sends the payment reminder with the reminder bill image to customers who still owe, each to
- * every mobile number they have. Body: { customer_ids: [...], resend?: true }. The amount due is
- * worked out here from the year's bills and receipts. A number already reminded today is not sent
- * to again, unless the screen asked first and was told to send again (resend).
+ * every mobile number they have. Body: { customer_ids: [...], leave_out?: 'oct', min_amount?: 50 }.
+ * The amount due is worked out here from the year's bills and receipts, leaving out that month's
+ * bill when asked; customers owing min_amount or less are skipped. A number is sent at most one
+ * reminder in REMINDER_GAP_DAYS days.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const resend = body.resend === true;
+    const leaveOut = leaveOutOf(body.leave_out);
+    const minAmount = Math.max(0, Number(body.min_amount) || 0);
     const ids: number[] = Array.from(new Set<number>((Array.isArray(body.customer_ids) ? body.customer_ids : []).map(Number)))
       .filter(id => id > 0);
     if (ids.length === 0) return NextResponse.json({ error: 'Choose the customers to remind.' }, { status: 400 });
@@ -192,7 +237,7 @@ export async function POST(request: NextRequest) {
     const [{ data: customers, error }, regions, { out: accounts, year }] = await Promise.all([
       supabaseAdmin.from('customer').select('*').in('customer_id', ids),
       fetchRegions().catch(() => [] as any[]),
-      statements(ids)
+      statements(ids, leaveOut)
     ]);
     if (error) throw new Error(`Could not read customers: ${error.message}`);
     const byId = new Map((customers || []).map((c: any) => [Number(c.customer_id), c]));
@@ -203,7 +248,7 @@ export async function POST(request: NextRequest) {
     const dayKey = date.split('/').reverse().join('');
     const logId = (cid: number, phone: string) => `REM-${dayKey}-${cid}-${phone}`;
 
-    // Who owes and has a number to send to
+    // Who owes more than the minimum and has a number to send to
     const targets: { cid: number; phone: string; cust: any; account: NonNullable<ReturnType<typeof accounts.get>> }[] = [];
     const results: any[] = [];
     for (const cid of ids) {
@@ -211,25 +256,30 @@ export async function POST(request: NextRequest) {
       const account = accounts.get(cid);
       if (!cust) { results.push({ customer_id: cid, status: 'skipped', reason: 'Customer not found' }); continue; }
       if (!account || !(account.balance > 0)) { results.push({ customer_id: cid, status: 'skipped', reason: 'Nothing due' }); continue; }
+      if (account.balance <= minAmount) { results.push({ customer_id: cid, status: 'skipped', reason: `Due Rs ${minAmount} or less` }); continue; }
       const phones = Array.from(new Set(String(cust.phone || '').split(/[,/;]+/).map(p => formatWhatsAppPhone(p.trim())).filter(Boolean))) as string[];
       if (phones.length === 0) { results.push({ customer_id: cid, status: 'skipped', reason: 'No mobile number' }); continue; }
       for (const phone of phones) targets.push({ cid, phone, cust, account });
     }
 
-    // Numbers already reminded today
-    const { data: sentToday } = targets.length
-      ? await supabaseAdmin.from('whatsapp_messages').select('bill_id')
-        .in('bill_id', targets.map(t => logId(t.cid, t.phone)))
+    // Numbers already reminded in the last few days
+    const since = new Date(today.getTime() - REMINDER_GAP_DAYS * 86400000).toISOString();
+    const { data: recent, error: recentError } = targets.length
+      ? await supabaseAdmin.from('whatsapp_messages').select('phone')
+        .eq('bill_month', 'Payment Reminder')
+        .in('phone', Array.from(new Set(targets.map(t => t.phone))))
         .in('status', ['sent', 'delivered', 'read'])
-      : { data: [] as any[] };
-    const already = new Set((sentToday || []).map((r: any) => r.bill_id));
+        .gte('created_at', since)
+      : { data: [] as any[], error: null };
+    // Without knowing who was reminded, nobody is sent to
+    if (recentError) throw new Error(`Could not check earlier reminders: ${recentError.message}`);
+    const remindedRecently = new Set((recent || []).map((r: any) => String(r.phone)));
 
     const images = new Map<number, Buffer>();
     for (const t of targets) {
-      // Sent again the same day: its own log row, so the earlier one stays on record
-      const id = already.has(logId(t.cid, t.phone)) && resend ? `${logId(t.cid, t.phone)}-R${Date.now()}` : logId(t.cid, t.phone);
-      if (already.has(id)) {
-        results.push({ customer_id: t.cid, phone: t.phone, status: 'skipped', reason: 'Already reminded today' });
+      const id = logId(t.cid, t.phone);
+      if (remindedRecently.has(t.phone)) {
+        results.push({ customer_id: t.cid, phone: t.phone, status: 'skipped', reason: `Reminded in the last ${REMINDER_GAP_DAYS} days` });
         continue;
       }
       if (!images.has(t.cid)) {
@@ -261,6 +311,8 @@ export async function POST(request: NextRequest) {
       } else if (logError) {
         console.warn('[WhatsApp Reminder] Could not log:', logError);
       }
+      // The same number twice in one list (two customers sharing a phone) gets one reminder
+      if (res.success) remindedRecently.add(t.phone);
       results.push({
         customer_id: t.cid,
         phone: t.phone,
