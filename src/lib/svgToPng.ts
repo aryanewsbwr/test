@@ -36,8 +36,11 @@ function bundleFonts() {
   process.env.FONTCONFIG_PATH = dir;
 }
 
+// The bills are laid out 400 wide; drawn at 3x so they stay sharp when a phone fills the screen with them
+const SHARPNESS = 3;
+
 // A bill image drawn as SVG, turned into the PNG sent on WhatsApp
 export async function svgToPng(svg: string): Promise<Buffer> {
   bundleFonts();
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  return sharp(Buffer.from(svg), { density: 72 * SHARPNESS }).png({ compressionLevel: 9, palette: false }).toBuffer();
 }

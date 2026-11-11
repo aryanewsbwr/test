@@ -202,9 +202,9 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <g transform="translate(0, 36)">
     <!-- Header -->
     <text x="200" y="32" font-size="19" class="t-bold" fill="#000000" text-anchor="middle" letter-spacing="0.5">ARYAN NEWS AGENCY</text>
-    <text x="200" y="56" font-size="12" class="t-mid" fill="#222222" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
-    <text x="200" y="76" font-size="12" class="t-reg" fill="#222222" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
-    <text x="200" y="96" font-size="11" class="t-reg" fill="#333333" text-anchor="middle">www.aryannewsagency.com</text>
+    <text x="200" y="56" font-size="12" class="t-mid" fill="#000000" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
+    <text x="200" y="76" font-size="12" class="t-reg" fill="#000000" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
+    <text x="200" y="96" font-size="11" class="t-reg" fill="#000000" text-anchor="middle">www.aryannewsagency.com</text>
     
     <!-- Thick Rule -->
     <line x1="16" y1="108" x2="384" y2="108" stroke="#000000" stroke-width="2.5"/>
@@ -264,7 +264,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     </g>
     
     <text x="200" y="${qrText1Y}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Scan &amp; Pay Rs. ${Math.round(Number(totalAmt))} via any UPI app</text>
-    <text x="200" y="${qrText2Y}" font-size="11.5" class="t-reg" fill="#333333" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
+    <text x="200" y="${qrText2Y}" font-size="11.5" class="t-reg" fill="#000000" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
     
     <!-- Dashed Divider -->
     <line x1="16" y1="${footerDividerY}" x2="384" y2="${footerDividerY}" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
@@ -272,7 +272,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <!-- Footer Notice -->
     <text x="200" y="${footerNotice1Y}" font-size="11" class="t-bold" fill="#000000" text-anchor="middle">Please pay the bill before 5th of the month.</text>
     <text x="200" y="${footerNotice2Y}" font-size="10.5" class="t-mid" fill="#000000" text-anchor="middle">After payment kindly send screenshot on WhatsApp.</text>
-    <text x="200" y="${footerNotice3Y}" font-size="11" class="t-reg" fill="#111111" text-anchor="middle">Queries: WhatsApp 9462558949</text>
+    <text x="200" y="${footerNotice3Y}" font-size="11" class="t-reg" fill="#000000" text-anchor="middle">Queries: WhatsApp 9462558949</text>
     <text x="200" y="${footerThankYouY}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Thank You!</text>
     </g>
   </svg>

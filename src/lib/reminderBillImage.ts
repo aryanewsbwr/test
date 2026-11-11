@@ -47,7 +47,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
   let y = 318;
   const rows = lines.map(l => {
     const row = `
-      <text x="16" y="${y}" font-size="13" class="r">${xml(l.hindi)} <tspan font-size="11" fill="#444">(${xml(l.label)})</tspan></text>
+      <text x="16" y="${y}" font-size="13" class="r">${xml(l.hindi)} <tspan font-size="11" fill="#000">(${xml(l.label)})</tspan></text>
       <text x="384" y="${y}" font-size="14" class="b" text-anchor="end" fill="${l.minus ? '#166534' : '#000'}">${l.minus ? '- ' : ''}Rs. ${money(l.amount)}</text>`;
     y += 26;
     return row;
@@ -77,8 +77,8 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <rect x="0" y="0" width="400" height="8" fill="#B91C1C"/>
 
     <text x="200" y="40" font-size="19" class="b" text-anchor="middle" letter-spacing="0.5">ARYAN NEWS AGENCY</text>
-    <text x="200" y="62" font-size="12" class="m" fill="#222" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
-    <text x="200" y="81" font-size="12" class="r" fill="#222" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
+    <text x="200" y="62" font-size="12" class="m" fill="#000" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
+    <text x="200" y="81" font-size="12" class="r" fill="#000" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
 
     <rect x="16" y="94" width="368" height="44" rx="6" fill="#FEF2F2" stroke="#B91C1C" stroke-width="2"/>
     <text x="200" y="114" font-size="16" class="b" fill="#B91C1C" text-anchor="middle">पेमेंट रिमाइंडर</text>
@@ -89,7 +89,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <line x1="16" y1="178" x2="384" y2="178" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
 
     <text x="16" y="204" font-size="16" class="b">${xml(title)}</text>
-    ${s.nameHindi ? `<text x="16" y="224" font-size="12" class="r" fill="#333">${xml(s.name.toUpperCase())}</text>` : ''}
+    ${s.nameHindi ? `<text x="16" y="224" font-size="12" class="r" fill="#000">${xml(s.name.toUpperCase())}</text>` : ''}
     <text x="16" y="246" font-size="12" class="r">Region: ${xml(s.region || '')}</text>
     <text x="384" y="246" font-size="12" class="r" text-anchor="end">${s.phone ? `Mob: ${xml(s.phone)}` : ''}</text>
     <line x1="16" y1="262" x2="384" y2="262" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
@@ -103,14 +103,14 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="32" y="${boxY + 21}" font-size="14" class="b" fill="#fff">कुल बकाया</text>
     <text x="32" y="${boxY + 37}" font-size="10.5" class="b" fill="#FECACA" letter-spacing="1">BALANCE DUE</text>
     <text x="368" y="${boxY + 31}" font-size="20" class="b" fill="#fff" text-anchor="end">Rs. ${money(s.balance)}</text>
-    ${hasLast ? `<text x="200" y="${lastY}" font-size="12" class="r" fill="#333" text-anchor="middle">अंतिम बिल ${xml(s.lastBillMonth)}: Rs. ${money(Number(s.lastBillAmount))}</text>` : ''}
+    ${hasLast ? `<text x="200" y="${lastY}" font-size="12" class="r" fill="#000" text-anchor="middle">अंतिम बिल ${xml(s.lastBillMonth)}: Rs. ${money(Number(s.lastBillAmount))}</text>` : ''}
 
     <g transform="translate(130, ${qrY})">
       <rect width="140" height="140" fill="#fff" stroke="#e2e8f0" rx="4"/>
       ${qr}
     </g>
     <text x="200" y="${footY - 2}" font-size="13" class="b" text-anchor="middle">Scan &amp; Pay Rs. ${Math.round(s.balance)} via any UPI app</text>
-    <text x="200" y="${footY + 15}" font-size="11.5" class="r" fill="#333" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
+    <text x="200" y="${footY + 15}" font-size="11.5" class="r" fill="#000" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
     <line x1="16" y1="${footY + 30}" x2="384" y2="${footY + 30}" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
     <text x="200" y="${footY + 52}" font-size="12.5" class="b" text-anchor="middle">कृपया शीघ्र भुगतान करें। भुगतान के बाद स्क्रीनशॉट भेजें।</text>
     <text x="200" y="${footY + 71}" font-size="11.5" class="b" fill="#B91C1C" text-anchor="middle">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</text>
