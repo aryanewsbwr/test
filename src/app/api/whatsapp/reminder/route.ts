@@ -114,6 +114,33 @@ async function lastReminded(ids: number[]): Promise<Record<string, string>> {
   return last;
 }
 
+// How many customers of each region were sent a reminder this month: { "120": 5 }
+async function remindedByRegion(): Promise<Record<string, number>> {
+  const now = new Date();
+  // The month as it is in India, where the shop is
+  const india = new Date(now.getTime() + 330 * 60000);
+  const monthStart = new Date(Date.UTC(india.getUTCFullYear(), india.getUTCMonth(), 1) - 330 * 60000).toISOString();
+  const ids = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabaseAdmin.from('whatsapp_messages').select('customer_id')
+      .eq('bill_month', 'Payment Reminder')
+      .in('status', ['sent', 'delivered', 'read'])
+      .gte('created_at', monthStart)
+      .order('created_at').range(from, from + 999);
+    if (error) throw new Error(`Could not read sent reminders: ${error.message}`);
+    for (const r of data || []) ids.add(String(r.customer_id));
+    if (!data || data.length < 1000) break;
+  }
+  const counts: Record<string, number> = {};
+  const list = Array.from(ids).map(Number).filter(id => id > 0);
+  for (let i = 0; i < list.length; i += 300) {
+    const { data, error } = await supabaseAdmin.from('customer').select('customer_id, region_id').in('customer_id', list.slice(i, i + 300));
+    if (error) throw new Error(`Could not read customers: ${error.message}`);
+    for (const c of data || []) counts[String(c.region_id)] = (counts[String(c.region_id)] || 0) + 1;
+  }
+  return counts;
+}
+
 /**
  * GET ?customer_id=: the reminder bill image as the customer would get it, for the check before sending.
  * GET ?sent_for=1,2,3: when each of those customers was last reminded, { last: { id: time } }.
@@ -121,6 +148,7 @@ async function lastReminded(ids: number[]): Promise<Record<string, string>> {
 export async function GET(request: NextRequest) {
   try {
     const params = new URL(request.url).searchParams;
+    if (params.has('region_status')) return NextResponse.json({ regions: await remindedByRegion() });
     if (params.has('sent_for')) {
       const ids = Array.from(new Set(String(params.get('sent_for')).split(',').map(Number).filter(id => id > 0)));
       return NextResponse.json({ last: ids.length ? await lastReminded(ids) : {} });

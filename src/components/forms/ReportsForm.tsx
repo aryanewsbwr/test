@@ -154,6 +154,21 @@ export default function ReportsForm({
     }
   }, []);
 
+  // Due list region menu: how many customers of each region were reminded this month
+  const [remindRegions, setRemindRegions] = useState<Record<string, number>>({});
+  const loadRemindRegions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/whatsapp/reminder?region_status=1', { cache: 'no-store' });
+      const json = await res.json();
+      if (res.ok) setRemindRegions(json.regions || {});
+    } catch {
+      setRemindRegions({});
+    }
+  }, []);
+  useEffect(() => {
+    if (activeReport === 'due_region_summary') loadRemindRegions();
+  }, [activeReport, loadRemindRegions]);
+
   useEffect(() => {
     if (activeReport === 'due_region_summary' && reportData?.view === 'customers') {
       loadRemindLast(reportData.rows.filter((c: any) => c.final_balance > 0).map((c: any) => Number(c.customer_id)));
@@ -397,6 +412,7 @@ export default function ReportsForm({
       setRemindStatus(`रिमाइंडर रुक गया (${sent} भेजे जा चुके): ${err.message || err}`);
     } finally {
       setRemindBusy(false);
+      loadRemindRegions();
       if (reportData?.view === 'customers') {
         loadRemindLast(reportData.rows.filter((c: any) => c.final_balance > 0).map((c: any) => Number(c.customer_id)));
       }
@@ -495,9 +511,10 @@ export default function ReportsForm({
                     .map(r => {
                       const sentInfo = activeReport === 'bill_print_region' ? waRegionStatus[r.region_id || r.id] : undefined;
                       const isSent = !!sentInfo && sentInfo.sent > 0;
+                      const reminded = activeReport === 'due_region_summary' ? remindRegions[String(r.region_id || r.id)] || 0 : 0;
                       return (
-                        <option key={r.region_id || r.id} value={r.region_id || r.id} style={isSent ? { color: '#DC2626' } : undefined}>
-                          {isSent ? '● ' : ''}{r.region_name || r.name} (#{r.region_id || r.id}){isSent ? ` - Sent ${sentInfo.sent}/${sentInfo.total}` : ''}
+                        <option key={r.region_id || r.id} value={r.region_id || r.id} style={isSent || reminded ? { color: '#DC2626' } : undefined}>
+                          {isSent || reminded ? '● ' : ''}{r.region_name || r.name} (#{r.region_id || r.id}){isSent ? ` - Sent ${sentInfo.sent}/${sentInfo.total}` : ''}{reminded ? ` - Reminder sent ${reminded}` : ''}
                         </option>
                       );
                     })}
