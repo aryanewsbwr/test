@@ -15,6 +15,16 @@ import ReceiptForm from '@/components/forms/ReceiptForm';
 import { reminderAmount, reminderText } from '@/lib/paymentReminder';
 
 // A due-list customer with a mobile number a reminder can go to
+// A reminder sent this calendar month counts as already sent; the screen asks before sending again
+const remindedThisMonth = (when?: string) => {
+  if (!when) return false;
+  const d = new Date(when), now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+};
+const remindDay = (when: string) => {
+  const d = new Date(when);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 const hasMobile = (c: any) => /(?<!\d)[6-9]\d{9}(?!\d)/.test(String(c.phone || '').replace(/\b91(?=[6-9]\d{9}\b)/g, ''));
 const REMINDERS_AT_ONCE = 10;
 
@@ -128,6 +138,29 @@ export default function ReportsForm({
   const [remindBusy, setRemindBusy] = useState(false);
   const [remindStatus, setRemindStatus] = useState('');
   const [paidFor, setPaidFor] = useState<any | null>(null);
+  // When each customer on the due list was last sent a reminder: { customer_id: time }
+  const [remindLast, setRemindLast] = useState<Record<string, string>>({});
+
+  const loadRemindLast = useCallback(async (ids: number[]) => {
+    const last: Record<string, string> = {};
+    try {
+      for (let i = 0; i < ids.length; i += 300) {
+        const res = await fetch(`/api/whatsapp/reminder?sent_for=${ids.slice(i, i + 300).join(',')}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (res.ok) Object.assign(last, json.last || {});
+      }
+    } finally {
+      setRemindLast(last);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeReport === 'due_region_summary' && reportData?.view === 'customers') {
+      loadRemindLast(reportData.rows.filter((c: any) => c.final_balance > 0).map((c: any) => Number(c.customer_id)));
+    } else {
+      setRemindLast({});
+    }
+  }, [activeReport, reportData, loadRemindLast]);
 
   const loadWaRegionStatus = useCallback(async () => {
     const cacheKey = `${selectedMonth}|${selectedYear}`;
@@ -337,7 +370,7 @@ export default function ReportsForm({
   };
 
   // Sends the reminder a few customers at a time and says how it went
-  const sendReminders = async (list: any[]) => {
+  const sendReminders = async (list: any[], resend = false) => {
     setRemindAsk(null);
     setRemindBusy(true);
     let sent = 0, skipped = 0, failed = 0;
@@ -348,7 +381,7 @@ export default function ReportsForm({
         const res = await fetch('/api/whatsapp/reminder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer_ids: list.slice(i, i + REMINDERS_AT_ONCE).map(c => c.customer_id) })
+          body: JSON.stringify({ customer_ids: list.slice(i, i + REMINDERS_AT_ONCE).map(c => c.customer_id), resend })
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Reminder not sent.');
@@ -364,6 +397,9 @@ export default function ReportsForm({
       setRemindStatus(`रिमाइंडर रुक गया (${sent} भेजे जा चुके): ${err.message || err}`);
     } finally {
       setRemindBusy(false);
+      if (reportData?.view === 'customers') {
+        loadRemindLast(reportData.rows.filter((c: any) => c.final_balance > 0).map((c: any) => Number(c.customer_id)));
+      }
     }
   };
 
@@ -454,7 +490,7 @@ export default function ReportsForm({
                   <option value="all">{activeReport === 'due_region_summary' ? '-- All Regions (Summary) --' : '-- All Regions --'}</option>
                   {activeReport === 'due_region_summary' && <option value="all_list">-- All Regions (Customer List) --</option>}
                   {[...regions]
-                    .filter(r => activeReport !== 'bill_print_region' || !isHiddenBillRegion(r.region_name || r.name))
+                    .filter(r => (activeReport !== 'bill_print_region' && activeReport !== 'due_region_summary') || !isHiddenBillRegion(r.region_name || r.name))
                     .sort((a, b) => String(a.region_name || a.name || '').localeCompare(String(b.region_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
                     .map(r => {
                       const sentInfo = activeReport === 'bill_print_region' ? waRegionStatus[r.region_id || r.id] : undefined;
@@ -1356,6 +1392,10 @@ export default function ReportsForm({
                   >
                     चुने हुओं को भेजें ({picked.length})
                   </button>
+                  <span className="text-slate-700">
+                    इस महीने भेजा: <b className="text-[#128C7E]">{dueRows.filter((c: any) => hasMobile(c) && remindedThisMonth(remindLast[String(c.customer_id)])).length}</b>
+                    {' '}· बाकी: <b className="text-orange-700">{dueRows.filter((c: any) => hasMobile(c) && !remindedThisMonth(remindLast[String(c.customer_id)])).length}</b>
+                  </span>
                   {remindStatus && <span className="whitespace-pre-line text-slate-800">{remindStatus}</span>}
                 </div>
                 <table className="w-full text-xs border-collapse border border-black">
@@ -1424,7 +1464,7 @@ export default function ReportsForm({
                                 onClick={() => setRemindAsk([c])}
                                 className="px-1.5 py-0.5 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-[10px]"
                               >
-                                रिमाइंडर
+                                {remindedThisMonth(remindLast[String(c.customer_id)]) ? 'दोबारा' : 'रिमाइंडर'}
                               </button>
                               <button
                                 title="इस ग्राहक की पेमेंट रसीद बनाएँ"
@@ -1434,6 +1474,18 @@ export default function ReportsForm({
                                 Paid
                               </button>
                             </div>
+                          )}
+                          {c.final_balance > 0 && hasMobile(c) && (
+                            remindLast[String(c.customer_id)] ? (
+                              <div
+                                className={`mt-0.5 text-[10px] font-bold ${remindedThisMonth(remindLast[String(c.customer_id)]) ? 'text-[#128C7E]' : 'text-slate-500'}`}
+                                title={new Date(remindLast[String(c.customer_id)]).toLocaleString('en-IN')}
+                              >
+                                ✓ भेजा {remindDay(remindLast[String(c.customer_id)])}
+                              </div>
+                            ) : (
+                              <div className="mt-0.5 text-[10px] text-orange-700">अभी नहीं भेजा</div>
+                            )
                           )}
                         </td>
                       </tr>
@@ -2112,15 +2164,28 @@ export default function ReportsForm({
       </div>
 
       {/* Reminder: what will be sent, asked once before sending */}
-      {remindAsk && (
+      {remindAsk && (() => {
+        const withMobile = remindAsk.filter(hasMobile);
+        const sentBefore = withMobile.filter(c => remindedThisMonth(remindLast[String(c.customer_id)]));
+        const notYet = withMobile.filter(c => !remindedThisMonth(remindLast[String(c.customer_id)]));
+        return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 print:hidden">
           <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[460px] max-w-[95vw] text-xs">
             <div className="bg-gradient-to-r from-[#075E54] to-[#25D366] text-white px-2 py-1 font-bold">WhatsApp भुगतान रिमाइंडर</div>
             <div className="p-3 space-y-2">
               <div>
                 <b>{remindAsk.length}</b> ग्राहक, कुल बकाया <b>₹{reminderAmount(remindAsk.reduce((sum, c) => sum + Number(c.final_balance || 0), 0))}</b>.
-                {' '}मोबाइल नंबर वाले: <b>{remindAsk.filter(hasMobile).length}</b> (बाकी छोड़ दिए जाएँगे)। आज जिन्हें भेज चुके हैं उन्हें दोबारा नहीं जाएगा।
+                {' '}मोबाइल नंबर वाले: <b>{withMobile.length}</b>{withMobile.length < remindAsk.length ? ' (बाकी छोड़ दिए जाएँगे)' : ''}।
               </div>
+              {sentBefore.length > 0 && (
+                <div className="p-2 bg-[#FFF4CE] border border-[#E0B400] text-[#5C4400]">
+                  {sentBefore.length === 1 && withMobile.length === 1 ? (
+                    <>⚠ इस ग्राहक को <b>{remindDay(remindLast[String(sentBefore[0].customer_id)])}</b> को रिमाइंडर पहले ही भेजा जा चुका है। क्या दोबारा भेजना है?</>
+                  ) : (
+                    <>⚠ <b>{sentBefore.length}</b> ग्राहकों को इस महीने रिमाइंडर पहले ही भेजा जा चुका है ({sentBefore.slice(0, 5).map(c => `#${c.customer_id} ${remindDay(remindLast[String(c.customer_id)])}`).join(', ')}{sentBefore.length > 5 ? ' ...' : ''})। उन्हें दोबारा भेजना है?</>
+                  )}
+                </div>
+              )}
               <div className="font-bold">ग्राहक को ऐसा संदेश जाएगा (रिमाइंडर बिल के साथ):</div>
               <div className="bg-[#DCF8C6] border border-[#B2D8A0] rounded p-2 whitespace-pre-line text-[12px] leading-snug text-black max-h-[60vh] overflow-y-auto">
                 <img
@@ -2136,18 +2201,27 @@ export default function ReportsForm({
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button onClick={() => setRemindAsk(null)} className="px-3 py-1 bg-[#ECE9D8] border border-[#404040] cursor-pointer">रद्द करें</button>
+                {sentBefore.length > 0 && notYet.length > 0 && (
+                  <button
+                    onClick={() => sendReminders(notYet)}
+                    className="px-3 py-1 bg-white hover:bg-green-50 text-[#075E54] font-bold border border-[#128C7E] cursor-pointer"
+                  >
+                    सिर्फ़ बाकी {notYet.length} को भेजें
+                  </button>
+                )}
                 <button
-                  disabled={remindAsk.filter(hasMobile).length === 0}
-                  onClick={() => sendReminders(remindAsk)}
+                  disabled={withMobile.length === 0}
+                  onClick={() => sendReminders(withMobile, sentBefore.length > 0)}
                   className="px-3 py-1 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-50 text-white font-bold border border-[#128C7E] cursor-pointer"
                 >
-                  भेजें
+                  {sentBefore.length === 0 ? 'भेजें' : notYet.length > 0 ? `सभी ${withMobile.length} को भेजें (दोबारा भी)` : 'हाँ, दोबारा भेजें'}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Paid: the receipt entry for this one customer; the due list is worked out again after it */}
       {paidFor && (

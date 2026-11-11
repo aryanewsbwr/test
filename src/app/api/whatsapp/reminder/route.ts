@@ -97,12 +97,35 @@ function imageFor(cid: number, cust: any, account: Omit<ReminderStatement, 'name
   });
 }
 
+// When each of these customers was last sent a reminder that WhatsApp took: { "24669": "2026-11-11T..." }
+async function lastReminded(ids: number[]): Promise<Record<string, string>> {
+  const last: Record<string, string> = {};
+  for (let i = 0; i < ids.length; i += 300) {
+    const { data, error } = await supabaseAdmin.from('whatsapp_messages').select('customer_id, created_at')
+      .eq('bill_month', 'Payment Reminder')
+      .in('status', ['sent', 'delivered', 'read'])
+      .in('customer_id', ids.slice(i, i + 300).map(String));
+    if (error) throw new Error(`Could not read sent reminders: ${error.message}`);
+    for (const r of data || []) {
+      const id = String(r.customer_id);
+      if (!last[id] || String(r.created_at) > last[id]) last[id] = String(r.created_at);
+    }
+  }
+  return last;
+}
+
 /**
- * GET ?customer_id=: the reminder bill image as the customer would get it, for the check before sending
+ * GET ?customer_id=: the reminder bill image as the customer would get it, for the check before sending.
+ * GET ?sent_for=1,2,3: when each of those customers was last reminded, { last: { id: time } }.
  */
 export async function GET(request: NextRequest) {
   try {
-    const cid = Number(new URL(request.url).searchParams.get('customer_id'));
+    const params = new URL(request.url).searchParams;
+    if (params.has('sent_for')) {
+      const ids = Array.from(new Set(String(params.get('sent_for')).split(',').map(Number).filter(id => id > 0)));
+      return NextResponse.json({ last: ids.length ? await lastReminded(ids) : {} });
+    }
+    const cid = Number(params.get('customer_id'));
     if (!(cid > 0)) return NextResponse.json({ error: 'customer_id is required' }, { status: 400 });
     const [{ data: cust }, regions, { out, year }] = await Promise.all([
       supabaseAdmin.from('customer').select('*').eq('customer_id', cid).maybeSingle(),
@@ -122,12 +145,14 @@ export async function GET(request: NextRequest) {
 
 /**
  * Sends the payment reminder with the reminder bill image to customers who still owe, each to
- * every mobile number they have. Body: { customer_ids: [...] }. The amount due is worked out
- * here from the year's bills and receipts. A number already reminded today is not sent to again.
+ * every mobile number they have. Body: { customer_ids: [...], resend?: true }. The amount due is
+ * worked out here from the year's bills and receipts. A number already reminded today is not sent
+ * to again, unless the screen asked first and was told to send again (resend).
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const resend = body.resend === true;
     const ids: number[] = Array.from(new Set<number>((Array.isArray(body.customer_ids) ? body.customer_ids : []).map(Number)))
       .filter(id => id > 0);
     if (ids.length === 0) return NextResponse.json({ error: 'Choose the customers to remind.' }, { status: 400 });
@@ -173,7 +198,8 @@ export async function POST(request: NextRequest) {
 
     const images = new Map<number, Buffer>();
     for (const t of targets) {
-      const id = logId(t.cid, t.phone);
+      // Sent again the same day: its own log row, so the earlier one stays on record
+      const id = already.has(logId(t.cid, t.phone)) && resend ? `${logId(t.cid, t.phone)}-R${Date.now()}` : logId(t.cid, t.phone);
       if (already.has(id)) {
         results.push({ customer_id: t.cid, phone: t.phone, status: 'skipped', reason: 'Already reminded today' });
         continue;
