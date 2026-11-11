@@ -438,6 +438,8 @@ const SU_FULL: Record<string, string> = {
   f: 'फ', r: 'र', ';': 'ल', h: 'ह', '~': 'त्र', '&': 'ज्ञ', '+': 'ट्ट', W: 'द्ध', w: 'द्व'
 };
 const SU_VOWEL_SIGNS: [string, string][] = [
+  // A full letter takes ो typed in full (taaoYa = तोष), as the standalone Aao = ओ
+  ['aao', 'ो'], ['aaO', 'ौ'],
   ['ao', 'ो'], ['aO', 'ौ'], ['a^', 'ॉ'], ['^a', 'ॉ'], ['a', 'ा'],
   ['o', 'े'], ['O', 'ै'], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'], ['R', 'ृ']
 ];
@@ -475,6 +477,11 @@ function decodeSushaWord(word: string): string {
     if (ch === '-') {
       if (syllableStart >= 0) res = res.slice(0, syllableStart) + 'र्' + res.slice(syllableStart);
       i++;
+      // A vowel sign typed after the reph still belongs to that letter (Aja-una = अर्जुन)
+      if (syllableStart >= 0 && /[क-ह]$/.test(res)) {
+        const sign = suMatchAt(SU_VOWEL_SIGNS, word, i);
+        if (sign && sign[0] !== 'a') { res += sign[1]; i += sign[0].length; }
+      }
       continue;
     }
 
@@ -505,8 +512,6 @@ function decodeSushaWord(word: string): string {
       while (i < n && SU_RAKAR.test(word[i])) {
         if (!res.endsWith('्र')) res += '्र';
         i++;
-        // A half letter may take 'a' after the rakar: ga`a = ग्रा needs the 'a' kept
-        if (isHalf && !completed && word[i] === 'a') i++;
       }
 
       syllableStart = clusterStart;
@@ -517,11 +522,18 @@ function decodeSushaWord(word: string): string {
         if (word[i] === 'a') i++;
         // pa`MiTMga = प्रिंटिंग: the rakar comes before the ि
         while (i < n && SU_RAKAR.test(word[i])) { if (!res.endsWith('्र')) res += '्र'; i++; }
+        // A ो typed after it wins over the ि (šlaOi@T`aoina = ईलैक्ट्रोनिक्स)
+        if (word[i] === 'o' || word[i] === 'O') { res += word[i] === 'o' ? 'ो' : 'ौ'; i++; continue; }
         res += 'ि';
         if (/^\^+a?/.test(word.slice(i))) { res += 'ॉ'; while (word[i] === '^') i++; if (word[i] === 'a') i++; }
       } else {
         const sign = /^\^{2,}a/.test(word.slice(i)) ? (['^'.repeat(word.slice(i).match(/^\^+/)![0].length) + 'a', 'ॉ'] as [string, string]) : suMatchAt(SU_VOWEL_SIGNS, word, i);
         if (sign) { res += sign[1]; i += sign[0].length; }
+        // ो typed around a rakar: ka`ona = क्रोन
+        if (sign && sign[0] === 'a' && SU_RAKAR.test(word[i] || '') && /[oO]/.test(word[i + 1] || '')) {
+          res = res.slice(0, -1) + '्र' + (word[i + 1] === 'o' ? 'ो' : 'ौ');
+          i += 2;
+        }
         // ॉ is sometimes typed with its ॅ twice (jaa^^ya = जॉय)
         if (sign && sign[1] === 'ॉ') while (word[i] === '^') i++;
       }
