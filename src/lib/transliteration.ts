@@ -418,182 +418,12 @@ const ENGLISH_INITIALS: Record<string, string> = {
   'y': 'वाई', 'z': 'ज़ेड'
 };
 
-// 5. Authentic Susha 05 Decoding Dictionary & Regex Replacements
-const SUSHA_PATTERNS: [RegExp, string][] = [
-  [/laxya/g, 'लक्ष्य'],
-  [/Axaya/g, 'अक्षय'],
-  [/BaaTI/g, 'भाटी'],
-  [/vyaaTsePp/gi, 'व्हाट्सएप'],
-  [/vyaaT\s*sePp/gi, 'व्हाट्सएप'],
-  [/saOmpla/gi, 'सैम्पल'],
-  [/e[nN]Trp`*a?[\uFFFD]?jaosa/gi, 'एंटरप्राइजेज'],
-  [/enaTrp`*a?[\uFFFD]?jaosa/gi, 'एंटरप्राइजेज'],
-  [/TO@saTa?[\uFFFD]?lsa/gi, 'टेक्सटाइल्स'],
-  [/faa?[\uFFFD]?naOnsa/gi, 'फाइनेंस'],
-  [/Aao?Taomaao?baa?[\uFFFD]?lsa/gi, 'ऑटोमोबाइल'],
-  [/maaobaa?[\uFFFD]?la/gi, 'मोबाइल'],
-  [/saa?[\uFFFD]?ikla/gi, 'साइकिल'],
-  [/hlavaa?[\uFFFD]?/gi, 'हलवाई'],
-  [/maunnaaBaa?[\uFFFD]?/gi, 'मुन्नाभाई'],
-  [/Baa[\uFFFD]/g, 'भाई'],
-  [/[\uFFFD]NDsT[`,\/]+Isa?/gi, 'इंडस्ट्रीज'],
-  [/\[NDsT[`,\/]+Isa?/gi, 'इंडस्ट्रीज'],
-  [/[\uFFFD]Svar/g, 'ईश्वर'],
-  [/[\uFFFD]laOi@T.*?k/gi, 'इलेक्ट्रिक'],
-  [/[\uFFFD]laOkiT`k/gi, 'इलेक्ट्रिक'],
-  [/\[laOi@Tk/gi, 'इलेक्ट्रिक'],
-  [/laa?[\uFFFD]?ba`orI/gi, 'लाइब्रेरी'],
-  [/laa?[\uFFFD]?nsa/gi, 'लायंस'],
-  [/laa?[\uFFFD]?T/gi, 'लाइट'],
-  [/vaa�na/g, 'वाइन'],
-  [/laa?[\uFFFD]?f/gi, 'लाइफ'],
-  [/jaI[\uFFFD]/gi, 'जी'],
-  [/vaIAa[\x00-\xFF\uFFFD]?pI/gi, 'वीआईपी'],
-  [/vaIAapI/gi, 'वीआईपी'],
-  [/ha\]sa/gi, 'हाउस'],
-  [/Aga`vaala/g, 'अग्रवाल'],
-  [/rajaond`/g, 'राजेन्द्र'],
-  [/yaaogaond`/g, 'योगेन्द्र'],
-  [/naond`/g, 'नेन्द्र'],
-  [/dovand`/g, 'देवेन्द्र'],
-  [/dova/g, 'देव'],
-  [/sauryand`/g, 'सुरेन्द्र'],
-  [/ijatond`/g, 'जितेन्द्र'],
-  [/ivapond`/g, 'विपेन्द्र'],
-  [/kumaar/gi, 'कुमार'],
-  [/Samaa\-/g, 'शर्मा'],
-  [/gaga\-/g, 'गर्ग'],
-  [/vaarmaa\-/g, 'वर्मा'],
-  [/rGauvaIr/g, 'रघुवीर'],
-  [/razaOD/g, 'राठौड़'],
-  [/saaonaI/g, 'सोनी'],
-  [/manaIYa/g, 'मनीष'],
-  [/yaaogaoSa/g, 'योगेश'],
-  [/maaqaur/g, 'माथुर'],
-  [/rakoSa/g, 'राकेश'],
-  [/pazk/g, 'पाठक'],
-  [/caMdna/g, 'चंदन'],
-  [/isaMh/g, 'सिंह'],
-  [/saMdIp/g, 'संदीप'],
-  [/caaOhana/g, 'चौहान'],
-  [/inagama/g, 'निगम'],
-  [/jaOna/g, 'जैन'],
-  [/dIpk/g, 'दीपक'],
-  [/dIpU/g, 'दीपू'],
-  [/dIpIka/g, 'दीपिका'],
-  [/jaaoSaI/g, 'जोशी'],
-  [/sauinala/g, 'सुनील'],
-  [/raoyala/g, 'रोयल'],
-  [/ivanaya/g, 'विनय'],
-  [/ivakasa/g, 'विकास'],
-  [/gauPta/g, 'गुप्ता'],
-  [/gaPta/g, 'गुप्ता'],
-  [/ebarna/g, 'इबरन'],
-  [/Ambaujaa/g, 'अम्बुजा'],
-  [/gaOsT/g, 'गेस्ट'],
-  [/raGava/g, 'राघव'],
-  [/saMjaya/g, 'संजय'],
-  [/iSavaSaMkr/g, 'शिवशंकर'],
-  [/gaunaa/g, 'गुना'],
-  [/SaoKrna/g, 'शेखरन'],
-  [/SaoKavat/g, 'शेखावत'],
-  [/pMkja/g, 'पंकज'],
-  [/DaMgaI/g, 'डांगी'],
-  [/jaaMgaID/g, 'जांगिड़'],
-  [/rajaoSa/g, 'राजेश'],
-  [/rjanaISa/g, 'रजनीश'],
-  [/baaohra/g, 'बोहरा'],
-  [/A\$Na/g, 'अरुण'],
-  [/baabaUlaala/g, 'बाबूलाल'],
-  [/saumana/g, 'सुमन'],
-  [/piNDt/g, 'पंडित'],
-  [/maaOhmmad/g, 'मोहम्मद'],
-  [/Tak/g, 'टाक'],
-  [/jaI/g, 'जी'],
-  [/Da\./g, 'डॉ.'],
-  [/Da\s+/g, 'डॉ '],
-  [/kmpnaI/g, 'कम्पनी'],
-  [/\]paQyaaya/g, 'उपाध्याय'],
-  [/sa%yama/g, 'सत्यम'],
-  [/saaMKlaa/g, 'सांखला'],
-  [/eDvaaokoT/g, 'एडवोकेट'],
-  [/Plasa/g, 'प्लस'],
-  [/Aaoko/g, 'ओके'],
-  [/\[laOi@T.*?k/g, 'इलेक्ट्रिक'],
-  [/\[laOi@Tk/g, 'इलेक्ट्रिक'],
-  [/kmalaa/g, 'कमला'],
-  [/p``aoivajana/g, 'प्रोविजन'],
-  [/p`aoivajana/g, 'प्रोविजन'],
-  [/p``/g, 'प्र'],
-  [/p`/g, 'प्र'],
-  [/d``/g, 'द्र'],
-  [/cand``/g, 'चन्द्र'],
-  [/cand`/g, 'चन्द्र'],
-  [/saksaonaa/g, 'सक्सेना'],
-  [/saubaaoQa/g, 'सुबोध'],
-  [/kaOiSak/g, 'कौशिक'],
-  [/kuNaala/g, 'कुणाल'],
-  [/saamanta/g, 'सामंत'],
-  [/dadIca/g, 'दाधीच'],
-  [/AaomaisaMh/g, 'ओमसिंह'],
-  [/caarNa/g, 'चारण'],
-  [/EaIvaastva/g, 'श्रीवास्तव'],
-  [/EaI/g, 'श्री'],
-  [/ko\s+pasa/g, 'के पास'],
-  [/baIAaobaI/g, 'बीओबी'],
-  [/Aaresa[\uFFFD]?baI/gi, 'आरएसईबी'],
-  [/esabaIAa?[\uFFFD]?/gi, 'एसबीआई'],
-  [/Aa?[\uFFFD]?AaosaI/gi, 'आईओसी'],
-  [/ef(\d+)?/gi, 'एफ$1'],
-  [/DI(\d+)?/g, 'डी$1'],
-  [/saI(\d+)?/g, 'सी$1'],
-  [/baI(\d+)?/g, 'बी$1'],
-  [/[\uFFFD](\d+)/g, 'ई$1'],
-  [/[\uFFFD]\s*(\d+)/g, 'ई $1'],
-  [/[\uFFFD]/g, 'ई'],
-  [/ema\s+ko/g, 'एम के'],
-  [/esa\s+ko/g, 'एस के'],
-  [/ko\s+ko/g, 'के के'],
-  [/Aar\s+ko/g, 'आर के'],
-  [/vaI\s+pI/g, 'वी पी'],
-  [/ema\s+esa/g, 'एम एस'],
-  [/ema\s+Aar/g, 'एम आर'],
-  [/manaaoja/g, 'मनोज'],
-  [/vaI/g, 'वी'],
-  [/pI/g, 'पी'],
-  [/ko/g, 'के'],
-  [/esa/g, 'एस'],
-  [/ema/g, 'एम'],
-  [/Aar/g, 'आर']
-];
-
-const SUSHA_CHARS: [string, string][] = [
-  ['EaI', 'श्री'], ['Ea', 'श्र'],
-  ['Aao', 'ओ'], ['AaO', 'औ'], ['Aa', 'आ'], ['A', 'अ'],
-  ['ena', 'एन'], ['esa', 'एस'], ['ema', 'एम'], ['Aar', 'आर'],
-  ['ko', 'के'], ['DI', 'डी'], ['saI', 'सी'], ['baI', 'बी'],
-  ['e', 'ए'], ['E', 'ऐ'], ['aao', 'ो'], ['ao', 'ो'], ['o', 'े'], ['O', 'ै'],
-  ['aaO', 'ौ'], ['aO', 'ौ'], ['aa', 'ा'],
-  ['a', ''], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'],
-  ['k', 'क'], ['K', 'ख'], ['g', 'ग'], ['G', 'घ'],
-  ['c', 'च'], ['C', 'छ'], ['j', 'ज'], ['J', 'झ'],
-  ['T', 'ट'], ['z', 'ठ'], ['D', 'ड'], ['Z', 'ढ'], ['N', 'ण'],
-  ['t', 'त'], ['q', 'थ'], ['d', 'द'], ['Q', 'ध'], ['n', 'न'],
-  ['p', 'प'], ['P', 'फ'], ['f', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
-  ['y', 'य'], ['r', 'र'], ['l', 'ल'], ['v', 'व'], ['w', 'व'],
-  ['S', 'श'], ['Y', 'ष'], ['s', 'स'], ['h', 'ह'],
-  ['x', 'क्ष'], ['X', 'क्ष'],
-  ['~', 'त्र'], ['&', 'ज्ञ'], ['@', 'क्'], ['%', 'त्'],
-  ['$', 'रु'], ['`', '्र'], ['-', 'र्'], [':', 'ः'], ['^', 'ँ'], ['M', 'ं'],
-  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
-];
-
 // --- Susha 05 decoder tables -----------------------------------------------------
 // Standalone vowels. Longest-first.
 const SU_INDEP: [string, string][] = [
   ['AaO', 'औ'], ['Aao', 'ओ'], ['Aa^', 'ऑ'], ['A^a', 'ऑ'], ['Aa', 'आ'], ['A', 'अ'],
   ['eo', 'ऐ'], ['e', 'ए'],
-  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'उ'], ['?', 'ऋ'], ['R', 'ऋ']
+  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'उ'], ['?', 'ऋ']
 ];
 // Half letters: the glyph has no vertical bar, so 'a' completes the letter and a
 // following consonant joins it. These never end a word in the customer data.
@@ -608,14 +438,12 @@ const SU_FULL: Record<string, string> = {
   f: 'फ', r: 'र', ';': 'ल', h: 'ह', '~': 'त्र', '&': 'ज्ञ', '+': 'ट्ट', W: 'द्ध', w: 'द्व'
 };
 const SU_VOWEL_SIGNS: [string, string][] = [
-  ['ao', 'ो'], ['aO', 'ौ'], ['a^', 'ॉ'], ['a', 'ा'],
+  ['ao', 'ो'], ['aO', 'ौ'], ['a^', 'ॉ'], ['^a', 'ॉ'], ['a', 'ा'],
   ['o', 'े'], ['O', 'ै'], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'], ['R', 'ृ']
 ];
 const SU_RAKAR = /[`/]/;
 const SU_STRAY_SIGN = /[aoOIuUR`/]/;
 const SU_TRAILING: Record<string, string> = { M: 'ं', '^': 'ँ', ':': 'ः' };
-// Full letters whose next half letter is a conjunct in real words (मुख्य)
-const SU_FULL_CONJUNCTS = new Set(['Ky', 'hy']);
 // What comes before W when it is द्व rather than द्ध: भारद्वाज, रामद्वारा, or the start of a word
 const SU_DVA_BEFORE = /^(?:i?|Baar|rama)$/;
 
@@ -668,7 +496,8 @@ function decodeSushaWord(word: string): string {
       const completed = isHalf && word[i] === 'a';
       if (completed) i++;
 
-      if (!completed && suIsConsonant(word[i]) && (isHalf || SU_FULL_CONJUNCTS.has(ch + word[i]))) {
+      // Only a half letter joins the next one; a full letter never does (mauKya = मुखय, as typed)
+      if (!completed && isHalf && suIsConsonant(word[i])) {
         res += '्';
         continue;
       }
@@ -684,12 +513,17 @@ function decodeSushaWord(word: string): string {
       clusterStart = -1;
 
       if (pendingShortI) {
-        res += 'ि';
         pendingShortI = false;
         if (word[i] === 'a') i++;
+        // pa`MiTMga = प्रिंटिंग: the rakar comes before the ि
+        while (i < n && SU_RAKAR.test(word[i])) { if (!res.endsWith('्र')) res += '्र'; i++; }
+        res += 'ि';
+        if (/^\^+a?/.test(word.slice(i))) { res += 'ॉ'; while (word[i] === '^') i++; if (word[i] === 'a') i++; }
       } else {
-        const sign = suMatchAt(SU_VOWEL_SIGNS, word, i);
+        const sign = /^\^{2,}a/.test(word.slice(i)) ? (['^'.repeat(word.slice(i).match(/^\^+/)![0].length) + 'a', 'ॉ'] as [string, string]) : suMatchAt(SU_VOWEL_SIGNS, word, i);
         if (sign) { res += sign[1]; i += sign[0].length; }
+        // ॉ is sometimes typed with its ॅ twice (jaa^^ya = जॉय)
+        if (sign && sign[1] === 'ॉ') while (word[i] === '^') i++;
       }
       // Typing slips such as BaaTIo or rooNau repeat a vowel sign: keep the first one
       while (i < n && SU_STRAY_SIGN.test(word[i])) i++;
@@ -706,14 +540,19 @@ function decodeSushaWord(word: string): string {
 
     if (ch in SU_TRAILING) {
       i++;
+      // An anusvara before any letter is a typing slip (MmahoSa = महेश)
+      if (!res) continue;
       // Anusvara typed before the vowel sign (DMU = डूं)
-      const lateSign = ch === 'M' && word[i] !== 'a' && !/[ा-ौ]$/.test(res) ? suMatchAt(SU_VOWEL_SIGNS, word, i) : null;
+      // and the ा after it too (saMacaaora = सांचोरा, T`Ma = ट्रां)
+      const lateSign = ch === 'M' && res && !/[ा-ौ]$/.test(res) ? suMatchAt(SU_VOWEL_SIGNS, word, i) : null;
       if (lateSign) { res += lateSign[1]; i += lateSign[0].length; }
       res += SU_TRAILING[ch];
       continue;
     }
 
-    // A vowel sign with no letter before it is a typing slip (oiSava, `SaMkr)
+    if (ch === 'R' && res) { res += 'ृ'; i++; continue; }
+
+    // A vowel sign with no letter before it is a typing slip (oiSava, `SaMkr, Rraja)
     if (SU_STRAY_SIGN.test(ch)) { i++; continue; }
 
     res += ch;
@@ -730,17 +569,10 @@ function suMatchAt(table: [string, string][], str: string, i: number): [string, 
   return null;
 }
 
-// Curated fixes must only match whole words: unanchored, /Da\s+/ turned every word
-// ending in "Da " into "डॉ ".
-const SUSHA_WORD_BOUNDARY_BEFORE = '(?<![A-Za-z\\u0900-\\u097F`;~%@$+<&\\[\\]{}?-])';
-const SUSHA_WORD_BOUNDARY_AFTER = '(?![A-Za-z\\u0900-\\u097F`;~%@$+<&\\[\\]{}?-])';
-const SUSHA_WORD_PATTERNS: [RegExp, string][] = SUSHA_PATTERNS.map(([pattern, rep]) => [
-  new RegExp(
-    `${SUSHA_WORD_BOUNDARY_BEFORE}(?:${pattern.source})${pattern.source.endsWith('\\s+') ? '' : SUSHA_WORD_BOUNDARY_AFTER}`,
-    pattern.flags
-  ),
-  rep
-]);
+// Bytes of the font that are whole signs: ³ ´ are the brackets ( ), Ì is कृ, • is the dot
+function sushaSpecialBytes(text: string): string {
+  return text.replace(/³/g, '(').replace(/´/g, ')').replace(/Ì/g, 'कृ').replace(/•/g, '.');
+}
 
 /**
  * Decodes legacy 2008 Susha 05 ASCII font strings to clean Unicode Devanagari Hindi.
@@ -750,16 +582,14 @@ export function sushaToUnicode(text: string): string {
   if (/[ऀ-ॿ]/.test(text) && !/[a-zA-Z]/.test(text)) return text;
 
   // The Š byte (legacy encoding of ई) reaches us as š, Š, the raw 0x9A or 0x8A, or U+FFFD
-  let s = text.replace(/[šŠ\x8a\x9a�]/g, '\u0001');
+  let s = sushaSpecialBytes(text).replace(/[šŠ\x8a\x9a�]/g, '\u0001');
   s = s.replace(/[\x00\x02-\x1f\x7f-\xff]/g, '');
   // SQL dump leftovers and keyboard noise that carry no letter
   s = s.replace(/[\\',!]/g, '').replace(/\/{2,}/g, '');
   if (/^\s*NULL\s*$/.test(s)) return '';
 
-  for (const [pattern, rep] of SUSHA_WORD_PATTERNS) {
-    s = s.replace(pattern, rep);
-  }
-
+  // Decoded letter by letter only: names must read exactly as the old software shows them.
+  // A name that needs correcting is corrected in name_hindi_unicode, not here.
   return s.split(' ').map(w => (w ? decodeSushaWord(w) : w)).join(' ');
 }
 
@@ -961,10 +791,13 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
   let rawHindiCleaned = rawHindiStr.trim()
     .replace(/[\x8a\x9a]/g, 'š') // the old font's ई byte, kept for sushaToUnicode
+    .replace(/[³´Ì•]/g, ch => sushaSpecialBytes(ch))
     .replace(/[\x00-\x1f\x7f-\xff]/g, '') // remove control bytes (U+FFFD is decoded by sushaToUnicode)
-    .replace(/\s*[0-9]{5,}\s*/g, ' ') // remove stray telephone/UDISE/school code numbers (5+ digits)
     .replace(/\\',.*$/, '') // remove SQL dump artifacts
     .trim();
+
+  // A Hindi name that is only a number (701) is kept as typed, not guessed from the English (701 SCL)
+  if (rawHindiCleaned && /^[0-9\s.,()/-]+$/.test(rawHindiCleaned)) return rawHindiCleaned;
 
   // 1. If rawHindi is available in database, decode and prioritize it:
   if (rawHindiCleaned && rawHindiCleaned.length > 0) {
@@ -1003,7 +836,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   if (rawHindiCleaned && rawHindiCleaned.length > 0) {
     const sushaAttempt = sushaToUnicode(rawHindiCleaned);
     if (sushaAttempt && /[\u0900-\u097F]/.test(sushaAttempt)) {
-      return sushaAttempt.replace(/[a-zA-Z]/g, '').replace(/\s*[0-9]{5,}\s*/g, ' ').trim();
+      return sushaAttempt.replace(/[a-zA-Z]/g, '').trim();
     }
   }
 
@@ -1032,10 +865,13 @@ export function getReliableHindiName(rawHindi: any, englishName: any): string {
 
   const rawHindiCleaned = rawHindiStr.trim()
     .replace(/[\x8a\x9a]/g, 'š') // the old font's ई byte, kept for sushaToUnicode
+    .replace(/[³´Ì•]/g, ch => sushaSpecialBytes(ch))
     .replace(/[\x00-\x1f\x7f-\xff]/g, '') // strip control bytes (U+FFFD is decoded by sushaToUnicode)
-    .replace(/\s*[0-9]{5,}\s*/g, ' ')           // strip stray 5+ digit codes
     .replace(/\\',.*$/, '')                        // strip SQL dump artifacts
     .trim();
+
+  // A Hindi name that is only a number (701) is kept as typed
+  if (rawHindiCleaned && /^[0-9\s.,()/-]+$/.test(rawHindiCleaned)) return rawHindiCleaned;
 
   // 1. Genuine Unicode Devanagari already stored in the database (most reliable)
   if (rawHindiCleaned && /[ऀ-ॿ]/.test(rawHindiCleaned) && !/[a-zA-Z]/.test(rawHindiCleaned)) {
@@ -1051,7 +887,7 @@ export function getReliableHindiName(rawHindi: any, englishName: any): string {
   if (rawHindiCleaned) {
     const susha = sushaToUnicode(rawHindiCleaned);
     if (susha && /[ऀ-ॿ]/.test(susha) && !/[a-zA-Z]/.test(susha)) {
-      return susha.replace(/\s*[0-9]{5,}\s*/g, ' ').trim();
+      return susha.trim();
     }
   }
 
