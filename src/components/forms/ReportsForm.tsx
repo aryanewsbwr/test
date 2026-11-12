@@ -187,7 +187,8 @@ export default function ReportsForm({
   }, []);
   // The newest billed month (which can be left out), the last receipt and the last restore
   const [remindOpts, setRemindOpts] = useState<{ latest_month?: string | null; last_receipt?: any; restored?: any } | null>(null);
-  const [leaveLatest, setLeaveLatest] = useState(true);
+  // Off unless chosen: the due shown is the full balance up to the last processed bill
+  const [leaveLatest, setLeaveLatest] = useState(false);
   const [minDue, setMinDue] = useState(50);
   const loadRemindOpts = useCallback(async () => {
     try {
@@ -533,7 +534,7 @@ export default function ReportsForm({
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       const m = e.data || {};
-      if (typeof m.dueSlipHeight === 'number') { setSlipHeight(Math.max(300, m.dueSlipHeight + 16)); return; }
+      if (typeof m.dueSlipHeight === 'number') { setSlipHeight(Math.max(120, m.dueSlipHeight)); return; }
       if (!m.dueSlip) return;
       const row = dueRowsSorted.find(c => Number(c.customer_id) === Number(m.id));
       if (!row) return;

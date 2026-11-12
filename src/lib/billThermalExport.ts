@@ -1045,7 +1045,8 @@ ${forPrint ? '' : screenCss}
           var b = e.target.closest('button[data-act]');
           if (b && !b.disabled) parent.postMessage({ dueSlip: b.getAttribute('data-act'), id: Number(b.getAttribute('data-id')) }, '*');
         });
-        function size() { parent.postMessage({ dueSlipHeight: document.documentElement.scrollHeight }, '*'); }
+        // The slips' own height, not the page's: the page is never shorter than the frame, so it would never shrink
+        function size() { var c = document.querySelector('.receipts-container'); parent.postMessage({ dueSlipHeight: Math.ceil(c ? c.getBoundingClientRect().bottom : document.body.scrollHeight) + 8 }, '*'); }
         window.addEventListener('load', size); window.addEventListener('resize', size); setTimeout(size, 300);`}
   </script>
 </body></html>`;
