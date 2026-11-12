@@ -12,6 +12,7 @@ import { BillThermalPreview } from '@/components/reports/BillThermalPreview';
 import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
+import { printDueList } from '@/lib/dueListPrint';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
 
 // A due-list customer with a mobile number a reminder can go to
@@ -446,7 +447,27 @@ export default function ReportsForm({
     }
   };
 
+  // The due list prints as its own clean list (priority, customer, address, amount), not the screen
+  const printDueListNow = () => {
+    const regionName = selectedRegion === 'all_list' ? 'सभी क्षेत्र'
+      : regions.find(r => String(r.region_id || r.id) === String(selectedRegion))?.region_name || `#${selectedRegion}`;
+    printDueList(reportData?.rows || [], {
+      regionName,
+      regionId: selectedRegion === 'all_list' ? '' : selectedRegion,
+      showRegion: selectedRegion === 'all_list'
+    });
+  };
+  const isDueCustomerList = activeReport === 'due_region_summary' && reportData?.view === 'customers';
+  // Direct Print on the due list: wait for the list to load, then print it
+  const [printDueWhenLoaded, setPrintDueWhenLoaded] = useState(false);
+  useEffect(() => {
+    if (!printDueWhenLoaded || isLoading || !reportData) return;
+    setPrintDueWhenLoaded(false);
+    if (isDueCustomerList) printDueListNow(); else window.print();
+  }, [printDueWhenLoaded, isLoading, reportData]);
+
   const handlePrint = () => {
+    if (isDueCustomerList) { printDueListNow(); return; }
     if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
       if (billPrinterType === 'thermal_58mm') {
         printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
@@ -820,6 +841,8 @@ export default function ReportsForm({
             <button 
               onClick={() => {
                 setViewMode('preview');
+                // The due list is printed once it has loaded (see printDueWhenLoaded)
+                if (activeReport === 'due_region_summary' && selectedRegion !== 'all') { setPrintDueWhenLoaded(true); return; }
                 setTimeout(() => {
                   if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
                     if (billPrinterType === 'thermal_58mm') {

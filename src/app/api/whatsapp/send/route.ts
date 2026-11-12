@@ -94,53 +94,39 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     ? `'MangalEmbedded', Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
     : `Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
 
-  // Dynamic publication line items
+  // One line per paper with its amount; the delivery charge is folded into the papers'
+  // amounts (as on the simple printed bill), so the customer sees only papers and the total.
   const items = Array.isArray(bill.items) ? bill.items : [];
+  const hasItemDelivery = items.some((it: any) => Number(it.delivery_amount || 0) > 0);
+  const byPaper = new Map<string, { name: string; amount: number }>();
+  items.forEach((it: any, idx: number) => {
+    const name = String(it.pub_name || it.name || 'Newspaper').trim();
+    const delivery = hasItemDelivery ? Number(it.delivery_amount || 0) : (idx === 0 ? deliveryChg : 0);
+    const amount = Number(it.net_amount ?? it.amount ?? 0) + delivery;
+    const entry = byPaper.get(name.toLowerCase());
+    if (entry) entry.amount += amount; else byPaper.set(name.toLowerCase(), { name, amount });
+  });
+  if (byPaper.size === 0) byPaper.set('paper', { name: 'Newspaper', amount: Number(currentAmt) + deliveryChg });
+  const papers = Array.from(byPaper.values()).map(p => ({ ...p, amount: Math.round(p.amount * 100) / 100 }));
+  const papersTotal = Math.round(papers.reduce((sum, p) => sum + p.amount, 0) * 100) / 100;
+  // Whatever is left of the total is last month's balance (after payments): shown as one line so
+  // the lines add up to the total. Negative means an advance.
+  const earlier = Math.round((Number(totalAmt) - papersTotal) * 100) / 100;
+
   let itemRowsSvg = '';
   let curY = 316;
-
-  if (items.length > 0) {
-    items.forEach((it: any) => {
-      // Use clean English name for publication to guarantee 100% crisp rendering without tofu squares
-      const pubName = String(it.pub_name || it.name || 'Newspaper').trim();
-      const daysOrQty = String(it.days !== undefined && it.days !== null ? it.days : (it.qty || 30));
-      const amtStr = Number(it.net_amount ?? it.amount ?? 0).toFixed(2);
-
-      itemRowsSvg += `
-      <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">${escapeXml(pubName)}</text>
-      <text x="250" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="middle">${escapeXml(daysOrQty)}</text>
-      <text x="384" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="end">${escapeXml(amtStr)}</text>
+  papers.forEach(p => {
+    itemRowsSvg += `
+      <text x="16" y="${curY}" font-size="13" class="t-reg" fill="#000000">${escapeXml(p.name)}</text>
+      <text x="384" y="${curY}" font-size="13" class="t-bold" fill="#000000" text-anchor="end">${p.amount.toFixed(2)}</text>
       `;
-      curY += 22;
-    });
-  } else {
-    // Single summary row if individual item breakdown wasn't supplied
-    itemRowsSvg += `
-    <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">Monthly Newspaper</text>
-    <text x="250" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="middle">30</text>
-    <text x="384" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="end">${escapeXml(currentAmt)}</text>
-    `;
-    curY += 22;
-  }
-
-  // Delivery charge row if applicable
-  if (deliveryChg > 0) {
-    itemRowsSvg += `
-    <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">Delivery Charge</text>
-    <text x="250" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="middle">-</text>
-    <text x="384" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="end">${deliveryChg.toFixed(2)}</text>
-    `;
-    curY += 22;
-  }
+    curY += 24;
+  });
 
   // Dynamic layout coordinates based on line item count
   const dividerY = curY + 6;
-  const currentAmtY = dividerY + 24;
-  const prevDueY = currentAmtY + 24;
-  const paidY = prevDueY + 24;
-  const lastPaymentY = paidAmt > 0 ? paidY : prevDueY;
-  const roundOffY = lastPaymentY + 24;
-  const totalBoxY = (roundOff !== 0 ? roundOffY : lastPaymentY) + 16;
+  const earlierY = dividerY + 24;
+  const totalBoxY = (Math.abs(earlier) >= 0.01 ? earlierY : dividerY) + 16;
   const qrY = totalBoxY + 52;
   const qrText1Y = qrY + 164;
   const qrText2Y = qrText1Y + 18;
@@ -226,30 +212,20 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <line x1="16" y1="242" x2="384" y2="242" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
     <!-- Table Headers -->
-    <text x="16" y="262" font-size="13" class="t-bold" fill="#000000">Particular</text>
-    <text x="250" y="262" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Days</text>
+    <text x="16" y="262" font-size="13" class="t-bold" fill="#000000">Newspaper</text>
     <text x="384" y="262" font-size="13" class="t-bold" fill="#000000" text-anchor="end">Amount Rs.</text>
     <line x1="16" y1="274" x2="384" y2="274" stroke="#000000" stroke-width="1" stroke-dasharray="4,2"/>
-    
+
     <!-- Dynamic Line Items -->
     ${itemRowsSvg}
     
     <!-- Dashed Divider -->
     <line x1="16" y1="${dividerY}" x2="384" y2="${dividerY}" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
-    <!-- Summary -->
-    <text x="16" y="${currentAmtY}" font-size="13" class="t-reg" fill="#000000">Current Month</text>
-    <text x="384" y="${currentAmtY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Rs. ${currentAmt}</text>
-    
-    <text x="16" y="${prevDueY}" font-size="13" class="t-reg" fill="#000000">Previous Due</text>
-    <text x="384" y="${prevDueY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Rs. ${prevDue}</text>
-    ${paidAmt > 0 ? `
-    <text x="16" y="${paidY}" font-size="13" class="t-reg" fill="#000000">Paid</text>
-    <text x="384" y="${paidY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">- Rs. ${paidAmt.toFixed(2)}</text>
-    ` : ''}
-    ${roundOff !== 0 ? `
-    <text x="16" y="${roundOffY}" font-size="13" class="t-reg" fill="#000000">Round Off</text>
-    <text x="384" y="${roundOffY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">${formatRoundOff(roundOff)}</text>
+    <!-- Last month's balance, only when there is one -->
+    ${Math.abs(earlier) >= 0.01 ? `
+    <text x="16" y="${earlierY}" font-size="13" class="t-reg" fill="#000000">${earlier > 0 ? 'Previous Balance' : 'Advance'}</text>
+    <text x="384" y="${earlierY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">${earlier > 0 ? '' : '- '}Rs. ${Math.abs(earlier).toFixed(2)}</text>
     ` : ''}
 
     <!-- Boxed Total Banner -->
