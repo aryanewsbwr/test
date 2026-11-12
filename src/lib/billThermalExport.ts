@@ -189,23 +189,6 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   return `
     <div class="bill-card">
       
-      <!-- Festive Diwali Greeting Banner -->
-      <div class="diwali-banner">
-        <svg class="diwali-diya" width="18" height="15" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 1C10 1 6.5 5.5 7.5 8.5C8.2 10.7 10 11.2 10 11.2C10 11.2 11.8 10.7 12.5 8.5C13.5 5.5 10 1 10 1Z" fill="#F59E0B"/>
-          <path d="M10 4C10 4 8.2 6.5 8.8 8.2C9.2 9.5 10 9.8 10 9.8C10 9.8 10.8 9.5 11.2 8.2C11.8 6.5 10 4 10 4Z" fill="#EF4444"/>
-          <path d="M2 10C3 14.5 6.5 16.5 10 16.5C13.5 16.5 17 14.5 18 10C18 10 14 12 10 12C6 12 2 10 2 10Z" fill="#B45309"/>
-          <path d="M1.5 10C1.5 10 5.5 11.5 10 11.5C14.5 11.5 18.5 10 18.5 10C18.5 10 14.5 11 10 11C5.5 11 1.5 10 1.5 10Z" fill="#D97706"/>
-        </svg>
-        <span class="diwali-text">॥ शुभ दीपावली ॥</span>
-        <svg class="diwali-diya" width="18" height="15" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 1C10 1 6.5 5.5 7.5 8.5C8.2 10.7 10 11.2 10 11.2C10 11.2 11.8 10.7 12.5 8.5C13.5 5.5 10 1 10 1Z" fill="#F59E0B"/>
-          <path d="M10 4C10 4 8.2 6.5 8.8 8.2C9.2 9.5 10 9.8 10 9.8C10 9.8 10.8 9.5 11.2 8.2C11.8 6.5 10 4 10 4Z" fill="#EF4444"/>
-          <path d="M2 10C3 14.5 6.5 16.5 10 16.5C13.5 16.5 17 14.5 18 10C18 10 14 12 10 12C6 12 2 10 2 10Z" fill="#B45309"/>
-          <path d="M1.5 10C1.5 10 5.5 11.5 10 11.5C14.5 11.5 18.5 10 18.5 10C18.5 10 14.5 11 10 11C5.5 11 1.5 10 1.5 10Z" fill="#D97706"/>
-        </svg>
-      </div>
-
       <!-- Agency Header -->
       <div class="agency-header">
         <div class="agency-name-en">ARYAN NEWS AGENCY</div>

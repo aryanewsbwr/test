@@ -149,7 +149,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const footerNotice2Y = footerNotice1Y + 18;
   const footerNotice3Y = footerNotice2Y + 18;
   const footerThankYouY = footerNotice3Y + 22;
-  const totalSvgHeight = footerThankYouY + 58;
+  const totalSvgHeight = footerThankYouY + 22;
 
   // Real Dynamic UPI QR Code
   const upiQrSvgRaw = generateDynamicUpiQrSvg(Number(totalAmt), billNo, month, 140, 0);
@@ -175,31 +175,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <!-- Background Card -->
     <rect width="400" height="${totalSvgHeight}" fill="#ffffff"/>
     
-    <!-- Festive Diwali Greeting Banner -->
-    <g id="diwali-banner">
-      <rect x="24" y="8" width="352" height="26" rx="4" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1"/>
-      
-      <!-- Left Deepak (Diya) -->
-      <g transform="translate(56, 12)">
-        <path d="M10 1C10 1 6.5 5.5 7.5 8.5C8.2 10.7 10 11.2 10 11.2C10 11.2 11.8 10.7 12.5 8.5C13.5 5.5 10 1 10 1Z" fill="#F59E0B"/>
-        <path d="M10 4C10 4 8.2 6.5 8.8 8.2C9.2 9.5 10 9.8 10 9.8C10 9.8 10.8 9.5 11.2 8.2C11.8 6.5 10 4 10 4Z" fill="#EF4444"/>
-        <path d="M2 10C3 14.5 6.5 16.5 10 16.5C13.5 16.5 17 14.5 18 10C18 10 14 12 10 12C6 12 2 10 2 10Z" fill="#B45309"/>
-        <path d="M1.5 10C1.5 10 5.5 11.5 10 11.5C14.5 11.5 18.5 10 18.5 10C18.5 10 14.5 11 10 11C5.5 11 1.5 10 1.5 10Z" fill="#D97706"/>
-      </g>
-      
-      <!-- Greeting Text -->
-      <text x="200" y="26" font-size="13" class="t-bold" fill="#92400E" text-anchor="middle" letter-spacing="1">HAPPY DIWALI</text>
-      
-      <!-- Right Deepak (Diya) -->
-      <g transform="translate(324, 12)">
-        <path d="M10 1C10 1 6.5 5.5 7.5 8.5C8.2 10.7 10 11.2 10 11.2C10 11.2 11.8 10.7 12.5 8.5C13.5 5.5 10 1 10 1Z" fill="#F59E0B"/>
-        <path d="M10 4C10 4 8.2 6.5 8.8 8.2C9.2 9.5 10 9.8 10 9.8C10 9.8 10.8 9.5 11.2 8.2C11.8 6.5 10 4 10 4Z" fill="#EF4444"/>
-        <path d="M2 10C3 14.5 6.5 16.5 10 16.5C13.5 16.5 17 14.5 18 10C18 10 14 12 10 12C6 12 2 10 2 10Z" fill="#B45309"/>
-        <path d="M1.5 10C1.5 10 5.5 11.5 10 11.5C14.5 11.5 18.5 10 18.5 10C18.5 10 14.5 11 10 11C5.5 11 1.5 10 1.5 10Z" fill="#D97706"/>
-      </g>
-    </g>
-
-    <g transform="translate(0, 36)">
+    <g>
     <!-- Header -->
     <text x="200" y="32" font-size="19" class="t-bold" fill="#000000" text-anchor="middle" letter-spacing="0.5">ARYAN NEWS AGENCY</text>
     <text x="200" y="56" font-size="12" class="t-mid" fill="#000000" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>

@@ -498,25 +498,6 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
         }}
       >
-        {/* Festive Diwali Greeting Banner */}
-        <div className="flex items-center justify-center gap-2 mb-2 py-1 px-3 border border-amber-300 bg-amber-50 rounded-sm text-amber-900">
-          <svg width="20" height="17" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-            <path d="M10 1C10 1 6.5 5.5 7.5 8.5C8.2 10.7 10 11.2 10 11.2C10 11.2 11.8 10.7 12.5 8.5C13.5 5.5 10 1 10 1Z" fill="#F59E0B"/>
-            <path d="M10 4C10 4 8.2 6.5 8.8 8.2C9.2 9.5 10 9.8 10 9.8C10 9.8 10.8 9.5 11.2 8.2C11.8 6.5 10 4 10 4Z" fill="#EF4444"/>
-            <path d="M2 10C3 14.5 6.5 16.5 10 16.5C13.5 16.5 17 14.5 18 10C18 10 14 12 10 12C6 12 2 10 2 10Z" fill="#B45309"/>
-            <path d="M1.5 10C1.5 10 5.5 11.5 10 11.5C14.5 11.5 18.5 10 18.5 10C18.5 10 14.5 11 10 11C5.5 11 1.5 10 1.5 10Z" fill="#D97706"/>
-          </svg>
-          <span className="font-extrabold text-[12px] tracking-wider text-amber-900">
-            ॥ शुभ दीपावली ॥
-          </span>
-          <svg width="20" height="17" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-            <path d="M10 1C10 1 6.5 5.5 7.5 8.5C8.2 10.7 10 11.2 10 11.2C10 11.2 11.8 10.7 12.5 8.5C13.5 5.5 10 1 10 1Z" fill="#F59E0B"/>
-            <path d="M10 4C10 4 8.2 6.5 8.8 8.2C9.2 9.5 10 9.8 10 9.8C10 9.8 10.8 9.5 11.2 8.2C11.8 6.5 10 4 10 4Z" fill="#EF4444"/>
-            <path d="M2 10C3 14.5 6.5 16.5 10 16.5C13.5 16.5 17 14.5 18 10C18 10 14 12 10 12C6 12 2 10 2 10Z" fill="#B45309"/>
-            <path d="M1.5 10C1.5 10 5.5 11.5 10 11.5C14.5 11.5 18.5 10 18.5 10C18.5 10 14.5 11 10 11C5.5 11 1.5 10 1.5 10Z" fill="#D97706"/>
-          </svg>
-        </div>
-
         {/* Agency Header (Centered without logo) */}
         <div className="flex flex-col items-center justify-center mb-2.5 text-center">
           <div className="font-black text-[15px] tracking-tight text-black uppercase leading-tight whitespace-nowrap">
