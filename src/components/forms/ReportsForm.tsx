@@ -152,6 +152,8 @@ export default function ReportsForm({
   const [remindBusy, setRemindBusy] = useState(false);
   const [remindStatus, setRemindStatus] = useState('');
   const [paidFor, setPaidFor] = useState<any | null>(null);
+  // The customer whose WhatsApp reminder is shown beside the due list
+  const [previewCust, setPreviewCust] = useState<number | null>(null);
   // When each customer on the due list was last sent a reminder: { customer_id: time }
   const [remindLast, setRemindLast] = useState<Record<string, string>>({});
 
@@ -1497,112 +1499,163 @@ export default function ReportsForm({
                     {' '}— पुराने सॉफ्टवेयर में डाली रसीदें यहाँ आने से पहले रिमाइंडर न भेजें।
                   </div>
                 </div>
-                <table className="w-full text-xs border-collapse border border-black">
-                  <thead>
-                    <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
-                      <th className="print:hidden p-1 text-center border-r border-black w-6">
-                        <input
-                          type="checkbox"
-                          title="सभी बकाया वाले चुनें"
-                          checked={allPicked}
-                          onChange={() => setRemindPicked(allPicked ? new Set() : new Set(dueRows.map((c: any) => c.customer_id)))}
-                        />
-                      </th>
-                      <th className="p-1 text-center border-r border-black w-14">Cust ID</th>
-                      <th className="p-1 text-center border-r border-black w-10">Pr.</th>
-                      <th className="p-1 text-left border-r border-black">Customer Name</th>
-                      <th className="p-1 text-left border-r border-black">Address</th>
-                      {selectedRegion === 'all_list' && <th className="p-1 text-center border-r border-black w-20">Region</th>}
-                      <th className="p-1 text-right border-r border-black w-20">Year End Dues</th>
-                      <th className="p-1 text-right border-r border-black w-20">Bill</th>
-                      <th className="p-1 text-right border-r border-black w-16">Delivery</th>
-                      <th className="p-1 text-right border-r border-black w-20">Receipt</th>
-                      <th className="p-1 text-right border-r border-black w-14">Less</th>
-                      <th className="p-1 text-right font-black w-24">Balance (₹)</th>
-                      <th className="print:hidden p-1 text-center border-l border-black w-28">रिमाइंडर / पेमेंट</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportData.rows.map((c: any) => (
-                      <tr key={c.customer_id} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
-                        <td className="print:hidden p-1 text-center border-r border-slate-300">
-                          {c.final_balance > 0 && (
+                {/* The list as it is printed (Priority, Customer, Address, Amt), with the WhatsApp
+                    reminder for the chosen customer beside it, as the customer will get it */}
+                {(() => {
+                  const listRows = [...dueRows].sort((a: any, b: any) =>
+                    (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id));
+                  const total = listRows.reduce((sum: number, c: any) => sum + Math.round(Number(c.final_balance)), 0);
+                  const shown = listRows.find((c: any) => Number(c.customer_id) === previewCust) || listRows[0];
+                  return (
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1 min-w-0 bg-white border border-slate-300 shadow-sm px-3 py-2 font-sans">
+                    <table className="w-full text-[13px] border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-black text-[12px]">
+                          <th className="print:hidden p-1 w-6 text-center">
                             <input
                               type="checkbox"
-                              checked={remindPicked.has(c.customer_id)}
-                              onChange={() => setRemindPicked(prev => {
-                                const next = new Set(prev);
-                                if (next.has(c.customer_id)) next.delete(c.customer_id); else next.add(c.customer_id);
-                                return next;
-                              })}
+                              title="सभी बकाया वाले चुनें"
+                              checked={allPicked}
+                              onChange={() => setRemindPicked(allPicked ? new Set() : new Set(dueRows.map((c: any) => c.customer_id)))}
                             />
-                          )}
-                        </td>
-                        <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">#{c.customer_id}</td>
-                        <td className="p-1 text-center border-r border-slate-300 font-mono">{c.priority || ''}</td>
-                        <td className="p-1 border-r border-slate-300 font-bold text-blue-950">
-                          <div>{c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, c.name) : c.name}</div>
-                          {c.name_hindi && <div className="text-[10px] text-slate-600 font-normal">{c.name}</div>}
-                        </td>
-                        <td className="p-1 border-r border-slate-300 text-slate-700 max-w-[200px]">{cleanOrTransliterateHindi(c.address || '', '')}</td>
-                        {selectedRegion === 'all_list' && <td className="p-1 border-r border-slate-300 text-center text-slate-600 text-[10px]">{c.region_name}</td>}
-                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.year_end_dues).toFixed(2)}</td>
-                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_bill).toFixed(2)}</td>
-                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_delivery).toFixed(2)}</td>
-                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_receipt).toFixed(2)}</td>
-                        <td className="p-1 border-r border-slate-300 text-right font-mono">{Number(c.total_less).toFixed(2)}</td>
-                        <td className={`p-1 text-right font-mono font-black ${c.final_balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>
-                          ₹{Number(c.final_balance).toFixed(2)}
-                        </td>
-                        <td className="print:hidden p-1 text-center border-l border-slate-300 whitespace-nowrap">
-                          {c.final_balance > 0 && (
-                            <div className="flex gap-1 justify-center">
-                              <button
-                                disabled={remindBusy || !hasMobile(c) || remindedRecently(remindLast[String(c.customer_id)])}
-                                title={!hasMobile(c) ? 'मोबाइल नंबर नहीं है'
-                                  : remindedRecently(remindLast[String(c.customer_id)]) ? `पिछले ${REMINDER_GAP_DAYS} दिन में भेजा जा चुका है`
-                                  : 'WhatsApp पर रिमाइंडर भेजें'}
-                                onClick={() => setRemindAsk([c])}
-                                className="px-1.5 py-0.5 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-[10px]"
-                              >
-                                {remindedThisMonth(remindLast[String(c.customer_id)]) ? 'दोबारा' : 'रिमाइंडर'}
-                              </button>
-                              <button
-                                title="इस ग्राहक की पेमेंट रसीद बनाएँ"
-                                onClick={() => setPaidFor(c)}
-                                className="px-1.5 py-0.5 bg-[#0A246A] hover:bg-[#1B3D8F] text-white font-bold border border-black cursor-pointer text-[10px]"
-                              >
-                                Paid
-                              </button>
-                            </div>
-                          )}
-                          {c.final_balance > 0 && hasMobile(c) && (
-                            remindLast[String(c.customer_id)] ? (
-                              <div
-                                className={`mt-0.5 text-[10px] font-bold ${remindedThisMonth(remindLast[String(c.customer_id)]) ? 'text-[#128C7E]' : 'text-slate-500'}`}
-                                title={new Date(remindLast[String(c.customer_id)]).toLocaleString('en-IN')}
-                              >
-                                ✓ भेजा {remindDay(remindLast[String(c.customer_id)])}
+                          </th>
+                          <th className="p-1 w-16 text-right">Priority</th>
+                          <th className="p-1 text-left">Customer</th>
+                          <th className="p-1 text-left">Address</th>
+                          <th className="p-1 w-20 text-right">Amt.</th>
+                          <th className="print:hidden p-1 w-32 text-center">रिमाइंडर / पेमेंट</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {listRows.map((c: any) => {
+                          const english = String(c.name || '').trim();
+                          const hindi = c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, english) : '';
+                          const tag = hindi ? english.split(/\s+/).pop() : '';
+                          const isShown = shown && Number(shown.customer_id) === Number(c.customer_id);
+                          return (
+                          <tr
+                            key={c.customer_id}
+                            onClick={() => setPreviewCust(Number(c.customer_id))}
+                            title="WhatsApp पर कैसा जाएगा, दाईं तरफ देखें"
+                            className={`border-b border-slate-300 cursor-pointer ${isShown ? 'bg-[#E7F8EE]' : 'hover:bg-yellow-50'}`}
+                          >
+                            <td className="print:hidden p-1 text-center" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={remindPicked.has(c.customer_id)}
+                                onChange={() => setRemindPicked(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(c.customer_id)) next.delete(c.customer_id); else next.add(c.customer_id);
+                                  return next;
+                                })}
+                              />
+                            </td>
+                            <td className="p-1 text-right font-bold">{c.priority || ''}</td>
+                            <td className="p-1 font-semibold text-black">
+                              {hindi || english}
+                              {tag && <span className="ml-1 text-[10px] font-normal text-slate-600">{tag}</span>}
+                              {selectedRegion === 'all_list' && c.region_name && <span className="ml-1 text-[10px] font-normal text-slate-600">({c.region_name})</span>}
+                              <span className="print:hidden ml-1 text-[10px] font-normal text-slate-400">#{c.customer_id}</span>
+                            </td>
+                            <td className="p-1 text-[12px] text-slate-800">{cleanOrTransliterateHindi(c.address || '', '')}</td>
+                            <td className="p-1 text-right font-black text-[14px]">{Math.round(Number(c.final_balance))}</td>
+                            <td className="print:hidden p-1 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                              <div className="flex gap-1 justify-center">
+                                <button
+                                  disabled={remindBusy || !hasMobile(c) || remindedRecently(remindLast[String(c.customer_id)])}
+                                  title={!hasMobile(c) ? 'मोबाइल नंबर नहीं है'
+                                    : remindedRecently(remindLast[String(c.customer_id)]) ? `पिछले ${REMINDER_GAP_DAYS} दिन में भेजा जा चुका है`
+                                    : 'WhatsApp पर रिमाइंडर भेजें'}
+                                  onClick={() => setRemindAsk([c])}
+                                  className="px-1.5 py-0.5 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-[10px]"
+                                >
+                                  {remindedThisMonth(remindLast[String(c.customer_id)]) ? 'दोबारा' : 'रिमाइंडर'}
+                                </button>
+                                <button
+                                  title="इस ग्राहक की पेमेंट रसीद बनाएँ"
+                                  onClick={() => setPaidFor(c)}
+                                  className="px-1.5 py-0.5 bg-[#0A246A] hover:bg-[#1B3D8F] text-white font-bold border border-black cursor-pointer text-[10px]"
+                                >
+                                  Paid
+                                </button>
                               </div>
-                            ) : (
-                              <div className="mt-0.5 text-[10px] text-orange-700">अभी नहीं भेजा</div>
-                            )
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {reportData.summary && (
-                      <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
-                        <td className="print:hidden border-r border-black"></td>
-                        <td colSpan={selectedRegion === 'all_list' ? 10 : 9} className="p-1.5 text-left border-r border-black">
-                          {reportData.total_rows} customers · Due {reportData.summary.due_customers} (₹{Number(reportData.summary.total_due_amount).toFixed(2)}) · Advance {reportData.summary.advance_customers} (₹{Number(reportData.summary.total_advance_amount).toFixed(2)})
-                        </td>
-                        <td className="p-1.5 text-right font-mono text-sm text-blue-900">₹{Number(reportData.summary.net_outstanding).toFixed(2)}</td>
-                        <td className="print:hidden border-l border-black"></td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                              {!hasMobile(c) ? (
+                                <div className="mt-0.5 text-[10px] text-slate-500">मोबाइल नहीं</div>
+                              ) : remindLast[String(c.customer_id)] ? (
+                                <div
+                                  className={`mt-0.5 text-[10px] font-bold ${remindedThisMonth(remindLast[String(c.customer_id)]) ? 'text-[#128C7E]' : 'text-slate-500'}`}
+                                  title={new Date(remindLast[String(c.customer_id)]).toLocaleString('en-IN')}
+                                >
+                                  ✓ भेजा {remindDay(remindLast[String(c.customer_id)])}
+                                </div>
+                              ) : (
+                                <div className="mt-0.5 text-[10px] text-orange-700">अभी नहीं भेजा</div>
+                              )}
+                            </td>
+                          </tr>
+                          );
+                        })}
+                        {listRows.length === 0 && (
+                          <tr><td colSpan={6} className="p-4 text-center text-slate-600">कोई बकाया नहीं</td></tr>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-black font-black text-[14px]">
+                          <td className="print:hidden"></td>
+                          <td></td>
+                          <td colSpan={2} className="p-1">कुल बकाया ({listRows.length} ग्राहक)</td>
+                          <td className="p-1 text-right">{total}</td>
+                          <td className="print:hidden"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* How the reminder reaches the customer on WhatsApp */}
+                  {shown && (
+                    <div className="print:hidden w-[280px] shrink-0 sticky top-2">
+                      <div className="rounded-[22px] border-[6px] border-[#222] bg-[#ECE5DD] overflow-hidden shadow-lg">
+                        <div className="bg-[#075E54] text-white px-3 py-2 text-[12px] font-bold flex items-center justify-between">
+                          <span>Aryan News Agency</span>
+                          <span className="text-[10px] font-normal opacity-80">WhatsApp</span>
+                        </div>
+                        <div className="p-2 max-h-[70vh] overflow-y-auto">
+                          <div className="bg-white rounded-lg rounded-tl-none p-1.5 shadow-sm text-[11.5px] leading-snug text-black whitespace-pre-line">
+                            <img
+                              key={`${shown.customer_id}-${leaveOut}`}
+                              src={`/api/whatsapp/reminder?customer_id=${shown.customer_id}${leaveOut ? `&leave_out=${leaveOut}` : ''}`}
+                              alt="रिमाइंडर बिल"
+                              className="w-full rounded mb-1.5 bg-slate-100 min-h-[120px]"
+                            />
+                            {reminderText(
+                              shown.name_hindi ? cleanOrTransliterateHindi(shown.name_hindi, shown.name) : shown.name,
+                              shown.customer_id,
+                              Number(shown.final_balance)
+                            )}
+                            {leaveOut && (
+                              <div className="mt-1 text-[10px] text-slate-500">
+                                (संदेश की रकम ऊपर बिल वाले &quot;कुल बकाया&quot; जितनी होगी)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-1 text-center text-[11px] text-slate-600">
+                        #{shown.customer_id} को WhatsApp पर ऐसा जाएगा। दूसरे ग्राहक की लाइन पर क्लिक करें।
+                      </div>
+                      <button
+                        disabled={remindBusy || !hasMobile(shown) || remindedRecently(remindLast[String(shown.customer_id)])}
+                        onClick={() => setRemindAsk([shown])}
+                        className="mt-1 w-full py-1 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-xs"
+                      >
+                        इसी ग्राहक को रिमाइंडर भेजें
+                      </button>
+                    </div>
+                  )}
+                </div>
+                  );
+                })()}
                 </>
                 );
               })()}
