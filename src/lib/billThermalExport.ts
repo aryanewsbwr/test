@@ -992,7 +992,7 @@ export function renderThermalReminderHtml(r: ReminderSlip): string {
       <div class="dashed-divider"></div>
       <div class="footer-notice">
         <div class="footer-due-line">कृपया शीघ्र भुगतान करें। भुगतान के बाद स्क्रीनशॉट भेजें।</div>
-        <div class="footer-ss-line" style="color:#B91C1C">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</div>
+        <div style="margin: 5px 0; padding: 4px 3px; border: 1.5px solid #B91C1C; border-radius: 3px; background: #FEF2F2; color: #B91C1C; font-weight: 900; font-size: 10.5px; line-height: 1.3;">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</div>
         <div class="footer-thanks-line">धन्यवाद!</div>
       </div>
     </div>`;

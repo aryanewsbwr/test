@@ -69,7 +69,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
   const units = Number(raw.match(/viewBox="0 0 (\d+(?:\.\d+)?)/)?.[1]) || 132;
   const qr = `<g transform="translate(4,4) scale(${132 / units})">${raw.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '')}</g>`;
   const footY = qrY + 160;
-  const height = footY + 110;
+  const height = footY + 124;
   const title = s.nameHindi || s.name;
 
   const svg = `
@@ -119,8 +119,9 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="200" y="${footY + 15}" font-size="11.5" class="r" fill="#000" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
     <line x1="16" y1="${footY + 30}" x2="384" y2="${footY + 30}" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
     <text x="200" y="${footY + 52}" font-size="12.5" class="b" text-anchor="middle">कृपया शीघ्र भुगतान करें। भुगतान के बाद स्क्रीनशॉट भेजें।</text>
-    <text x="200" y="${footY + 71}" font-size="11.5" class="b" fill="#B91C1C" text-anchor="middle">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</text>
-    <text x="200" y="${footY + 94}" font-size="13" class="b" text-anchor="middle">धन्यवाद! Thank You!</text>
+    <rect x="40" y="${footY + 60}" width="320" height="28" rx="4" fill="#FEF2F2" stroke="#B91C1C" stroke-width="2"/>
+    <text x="200" y="${footY + 79}" font-size="13.5" class="b" fill="#B91C1C" text-anchor="middle">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</text>
+    <text x="200" y="${footY + 108}" font-size="13" class="b" text-anchor="middle">धन्यवाद! Thank You!</text>
   </svg>`;
 
   return svgToPng(svg);
