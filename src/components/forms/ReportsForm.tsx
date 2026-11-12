@@ -13,6 +13,7 @@ import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
+import { printReminderSlips, reminderSlipsPageHtml, ReminderSlip } from '@/lib/billThermalExport';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
 
 // A due-list customer with a mobile number a reminder can go to
@@ -152,8 +153,11 @@ export default function ReportsForm({
   const [remindBusy, setRemindBusy] = useState(false);
   const [remindStatus, setRemindStatus] = useState('');
   const [paidFor, setPaidFor] = useState<any | null>(null);
-  // The customer whose WhatsApp reminder is shown beside the due list
-  const [previewCust, setPreviewCust] = useState<number | null>(null);
+  // The due list shows each customer's reminder slip (58mm, as on WhatsApp) or the printed list
+  const [dueView, setDueView] = useState<'58mm' | 'list'>('58mm');
+  const [slipData, setSlipData] = useState<{ date: string; slips: Record<string, any> } | null>(null);
+  const [slipLoading, setSlipLoading] = useState(false);
+  const [slipHeight, setSlipHeight] = useState(600);
   // When each customer on the due list was last sent a reminder: { customer_id: time }
   const [remindLast, setRemindLast] = useState<Record<string, string>>({});
 
@@ -451,6 +455,7 @@ export default function ReportsForm({
 
   // The due list prints as its own clean list (priority, customer, address, amount), not the screen
   const printDueListNow = () => {
+    if (dueView === '58mm') { printReminderSlips(reminderSlips); return; }
     const regionName = selectedRegion === 'all_list' ? 'सभी क्षेत्र'
       : regions.find(r => String(r.region_id || r.id) === String(selectedRegion))?.region_name || `#${selectedRegion}`;
     printDueList(reportData?.rows || [], {
@@ -460,13 +465,88 @@ export default function ReportsForm({
     });
   };
   const isDueCustomerList = activeReport === 'due_region_summary' && reportData?.view === 'customers';
+  const dueRowsSorted: any[] = isDueCustomerList
+    ? reportData.rows.filter((c: any) => c.final_balance > 0).sort((a: any, b: any) =>
+      (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id))
+    : [];
+
+  // Each due customer's reminder slip figures, worked out on the server like the WhatsApp image
+  useEffect(() => {
+    if (!isDueCustomerList || dueView !== '58mm') return;
+    const ids = dueRowsSorted.map(c => Number(c.customer_id));
+    let stop = false;
+    (async () => {
+      setSlipLoading(true);
+      setSlipData(null);
+      const slips: Record<string, any> = {};
+      let date = '';
+      try {
+        for (let i = 0; i < ids.length && !stop; i += 150) {
+          const q = new URLSearchParams({ slips: ids.slice(i, i + 150).join(',') });
+          if (leaveOut) q.set('leave_out', leaveOut);
+          const res = await fetch(`/api/whatsapp/reminder?${q.toString()}`, { cache: 'no-store' });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Could not load the slips');
+          Object.assign(slips, json.slips || {});
+          date = json.date || date;
+        }
+        if (!stop) setSlipData({ date, slips });
+      } catch (err: any) {
+        if (!stop) setRemindStatus(`स्लिप नहीं बनीं: ${err.message || err}`);
+      } finally {
+        if (!stop) setSlipLoading(false);
+      }
+    })();
+    return () => { stop = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportData, dueView, leaveOut]);
+
+  const reminderSlips: ReminderSlip[] = slipData ? dueRowsSorted.map(c => {
+    const d = slipData.slips[String(c.customer_id)] || { balance: Number(c.final_balance), papers: [], lastBillMonth: '' };
+    const last = remindLast[String(c.customer_id)];
+    const english = String(c.name || '').trim();
+    return {
+      customerId: Number(c.customer_id),
+      priority: c.priority,
+      name: english,
+      nameHindi: c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, english) : undefined,
+      region: c.region_name || '',
+      phone: String(c.phone || '').split(/[,/;]+/)[0]?.trim() || '',
+      date: slipData.date,
+      balance: Number(d.balance),
+      lastBillMonth: d.lastBillMonth,
+      papers: d.papers || [],
+      canSend: !remindBusy && hasMobile(c) && !remindedRecently(last) && Number(d.balance) > minDue,
+      status: !hasMobile(c) ? 'मोबाइल नंबर नहीं' : last ? `✓ भेजा ${remindDay(last)}` : 'अभी नहीं भेजा',
+      statusColor: !hasMobile(c) ? '#64748b' : last ? (remindedThisMonth(last) ? '#128C7E' : '#64748b') : '#c2410c',
+      note: Number(d.balance) <= minDue ? `₹${minDue} या कम बकाया: नहीं भेजा जाएगा` : undefined
+    };
+  }) : [];
+  const slipPageHtml = reminderSlipsPageHtml(reminderSlips, false);
+
+  // Buttons inside the slips tell the screen what was pressed, and how tall the slips are
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      const m = e.data || {};
+      if (typeof m.dueSlipHeight === 'number') { setSlipHeight(Math.max(300, m.dueSlipHeight + 16)); return; }
+      if (!m.dueSlip) return;
+      const row = dueRowsSorted.find(c => Number(c.customer_id) === Number(m.id));
+      if (!row) return;
+      if (m.dueSlip === 'remind') setRemindAsk([row]);
+      if (m.dueSlip === 'paid') setPaidFor(row);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  });
   // Direct Print on the due list: wait for the list to load, then print it
   const [printDueWhenLoaded, setPrintDueWhenLoaded] = useState(false);
   useEffect(() => {
     if (!printDueWhenLoaded || isLoading || !reportData) return;
+    // The 58mm slips load after the list: wait for them too
+    if (activeReport === 'due_region_summary' && reportData.view === 'customers' && dueView === '58mm' && (slipLoading || !slipData)) return;
     setPrintDueWhenLoaded(false);
     if (isDueCustomerList) printDueListNow(); else window.print();
-  }, [printDueWhenLoaded, isLoading, reportData]);
+  }, [printDueWhenLoaded, isLoading, reportData, slipLoading, slipData]);
 
   const handlePrint = () => {
     if (isDueCustomerList) { printDueListNow(); return; }
@@ -1451,6 +1531,19 @@ export default function ReportsForm({
                 return (
                 <>
                 <div className="print:hidden mb-2 p-2 border border-[#25D366] bg-[#F0FFF4] flex flex-wrap items-center gap-2 text-xs">
+                  <div className="w-full flex items-center gap-2 pb-1 border-b border-[#B2E5C4]">
+                    <span className="font-bold text-slate-700">दिखाएँ:</span>
+                    {(['58mm', 'list'] as const).map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setDueView(v)}
+                        className={`px-3 py-0.5 font-bold border cursor-pointer ${dueView === v ? 'bg-[#0A246A] text-white border-black' : 'bg-white text-[#0A246A] border-[#0A246A]'}`}
+                      >
+                        {v === '58mm' ? '58mm स्लिप' : 'लिस्ट'}
+                      </button>
+                    ))}
+                    <span className="text-slate-600">प्रिंट भी इसी तरह होगा।</span>
+                  </div>
                   <span className="font-bold text-[#075E54]">WhatsApp भुगतान रिमाइंडर:</span>
                   <button
                     disabled={remindBusy || dueRows.length === 0}
@@ -1499,16 +1592,25 @@ export default function ReportsForm({
                     {' '}— पुराने सॉफ्टवेयर में डाली रसीदें यहाँ आने से पहले रिमाइंडर न भेजें।
                   </div>
                 </div>
-                {/* The list as it is printed (Priority, Customer, Address, Amt), with the WhatsApp
-                    reminder for the chosen customer beside it, as the customer will get it */}
-                {(() => {
+                {/* 58mm: each customer's reminder slip, as it is printed and sent on WhatsApp */}
+                {dueView === '58mm' && (
+                  <div className="print:hidden">
+                    {slipLoading && <div className="p-3 text-center text-xs text-slate-600">रिमाइंडर स्लिप बन रही हैं...</div>}
+                    <iframe
+                      title="रिमाइंडर स्लिप"
+                      srcDoc={slipPageHtml}
+                      style={{ width: '100%', height: slipHeight, border: 0, background: '#f1f5f9' }}
+                    />
+                  </div>
+                )}
+                {/* List: the list as it is printed (Priority, Customer, Address, Amt) */}
+                {dueView === 'list' && (() => {
                   const listRows = [...dueRows].sort((a: any, b: any) =>
                     (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id));
                   const total = listRows.reduce((sum: number, c: any) => sum + Math.round(Number(c.final_balance)), 0);
-                  const shown = listRows.find((c: any) => Number(c.customer_id) === previewCust) || listRows[0];
                   return (
-                <div className="flex gap-3 items-start">
-                  <div className="flex-1 min-w-0 bg-white border border-slate-300 shadow-sm px-3 py-2 font-sans">
+                <div>
+                  <div className="bg-white border border-slate-300 shadow-sm px-3 py-2 font-sans">
                     <table className="w-full text-[13px] border-collapse">
                       <thead>
                         <tr className="border-b-2 border-black text-[12px]">
@@ -1532,15 +1634,9 @@ export default function ReportsForm({
                           const english = String(c.name || '').trim();
                           const hindi = c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, english) : '';
                           const tag = hindi ? english.split(/\s+/).pop() : '';
-                          const isShown = shown && Number(shown.customer_id) === Number(c.customer_id);
                           return (
-                          <tr
-                            key={c.customer_id}
-                            onClick={() => setPreviewCust(Number(c.customer_id))}
-                            title="WhatsApp पर कैसा जाएगा, दाईं तरफ देखें"
-                            className={`border-b border-slate-300 cursor-pointer ${isShown ? 'bg-[#E7F8EE]' : 'hover:bg-yellow-50'}`}
-                          >
-                            <td className="print:hidden p-1 text-center" onClick={e => e.stopPropagation()}>
+                          <tr key={c.customer_id} className="border-b border-slate-300 hover:bg-yellow-50">
+                            <td className="print:hidden p-1 text-center">
                               <input
                                 type="checkbox"
                                 checked={remindPicked.has(c.customer_id)}
@@ -1560,7 +1656,7 @@ export default function ReportsForm({
                             </td>
                             <td className="p-1 text-[12px] text-slate-800">{cleanOrTransliterateHindi(c.address || '', '')}</td>
                             <td className="p-1 text-right font-black text-[14px]">{Math.round(Number(c.final_balance))}</td>
-                            <td className="print:hidden p-1 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            <td className="print:hidden p-1 text-center whitespace-nowrap">
                               <div className="flex gap-1 justify-center">
                                 <button
                                   disabled={remindBusy || !hasMobile(c) || remindedRecently(remindLast[String(c.customer_id)])}
@@ -1612,47 +1708,6 @@ export default function ReportsForm({
                     </table>
                   </div>
 
-                  {/* How the reminder reaches the customer on WhatsApp */}
-                  {shown && (
-                    <div className="print:hidden w-[280px] shrink-0 sticky top-2">
-                      <div className="rounded-[22px] border-[6px] border-[#222] bg-[#ECE5DD] overflow-hidden shadow-lg">
-                        <div className="bg-[#075E54] text-white px-3 py-2 text-[12px] font-bold flex items-center justify-between">
-                          <span>Aryan News Agency</span>
-                          <span className="text-[10px] font-normal opacity-80">WhatsApp</span>
-                        </div>
-                        <div className="p-2 max-h-[70vh] overflow-y-auto">
-                          <div className="bg-white rounded-lg rounded-tl-none p-1.5 shadow-sm text-[11.5px] leading-snug text-black whitespace-pre-line">
-                            <img
-                              key={`${shown.customer_id}-${leaveOut}`}
-                              src={`/api/whatsapp/reminder?customer_id=${shown.customer_id}${leaveOut ? `&leave_out=${leaveOut}` : ''}`}
-                              alt="रिमाइंडर बिल"
-                              className="w-full rounded mb-1.5 bg-slate-100 min-h-[120px]"
-                            />
-                            {reminderText(
-                              shown.name_hindi ? cleanOrTransliterateHindi(shown.name_hindi, shown.name) : shown.name,
-                              shown.customer_id,
-                              Number(shown.final_balance)
-                            )}
-                            {leaveOut && (
-                              <div className="mt-1 text-[10px] text-slate-500">
-                                (संदेश की रकम ऊपर बिल वाले &quot;कुल बकाया&quot; जितनी होगी)
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-1 text-center text-[11px] text-slate-600">
-                        #{shown.customer_id} को WhatsApp पर ऐसा जाएगा। दूसरे ग्राहक की लाइन पर क्लिक करें।
-                      </div>
-                      <button
-                        disabled={remindBusy || !hasMobile(shown) || remindedRecently(remindLast[String(shown.customer_id)])}
-                        onClick={() => setRemindAsk([shown])}
-                        className="mt-1 w-full py-1 bg-[#25D366] hover:bg-[#1EBE5A] disabled:opacity-40 text-white font-bold border border-[#128C7E] cursor-pointer text-xs"
-                      >
-                        इसी ग्राहक को रिमाइंडर भेजें
-                      </button>
-                    </div>
-                  )}
                 </div>
                   );
                 })()}

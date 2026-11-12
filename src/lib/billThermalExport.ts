@@ -310,22 +310,8 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   `;
 }
 
-/**
- * Full HTML page for printing continuous roll or exporting PDF
- */
-export function generateThermal58mmFullHtml(
-  bills: BillRecord[],
-  title: string = 'Aryan News Agency - Monthly Bills',
-  printMode: BillPrintMode = 'simple'
-): string {
-  const receiptsHtml = bills.map((b) => renderSingleThermalBillHtml(b, printMode)).join('\n<div class="page-break"></div>\n');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${title}</title>
-  <style>
+// The 58mm slip design, shared by the monthly bills and the due reminder slips
+export const THERMAL_58MM_CSS = `
     @charset "utf-8";
 
     * {
@@ -827,6 +813,25 @@ export function generateThermal58mmFullHtml(
         margin: 0mm;
       }
     }
+`;
+
+/**
+ * Full HTML page for printing continuous roll or exporting PDF
+ */
+export function generateThermal58mmFullHtml(
+  bills: BillRecord[],
+  title: string = 'Aryan News Agency - Monthly Bills',
+  printMode: BillPrintMode = 'simple'
+): string {
+  const receiptsHtml = bills.map((b) => renderSingleThermalBillHtml(b, printMode)).join('\n<div class="page-break"></div>\n');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+${THERMAL_58MM_CSS}
   </style>
 </head>
 <body>
@@ -898,4 +903,160 @@ export function printBillsThermal58mm(
       }, 500);
     }
   }
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Due reminder slips: the payment reminder each customer gets on WhatsApp, drawn as a 58mm slip
+// in the same design as the monthly bill, for the due list screen and for printing.
+
+export interface ReminderSlip {
+  customerId: number;
+  priority?: number | string;
+  name: string;
+  nameHindi?: string;
+  region?: string;
+  phone?: string;
+  date: string;
+  balance: number;
+  lastBillMonth?: string;
+  papers: { name: string; amount: number }[];
+  // Screen only: the reminder status line and whether it can be sent now
+  status?: string;
+  statusColor?: string;
+  canSend?: boolean;
+  note?: string;
+}
+
+function slipEsc(v: unknown): string {
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+export function renderThermalReminderHtml(r: ReminderSlip): string {
+  const papers = r.papers.filter(p => Math.abs(p.amount) >= 0.005);
+  const papersTotal = Math.round(papers.reduce((sum, p) => sum + p.amount, 0) * 100) / 100;
+  const rest = Math.round((r.balance - papersTotal) * 100) / 100;
+  const lines = papers.map(p => `
+          <div class="line-item-row">
+            <span class="col-part">${slipEsc(getThermalPublicationDisplayName(p.name))}</span>
+            <span class="col-amt">${formatMoney(p.amount)}</span>
+          </div>`).join('');
+  const restLine = Math.abs(rest) < 0.005 ? '' : rest > 0
+    ? `<div class="summary-row"><span class="summary-label">${papers.length ? 'पिछला बकाया' : 'बकाया'}</span><span class="summary-value">₹ ${formatMoney(rest)}</span></div>`
+    : `<div class="summary-row"><span class="summary-label">जमा राशि (Paid)</span><span class="summary-value">- ₹ ${formatMoney(-rest)}</span></div>`;
+  const qr = r.balance > 0 ? generateDynamicUpiQrSvg(r.balance, r.customerId, '', 120, 0) : '';
+
+  return `
+    <div class="bill-card">
+      <div class="agency-header">
+        <div class="agency-name-en">ARYAN NEWS AGENCY</div>
+        <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
+        <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
+        <div class="agency-contact">WhatsApp: 9462558949 | Ph: 9829058949</div>
+      </div>
+      <div class="solid-rule-thick"></div>
+      <div class="pill-badge-container"><span class="pill-badge">पेमेंट रिमाइंडर</span></div>
+      <div class="meta-grid">
+        <div class="meta-row">
+          <div class="meta-cell"><span class="meta-label">A/c No:</span> <span class="meta-val">${r.customerId}</span></div>
+          <div class="meta-cell text-right"><span class="meta-label">Date:</span> <span class="meta-val">${slipEsc(r.date)}</span></div>
+        </div>
+      </div>
+      <div class="dashed-divider"></div>
+      <div class="customer-section">
+        ${r.nameHindi ? `<div class="customer-name-hi">${slipEsc(r.nameHindi)}</div>` : ''}
+        <div class="customer-name-en">${slipEsc(r.name.toUpperCase())}</div>
+        <div class="customer-sub-row">
+          <span>Region: ${slipEsc(r.region || '')}</span>
+          ${r.phone ? `<span>Mob: ${slipEsc(r.phone)}</span>` : ''}
+        </div>
+      </div>
+      <div class="dashed-divider"></div>
+      <div class="items-header-row">
+        <span class="col-part">अखबार${r.lastBillMonth && papers.length ? ` (${slipEsc(r.lastBillMonth)})` : ''}</span>
+        <span class="col-amt">Amount ₹</span>
+      </div>
+      <div class="dashed-divider" style="margin-top: 3px; margin-bottom: 5px;"></div>
+      <div class="items-container">${lines}</div>
+      ${restLine ? `<div class="dashed-divider"></div><div class="summary-section">${restLine}</div>` : ''}
+      <div class="total-banner-box">
+        <div class="total-label-left">${r.balance < 0 ? 'ADVANCE / अग्रिम जमा' : 'कुल बकाया / DUE'}</div>
+        <div class="total-amount-right">₹ ${formatMoney(Math.abs(r.balance))}</div>
+      </div>
+      ${qr ? `
+      <div class="qr-payment-section">
+        <div class="qr-code-wrapper">${qr}</div>
+        <div class="qr-title-en">Scan &amp; Pay ₹${Math.round(r.balance)} via any UPI app</div>
+        <div class="qr-subtitle-hi">किसी भी UPI ऐप से स्कैन कर भुगतान करें</div>
+      </div>` : ''}
+      <div class="dashed-divider"></div>
+      <div class="footer-notice">
+        <div class="footer-due-line">कृपया शीघ्र भुगतान करें। भुगतान के बाद स्क्रीनशॉट भेजें।</div>
+        <div class="footer-ss-line" style="color:#B91C1C">यदि भुगतान कर चुके हैं तो कृपया ध्यान न दें।</div>
+        <div class="footer-thanks-line">धन्यवाद!</div>
+      </div>
+    </div>`;
+}
+
+/**
+ * The reminder slips as a page. For the screen (print false) the slips sit side by side, each
+ * with its reminder status and Reminder / Paid buttons, which tell the screen around it what
+ * was pressed. For printing they run one under another on the 58mm roll.
+ */
+export function reminderSlipsPageHtml(slips: ReminderSlip[], forPrint: boolean): string {
+  const cards = slips.map(r => forPrint ? renderThermalReminderHtml(r) : `
+    <div class="slip-wrap">
+      <div class="slip-top">${r.priority ? `<b>${slipEsc(r.priority)}</b> · ` : ''}#${r.customerId}</div>
+      ${renderThermalReminderHtml(r)}
+      ${r.note ? `<div class="slip-note">${slipEsc(r.note)}</div>` : ''}
+      <div class="slip-actions">
+        <button class="sa-remind" data-act="remind" data-id="${r.customerId}" ${r.canSend ? '' : 'disabled'}>रिमाइंडर</button>
+        <button class="sa-paid" data-act="paid" data-id="${r.customerId}">Paid</button>
+      </div>
+      ${r.status ? `<div class="slip-status" style="color:${slipEsc(r.statusColor || '#475569')}">${slipEsc(r.status)}</div>` : ''}
+    </div>`).join(forPrint ? '\n<div class="page-break"></div>\n' : '');
+
+  const screenCss = `
+    body { padding: 8px 0 !important; }
+    .receipts-container { flex-direction: row !important; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px !important; }
+    .slip-wrap { display: flex; flex-direction: column; align-items: center; }
+    .slip-wrap .bill-card { width: 62mm; max-width: 62mm; }
+    .slip-top { font-size: 11px; color: #334155; margin-bottom: 3px; }
+    .slip-note { font-size: 10px; color: #92400e; margin-top: 4px; max-width: 62mm; text-align: center; }
+    .slip-actions { display: flex; gap: 6px; margin-top: 5px; }
+    .slip-actions button { font: 700 11px sans-serif; padding: 3px 10px; cursor: pointer; color: #fff; }
+    .sa-remind { background: #25D366; border: 1px solid #128C7E; }
+    .sa-remind:disabled { opacity: .4; cursor: default; }
+    .sa-paid { background: #0A246A; border: 1px solid #000; }
+    .slip-status { font-size: 10px; font-weight: 700; margin-top: 3px; }`;
+
+  return `<!DOCTYPE html>
+<html lang="hi"><head><meta charset="UTF-8"><title>पेमेंट रिमाइंडर</title>
+<style>
+${THERMAL_58MM_CSS}
+${forPrint ? '' : screenCss}
+</style></head>
+<body>
+  <div class="receipts-container">${cards || '<div style="padding:24px;font:14px sans-serif">कोई बकाया नहीं</div>'}</div>
+  <script>
+    ${forPrint
+      ? "window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });"
+      : `document.addEventListener('click', function (e) {
+          var b = e.target.closest('button[data-act]');
+          if (b && !b.disabled) parent.postMessage({ dueSlip: b.getAttribute('data-act'), id: Number(b.getAttribute('data-id')) }, '*');
+        });
+        function size() { parent.postMessage({ dueSlipHeight: document.documentElement.scrollHeight }, '*'); }
+        window.addEventListener('load', size); window.addEventListener('resize', size); setTimeout(size, 300);`}
+  </script>
+</body></html>`;
+}
+
+export function printReminderSlips(slips: ReminderSlip[]): void {
+  if (!slips.length) { alert('कोई बकाया नहीं।'); return; }
+  const html = reminderSlipsPageHtml(slips, true);
+  const win = window.open('', '_blank');
+  if (!win) { alert('प्रिंट विंडो नहीं खुली। ब्राउज़र में पॉप-अप की अनुमति दें।'); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }

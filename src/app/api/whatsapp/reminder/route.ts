@@ -214,6 +214,18 @@ function leaveOutOf(value: unknown): string {
 export async function GET(request: NextRequest) {
   try {
     const params = new URL(request.url).searchParams;
+    // ?slips=1,2,3&leave_out=: each customer's reminder (papers of the last bill and the balance due)
+    // for the due list's 58mm view, the same figures the reminder bill image uses
+    if (params.has('slips')) {
+      const ids = Array.from(new Set(String(params.get('slips')).split(',').map(Number).filter(id => id > 0))).slice(0, 200);
+      const { out } = ids.length ? await statements(ids, leaveOutOf(params.get('leave_out'))) : { out: new Map() };
+      const slips: Record<string, any> = {};
+      for (const id of ids) {
+        const s = out.get(id);
+        slips[id] = { balance: s?.balance || 0, papers: s?.papers || [], lastBillMonth: s?.lastBillMonth || '' };
+      }
+      return NextResponse.json({ date: reminderDate(), slips });
+    }
     if (params.has('options')) {
       const [latest, fresh] = await Promise.all([latestBilledMonth(), freshness()]);
       return NextResponse.json({ latest_month: latest, gap_days: REMINDER_GAP_DAYS, ...fresh });
