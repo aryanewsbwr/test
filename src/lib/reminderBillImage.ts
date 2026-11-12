@@ -20,6 +20,8 @@ export interface ReminderStatement {
   balance: number;
   lastBillMonth?: string;
   lastBillAmount?: number;
+  // The last bill's papers with their amounts (delivery and discount already in them)
+  papers?: { name: string; amount: number }[];
 }
 
 function xml(value: string | number | undefined | null): string {
@@ -37,26 +39,31 @@ const money = (n: number) => Math.abs(n).toLocaleString('en-IN', { minimumFracti
  */
 export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
   const font = `'Mangal', Arial, sans-serif`;
-  const lines: { label: string; hindi: string; amount: number; minus?: boolean }[] = [
-    { label: 'Previous Year Dues', hindi: 'पिछला बकाया', amount: s.yearEndDues },
-    { label: 'Newspaper Bills', hindi: 'अखबार बिल', amount: s.bills + s.delivery },
-    { label: 'Received', hindi: 'जमा राशि', amount: s.received, minus: true },
-    { label: 'Less / Discount', hindi: 'छूट', amount: s.less, minus: true }
-  ].filter(l => Math.abs(l.amount) >= 0.005);
+  // Only the papers of the last bill and the total due: no delivery, discount or receipts. One
+  // line holds the rest of the balance so the lines add up: earlier dues, or money already paid.
+  const papers = (s.papers || []).filter(p => Math.abs(p.amount) >= 0.005);
+  const papersTotal = Math.round(papers.reduce((sum, p) => sum + p.amount, 0) * 100) / 100;
+  const rest = Math.round((s.balance - papersTotal) * 100) / 100;
+  const lines: { label: string; amount: number; minus?: boolean; bold?: boolean }[] = [
+    ...papers.map(p => ({ label: p.name, amount: p.amount })),
+    ...(Math.abs(rest) >= 0.005
+      ? [rest > 0
+        ? { label: papers.length ? 'पिछला बकाया (Previous Dues)' : 'बकाया (Dues)', amount: rest, bold: true }
+        : { label: 'जमा राशि (Paid)', amount: -rest, minus: true, bold: true }]
+      : [])
+  ];
 
   let y = 318;
   const rows = lines.map(l => {
     const row = `
-      <text x="16" y="${y}" font-size="13" class="r">${xml(l.hindi)} <tspan font-size="11" fill="#000">(${xml(l.label)})</tspan></text>
+      <text x="16" y="${y}" font-size="13" class="${l.bold ? 'm' : 'r'}">${xml(l.label)}</text>
       <text x="384" y="${y}" font-size="14" class="b" text-anchor="end" fill="${l.minus ? '#166534' : '#000'}">${l.minus ? '- ' : ''}Rs. ${money(l.amount)}</text>`;
     y += 26;
     return row;
   }).join('');
 
   const boxY = y + 2;
-  const lastY = boxY + 66;
-  const hasLast = !!s.lastBillMonth && Number(s.lastBillAmount) > 0;
-  const qrY = (hasLast ? lastY + 18 : boxY + 60);
+  const qrY = boxY + 60;
   // The code is drawn in its own small units (one per square), so it is scaled up to 132 px
   const raw = generateDynamicUpiQrSvg(s.balance, s.customerId, '', 140, 0).trim();
   const units = Number(raw.match(/viewBox="0 0 (\d+(?:\.\d+)?)/)?.[1]) || 132;
@@ -94,7 +101,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="384" y="246" font-size="12" class="r" text-anchor="end">${s.phone ? `Mob: ${xml(s.phone)}` : ''}</text>
     <line x1="16" y1="262" x2="384" y2="262" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
 
-    <text x="16" y="286" font-size="13" class="b">खाता विवरण (Account ${xml(s.year)})</text>
+    <text x="16" y="286" font-size="13" class="b">अखबार${s.lastBillMonth && papers.length ? ` (बिल ${xml(s.lastBillMonth)})` : ""}</text>
     <text x="384" y="286" font-size="13" class="b" text-anchor="end">Amount</text>
     <line x1="16" y1="296" x2="384" y2="296" stroke="#000" stroke-width="1" stroke-dasharray="4,2"/>
     ${rows}
@@ -103,7 +110,6 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <text x="32" y="${boxY + 21}" font-size="14" class="b" fill="#fff">कुल बकाया</text>
     <text x="32" y="${boxY + 37}" font-size="10.5" class="b" fill="#FECACA" letter-spacing="1">BALANCE DUE</text>
     <text x="368" y="${boxY + 31}" font-size="20" class="b" fill="#fff" text-anchor="end">Rs. ${money(s.balance)}</text>
-    ${hasLast ? `<text x="200" y="${lastY}" font-size="12" class="r" fill="#000" text-anchor="middle">अंतिम बिल ${xml(s.lastBillMonth)}: Rs. ${money(Number(s.lastBillAmount))}</text>` : ''}
 
     <g transform="translate(130, ${qrY})">
       <rect width="140" height="140" fill="#fff" stroke="#e2e8f0" rx="4"/>

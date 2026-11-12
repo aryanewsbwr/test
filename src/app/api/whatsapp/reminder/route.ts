@@ -6,7 +6,7 @@ import { REMINDER_GAP_DAYS, reminderAmount, reminderDate } from '@/lib/paymentRe
 import { reminderBillPng, ReminderStatement } from '@/lib/reminderBillImage';
 import { fySuffix } from '@/lib/financialYear';
 import { monthCode } from '@/lib/backupTables';
-import { fetchRegions } from '@/lib/publicationsData';
+import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { displayPhones } from '@/lib/phoneNumbers';
 
 export const runtime = 'nodejs';
@@ -46,12 +46,23 @@ async function latestBilledMonth(): Promise<string | null> {
 async function statements(ids: number[], leaveOut = '') {
   const suffix = fySuffix();
   const startYear = Number(suffix.slice(0, 4));
-  const [headers, lines, deliveries, receipts] = await Promise.all([
+  const [headers, lines, deliveries, receipts, pubs] = await Promise.all([
     rowsFor(`billno${suffix}`, 'customer_id, month, due_amt, dis_amt', ids),
-    rowsFor(`bill${suffix}`, 'customer_id, month, total_amt', ids),
-    rowsFor(`billdel${suffix}`, 'customer_id, month, dely', ids),
-    rowsFor(`receipt${suffix}`, 'customer_id, mal_recp_amt, less_amt', ids)
+    rowsFor(`bill${suffix}`, 'customer_id, month, total_amt, publica_id', ids),
+    rowsFor(`billdel${suffix}`, 'customer_id, month, dely, publica_id', ids),
+    rowsFor(`receipt${suffix}`, 'customer_id, mal_recp_amt, less_amt', ids),
+    fetchPublications().catch(() => [] as any[])
   ]);
+  const pubName = new Map<number, string>(pubs.map((p: any) => [Number(p.publica_id), String(p.public_name || p.abrv || '').trim()]));
+  // Each paper's amount in each month, delivery included: "cid|month" -> publica_id -> amount
+  const paperAmounts = new Map<string, Map<number, number>>();
+  const addPaper = (id: any, month: any, pub: any, n: number) => {
+    const k = `${Number(id)}|${monthCode(month)}`;
+    if (!paperAmounts.has(k)) paperAmounts.set(k, new Map());
+    const m = paperAmounts.get(k)!;
+    m.set(Number(pub) || 0, (m.get(Number(pub) || 0) || 0) + n);
+  };
+  const discounts = new Map<string, number>();
   const round = (n: number) => Math.round(n * 100) / 100;
   const out = new Map<number, Omit<ReminderStatement, 'name' | 'date' | 'year' | 'customerId'>>();
   const monthly = new Map<string, number>();
@@ -72,11 +83,21 @@ async function statements(ids: number[], leaveOut = '') {
     if (!kept(h.month)) continue;
     get(h.customer_id).bills -= Number(h.dis_amt || 0);
     add(h.customer_id, h.month, -Number(h.dis_amt || 0));
+    const dk = `${Number(h.customer_id)}|${m}`;
+    discounts.set(dk, (discounts.get(dk) || 0) + Number(h.dis_amt || 0));
     const before = lastMonth.get(Number(h.customer_id));
     if (FY_MONTHS.includes(m) && (!before || FY_MONTHS.indexOf(m) > FY_MONTHS.indexOf(before))) lastMonth.set(Number(h.customer_id), m);
   }
-  for (const l of lines.filter(l => kept(l.month))) { get(l.customer_id).bills += Number(l.total_amt || 0); add(l.customer_id, l.month, Number(l.total_amt || 0)); }
-  for (const d of deliveries.filter(d => kept(d.month))) { get(d.customer_id).delivery += Number(d.dely || 0); add(d.customer_id, d.month, Number(d.dely || 0)); }
+  for (const l of lines.filter(l => kept(l.month))) {
+    get(l.customer_id).bills += Number(l.total_amt || 0);
+    add(l.customer_id, l.month, Number(l.total_amt || 0));
+    addPaper(l.customer_id, l.month, l.publica_id, Number(l.total_amt || 0));
+  }
+  for (const d of deliveries.filter(d => kept(d.month))) {
+    get(d.customer_id).delivery += Number(d.dely || 0);
+    add(d.customer_id, d.month, Number(d.dely || 0));
+    addPaper(d.customer_id, d.month, d.publica_id, Number(d.dely || 0));
+  }
   for (const r of receipts) {
     get(r.customer_id).received += Number(r.mal_recp_amt || 0);
     get(r.customer_id).less += Number(r.less_amt || 0);
@@ -90,6 +111,12 @@ async function statements(ids: number[], leaveOut = '') {
       const year = FY_MONTHS.indexOf(m) >= 9 ? startYear + 1 : startYear;
       s.lastBillMonth = `${m[0].toUpperCase()}${m.slice(1)} ${year}`;
       s.lastBillAmount = round(monthly.get(`${id}|${m}`) || 0);
+      // The last bill's papers, delivery folded in and the month's discount taken off the first
+      const papers = Array.from(paperAmounts.get(`${id}|${m}`)?.entries() || [])
+        .filter(([, amount]) => Math.abs(amount) >= 0.005)
+        .map(([pub, amount]) => ({ name: pubName.get(pub) || `Paper ${pub}`, amount }));
+      if (papers.length) papers[0].amount -= discounts.get(`${id}|${m}`) || 0;
+      s.papers = papers.map(p => ({ name: p.name, amount: round(p.amount) }));
     }
   }
   return { out, year: `${startYear}-${String(startYear + 1).slice(2)}` };
