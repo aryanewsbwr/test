@@ -455,7 +455,7 @@ export default function ReportsForm({
 
   // The due list prints as its own clean list (priority, customer, address, amount), not the screen
   const printDueListNow = () => {
-    if (dueView === '58mm') { printReminderSlips(reminderSlips); return; }
+    if (dueView === '58mm') { printReminderSlips(slipsToSend); return; }
     const regionName = selectedRegion === 'all_list' ? 'सभी क्षेत्र'
       : regions.find(r => String(r.region_id || r.id) === String(selectedRegion))?.region_name || `#${selectedRegion}`;
     printDueList(reportData?.rows || [], {
@@ -522,7 +522,12 @@ export default function ReportsForm({
       note: Number(d.balance) <= minDue ? `₹${minDue} या कम बकाया: नहीं भेजा जाएगा` : undefined
     };
   }) : [];
-  const slipPageHtml = reminderSlipsPageHtml(reminderSlips, false);
+  // The 58mm view shows only the reminders that will really go out. Customers whose whole due is
+  // the month left out, or who owe the minimum or less, are counted above the slips instead.
+  const slipsToSend = reminderSlips.filter(r => r.balance > minDue);
+  const slipsOnlyLatest = reminderSlips.filter(r => r.balance <= 0).length;
+  const slipsSmall = reminderSlips.filter(r => r.balance > 0 && r.balance <= minDue).length;
+  const slipPageHtml = reminderSlipsPageHtml(slipsToSend, false);
 
   // Buttons inside the slips tell the screen what was pressed, and how tall the slips are
   useEffect(() => {
@@ -1596,6 +1601,14 @@ export default function ReportsForm({
                 {dueView === '58mm' && (
                   <div className="print:hidden">
                     {slipLoading && <div className="p-3 text-center text-xs text-slate-600">रिमाइंडर स्लिप बन रही हैं...</div>}
+                    {!slipLoading && slipData && (
+                      <div className="mb-2 px-2 py-1 text-[12px] bg-white border border-slate-300 text-slate-800">
+                        <b>{slipsToSend.length}</b> ग्राहकों को रिमाइंडर जाएगा (नीचे उनकी स्लिप)।
+                        {slipsOnlyLatest > 0 && <> {' '}<b>{slipsOnlyLatest}</b> का बकाया सिर्फ़ {HINDI_MONTH[leaveOut] || leaveOut} का बिल है, इसलिए उन्हें नहीं।</>}
+                        {slipsSmall > 0 && <> {' '}<b>{slipsSmall}</b> का बकाया ₹{minDue} या कम है।</>}
+                        {' '}सबका पूरा बकाया देखने के लिए &quot;लिस्ट&quot; चुनें।
+                      </div>
+                    )}
                     <iframe
                       title="रिमाइंडर स्लिप"
                       srcDoc={slipPageHtml}
