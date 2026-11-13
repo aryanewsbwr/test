@@ -504,9 +504,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
                   <button onClick={() => { setSelectedReportType('cust_detail'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Detail</button>
                   <button onClick={() => { setSelectedReportType('cust_monthwise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer MonthWise Detail</button>
-                  <button onClick={() => { setSelectedReportType('cust_pub_starting'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Publication Starting</button>
-                  <button onClick={() => { setSelectedReportType('circ_type_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Circulation Type Publication Report</button>
-                  <button onClick={() => { setSelectedReportType('cust_choose_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Wise Choose Publication</button>
                 </div>
               </div>
 
@@ -616,6 +613,9 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
                   <button onClick={() => { setSelectedReportType('region_pub_daily'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region Wise Publication Report</button>
                   <button onClick={() => { setSelectedReportType('region_start_end'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region-Wise Start End Report</button>
+                  <button onClick={() => { setSelectedReportType('cust_choose_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Wise Choose Publication</button>
+                  <button onClick={() => { setSelectedReportType('circ_type_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Circulation Type Publication Report</button>
+                  <button onClick={() => { setSelectedReportType('cust_pub_starting'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Publication Starting</button>
                 </div>
               </div>
 

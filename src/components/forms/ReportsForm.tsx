@@ -77,9 +77,9 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   cust_detail_month: { title: 'Customer Detail / Month Register', category: 'Customer', hasRegion: true, hasPeriod: true },
   cust_detail: { title: 'Customer Detail', category: 'Customer', hasCustId: true, hasPeriod: false },
   cust_monthwise: { title: 'Customer MonthWise Detail', category: 'Customer', hasCustId: true },
-  cust_pub_starting: { title: 'Customer Publication Starting', category: 'Customer', hasPub: true, hasHawker: true },
-  circ_type_pub: { title: 'Circulation Type Publication Report', category: 'Customer' },
-  cust_choose_pub: { title: 'Customer Wise Choose Publication', category: 'Customer', hasPub: true },
+  cust_pub_starting: { title: 'Customer Publication Starting', category: 'Publication Daily Report', hasPub: true, hasHawker: true },
+  circ_type_pub: { title: 'Circulation Type Publication Report', category: 'Publication Daily Report' },
+  cust_choose_pub: { title: 'Customer Wise Choose Publication', category: 'Publication Daily Report', hasPub: true },
   discontinue_datewise: { title: 'Discontinue Date Wise', category: 'Discontinue', hasPeriod: true },
   discontinue_hawkerwise: { title: 'Discontinue Hawker Wise With Address', category: 'Discontinue', hasHawker: true },
   purchase_datewise: { title: 'Purchase Date Wise Report', category: 'Purchase', hasPeriod: true },
@@ -1023,9 +1023,6 @@ export default function ReportsForm({
             <optgroup label="1. Customer Reports">
               <option value="cust_detail">Customer Detail</option>
               <option value="cust_monthwise">Customer MonthWise Detail</option>
-              <option value="cust_pub_starting">Customer Publication Starting</option>
-              <option value="circ_type_pub">Circulation Type Publication Report</option>
-              <option value="cust_choose_pub">Customer Wise Choose Publication</option>
             </optgroup>
             <optgroup label="2. Discontinue Reports">
               <option value="discontinue_datewise">Discontinue Date Wise</option>
@@ -1063,6 +1060,9 @@ export default function ReportsForm({
             <optgroup label="10. Publication Daily Report">
               <option value="region_pub_daily">Region Wise Publication Report</option>
               <option value="region_start_end">Region-Wise Start End Report</option>
+              <option value="cust_choose_pub">Customer Wise Choose Publication</option>
+              <option value="circ_type_pub">Circulation Type Publication Report</option>
+              <option value="cust_pub_starting">Customer Publication Starting</option>
             </optgroup>
             <optgroup label="11. Bill Printing & Payment Status">
               <option value="bill_print_region">Region Wise Bill Printing</option>
