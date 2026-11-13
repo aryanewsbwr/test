@@ -75,6 +75,8 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report', hasRegion: true, hasPeriod: false },
   collection_agent_dues: { title: 'Collection Agent Dues Report', category: 'Outstanding Report', hasPeriod: true },
   cust_detail_month: { title: 'Customer Detail / Month Register', category: 'Customer', hasRegion: true, hasPeriod: true },
+  cust_detail: { title: 'Customer Detail', category: 'Customer', hasCustId: true, hasPeriod: false },
+  cust_monthwise: { title: 'Customer MonthWise Detail', category: 'Customer', hasCustId: true },
   cust_pub_starting: { title: 'Customer Publication Starting', category: 'Customer', hasPub: true, hasHawker: true },
   circ_type_pub: { title: 'Circulation Type Publication Report', category: 'Customer' },
   cust_choose_pub: { title: 'Customer Wise Choose Publication', category: 'Customer', hasPub: true },
@@ -322,6 +324,17 @@ export default function ReportsForm({
     setIsLoading(true);
     setErrorMessage(null);
     try {
+      if (activeReport === 'cust_detail' || activeReport === 'cust_monthwise') {
+        const id = targetCustId.trim();
+        if (!/^\d+$/.test(id)) throw new Error('Please choose a customer from the list first.');
+        const q = new URLSearchParams({ customer_id: id, kind: activeReport === 'cust_detail' ? 'detail' : 'monthwise', year: selectedYear });
+        const res = await fetch(`/api/reports/customer?${q.toString()}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Could not load the report');
+        setReportData(json);
+        setTotalPages(1);
+        return;
+      }
       const params = new URLSearchParams({
         type: activeReport,
         region_id: selectedRegion,
@@ -814,9 +827,9 @@ export default function ReportsForm({
             {/* Period (Month & Year) */}
             {(currentMeta.hasPeriod !== false) && (
               <div className="flex items-center">
-                <label className="w-28 font-bold text-[#000080] shrink-0">Period</label>
+                <label className="w-28 font-bold text-[#000080] shrink-0">{activeReport === 'cust_monthwise' ? 'Year' : 'Period'}</label>
                 <div className="flex items-center gap-2">
-                  <select 
+                  {activeReport !== 'cust_monthwise' && <select 
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
                     className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
@@ -824,15 +837,15 @@ export default function ReportsForm({
                     {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
-                  </select>
+                  </select>}
                   <select 
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
                     className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold font-mono outline-none"
                   >
-                    <option value="2026">2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2027">2027</option>
+                    {['2026', '2025', '2027'].map(y => (
+                      <option key={y} value={y}>{activeReport === 'cust_monthwise' ? `${y}-${String(Number(y) + 1).slice(2)} (April to March)` : y}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -1008,7 +1021,8 @@ export default function ReportsForm({
             className="px-2 py-0.5 border border-[#808080] bg-white font-bold text-black outline-none text-xs max-w-[280px]"
           >
             <optgroup label="1. Customer Reports">
-              <option value="cust_detail_month">Customer Detail / Month Register</option>
+              <option value="cust_detail">Customer Detail</option>
+              <option value="cust_monthwise">Customer MonthWise Detail</option>
               <option value="cust_pub_starting">Customer Publication Starting</option>
               <option value="circ_type_pub">Circulation Type Publication Report</option>
               <option value="cust_choose_pub">Customer Wise Choose Publication</option>
@@ -1286,7 +1300,8 @@ export default function ReportsForm({
             </h2>
             <div className="flex justify-between text-[10px] font-sans font-bold text-slate-600 pt-1">
               <span>Date: {printDateStr}</span>
-              <span>Financial Period: {selectedMonth} {selectedYear}</span>
+              {activeReport === 'cust_monthwise' ? <span>Year: April {selectedYear} to March {Number(selectedYear) + 1}</span>
+                : currentMeta.hasPeriod !== false && <span>Financial Period: {selectedMonth} {selectedYear}</span>}
               <span>Page: {currentPage} of {totalPages}</span>
             </div>
             {reportData?.report_note && (
@@ -1810,6 +1825,121 @@ export default function ReportsForm({
                   </tbody>
                 </table>
               )}
+
+              {/* ========================================================================= */}
+              {/* CUSTOMER DETAIL and CUSTOMER MONTHWISE DETAIL: one customer, as in the old software */}
+              {/* ========================================================================= */}
+              {(activeReport === 'cust_detail' || activeReport === 'cust_monthwise') && reportData?.customer && (() => {
+                const c = reportData.customer;
+                const money = (n: number) => (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const day = (v: string) => {
+                  const t = String(v || '').trim();
+                  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                  return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : t;
+                };
+                return (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 gap-y-0.5 border border-black p-2 text-[12px]">
+                    <span className="font-bold">Customer:</span>
+                    <span className="font-black">
+                      {c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, c.name) : c.name}
+                      {c.name_hindi && <span className="ml-1 text-[10px] font-normal text-slate-600">{c.name}</span>}
+                      <span className="ml-1 text-[10px] font-normal text-slate-500">#{c.customer_id}</span>
+                    </span>
+                    <span className="font-bold">Region:</span>
+                    <span>{c.region_name || '-'}</span>
+                    <span className="font-bold">Address:</span>
+                    <span>{cleanOrTransliterateHindi(c.address || '', '') || '-'}</span>
+                    <span className="font-bold">Priority:</span>
+                    <span>{c.priority || '-'}</span>
+                    <span className="font-bold">Phone:</span>
+                    <span className="col-span-3">{c.phone || '-'}</span>
+                  </div>
+
+                  {activeReport === 'cust_detail' ? (
+                    <table className="w-full text-xs border-collapse border border-black">
+                      <thead>
+                        <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
+                          <th className="p-1 text-center border-r border-black w-12">S.No.</th>
+                          <th className="p-1 text-left border-r border-black">Items</th>
+                          <th className="p-1 text-left border-r border-black">Hawker</th>
+                          <th className="p-1 text-center border-r border-black w-12">Qty</th>
+                          <th className="p-1 text-center border-r border-black w-20">Del. Day</th>
+                          <th className="p-1 text-center border-r border-black w-24">Start Date</th>
+                          <th className="p-1 text-center w-24">Close Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reportData.rows.map((r: any, i: number) => (
+                          <tr key={i} className={`border-b border-slate-300 text-[11px] ${r.close_date ? 'text-slate-500' : ''}`}>
+                            <td className="p-1 text-center border-r border-slate-300 font-mono">{r.sno ?? i + 1}</td>
+                            <td className={`p-1 border-r border-slate-300 font-bold ${r.close_date ? 'line-through' : 'text-blue-950'}`}>{r.item}</td>
+                            <td className="p-1 border-r border-slate-300">{r.hawker || '-'}</td>
+                            <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">{r.qty}</td>
+                            <td className="p-1 text-center border-r border-slate-300 font-mono">{r.del_day}</td>
+                            <td className="p-1 text-center border-r border-slate-300 font-mono">{day(r.start_date) || '-'}</td>
+                            <td className="p-1 text-center font-mono font-bold text-red-800">{day(r.close_date) || ''}</td>
+                          </tr>
+                        ))}
+                        {reportData.rows.length === 0 && (
+                          <tr><td colSpan={7} className="p-4 text-center text-slate-600">इस ग्राहक के कोई पेपर नहीं हैं</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full text-xs border-collapse border border-black">
+                      <thead>
+                        <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
+                          <th className="p-1 text-left border-r border-black w-28">Month</th>
+                          <th className="p-1 text-left border-r border-black">Papers</th>
+                          <th className="p-1 text-right border-r border-black w-20">Bill</th>
+                          <th className="p-1 text-right border-r border-black w-16">Delivery</th>
+                          <th className="p-1 text-right border-r border-black w-16">Discount</th>
+                          <th className="p-1 text-right border-r border-black w-20">Total</th>
+                          <th className="p-1 text-right border-r border-black w-20">Received</th>
+                          <th className="p-1 text-right border-r border-black w-14">Less</th>
+                          <th className="p-1 text-right w-24">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
+                          <td colSpan={8} className="p-1 border-r border-slate-300 font-bold">Opening Balance (पिछला बकाया, 1 April {selectedYear})</td>
+                          <td className="p-1 text-right font-mono font-bold">{money(reportData.opening)}</td>
+                        </tr>
+                        {reportData.rows.map((r: any) => (
+                          <tr key={r.month} className="border-b border-slate-300 text-[11px] align-top">
+                            <td className="p-1 border-r border-slate-300 font-bold">{r.month}</td>
+                            <td className="p-1 border-r border-slate-300 text-[10px] text-slate-700">
+                              {r.papers.length ? r.papers.map((p: any) => `${p.name} ${money(p.amount)}`).join(', ') : '-'}
+                            </td>
+                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.bill ? money(r.bill) : ''}</td>
+                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.delivery ? money(r.delivery) : ''}</td>
+                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.discount ? money(r.discount) : ''}</td>
+                            <td className="p-1 text-right border-r border-slate-300 font-mono font-bold">{r.total ? money(r.total) : ''}</td>
+                            <td className="p-1 text-right border-r border-slate-300 font-mono text-emerald-800">{r.received ? money(r.received) : ''}</td>
+                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.less ? money(r.less) : ''}</td>
+                            <td className={`p-1 text-right font-mono font-black ${r.balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>{money(r.balance)}</td>
+                          </tr>
+                        ))}
+                        {reportData.rows.length === 0 && (
+                          <tr><td colSpan={9} className="p-4 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
+                        )}
+                        <tr className="border-t-2 border-black font-black text-[11px] bg-slate-100">
+                          <td colSpan={2} className="p-1 border-r border-black uppercase">Total</td>
+                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.bill)}</td>
+                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.delivery)}</td>
+                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.discount)}</td>
+                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.total)}</td>
+                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.received)}</td>
+                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.less)}</td>
+                          <td className="p-1 text-right font-mono">{money(reportData.totals.balance)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                );
+              })()}
 
               {/* ========================================================================= */}
               {/* REPORT 6: RETAIL SALE REGION DATE WISE REPORT */}
