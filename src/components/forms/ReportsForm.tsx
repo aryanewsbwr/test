@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Printer, RefreshCw, Search, Download, ZoomIn, ZoomOut, 
   ChevronLeft, ChevronRight, FileText, X, Filter, Calendar,
@@ -13,6 +13,7 @@ import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
+import { printSheet } from '@/lib/printSheet';
 import { printReminderSlips, reminderSlipsPageHtml, ReminderSlip } from '@/lib/billThermalExport';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
 
@@ -116,6 +117,8 @@ export default function ReportsForm({
   // Where the bill previews put their Prev / Next, WhatsApp and Print buttons
   const [billBarSlot, setBillBarSlot] = useState<HTMLDivElement | null>(null);
   const [activeReport, setActiveReport] = useState<string>(initialReport);
+  // The white report page, so Print sends only the page to the printer
+  const sheetRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -564,7 +567,7 @@ export default function ReportsForm({
     // The 58mm slips load after the list: wait for them too
     if (activeReport === 'due_region_summary' && reportData.view === 'customers' && dueView === '58mm' && (slipLoading || !slipData)) return;
     setPrintDueWhenLoaded(false);
-    if (isDueCustomerList) printDueListNow(); else window.print();
+    if (isDueCustomerList) printDueListNow(); else printSheet(sheetRef.current, reportData?.report_title || currentMeta.title);
   }, [printDueWhenLoaded, isLoading, reportData, slipLoading, slipData]);
 
   const handlePrint = () => {
@@ -576,7 +579,7 @@ export default function ReportsForm({
         printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
       }
     } else {
-      window.print();
+      printSheet(sheetRef.current, reportData?.report_title || currentMeta.title);
     }
   };
 
@@ -1278,6 +1281,7 @@ export default function ReportsForm({
         
         {/* Printable Paper Canvas (A4 sheet or auto-fit for 58mm thermal preview) */}
         <div 
+          ref={sheetRef}
           className={`bg-white shadow-[0_4px_25px_rgba(0,0,0,0.6)] font-serif text-black border border-slate-300 transition-all duration-150 ${
             activeReport.includes('bill_print') && billPrinterType === 'thermal_58mm'
               ? 'p-3 min-h-0 w-auto'
@@ -2496,7 +2500,7 @@ export default function ReportsForm({
           )}
 
           {/* Footer Signatures matching Crystal Reports */}
-          <div className="pt-14 flex justify-between text-xs font-serif font-bold">
+          {activeReport !== 'cust_detail' && activeReport !== 'cust_monthwise' && <div className="pt-14 flex justify-between text-xs font-serif font-bold">
             <div className="text-center">
               <div className="w-36 border-t border-black pt-1">Prepared By</div>
             </div>
@@ -2506,9 +2510,9 @@ export default function ReportsForm({
             <div className="text-center">
               <div className="w-36 border-t border-black pt-1">For Aryan News Agency</div>
             </div>
-          </div>
+          </div>}
 
-          <div className="text-center pt-8 text-[10px] text-slate-500 font-sans">
+          <div data-noprint className="text-center pt-8 text-[10px] text-slate-500 font-sans">
             --- End of Report (Crystal Reports for Windows • Aryan News Agency) ---
           </div>
 
