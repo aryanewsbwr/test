@@ -4,8 +4,6 @@ import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 // order, so the collector can walk the route. Opened in its own window so only the list prints,
 // not the screen around it.
 
-const HINDI_MONTHS = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितम्बर', 'अक्टूबर', 'नवम्बर', 'दिसम्बर'];
-
 function esc(value: unknown): string {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -39,17 +37,18 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
 
   return `<!doctype html>
 <html lang="hi"><head><meta charset="utf-8">
-<title>बकाया सूची - ${esc(opts.regionName)}</title>
+<title>बकाया सूची - ${esc(opts.regionName)} - ${date.replace(/\//g, '-')}</title>
 <style>
-  @page { size: A4; margin: 12mm 10mm; }
+  /* The page number sits at the top right of every page, just above the date and ग्राहक */
+  @page { size: A4; margin: 12mm 10mm; @top-right { content: "पेज " counter(page) " / " counter(pages); font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 12px; font-weight: 700; vertical-align: bottom; padding-bottom: 1mm; } }
   body { font-family: 'Mangal', 'Nirmala UI', 'Noto Sans Devanagari', Arial, sans-serif; color: #000; margin: 0; }
   .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 4px; }
   .firm b { font-size: 17px; letter-spacing: .3px; }
   .firm div { font-size: 12px; }
   .mid { text-align: center; }
   .mid .region { font-size: 30px; font-weight: 800; line-height: 1; }
-  .mid .title { font-size: 16px; font-weight: 700; margin-top: 2px; }
-  .meta { text-align: right; font-size: 12px; }
+  .meta { text-align: right; font-size: 13px; font-weight: 700; }
+  th.headcell { padding: 0 0 2px; border-bottom: none; font-weight: 400; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   thead th { font-size: 13px; text-align: left; border-bottom: 1.5px solid #000; padding: 4px 6px; }
   thead { display: table-header-group; }
@@ -63,24 +62,24 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
   tfoot td { border-top: 2px solid #000; border-bottom: none; font-weight: 800; font-size: 15px; }
 </style></head>
 <body>
-  <div class="head">
-    <div class="firm">
-      <b>ARYAN NEWS AGENCY</b>
-      <div>5(1), Old Bus Stand, BEAWAR (Raj.)</div>
-      <div>Mob. 9829058949, WhatsApp 9462558949</div>
-    </div>
-    <div class="mid">
-      <div class="region">${esc(opts.regionName)}</div>
-      <div class="title">${HINDI_MONTHS[today.getMonth()]} ${today.getFullYear()} — बकाया सूची</div>
-    </div>
-    <div class="meta">
-      ${opts.regionId !== undefined && opts.regionId !== '' ? `<div>Region: ${esc(opts.regionId)}</div>` : ''}
-      <div>दिनांक: ${date}</div>
-      <div>ग्राहक: ${due.length}</div>
-    </div>
-  </div>
   <table>
-    <thead><tr><th class="amt">Amt.</th><th>Customer</th><th>Address</th></tr></thead>
+    <thead>
+      <tr><th colspan="3" class="headcell">
+        <div class="head">
+          <div class="firm">
+            <b>ARYAN NEWS AGENCY</b>
+            <div>5(1), Old Bus Stand, BEAWAR (Raj.)</div>
+            <div>Mob. 9829058949, WhatsApp 9462558949</div>
+          </div>
+          <div class="mid"><div class="region">${esc(opts.regionName)}</div></div>
+          <div class="meta">
+            <div>दिनांक: ${date}</div>
+            <div>ग्राहक: ${due.length}</div>
+          </div>
+        </div>
+      </th></tr>
+      <tr><th class="amt">Amt.</th><th>Customer</th><th>Address</th></tr>
+    </thead>
     <tbody>${lines || '<tr><td colspan="3" style="text-align:center">कोई बकाया नहीं</td></tr>'}</tbody>
     <tfoot><tr><td class="amt">${total}</td><td colspan="2">कुल बकाया (${due.length} ग्राहक)</td></tr></tfoot>
   </table>
