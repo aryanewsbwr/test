@@ -44,6 +44,26 @@ async function fetchTable(name: string): Promise<{ rows: any[]; missing: boolean
   return { rows, missing: false };
 }
 
+// A closed year moved out of the database (see /api/closed-years) is read from its kept file instead
+async function fetchClosedYear(name: string): Promise<{ rows: any[]; missing: boolean }> {
+  const link = await fetch(`/api/closed-years?table=${name}`).then(readJson).catch(() => ({ missing: true }));
+  if (!link.url) return { rows: [], missing: true };
+  const res = await fetch(link.url);
+  if (!res.ok) throw new Error(`${name}: the kept file could not be read (${res.status})`);
+  const text = await new Response(res.body!.pipeThrough(new DecompressionStream('gzip'))).text();
+  const kept = JSON.parse(text);
+  const rows: any[] = kept.rows || [];
+  if (kept.rows_count !== undefined && rows.length !== kept.rows_count) throw new Error(`${name}: the kept file is not complete`);
+  return { rows, missing: false };
+}
+
+// For backups: the database first, then the kept file for a closed year no longer in it
+async function fetchTableOrClosedYear(name: string): Promise<{ rows: any[]; missing: boolean }> {
+  const found = await fetchTable(name);
+  if (!found.missing || !/^(bill|billno|billdel|receipt)\d{8}$/.test(name)) return found;
+  return fetchClosedYear(name);
+}
+
 async function saveBackupFile(tables: Record<string, any[]>, fileName: string) {
   const counts = Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.length]));
   const lines = [JSON.stringify({ format: FILE_FORMAT, version: 1, taken_at: new Date().toISOString(), tables: counts }) + '\n'];
@@ -71,7 +91,7 @@ export async function downloadBackup(includeOlderYears: boolean, onProgress: Pro
 
   for (let i = 0; i < definitions.length; i++) {
     onProgress(`Reading ${definitions[i].name} (${i + 1} of ${definitions.length})...`);
-    const { rows, missing } = await fetchTable(definitions[i].name);
+    const { rows, missing } = await fetchTableOrClosedYear(definitions[i].name);
     if (!missing) tables[definitions[i].name] = rows;
   }
 
@@ -206,7 +226,7 @@ export async function downloadOldSoftwareFile(onProgress: Progress, database = '
       const tables: Record<string, any[]> = {};
       for (let i = 0; i < names.length; i++) {
         onProgress(`${label}: ${names[i]} (${i + 1} of ${names.length})...`);
-        const { rows: found, missing } = await fetchTable(names[i]);
+        const { rows: found, missing } = await fetchTableOrClosedYear(names[i]);
         if (!missing) tables[names[i]] = found;
         rows += found.length;
       }
