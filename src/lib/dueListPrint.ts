@@ -1,6 +1,6 @@
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
-// The due list as it is printed for a region: one line per customer who owes, in priority
+// The due list as it is printed for a region: one line per customer who owes (Amt, Customer, Address), in priority
 // order, so the collector can walk the route. Opened in its own window so only the list prints,
 // not the screen around it.
 
@@ -31,10 +31,9 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
     const tag = hindi ? english.split(/\s+/).pop() || '' : '';
     const address = cleanOrTransliterateHindi(c.address || '', '');
     return `<tr>
-      <td class="pr">${esc(c.priority || '')}</td>
+      <td class="amt">${Math.round(Number(c.final_balance))}</td>
       <td class="name">${esc(hindi || english)}${tag ? ` <span class="tag">${esc(tag)}</span>` : ''}${opts.showRegion && c.region_name ? ` <span class="tag">(${esc(c.region_name)})</span>` : ''}</td>
       <td class="addr">${esc(address)}</td>
-      <td class="amt">${Math.round(Number(c.final_balance))}</td>
     </tr>`;
   }).join('');
 
@@ -56,12 +55,11 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; }
   td { border-bottom: 1px solid #999; padding: 5px 6px; font-size: 14px; vertical-align: top; }
-  .pr { width: 52px; text-align: right; font-weight: 700; }
   .name { font-weight: 600; }
   .tag { font-size: 10px; font-weight: 400; }
   .addr { font-size: 12.5px; width: 42%; }
   .amt { width: 70px; text-align: right; font-weight: 800; font-size: 15px; }
-  th.pr, th.amt { text-align: right; }
+  th.amt { text-align: right; }
   tfoot td { border-top: 2px solid #000; border-bottom: none; font-weight: 800; font-size: 15px; }
 </style></head>
 <body>
@@ -82,9 +80,9 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
     </div>
   </div>
   <table>
-    <thead><tr><th class="pr">Priority</th><th>Customer</th><th>Address</th><th class="amt">Amt.</th></tr></thead>
-    <tbody>${lines || '<tr><td colspan="4" style="text-align:center">कोई बकाया नहीं</td></tr>'}</tbody>
-    <tfoot><tr><td></td><td colspan="2">कुल बकाया (${due.length} ग्राहक)</td><td class="amt">${total}</td></tr></tfoot>
+    <thead><tr><th class="amt">Amt.</th><th>Customer</th><th>Address</th></tr></thead>
+    <tbody>${lines || '<tr><td colspan="3" style="text-align:center">कोई बकाया नहीं</td></tr>'}</tbody>
+    <tfoot><tr><td class="amt">${total}</td><td colspan="2">कुल बकाया (${due.length} ग्राहक)</td></tr></tfoot>
   </table>
   <script>window.onload = function () { setTimeout(function () { window.focus(); window.print(); }, 300); };</script>
 </body></html>`;

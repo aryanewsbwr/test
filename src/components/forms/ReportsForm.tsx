@@ -1617,7 +1617,7 @@ export default function ReportsForm({
                     />
                   </div>
                 )}
-                {/* List: the list as it is printed (Priority, Customer, Address, Amt) */}
+                {/* List: Amt, Customer, Address as printed, with Priority on screen only */}
                 {dueView === 'list' && (() => {
                   const listRows = [...dueRows].sort((a: any, b: any) =>
                     (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id));
@@ -1636,10 +1636,10 @@ export default function ReportsForm({
                               onChange={() => setRemindPicked(allPicked ? new Set() : new Set(dueRows.map((c: any) => c.customer_id)))}
                             />
                           </th>
-                          <th className="p-1 w-16 text-right">Priority</th>
+                          <th className="p-1 w-20 text-right">Amt.</th>
                           <th className="p-1 text-left">Customer</th>
                           <th className="p-1 text-left">Address</th>
-                          <th className="p-1 w-20 text-right">Amt.</th>
+                          <th className="print:hidden p-1 w-16 text-right">Priority</th>
                           <th className="print:hidden p-1 w-32 text-center">रिमाइंडर / पेमेंट</th>
                         </tr>
                       </thead>
@@ -1661,7 +1661,7 @@ export default function ReportsForm({
                                 })}
                               />
                             </td>
-                            <td className="p-1 text-right font-bold">{c.priority || ''}</td>
+                            <td className="p-1 text-right font-black text-[14px]">{Math.round(Number(c.final_balance))}</td>
                             <td className="p-1 font-semibold text-black">
                               {hindi || english}
                               {tag && <span className="ml-1 text-[10px] font-normal text-slate-600">{tag}</span>}
@@ -1669,7 +1669,7 @@ export default function ReportsForm({
                               <span className="print:hidden ml-1 text-[10px] font-normal text-slate-400">#{c.customer_id}</span>
                             </td>
                             <td className="p-1 text-[12px] text-slate-800">{cleanOrTransliterateHindi(c.address || '', '')}</td>
-                            <td className="p-1 text-right font-black text-[14px]">{Math.round(Number(c.final_balance))}</td>
+                            <td className="print:hidden p-1 text-right font-bold">{c.priority || ''}</td>
                             <td className="print:hidden p-1 text-center whitespace-nowrap">
                               <div className="flex gap-1 justify-center">
                                 <button
@@ -1713,9 +1713,9 @@ export default function ReportsForm({
                       <tfoot>
                         <tr className="border-t-2 border-black font-black text-[14px]">
                           <td className="print:hidden"></td>
-                          <td></td>
-                          <td colSpan={2} className="p-1">कुल बकाया ({listRows.length} ग्राहक)</td>
                           <td className="p-1 text-right">{total}</td>
+                          <td colSpan={2} className="p-1">कुल बकाया ({listRows.length} ग्राहक)</td>
+                          <td className="print:hidden"></td>
                           <td className="print:hidden"></td>
                         </tr>
                       </tfoot>
