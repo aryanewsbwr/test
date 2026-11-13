@@ -156,6 +156,10 @@ export async function GET(request: NextRequest) {
     let last = -1;
     out.forEach((r, i) => { if (r.has_entries) last = i; });
     const shown = out.slice(0, last + 1);
+    // One column per paper, the biggest first, in the same order every month
+    const paperTotals = new Map<string, number>();
+    shown.forEach(r => r.papers.forEach(p => paperTotals.set(p.name, (paperTotals.get(p.name) || 0) + p.amount)));
+    const paperNames = Array.from(paperTotals.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name]) => name);
     const sum = (k: 'bill' | 'delivery' | 'discount' | 'total' | 'received' | 'less') => round(shown.reduce((s, r) => s + r[k], 0));
 
     return NextResponse.json({
@@ -163,6 +167,8 @@ export async function GET(request: NextRequest) {
       report_title: `CUSTOMER MONTHWISE DETAIL (${startYear}-${String(startYear + 1).slice(2)})`,
       customer,
       opening: round(opening),
+      paper_names: paperNames,
+      paper_totals: paperNames.map(name => round(paperTotals.get(name) || 0)),
       rows: shown,
       totals: { bill: sum('bill'), delivery: sum('delivery'), discount: sum('discount'), total: sum('total'), received: sum('received'), less: sum('less'), balance }
     });

@@ -305,7 +305,9 @@ export default function ReportsForm({
     try {
       const res = await fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=15`);
       const data = await res.json();
-      const list = data?.customers || (Array.isArray(data) ? data : []);
+      const found = data?.customers || (Array.isArray(data) ? data : []);
+      // A customer number typed in full puts that customer first, so Enter picks the right one
+      const list = [...found].sort((a: any, b: any) => Number(String(b.customer_id) === q) - Number(String(a.customer_id) === q));
       setCustomerSuggestions(list);
       setHighlightedCustIndex(0);
       setIsCustomerDropdownOpen(list.length > 0);
@@ -1237,12 +1239,21 @@ export default function ReportsForm({
       <div className="bg-[#F0EEE2] border-b border-[#808080] px-2 py-1 flex items-center gap-3 text-xs flex-wrap font-sans shrink-0">
         
         {/* Active Criteria Badge */}
-        <div className="flex items-center gap-1 font-bold text-slate-700">
-          <span>Period:</span>
-          <span className="bg-white px-1.5 py-0.5 border border-[#808080] font-mono text-[#000080]">
-            {selectedMonth} {selectedYear}
-          </span>
-        </div>
+        {activeReport === 'cust_monthwise' ? (
+          <div className="flex items-center gap-1 font-bold text-slate-700">
+            <span>Year:</span>
+            <span className="bg-white px-1.5 py-0.5 border border-[#808080] font-mono text-[#000080]">
+              April {selectedYear} to March {Number(selectedYear) + 1}
+            </span>
+          </div>
+        ) : currentMeta.hasPeriod !== false && (
+          <div className="flex items-center gap-1 font-bold text-slate-700">
+            <span>Period:</span>
+            <span className="bg-white px-1.5 py-0.5 border border-[#808080] font-mono text-[#000080]">
+              {selectedMonth} {selectedYear}
+            </span>
+          </div>
+        )}
 
         {selectedRegion !== 'all' && (
           <div className="flex items-center gap-1 font-bold text-slate-700">
@@ -1890,57 +1901,69 @@ export default function ReportsForm({
                         )}
                       </tbody>
                     </table>
-                  ) : (
+                  ) : (() => {
+                    // One column per paper; Delivery, Discount and Less only when the year has any
+                    const papers: string[] = reportData.paper_names || [];
+                    const t = reportData.totals;
+                    const cols = [
+                      { key: 'delivery', label: 'Delivery', show: !!t.delivery },
+                      { key: 'discount', label: 'Discount', show: !!t.discount },
+                      { key: 'total', label: 'Total', show: true, bold: true },
+                      { key: 'received', label: 'Received', show: true, green: true },
+                      { key: 'less', label: 'Less', show: !!t.less }
+                    ].filter(c => c.show);
+                    const span = 1 + papers.length + cols.length;
+                    return (
                     <table className="w-full text-xs border-collapse border border-black">
                       <thead>
                         <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
-                          <th className="p-1 text-left border-r border-black w-28">Month</th>
-                          <th className="p-1 text-left border-r border-black">Papers</th>
-                          <th className="p-1 text-right border-r border-black w-20">Bill</th>
-                          <th className="p-1 text-right border-r border-black w-16">Delivery</th>
-                          <th className="p-1 text-right border-r border-black w-16">Discount</th>
-                          <th className="p-1 text-right border-r border-black w-20">Total</th>
-                          <th className="p-1 text-right border-r border-black w-20">Received</th>
-                          <th className="p-1 text-right border-r border-black w-14">Less</th>
-                          <th className="p-1 text-right w-24">Balance</th>
+                          <th className="p-1 text-left border-r border-black">Month</th>
+                          {papers.map(name => (
+                            <th key={name} className="p-1 text-right border-r border-black leading-tight">{name}</th>
+                          ))}
+                          {cols.map(c => (
+                            <th key={c.key} className="p-1 text-right border-r border-black">{c.label}</th>
+                          ))}
+                          <th className="p-1 text-right">Balance</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
-                          <td colSpan={8} className="p-1 border-r border-slate-300 font-bold">Opening Balance (पिछला बकाया, 1 April {selectedYear})</td>
+                          <td colSpan={span} className="p-1 border-r border-slate-300 font-bold">Opening Balance (पिछला बकाया, 1 April {selectedYear})</td>
                           <td className="p-1 text-right font-mono font-bold">{money(reportData.opening)}</td>
                         </tr>
                         {reportData.rows.map((r: any) => (
-                          <tr key={r.month} className="border-b border-slate-300 text-[11px] align-top">
-                            <td className="p-1 border-r border-slate-300 font-bold">{r.month}</td>
-                            <td className="p-1 border-r border-slate-300 text-[10px] text-slate-700">
-                              {r.papers.length ? r.papers.map((p: any) => `${p.name} ${money(p.amount)}`).join(', ') : '-'}
-                            </td>
-                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.bill ? money(r.bill) : ''}</td>
-                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.delivery ? money(r.delivery) : ''}</td>
-                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.discount ? money(r.discount) : ''}</td>
-                            <td className="p-1 text-right border-r border-slate-300 font-mono font-bold">{r.total ? money(r.total) : ''}</td>
-                            <td className="p-1 text-right border-r border-slate-300 font-mono text-emerald-800">{r.received ? money(r.received) : ''}</td>
-                            <td className="p-1 text-right border-r border-slate-300 font-mono">{r.less ? money(r.less) : ''}</td>
+                          <tr key={r.month} className="border-b border-slate-300 text-[11px]">
+                            <td className="p-1 border-r border-slate-300 font-bold whitespace-nowrap">{r.month}</td>
+                            {papers.map(name => {
+                              const amt = r.papers.find((p: any) => p.name === name)?.amount;
+                              return <td key={name} className="p-1 text-right border-r border-slate-300 font-mono">{amt ? money(amt) : ''}</td>;
+                            })}
+                            {cols.map(c => (
+                              <td key={c.key} className={`p-1 text-right border-r border-slate-300 font-mono ${c.bold ? 'font-bold' : ''} ${c.green ? 'text-emerald-800' : ''}`}>
+                                {r[c.key] ? money(r[c.key]) : ''}
+                              </td>
+                            ))}
                             <td className={`p-1 text-right font-mono font-black ${r.balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>{money(r.balance)}</td>
                           </tr>
                         ))}
                         {reportData.rows.length === 0 && (
-                          <tr><td colSpan={9} className="p-4 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
+                          <tr><td colSpan={span + 1} className="p-4 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
                         )}
                         <tr className="border-t-2 border-black font-black text-[11px] bg-slate-100">
-                          <td colSpan={2} className="p-1 border-r border-black uppercase">Total</td>
-                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.bill)}</td>
-                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.delivery)}</td>
-                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.discount)}</td>
-                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.total)}</td>
-                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.received)}</td>
-                          <td className="p-1 text-right border-r border-black font-mono">{money(reportData.totals.less)}</td>
-                          <td className="p-1 text-right font-mono">{money(reportData.totals.balance)}</td>
+                          <td className="p-1 border-r border-black uppercase">Total</td>
+                          {papers.map((name, i) => (
+                            <td key={name} className="p-1 text-right border-r border-black font-mono">{money(reportData.paper_totals?.[i])}</td>
+                          ))}
+                          {cols.map(c => (
+                            <td key={c.key} className="p-1 text-right border-r border-black font-mono">{money(t[c.key])}</td>
+                          ))}
+                          <td className="p-1 text-right font-mono">{money(t.balance)}</td>
                         </tr>
                       </tbody>
                     </table>
-                  )}
+                    );
+                  })()}
                 </div>
                 );
               })()}
