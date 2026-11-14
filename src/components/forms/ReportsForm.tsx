@@ -77,8 +77,8 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report', hasRegion: true, hasPeriod: false },
   collection_agent_dues: { title: 'Collection Agent Dues Report', category: 'Outstanding Report', hasPeriod: true },
   cust_detail_month: { title: 'Customer Detail / Month Register', category: 'Customer', hasRegion: true, hasPeriod: true },
-  cust_detail: { title: 'Customer Detail', category: 'Customer', hasCustId: true, hasPeriod: false },
-  cust_monthwise: { title: 'Customer MonthWise Detail', category: 'Customer', hasCustId: true },
+  cust_detail: { title: 'Customer Detail', category: 'Customer', hasCustId: true, hasRegion: true, hasPeriod: false },
+  cust_monthwise: { title: 'Customer MonthWise Detail', category: 'Customer', hasCustId: true, hasRegion: true },
   cust_pub_starting: { title: 'Customer Publication Starting', category: 'Publication Daily Report', hasPub: true, hasHawker: true },
   circ_type_pub: { title: 'Circulation Type Publication Report', category: 'Publication Daily Report' },
   cust_choose_pub: { title: 'Customer Wise Choose Publication', category: 'Publication Daily Report', hasPub: true },
@@ -332,8 +332,10 @@ export default function ReportsForm({
     try {
       if (activeReport === 'cust_detail' || activeReport === 'cust_monthwise') {
         const id = targetCustId.trim();
-        if (!/^\d+$/.test(id)) throw new Error('Please choose a customer from the list first.');
-        const q = new URLSearchParams({ customer_id: id, kind: activeReport === 'cust_detail' ? 'detail' : 'monthwise', year: selectedYear });
+        const regionPicked = /^\d+$/.test(selectedRegion);
+        if (!/^\d+$/.test(id) && !regionPicked) throw new Error('ग्राहक चुनें, या पूरे क्षेत्र के लिए Region चुनें।');
+        const q = new URLSearchParams({ kind: activeReport === 'cust_detail' ? 'detail' : 'monthwise', year: selectedYear });
+        if (/^\d+$/.test(id)) q.set('customer_id', id); else q.set('region_id', selectedRegion);
         const res = await fetch(`/api/reports/customer?${q.toString()}`, { cache: 'no-store' });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Could not load the report');
@@ -657,7 +659,8 @@ export default function ReportsForm({
                   onChange={(e) => setSelectedRegion(e.target.value)}
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
-                  <option value="all">{activeReport === 'due_region_summary' ? '-- All Regions (Summary) --' : '-- All Regions --'}</option>
+                  <option value="all">{activeReport === 'due_region_summary' ? '-- All Regions (Summary) --'
+                    : activeReport === 'cust_detail' || activeReport === 'cust_monthwise' ? '-- एक ग्राहक (ऊपर चुनें) --' : '-- All Regions --'}</option>
                   {activeReport === 'due_region_summary' && <option value="all_list">-- All Regions (Customer List) --</option>}
                   {[...regions]
                     .filter(r => (activeReport !== 'bill_print_region' && activeReport !== 'due_region_summary') || !isHiddenBillRegion(r.region_name || r.name))
@@ -758,7 +761,7 @@ export default function ReportsForm({
             {/* Customer ID / Name Filter for Single Bill Printing with live autocomplete dropdown */}
             {(currentMeta.hasCustId || activeReport === 'bill_print_single') && (
               <div className="flex items-center relative">
-                <label className="w-28 font-bold text-[#800000] shrink-0">Customer ID</label>
+                <label className="w-28 font-bold text-[#800000] shrink-0">{activeReport === 'cust_detail' || activeReport === 'cust_monthwise' ? 'Customer' : 'Customer ID'}</label>
                 <div className="relative flex-1 flex items-center gap-2 max-w-sm">
                   <input 
                     type="text"
@@ -1857,126 +1860,187 @@ export default function ReportsForm({
               {/* ========================================================================= */}
               {/* CUSTOMER DETAIL and CUSTOMER MONTHWISE DETAIL: one customer, as in the old software */}
               {/* ========================================================================= */}
-              {(activeReport === 'cust_detail' || activeReport === 'cust_monthwise') && reportData?.customer && (() => {
-                const c = reportData.customer;
+              {(activeReport === 'cust_detail' || activeReport === 'cust_monthwise') && Array.isArray(reportData?.customers) && (() => {
                 const money = (n: number) => (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 const day = (v: string) => {
                   const t = String(v || '').trim();
                   const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
                   return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : t;
                 };
+                const list: any[] = reportData.customers;
+                if (list.length === 0) return <div className="p-8 text-center text-slate-600">इस क्षेत्र में कोई ग्राहक नहीं मिला</div>;
                 return (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 gap-y-0.5 border border-black p-2 text-[12px]">
-                    <span className="font-bold">Customer:</span>
-                    <span className="font-black">
-                      {c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, c.name) : c.name}
-                      {c.name_hindi && <span className="ml-1 text-[10px] font-normal text-slate-600">{c.name}</span>}
-                      <span className="ml-1 text-[10px] font-normal text-slate-500">#{c.customer_id}</span>
-                    </span>
-                    <span className="font-bold">Region:</span>
-                    <span>{c.region_name || '-'}</span>
-                    <span className="font-bold">Address:</span>
-                    <span>{cleanOrTransliterateHindi(c.address || '', '') || '-'}</span>
-                    <span className="font-bold">Priority:</span>
-                    <span>{c.priority || '-'}</span>
-                    <span className="font-bold">Phone:</span>
-                    <span className="col-span-3">{c.phone || '-'}</span>
-                  </div>
-
-                  {activeReport === 'cust_detail' ? (
-                    <table className="w-full text-xs border-collapse border border-black">
-                      <thead>
-                        <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
-                          <th className="p-1 text-center border-r border-black w-12">S.No.</th>
-                          <th className="p-1 text-left border-r border-black">Items</th>
-                          <th className="p-1 text-left border-r border-black">Hawker</th>
-                          <th className="p-1 text-center border-r border-black w-12">Qty</th>
-                          <th className="p-1 text-center border-r border-black w-20">Del. Day</th>
-                          <th className="p-1 text-center border-r border-black w-24">Start Date</th>
-                          <th className="p-1 text-center w-24">Close Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reportData.rows.map((r: any, i: number) => (
-                          <tr key={i} className={`border-b border-slate-300 text-[11px] ${r.close_date ? 'text-slate-500' : ''}`}>
-                            <td className="p-1 text-center border-r border-slate-300 font-mono">{r.sno ?? i + 1}</td>
-                            <td className={`p-1 border-r border-slate-300 font-bold ${r.close_date ? 'line-through' : 'text-blue-950'}`}>{r.item}</td>
-                            <td className="p-1 border-r border-slate-300">{r.hawker || '-'}</td>
-                            <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">{r.qty}</td>
-                            <td className="p-1 text-center border-r border-slate-300 font-mono">{r.del_day}</td>
-                            <td className="p-1 text-center border-r border-slate-300 font-mono">{day(r.start_date) || '-'}</td>
-                            <td className="p-1 text-center font-mono font-bold text-red-800">{day(r.close_date) || ''}</td>
-                          </tr>
-                        ))}
-                        {reportData.rows.length === 0 && (
-                          <tr><td colSpan={7} className="p-4 text-center text-slate-600">इस ग्राहक के कोई पेपर नहीं हैं</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  ) : (() => {
-                    // One column per paper; Delivery, Discount and Less only when the year has any
-                    const papers: string[] = reportData.paper_names || [];
-                    const t = reportData.totals;
-                    const cols = [
-                      { key: 'delivery', label: 'Delivery', show: !!t.delivery },
-                      { key: 'discount', label: 'Discount', show: !!t.discount },
-                      { key: 'total', label: 'Total', show: true, bold: true },
-                      { key: 'received', label: 'Received', show: true, green: true },
-                      { key: 'less', label: 'Less', show: !!t.less }
-                    ].filter(c => c.show);
-                    const span = 1 + papers.length + cols.length;
+                <div>
+                  {list.length > 1 && (
+                    <div className="mb-2 text-[12px] font-bold text-slate-700">{list.length} ग्राहक — हर ग्राहक प्रिंट में नए पेज से शुरू होगा</div>
+                  )}
+                  {list.map((x: any, idx: number) => {
+                    const c = x.customer;
                     return (
-                    <table className="w-full text-xs border-collapse border border-black">
-                      <thead>
-                        <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
-                          <th className="p-1 text-left border-r border-black">Month</th>
-                          {papers.map(name => (
-                            <th key={name} className="p-1 text-right border-r border-black leading-tight">{name}</th>
-                          ))}
-                          {cols.map(c => (
-                            <th key={c.key} className="p-1 text-right border-r border-black">{c.label}</th>
-                          ))}
-                          <th className="p-1 text-right">Balance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
-                          <td colSpan={span} className="p-1 border-r border-slate-300 font-bold">Opening Balance (पिछला बकाया, 1 April {selectedYear})</td>
-                          <td className="p-1 text-right font-mono font-bold">{money(reportData.opening)}</td>
-                        </tr>
-                        {reportData.rows.map((r: any) => (
-                          <tr key={r.month} className="border-b border-slate-300 text-[11px]">
-                            <td className="p-1 border-r border-slate-300 font-bold whitespace-nowrap">{r.month}</td>
-                            {papers.map(name => {
-                              const amt = r.papers.find((p: any) => p.name === name)?.amount;
-                              return <td key={name} className="p-1 text-right border-r border-slate-300 font-mono">{amt ? money(amt) : ''}</td>;
-                            })}
-                            {cols.map(c => (
-                              <td key={c.key} className={`p-1 text-right border-r border-slate-300 font-mono ${c.bold ? 'font-bold' : ''} ${c.green ? 'text-emerald-800' : ''}`}>
-                                {r[c.key] ? money(r[c.key]) : ''}
-                              </td>
+                    <div key={c.customer_id} className="space-y-2 mb-6" style={idx > 0 ? { breakBefore: 'page', pageBreakBefore: 'always' } : undefined}>
+                      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 gap-y-0.5 border border-black p-2 text-[12px]">
+                        <span className="font-bold">Customer:</span>
+                        <span className="font-black">
+                          {c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, c.name) : c.name}
+                          {c.name_hindi && <span className="ml-1 text-[10px] font-normal text-slate-600">{c.name}</span>}
+                          <span className="ml-1 text-[10px] font-normal text-slate-500">#{c.customer_id}</span>
+                        </span>
+                        <span className="font-bold">Region:</span>
+                        <span>{c.region_name || '-'}</span>
+                        <span className="font-bold">Address:</span>
+                        <span>{cleanOrTransliterateHindi(c.address || '', '') || '-'}</span>
+                        <span className="font-bold">Priority:</span>
+                        <span>{c.priority || '-'}</span>
+                        <span className="font-bold">Phone:</span>
+                        <span className="col-span-3">{c.phone || '-'}</span>
+                      </div>
+
+                      {activeReport === 'cust_detail' ? (
+                        <>
+                        <table className="w-full text-xs border-collapse border border-black">
+                          <thead>
+                            <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
+                              <th className="p-1 text-center border-r border-black w-12">S.No.</th>
+                              <th className="p-1 text-left border-r border-black">Items</th>
+                              <th className="p-1 text-left border-r border-black">Hawker</th>
+                              <th className="p-1 text-center border-r border-black w-12">Qty</th>
+                              <th className="p-1 text-center border-r border-black w-20">Del. Day</th>
+                              <th className="p-1 text-center border-r border-black w-24">Start Date</th>
+                              <th className="p-1 text-center w-24">Close Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {x.rows.map((r: any, i: number) => (
+                              <tr key={i} className={`border-b border-slate-300 text-[11px] ${r.close_date ? 'text-slate-500' : ''}`}>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono">{r.sno ?? i + 1}</td>
+                                <td className={`p-1 border-r border-slate-300 font-bold ${r.close_date ? 'line-through' : 'text-blue-950'}`}>{r.item}</td>
+                                <td className="p-1 border-r border-slate-300">{r.hawker || '-'}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">{r.qty}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono">{r.del_day}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono">{day(r.start_date) || '-'}</td>
+                                <td className="p-1 text-center font-mono font-bold text-red-800">{day(r.close_date) || ''}</td>
+                              </tr>
                             ))}
-                            <td className={`p-1 text-right font-mono font-black ${r.balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>{money(r.balance)}</td>
-                          </tr>
-                        ))}
-                        {reportData.rows.length === 0 && (
-                          <tr><td colSpan={span + 1} className="p-4 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
-                        )}
-                        <tr className="border-t-2 border-black font-black text-[11px] bg-slate-100">
-                          <td className="p-1 border-r border-black uppercase">Total</td>
-                          {papers.map((name, i) => (
-                            <td key={name} className="p-1 text-right border-r border-black font-mono">{money(reportData.paper_totals?.[i])}</td>
-                          ))}
-                          {cols.map(c => (
-                            <td key={c.key} className="p-1 text-right border-r border-black font-mono">{money(t[c.key])}</td>
-                          ))}
-                          <td className="p-1 text-right font-mono">{money(t.balance)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                            {x.rows.length === 0 && (
+                              <tr><td colSpan={7} className="p-3 text-center text-slate-600">इस ग्राहक के कोई पेपर नहीं हैं</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+
+                        {/* Stops: temporary (from - to) and permanent */}
+                        <table className="w-full text-xs border-collapse border border-black">
+                          <thead>
+                            <tr className="border-b-2 border-black bg-amber-50 font-bold text-[11px]">
+                              <th colSpan={5} className="p-1 text-left">Discontinue (बंद) — Temporary / Permanent</th>
+                            </tr>
+                            <tr className="border-b border-black bg-slate-100 font-bold text-[11px]">
+                              <th className="p-1 text-left border-r border-black">Items</th>
+                              <th className="p-1 text-center border-r border-black w-24">Type</th>
+                              <th className="p-1 text-center border-r border-black w-24">From</th>
+                              <th className="p-1 text-center border-r border-black w-24">To</th>
+                              <th className="p-1 text-center w-24">Entry Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {x.stops.map((d: any, i: number) => (
+                              <tr key={i} className="border-b border-slate-300 text-[11px]">
+                                <td className="p-1 border-r border-slate-300 font-bold">{d.item}</td>
+                                <td className={`p-1 text-center border-r border-slate-300 font-bold ${d.type === 'Temporary' ? 'text-amber-800' : 'text-red-800'}`}>{d.type}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono">{day(d.from) || '-'}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono">{day(d.to) || '-'}</td>
+                                <td className="p-1 text-center font-mono">{day(d.entry) || '-'}</td>
+                              </tr>
+                            ))}
+                            {x.stops.length === 0 && (
+                              <tr><td colSpan={5} className="p-2 text-center text-slate-600">कोई बंद (Discontinue) नहीं</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                        </>
+                      ) : (() => {
+                        // One column per paper; Delivery, Discount and Less only when the year has any
+                        const papers: string[] = x.paper_names || [];
+                        const t = x.totals;
+                        const cols = [
+                          { key: 'delivery', label: 'Delivery', show: !!t.delivery },
+                          { key: 'discount', label: 'Discount', show: !!t.discount },
+                          { key: 'total', label: 'Total', show: true, bold: true }
+                        ].filter(col => col.show);
+                        const lessShown = !!t.less;
+                        const span = 1 + papers.length + cols.length;
+                        const payCols = 3 + (lessShown ? 1 : 0);
+                        return (
+                        <table className="w-full text-xs border-collapse border border-black">
+                          <thead>
+                            <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
+                              <th className="p-1 text-left border-r border-black">Month</th>
+                              {papers.map(name => (
+                                <th key={name} className="p-1 text-right border-r border-black leading-tight">{name}</th>
+                              ))}
+                              {cols.map(col => (
+                                <th key={col.key} className="p-1 text-right border-r border-black">{col.label}</th>
+                              ))}
+                              <th className="p-1 text-right border-r border-black">Received</th>
+                              <th className="p-1 text-center border-r border-black">ml. Date</th>
+                              <th className="p-1 text-center border-r border-black">Receipt No.</th>
+                              {lessShown && <th className="p-1 text-right border-r border-black">Less</th>}
+                              <th className="p-1 text-right">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
+                              <td colSpan={span + payCols} className="p-1 border-r border-slate-300 font-bold">Opening Balance (पिछला बकाया, 1 April {selectedYear})</td>
+                              <td className="p-1 text-right font-mono font-bold">{money(x.opening)}</td>
+                            </tr>
+                            {x.rows.map((r: any) => {
+                              // Each payment on its own line inside the month: amount, date, receipt no.
+                              const pays: any[] = r.payments || [];
+                              const stack = (f: (p: any) => React.ReactNode) => pays.length
+                                ? pays.map((p: any, i: number) => <div key={i}>{f(p)}</div>) : null;
+                              return (
+                              <tr key={r.month} className="border-b border-slate-300 text-[11px] align-top">
+                                <td className="p-1 border-r border-slate-300 font-bold whitespace-nowrap">{r.month}</td>
+                                {papers.map(name => {
+                                  const amt = r.papers.find((p: any) => p.name === name)?.amount;
+                                  return <td key={name} className="p-1 text-right border-r border-slate-300 font-mono">{amt ? money(amt) : ''}</td>;
+                                })}
+                                {cols.map(col => (
+                                  <td key={col.key} className={`p-1 text-right border-r border-slate-300 font-mono ${col.bold ? 'font-bold' : ''}`}>
+                                    {r[col.key] ? money(r[col.key]) : ''}
+                                  </td>
+                                ))}
+                                <td className="p-1 text-right border-r border-slate-300 font-mono text-emerald-800">{stack(p => money(p.amount))}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono whitespace-nowrap">{stack(p => day(p.date) || '-')}</td>
+                                <td className="p-1 text-center border-r border-slate-300 font-mono">{stack(p => p.receipt_no || '-')}</td>
+                                {lessShown && <td className="p-1 text-right border-r border-slate-300 font-mono">{stack(p => (p.less ? money(p.less) : ''))}</td>}
+                                <td className={`p-1 text-right font-mono font-black ${r.balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>{money(r.balance)}</td>
+                              </tr>
+                              );
+                            })}
+                            {x.rows.length === 0 && (
+                              <tr><td colSpan={span + payCols + 1} className="p-3 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
+                            )}
+                            <tr className="border-t-2 border-black font-black text-[11px] bg-slate-100">
+                              <td className="p-1 border-r border-black uppercase">Total</td>
+                              {papers.map((name, i) => (
+                                <td key={name} className="p-1 text-right border-r border-black font-mono">{money(x.paper_totals?.[i])}</td>
+                              ))}
+                              {cols.map(col => (
+                                <td key={col.key} className="p-1 text-right border-r border-black font-mono">{money(t[col.key])}</td>
+                              ))}
+                              <td className="p-1 text-right border-r border-black font-mono">{money(t.received)}</td>
+                              <td className="p-1 border-r border-black"></td>
+                              <td className="p-1 border-r border-black"></td>
+                              {lessShown && <td className="p-1 text-right border-r border-black font-mono">{money(t.less)}</td>}
+                              <td className="p-1 text-right font-mono">{money(t.balance)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        );
+                      })()}
+                    </div>
                     );
-                  })()}
+                  })}
                 </div>
                 );
               })()}
