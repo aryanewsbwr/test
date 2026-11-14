@@ -13,7 +13,7 @@ import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
-import { isDue, dueTotal } from '@/lib/dueRule';
+import { isDue, dueTotal, byPriority, byRegionThenPriority } from '@/lib/dueRule';
 import { printSheet } from '@/lib/printSheet';
 import { printReminderSlips, reminderSlipsPageHtml, ReminderSlip } from '@/lib/billThermalExport';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
@@ -486,8 +486,7 @@ export default function ReportsForm({
   };
   const isDueCustomerList = activeReport === 'due_region_summary' && reportData?.view === 'customers';
   const dueRowsSorted: any[] = isDueCustomerList
-    ? reportData.rows.filter((c: any) => isDue(c.final_balance)).sort((a: any, b: any) =>
-      (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id))
+    ? reportData.rows.filter((c: any) => isDue(c.final_balance)).sort(selectedRegion === 'all_list' ? byRegionThenPriority : byPriority)
     : [];
 
   // Each due customer's reminder slip figures, worked out on the server like the WhatsApp image
@@ -1650,8 +1649,11 @@ export default function ReportsForm({
                 )}
                 {/* List: Amt, Customer, Address as printed, with Priority on screen only */}
                 {dueView === 'list' && (() => {
-                  const listRows = [...dueRows].sort((a: any, b: any) =>
-                    (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id));
+                  // All regions: region by region, each in priority order, with the region as a heading
+                  const allRegions = selectedRegion === 'all_list';
+                  const listRows = [...dueRows].sort(allRegions ? byRegionThenPriority : byPriority);
+                  const regionCount = (name: string) => listRows.filter((x: any) => x.region_name === name).length;
+                  const regionSum = (name: string) => dueTotal(listRows.filter((x: any) => x.region_name === name).map((x: any) => x.final_balance));
                   const total = dueTotal(listRows.map((c: any) => c.final_balance));
                   return (
                 <div>
@@ -1675,12 +1677,22 @@ export default function ReportsForm({
                         </tr>
                       </thead>
                       <tbody>
-                        {listRows.map((c: any) => {
+                        {listRows.map((c: any, i: number) => {
                           const english = String(c.name || '').trim();
                           const hindi = c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, english) : '';
                           const tag = hindi ? english.split(/\s+/).pop() : '';
+                          const newRegion = allRegions && (i === 0 || listRows[i - 1].region_name !== c.region_name);
                           return (
-                          <tr key={c.customer_id} className="border-b border-slate-300 hover:bg-yellow-50">
+                          <React.Fragment key={c.customer_id}>
+                          {newRegion && (
+                            <tr className="bg-[#0A246A] text-white">
+                              <td colSpan={6} className="px-2 py-1.5 font-black text-[15px]">
+                                {c.region_name || '-'}
+                                <span className="ml-3 text-[12px] font-bold text-blue-100">ग्राहक: {regionCount(c.region_name)} · बकाया: {regionSum(c.region_name)}</span>
+                              </td>
+                            </tr>
+                          )}
+                          <tr className="border-b border-slate-300 hover:bg-yellow-50">
                             <td className="print:hidden p-1 text-center">
                               <input
                                 type="checkbox"
@@ -1696,7 +1708,6 @@ export default function ReportsForm({
                             <td className="p-1 font-semibold text-black">
                               {hindi || english}
                               {tag && <span className="ml-1 text-[10px] font-normal text-slate-600">{tag}</span>}
-                              {selectedRegion === 'all_list' && c.region_name && <span className="ml-1 text-[10px] font-normal text-slate-600">({c.region_name})</span>}
                               <span className="print:hidden ml-1 text-[10px] font-normal text-slate-400">#{c.customer_id}</span>
                             </td>
                             <td className="p-1 text-[12px] text-slate-800">{cleanOrTransliterateHindi(c.address || '', '')}</td>
@@ -1735,6 +1746,7 @@ export default function ReportsForm({
                               )}
                             </td>
                           </tr>
+                          </React.Fragment>
                           );
                         })}
                         {listRows.length === 0 && (
