@@ -45,9 +45,9 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
   @page { size: A4; margin: 8mm 10mm 10mm; @bottom-right { content: "पेज " counter(page) " / " counter(pages); font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 11px; font-weight: 700; } }
   body { font-family: 'Mangal', 'Nirmala UI', 'Noto Sans Devanagari', Arial, sans-serif; color: #000; margin: 0; }
   .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 3px; }
-  .firm { font-size: 15px; font-weight: 800; letter-spacing: .3px; flex: 1; text-align: left; }
+  .when { flex: 1; text-align: left; font-size: 13px; font-weight: 700; }
   .mid { text-align: center; }
-  .mid .region { font-size: 24px; font-weight: 800; line-height: 1; }
+  .mid .region { font-size: 30px; font-weight: 900; line-height: 1; }
   .meta { flex: 1; text-align: right; font-size: 13px; font-weight: 700; white-space: nowrap; }
   th.headcell { padding: 0 0 2px; border-bottom: none; font-weight: 400; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; }
@@ -68,10 +68,10 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
     <thead>
       <tr><th colspan="3" class="headcell">
         <div class="head">
-          <div class="firm">ARYAN NEWS AGENCY</div>
+          <div class="when">${date}</div>
           <div class="mid"><div class="region">${esc(opts.regionName)}</div></div>
           <div class="meta">
-            दिनांक: ${date} &nbsp;&nbsp; ग्राहक: ${due.length}
+            ग्राहक: ${due.length}
           </div>
         </div>
       </th></tr>
