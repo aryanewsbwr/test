@@ -588,11 +588,22 @@ export default function ReportsForm({
   };
 
   const handleExportCSV = () => {
-    if (!reportData || !reportData.rows || reportData.rows.length === 0) {
+    // Customer Detail / MonthWise: one line per paper or month, with the customer on each line
+    const flat: any[] | null = Array.isArray(reportData?.customers)
+      ? reportData.customers.flatMap((x: any) => (x.rows || []).map((r: any) => ({
+        customer_id: x.customer.customer_id, customer: x.customer.name, region: x.customer.region_name, priority: x.customer.priority,
+        ...r,
+        ...(r.payments ? {
+          payment_dates: r.payments.map((p: any) => p.date).join(' / '),
+          receipt_nos: r.payments.map((p: any) => p.receipt_no).join(' / ')
+        } : {})
+      })))
+      : null;
+    const rows = flat || reportData?.rows;
+    if (!rows || rows.length === 0) {
       alert('No data available to export.');
       return;
     }
-    const rows = reportData.rows;
     const headers = Object.keys(rows[0]).filter(k => typeof rows[0][k] !== 'object');
     const csvContent = [
       headers.join(','),
@@ -1355,7 +1366,7 @@ export default function ReportsForm({
                 </ol>
               </div>
             </div>
-          ) : !reportData || !reportData.rows || reportData.rows.length === 0 ? (
+          ) : !reportData || (Array.isArray(reportData.customers) ? reportData.customers.length === 0 : !reportData.rows || reportData.rows.length === 0) ? (
             <div className="p-16 text-center text-slate-500 font-sans">
               No matching records found for the selected criteria.
             </div>
