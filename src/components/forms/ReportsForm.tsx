@@ -13,6 +13,7 @@ import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
+import { isDue, dueTotal } from '@/lib/dueRule';
 import { printSheet } from '@/lib/printSheet';
 import { printReminderSlips, reminderSlipsPageHtml, ReminderSlip } from '@/lib/billThermalExport';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
@@ -211,7 +212,7 @@ export default function ReportsForm({
 
   useEffect(() => {
     if (activeReport === 'due_region_summary' && reportData?.view === 'customers') {
-      loadRemindLast(reportData.rows.filter((c: any) => c.final_balance > 0).map((c: any) => Number(c.customer_id)));
+      loadRemindLast(reportData.rows.filter((c: any) => isDue(c.final_balance)).map((c: any) => Number(c.customer_id)));
     } else {
       setRemindLast({});
     }
@@ -467,7 +468,7 @@ export default function ReportsForm({
       setRemindBusy(false);
       loadRemindRegions();
       if (reportData?.view === 'customers') {
-        loadRemindLast(reportData.rows.filter((c: any) => c.final_balance > 0).map((c: any) => Number(c.customer_id)));
+        loadRemindLast(reportData.rows.filter((c: any) => isDue(c.final_balance)).map((c: any) => Number(c.customer_id)));
       }
     }
   };
@@ -485,7 +486,7 @@ export default function ReportsForm({
   };
   const isDueCustomerList = activeReport === 'due_region_summary' && reportData?.view === 'customers';
   const dueRowsSorted: any[] = isDueCustomerList
-    ? reportData.rows.filter((c: any) => c.final_balance > 0).sort((a: any, b: any) =>
+    ? reportData.rows.filter((c: any) => isDue(c.final_balance)).sort((a: any, b: any) =>
       (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id))
     : [];
 
@@ -1561,7 +1562,7 @@ export default function ReportsForm({
               {/* REPORT 4: DUE REGION WISE SUMMARY */}
               {/* ========================================================================= */}
               {activeReport === 'due_region_summary' && reportData.view === 'customers' && (() => {
-                const dueRows = reportData.rows.filter((c: any) => c.final_balance > 0);
+                const dueRows = reportData.rows.filter((c: any) => isDue(c.final_balance));
                 const picked = dueRows.filter((c: any) => remindPicked.has(c.customer_id));
                 const allPicked = dueRows.length > 0 && picked.length === dueRows.length;
                 return (
@@ -1651,7 +1652,7 @@ export default function ReportsForm({
                 {dueView === 'list' && (() => {
                   const listRows = [...dueRows].sort((a: any, b: any) =>
                     (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id));
-                  const total = listRows.reduce((sum: number, c: any) => sum + Math.round(Number(c.final_balance)), 0);
+                  const total = dueTotal(listRows.map((c: any) => c.final_balance));
                   return (
                 <div>
                   <div className="bg-white border border-slate-300 shadow-sm px-3 py-2 font-sans">

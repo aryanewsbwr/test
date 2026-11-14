@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isDue } from '@/lib/dueRule';
 import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { getEffectiveWeekdayRates, getLegacyDayOfWeek } from '@/lib/rateEngine';
 import { fySuffix } from '@/lib/financialYear';
@@ -328,9 +329,9 @@ export async function GET(request: NextRequest) {
       });
       const owing = balances.filter(b => b.final_balance !== 0);
       const totals = (rows: typeof owing) => ({
-        due_customers: rows.filter(b => b.final_balance > 0).length,
+        due_customers: rows.filter(b => isDue(b.final_balance)).length,
         advance_customers: rows.filter(b => b.final_balance < 0).length,
-        total_due_amount: round(rows.reduce((s, b) => s + Math.max(b.final_balance, 0), 0)),
+        total_due_amount: round(rows.reduce((s, b) => s + (isDue(b.final_balance) ? b.final_balance : 0), 0)),
         total_advance_amount: round(rows.reduce((s, b) => s - Math.min(b.final_balance, 0), 0)),
         net_outstanding: round(rows.reduce((s, b) => s + b.final_balance, 0))
       });

@@ -1,4 +1,5 @@
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { isDue, dueTotal } from '@/lib/dueRule';
 
 // The due list as it is printed for a region: one line per customer who owes (Amt, Customer, Address), in priority
 // order, so the collector can walk the route. Opened in its own window so only the list prints,
@@ -17,9 +18,9 @@ export interface DueListOptions {
 
 export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date()): string {
   const due = rows
-    .filter(c => Number(c.final_balance) > 0)
+    .filter(c => isDue(c.final_balance))
     .sort((a, b) => (Number(a.priority) || 99999) - (Number(b.priority) || 99999) || Number(a.customer_id) - Number(b.customer_id));
-  const total = due.reduce((sum, c) => sum + Math.round(Number(c.final_balance)), 0);
+  const total = dueTotal(due.map(c => c.final_balance));
   const date = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
 
   const lines = due.map(c => {
