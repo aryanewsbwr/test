@@ -364,12 +364,18 @@ export function withoutHeldPapers(rows: any[], liveSubscriptions: any[]) {
 }
 
 // Each software numbers receipts itself, so one payment typed into both looks like two receipts.
-// Equal payments are counted, so a second ₹155 the same month is still brought in.
-export function withoutRepeatedReceipts(rows: any[], liveReceipts: any[]) {
+// Only a payment made on this website, one the old software's file doesn't have, can stand for a
+// receipt in the file. A receipt the file already has (same receipt number) is that receipt, so a
+// second ₹155 the old software holds for the same month is brought in, as the old software counts it.
+export function withoutRepeatedReceipts(rows: any[], liveReceipts: any[], fileReceipts: any[] = [], key: string[] = ['customer_id', 'recp_no']) {
   const payment = (receipt: any) =>
     `${receipt.customer_id}|${monthCode(receipt.month)}|${Number(receipt.mal_recp_amt) || 0}|${Number(receipt.less_amt) || 0}`;
+  const inFile = new Set(fileReceipts.map(r => rowKey(r, key)));
   const held = new Map<string, number>();
-  for (const receipt of liveReceipts) held.set(payment(receipt), (held.get(payment(receipt)) || 0) + 1);
+  for (const receipt of liveReceipts) {
+    if (inFile.has(rowKey(receipt, key))) continue;
+    held.set(payment(receipt), (held.get(payment(receipt)) || 0) + 1);
+  }
   return rows.filter(row => {
     const left = held.get(payment(row)) || 0;
     if (left > 0) held.set(payment(row), left - 1);
@@ -559,7 +565,7 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       if (headers) add = withoutBilledMonths(add, headers);
       if (table.name === 'customer_detail') add = withoutHeldPapers(add, live);
       if (table.name.startsWith('billdel')) add = withoutBilledMonths(add, live);
-      if (/^receipt\d/.test(table.name)) add = withoutRepeatedReceipts(add, live);
+      if (/^receipt\d/.test(table.name)) add = withoutRepeatedReceipts(add, live, fileRows, table.oldKey || table.key);
 
       items.push({
         ...difference,
