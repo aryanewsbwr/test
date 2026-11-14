@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { storedHindiName } from '@/lib/transliteration';
+import { storedHindiName, cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { monthCode } from '@/lib/backupTables';
 import { fyStartYear } from '@/lib/financialYear';
@@ -66,7 +66,12 @@ export async function GET(request: NextRequest) {
     const startYear = Number(params.get('year')) || fyStartYear();
 
     const [pubs, regions] = await Promise.all([fetchPublications(), fetchRegions()]);
-    const pubName = new Map<number, string>(pubs.map((p: any) => [Number(p.publica_id), String(p.public_name || p.abrv || '').trim()]));
+    // A Hindi paper by its Hindi name, an English paper by its English name, as on the bills
+    const pubName = new Map<number, string>(pubs.map((p: any) => {
+      const english = String(p.public_name || p.abrv || '').trim();
+      const hindi = String(p.pub_hindi || p.Pub_Hindi || '').trim();
+      return [Number(p.publica_id), hindi ? cleanOrTransliterateHindi(hindi, english) : english];
+    }));
     const regionName = (id: unknown) => regions.find((r: any) => Number(r.region_id) === Number(id))?.region_name || '';
 
     // The customers: the one chosen, or every customer of the region in priority order

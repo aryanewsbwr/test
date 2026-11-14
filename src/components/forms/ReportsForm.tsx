@@ -1879,30 +1879,47 @@ export default function ReportsForm({
                   return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : t;
                 };
                 const list: any[] = reportData.customers;
+                const HINDI_MONTH: Record<string, string> = {
+                  January: 'जनवरी', February: 'फरवरी', March: 'मार्च', April: 'अप्रैल', May: 'मई', June: 'जून',
+                  July: 'जुलाई', August: 'अगस्त', September: 'सितम्बर', October: 'अक्टूबर', November: 'नवम्बर', December: 'दिसम्बर'
+                };
+                const hindiMonth = (m: string) => String(m || '').replace(/^([A-Za-z]+)/, w => HINDI_MONTH[w] || w);
+                // Due shows as बकाया, advance as जमा
+                const dueOrAdvance = (n: number) => {
+                  const v = Number(n) || 0;
+                  if (Math.abs(v) < 0.005) return <span>0.00</span>;
+                  return v > 0
+                    ? <span className="text-red-900">बकाया {money(v)}</span>
+                    : <span className="text-emerald-800">जमा {money(-v)}</span>;
+                };
+                const detailFlow = activeReport === 'cust_detail';
                 if (list.length === 0) return <div className="p-8 text-center text-slate-600">इस क्षेत्र में कोई ग्राहक नहीं मिला</div>;
                 return (
                 <div>
                   {list.length > 1 && (
-                    <div className="mb-2 text-[12px] font-bold text-slate-700">{list.length} ग्राहक — हर ग्राहक प्रिंट में नए पेज से शुरू होगा</div>
+                    <div className="mb-2 text-[12px] font-bold text-slate-700">
+                      {list.length} ग्राहक — {detailFlow ? 'प्रिंट में एक के बाद एक, पेज भरने पर अगला पेज' : 'हर ग्राहक प्रिंट में नए पेज से शुरू होगा'}
+                    </div>
                   )}
                   {list.map((x: any, idx: number) => {
                     const c = x.customer;
                     return (
-                    <div key={c.customer_id} className="space-y-2 mb-6" style={idx > 0 ? { breakBefore: 'page', pageBreakBefore: 'always' } : undefined}>
+                    <div key={c.customer_id} className={`space-y-2 ${detailFlow ? 'mb-4' : 'mb-6'}`}
+                      style={detailFlow ? { breakInside: 'avoid', pageBreakInside: 'avoid' } : idx > 0 ? { breakBefore: 'page', pageBreakBefore: 'always' } : undefined}>
                       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 gap-y-0.5 border border-black p-2 text-[12px]">
-                        <span className="font-bold">Customer:</span>
+                        <span className="font-bold">ग्राहक:</span>
                         <span className="font-black">
                           {c.name_hindi ? cleanOrTransliterateHindi(c.name_hindi, c.name) : c.name}
                           {c.name_hindi && <span className="ml-1 text-[10px] font-normal text-slate-600">{c.name}</span>}
                           <span className="ml-1 text-[10px] font-normal text-slate-500">#{c.customer_id}</span>
                         </span>
-                        <span className="font-bold">Region:</span>
+                        <span className="font-bold">क्षेत्र:</span>
                         <span>{c.region_name || '-'}</span>
-                        <span className="font-bold">Address:</span>
+                        <span className="font-bold">पता:</span>
                         <span>{cleanOrTransliterateHindi(c.address || '', '') || '-'}</span>
-                        <span className="font-bold">Priority:</span>
+                        <span className="font-bold">प्राथमिकता:</span>
                         <span>{c.priority || '-'}</span>
-                        <span className="font-bold">Phone:</span>
+                        <span className="font-bold">फोन:</span>
                         <span className="col-span-3">{c.phone || '-'}</span>
                       </div>
 
@@ -1911,20 +1928,21 @@ export default function ReportsForm({
                         <table className="w-full text-xs border-collapse border border-black">
                           <thead>
                             <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
-                              <th className="p-1 text-center border-r border-black w-12">S.No.</th>
-                              <th className="p-1 text-left border-r border-black">Items</th>
-                              <th className="p-1 text-left border-r border-black">Hawker</th>
-                              <th className="p-1 text-center border-r border-black w-12">Qty</th>
-                              <th className="p-1 text-center border-r border-black w-20">Del. Day</th>
-                              <th className="p-1 text-center border-r border-black w-24">Start Date</th>
-                              <th className="p-1 text-center w-24">Close Date</th>
+                              <th className="p-1 text-center border-r border-black w-14">क्र.सं.</th>
+                              <th className="p-1 text-left border-r border-black">पेपर</th>
+                              <th className="p-1 text-left border-r border-black">हॉकर</th>
+                              <th className="p-1 text-center border-r border-black w-14">संख्या</th>
+                              <th className="p-1 text-center border-r border-black w-20">वितरण दिन</th>
+                              <th className="p-1 text-center border-r border-black w-24">शुरू दिनांक</th>
+                              <th className="p-1 text-center w-24">बंद दिनांक</th>
                             </tr>
                           </thead>
                           <tbody>
                             {x.rows.map((r: any, i: number) => (
                               <tr key={i} className={`border-b border-slate-300 text-[11px] ${r.close_date ? 'text-slate-500' : ''}`}>
                                 <td className="p-1 text-center border-r border-slate-300 font-mono">{r.sno ?? i + 1}</td>
-                                <td className={`p-1 border-r border-slate-300 font-bold ${r.close_date ? 'line-through' : 'text-blue-950'}`}>{r.item}</td>
+                                <td className={`p-1 border-r border-slate-300 font-bold ${r.close_date ? 'line-through' : 'text-blue-950'}`}
+                                  style={r.close_date ? { textDecorationColor: '#dc2626', textDecorationThickness: '2px' } : undefined}>{r.item}</td>
                                 <td className="p-1 border-r border-slate-300">{r.hawker || '-'}</td>
                                 <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">{r.qty}</td>
                                 <td className="p-1 text-center border-r border-slate-300 font-mono">{r.del_day}</td>
@@ -1942,21 +1960,21 @@ export default function ReportsForm({
                         <table className="w-full text-xs border-collapse border border-black">
                           <thead>
                             <tr className="border-b-2 border-black bg-amber-50 font-bold text-[11px]">
-                              <th colSpan={5} className="p-1 text-left">Discontinue (बंद) — Temporary / Permanent</th>
+                              <th colSpan={5} className="p-1 text-left">बंद (Discontinue) — अस्थायी / स्थायी</th>
                             </tr>
                             <tr className="border-b border-black bg-slate-100 font-bold text-[11px]">
-                              <th className="p-1 text-left border-r border-black">Items</th>
-                              <th className="p-1 text-center border-r border-black w-24">Type</th>
-                              <th className="p-1 text-center border-r border-black w-24">From</th>
-                              <th className="p-1 text-center border-r border-black w-24">To</th>
-                              <th className="p-1 text-center w-24">Entry Date</th>
+                              <th className="p-1 text-left border-r border-black">पेपर</th>
+                              <th className="p-1 text-center border-r border-black w-24">प्रकार</th>
+                              <th className="p-1 text-center border-r border-black w-24">से</th>
+                              <th className="p-1 text-center border-r border-black w-24">तक</th>
+                              <th className="p-1 text-center w-24">एंट्री दिनांक</th>
                             </tr>
                           </thead>
                           <tbody>
                             {x.stops.map((d: any, i: number) => (
                               <tr key={i} className="border-b border-slate-300 text-[11px]">
                                 <td className="p-1 border-r border-slate-300 font-bold">{d.item}</td>
-                                <td className={`p-1 text-center border-r border-slate-300 font-bold ${d.type === 'Temporary' ? 'text-amber-800' : 'text-red-800'}`}>{d.type}</td>
+                                <td className={`p-1 text-center border-r border-slate-300 font-bold ${d.type === 'Temporary' ? 'text-amber-800' : 'text-red-800'}`}>{d.type === 'Temporary' ? 'अस्थायी' : 'स्थायी'}</td>
                                 <td className="p-1 text-center border-r border-slate-300 font-mono">{day(d.from) || '-'}</td>
                                 <td className="p-1 text-center border-r border-slate-300 font-mono">{day(d.to) || '-'}</td>
                                 <td className="p-1 text-center font-mono">{day(d.entry) || '-'}</td>
@@ -1973,9 +1991,9 @@ export default function ReportsForm({
                         const papers: string[] = x.paper_names || [];
                         const t = x.totals;
                         const cols = [
-                          { key: 'delivery', label: 'Delivery', show: !!t.delivery },
-                          { key: 'discount', label: 'Discount', show: !!t.discount },
-                          { key: 'total', label: 'Total', show: true, bold: true }
+                          { key: 'delivery', label: 'डिलीवरी', show: !!t.delivery },
+                          { key: 'discount', label: 'छूट', show: !!t.discount },
+                          { key: 'total', label: 'कुल', show: true, bold: true }
                         ].filter(col => col.show);
                         const lessShown = !!t.less;
                         const span = 1 + papers.length + cols.length;
@@ -1984,24 +2002,24 @@ export default function ReportsForm({
                         <table className="w-full text-xs border-collapse border border-black">
                           <thead>
                             <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
-                              <th className="p-1 text-left border-r border-black">Month</th>
+                              <th className="p-1 text-left border-r border-black">माह</th>
                               {papers.map(name => (
                                 <th key={name} className="p-1 text-right border-r border-black leading-tight">{name}</th>
                               ))}
                               {cols.map(col => (
                                 <th key={col.key} className="p-1 text-right border-r border-black">{col.label}</th>
                               ))}
-                              <th className="p-1 text-right border-r border-black">Received</th>
-                              <th className="p-1 text-center border-r border-black">ml. Date</th>
-                              <th className="p-1 text-center border-r border-black">Receipt No.</th>
-                              {lessShown && <th className="p-1 text-right border-r border-black">Less</th>}
-                              <th className="p-1 text-right">Balance</th>
+                              <th className="p-1 text-right border-r border-black">प्राप्त राशि</th>
+                              <th className="p-1 text-center border-r border-black">प्राप्ति दिनांक</th>
+                              <th className="p-1 text-center border-r border-black">रसीद नं.</th>
+                              {lessShown && <th className="p-1 text-right border-r border-black">कटौती</th>}
+                              <th className="p-1 text-right">बकाया / जमा</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
-                              <td colSpan={span + payCols} className="p-1 border-r border-slate-300 font-bold">Opening Balance (पिछला बकाया, 1 April {selectedYear})</td>
-                              <td className="p-1 text-right font-mono font-bold">{money(x.opening)}</td>
+                              <td colSpan={span + payCols} className="p-1 border-r border-slate-300 font-bold">पिछला बकाया (1 अप्रैल {selectedYear})</td>
+                              <td className="p-1 text-right font-mono font-bold whitespace-nowrap">{dueOrAdvance(x.opening)}</td>
                             </tr>
                             {x.rows.map((r: any) => {
                               // Each payment on its own line inside the month: amount, date, receipt no.
@@ -2010,7 +2028,7 @@ export default function ReportsForm({
                                 ? pays.map((p: any, i: number) => <div key={i}>{f(p)}</div>) : null;
                               return (
                               <tr key={r.month} className="border-b border-slate-300 text-[11px] align-top">
-                                <td className="p-1 border-r border-slate-300 font-bold whitespace-nowrap">{r.month}</td>
+                                <td className="p-1 border-r border-slate-300 font-bold whitespace-nowrap">{hindiMonth(r.month)}</td>
                                 {papers.map(name => {
                                   const amt = r.papers.find((p: any) => p.name === name)?.amount;
                                   return <td key={name} className="p-1 text-right border-r border-slate-300 font-mono">{amt ? money(amt) : ''}</td>;
@@ -2024,7 +2042,7 @@ export default function ReportsForm({
                                 <td className="p-1 text-center border-r border-slate-300 font-mono whitespace-nowrap">{stack(p => day(p.date) || '-')}</td>
                                 <td className="p-1 text-center border-r border-slate-300 font-mono">{stack(p => p.receipt_no || '-')}</td>
                                 {lessShown && <td className="p-1 text-right border-r border-slate-300 font-mono">{stack(p => (p.less ? money(p.less) : ''))}</td>}
-                                <td className={`p-1 text-right font-mono font-black ${r.balance > 0 ? 'text-red-900' : 'text-emerald-800'}`}>{money(r.balance)}</td>
+                                <td className="p-1 text-right font-mono font-black whitespace-nowrap">{dueOrAdvance(r.balance)}</td>
                               </tr>
                               );
                             })}
@@ -2032,18 +2050,21 @@ export default function ReportsForm({
                               <tr><td colSpan={span + payCols + 1} className="p-3 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
                             )}
                             <tr className="border-t-2 border-black font-black text-[11px] bg-slate-100">
-                              <td className="p-1 border-r border-black uppercase">Total</td>
+                              <td className="p-1 border-r border-black">कुल</td>
                               {papers.map((name, i) => (
                                 <td key={name} className="p-1 text-right border-r border-black font-mono">{money(x.paper_totals?.[i])}</td>
                               ))}
                               {cols.map(col => (
-                                <td key={col.key} className="p-1 text-right border-r border-black font-mono">{money(t[col.key])}</td>
+                                <td key={col.key} className="p-1 text-right border-r border-black font-mono">
+                                  {/* The total includes the balance brought forward on 1 April */}
+                                  {money(col.key === 'total' ? Number(t.total) + Number(x.opening || 0) : t[col.key])}
+                                </td>
                               ))}
                               <td className="p-1 text-right border-r border-black font-mono">{money(t.received)}</td>
                               <td className="p-1 border-r border-black"></td>
                               <td className="p-1 border-r border-black"></td>
                               {lessShown && <td className="p-1 text-right border-r border-black font-mono">{money(t.less)}</td>}
-                              <td className="p-1 text-right font-mono">{money(t.balance)}</td>
+                              <td className="p-1 text-right font-mono whitespace-nowrap">{dueOrAdvance(t.balance)}</td>
                             </tr>
                           </tbody>
                         </table>
