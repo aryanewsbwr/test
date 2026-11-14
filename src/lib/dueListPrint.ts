@@ -41,14 +41,14 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
 <title>बकाया सूची - ${esc(opts.regionName)} - ${date.replace(/\//g, '-')}</title>
 <style>
   /* The page number sits at the top right of every page, just above the date and ग्राहक */
-  @page { size: A4; margin: 12mm 10mm; @top-right { content: "पेज " counter(page) " / " counter(pages); font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 12px; font-weight: 700; vertical-align: bottom; padding-bottom: 1mm; } }
+  /* The page number sits at the bottom right, so the header stays one line */
+  @page { size: A4; margin: 8mm 10mm 10mm; @bottom-right { content: "पेज " counter(page) " / " counter(pages); font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 11px; font-weight: 700; } }
   body { font-family: 'Mangal', 'Nirmala UI', 'Noto Sans Devanagari', Arial, sans-serif; color: #000; margin: 0; }
-  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 4px; }
-  .firm b { font-size: 17px; letter-spacing: .3px; }
-  .firm div { font-size: 12px; }
+  .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 3px; }
+  .firm { font-size: 15px; font-weight: 800; letter-spacing: .3px; flex: 1; text-align: left; }
   .mid { text-align: center; }
-  .mid .region { font-size: 30px; font-weight: 800; line-height: 1; }
-  .meta { text-align: right; font-size: 13px; font-weight: 700; }
+  .mid .region { font-size: 24px; font-weight: 800; line-height: 1; }
+  .meta { flex: 1; text-align: right; font-size: 13px; font-weight: 700; white-space: nowrap; }
   th.headcell { padding: 0 0 2px; border-bottom: none; font-weight: 400; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   thead th { font-size: 13px; text-align: left; border-bottom: 1.5px solid #000; padding: 4px 6px; }
@@ -60,29 +60,26 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
   .addr { font-size: 12.5px; width: 42%; }
   .amt { width: 70px; text-align: right; font-weight: 800; font-size: 15px; }
   th.amt { text-align: right; }
-  tfoot td { border-top: 2px solid #000; border-bottom: none; font-weight: 800; font-size: 15px; }
+  /* The total once, after the last customer, not repeated on every page */
+  tr.total td { border-top: 2px solid #000; border-bottom: none; font-weight: 800; font-size: 15px; }
 </style></head>
 <body>
   <table>
     <thead>
       <tr><th colspan="3" class="headcell">
         <div class="head">
-          <div class="firm">
-            <b>ARYAN NEWS AGENCY</b>
-            <div>5(1), Old Bus Stand, BEAWAR (Raj.)</div>
-            <div>Mob. 9829058949, WhatsApp 9462558949</div>
-          </div>
+          <div class="firm">ARYAN NEWS AGENCY</div>
           <div class="mid"><div class="region">${esc(opts.regionName)}</div></div>
           <div class="meta">
-            <div>दिनांक: ${date}</div>
-            <div>ग्राहक: ${due.length}</div>
+            दिनांक: ${date} &nbsp;&nbsp; ग्राहक: ${due.length}
           </div>
         </div>
       </th></tr>
       <tr><th class="amt">Amt.</th><th>Customer</th><th>Address</th></tr>
     </thead>
-    <tbody>${lines || '<tr><td colspan="3" style="text-align:center">कोई बकाया नहीं</td></tr>'}</tbody>
-    <tfoot><tr><td class="amt">${total}</td><td colspan="2">कुल बकाया (${due.length} ग्राहक)</td></tr></tfoot>
+    <tbody>${lines || '<tr><td colspan="3" style="text-align:center">कोई बकाया नहीं</td></tr>'}
+      <tr class="total"><td class="amt">${total}</td><td colspan="2">कुल बकाया (${due.length} ग्राहक)</td></tr>
+    </tbody>
   </table>
   <script>window.onload = function () { setTimeout(function () { window.focus(); window.print(); }, 300); };</script>
 </body></html>`;
