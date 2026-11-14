@@ -379,6 +379,11 @@ export default function ReportsForm({
     }
   }, [viewMode, fetchReport]);
 
+  // A different report never draws the last report's data, which may have another shape
+  useEffect(() => {
+    setReportData(null);
+  }, [activeReport]);
+
   // "All Regions (Customer List)" belongs to the due summary only
   useEffect(() => {
     if (activeReport !== 'due_region_summary' && selectedRegion === 'all_list') setSelectedRegion('all');
@@ -1366,7 +1371,9 @@ export default function ReportsForm({
                 </ol>
               </div>
             </div>
-          ) : !reportData || (Array.isArray(reportData.customers) ? reportData.customers.length === 0 : !reportData.rows || reportData.rows.length === 0) ? (
+          ) : !reportData || ((activeReport === 'cust_detail' || activeReport === 'cust_monthwise')
+            ? !Array.isArray(reportData.customers) || reportData.customers.length === 0
+            : !Array.isArray(reportData.rows) || reportData.rows.length === 0) ? (
             <div className="p-16 text-center text-slate-500 font-sans">
               No matching records found for the selected criteria.
             </div>
@@ -1871,7 +1878,9 @@ export default function ReportsForm({
               {/* ========================================================================= */}
               {/* CUSTOMER DETAIL and CUSTOMER MONTHWISE DETAIL: one customer, as in the old software */}
               {/* ========================================================================= */}
-              {(activeReport === 'cust_detail' || activeReport === 'cust_monthwise') && Array.isArray(reportData?.customers) && (() => {
+              {/* Drawn only from data of the same kind: switching report keeps the old data until the new arrives */}
+              {(activeReport === 'cust_detail' || activeReport === 'cust_monthwise') && Array.isArray(reportData?.customers)
+                && reportData?.kind === (activeReport === 'cust_detail' ? 'detail' : 'monthwise') && (() => {
                 const money = (n: number) => (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 const day = (v: string) => {
                   const t = String(v || '').trim();
