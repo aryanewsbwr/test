@@ -2029,8 +2029,13 @@ export default function ReportsForm({
                           </thead>
                           <tbody>
                             <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
-                              <td colSpan={span + payCols} className="p-1 border-r border-slate-300 font-bold">पिछला बकाया (1 अप्रैल {selectedYear})</td>
-                              <td className="p-1 text-right font-mono font-bold whitespace-nowrap">{dueOrAdvance(x.opening)}</td>
+                              {/* Brought forward on 1 April: counted in the कुल column, so the total includes it */}
+                              <td colSpan={span - 1} className="p-1 border-r border-slate-300 font-bold">पिछला बकाया (1 अप्रैल {selectedYear})</td>
+                              <td className="p-1 text-right border-r border-slate-300 font-mono font-bold whitespace-nowrap">
+                                {Number(x.opening) < 0 ? <span className="text-emerald-800">जमा {money(-x.opening)}</span> : money(x.opening)}
+                              </td>
+                              <td colSpan={payCols} className="p-1 border-r border-slate-300"></td>
+                              <td className="p-1"></td>
                             </tr>
                             {x.rows.map((r: any) => {
                               // Each payment on its own line inside the month: amount, date, receipt no.
