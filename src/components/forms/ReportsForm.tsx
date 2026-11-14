@@ -1956,7 +1956,8 @@ export default function ReportsForm({
                           </tbody>
                         </table>
 
-                        {/* Stops: temporary (from - to) and permanent */}
+                        {/* Stops: temporary (from - to) and permanent; left out of a region's list when there are none */}
+                        {(x.stops.length > 0 || list.length === 1) && (
                         <table className="w-full text-xs border-collapse border border-black">
                           <thead>
                             <tr className="border-b-2 border-black bg-amber-50 font-bold text-[11px]">
@@ -1985,6 +1986,7 @@ export default function ReportsForm({
                             )}
                           </tbody>
                         </table>
+                        )}
                         </>
                       ) : (() => {
                         // One column per paper; Delivery, Discount and Less only when the year has any
