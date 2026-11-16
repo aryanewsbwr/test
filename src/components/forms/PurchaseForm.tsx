@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Truck, Plus, Save, Trash2, Search, FilePlus2 } from 'lucide-react';
 import { Publisher, Publication } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getPublicationPeriodicityAndRates, getSingleEffectiveRate } from '@/lib/rateEngine';
+import KachaBillTab, { PakkaLine } from './KachaBillTab';
 
 // Transaction > Purchase: a bill received from a publisher, as in the old software's Purchase screen.
 // Publisher, Pub. Bill No., Bill Date and Received Date at the top; one line per paper (and day, for a
@@ -61,6 +62,10 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   const [findOpen, setFindOpen] = useState(false);
   const [bills, setBills] = useState<any[] | null>(null);
   const [findText, setFindText] = useState('');
+  // पक्का बिल (the real bill) or कच्चा बिल (the daily diary)
+  const [tab, setTab] = useState<'pakka' | 'kacha'>('pakka');
+  // A bill being made from the diary: once saved, those diary days are marked with it
+  const [fromDiary, setFromDiary] = useState<{ publishId: string; month: string } | null>(null);
 
   const sortedPublishers = useMemo(
     () => [...publishers].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
@@ -103,6 +108,13 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   };
 
   // The chosen publisher's papers first; every paper when the publisher has none listed
+  // A publisher's papers (every paper when the publisher has none listed), by name
+  const papersOf = useCallback((pid: string) => {
+    const own = publications.filter(p => pid && Number(p.publish_id) === Number(pid));
+    return (own.length ? own : publications).slice().sort((a, b) => pubName(a.publica_id).localeCompare(pubName(b.publica_id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publications]);
+
   const papers = useMemo(() => {
     const own = publications.filter(p => publishId && Number(p.publish_id) === Number(publishId));
     return (own.length ? own : publications).slice().sort((a, b) => pubName(a.publica_id).localeCompare(pubName(b.publica_id)));
@@ -145,7 +157,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   // F1 adds a line, F2 removes the bottom line
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (findOpen) return;
+      if (findOpen || tab !== 'pakka') return;
       if (e.key === 'F1') { e.preventDefault(); addLine(); }
       if (e.key === 'F2') { e.preventDefault(); removeLastLine(); }
     };
@@ -153,7 +165,20 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  // The diary's month, not yet billed, filled into a new bill (Bill No. and purchase rates are typed in)
+  const makePakka = (pid: string, month: string, diary: PakkaLine[]) => {
+    setTab('pakka');
+    setBillId(null); setBillNo(''); setBillDate(today()); setRDate(today()); setAddless('0'); setMessage(null);
+    setPublishId(pid);
+    setLines(diary.map((l, i) => ({
+      key: Date.now() + i, publica_id: l.publica_id, day: l.day, qty: String(l.qty), rate: '', mrp: mrpFor(l.publica_id, l.day)
+    })));
+    setFromDiary({ publishId: pid, month });
+    setMessage({ text: `कच्ची डायरी (${month}) से ${diary.length} लाइन भरी गईं। Pub. Bill No. और Purchase Rate भरकर Save करें।`, good: true });
+  };
+
   const startNew = () => {
+    setFromDiary(null);
     setBillId(null); setBillNo(''); setBillDate(today()); setRDate(today()); setAddless('0'); setLines([]); setMessage(null);
   };
 
@@ -173,8 +198,19 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Could not save');
       setBillId(json.purchase_id);
+      // A bill made from the diary: its days are now part of this bill
+      let diaryNote = '';
+      if (!billId && fromDiary && fromDiary.publishId === publishId) {
+        const marked = await fetch('/api/purchases/kacha', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'billed', publish_id: Number(publishId), month: fromDiary.month, purchase_id: json.purchase_id })
+        }).then(r => r.json()).catch(() => ({}));
+        diaryNote = marked.ok ? `। कच्ची डायरी की ${marked.marked} लाइन इस बिल में जुड़ गईं` : '। कच्ची डायरी पर बिल नहीं लग पाया';
+        setFromDiary(null);
+      }
       setMessage({
-        text: `${billId ? 'बिल अपडेट हो गया' : 'बिल सेव हो गया'} (#${json.purchase_id}) — Net ₹${money(json.net)}`
+        text: `${billId ? 'बिल अपडेट हो गया' : 'बिल सेव हो गया'} (#${json.purchase_id}) — Net ₹${money(json.net)}${diaryNote}`
           + (json.day_kept ? '' : '। दिन (DOW) सेव नहीं हुआ: डेटाबेस में Day कॉलम जोड़ना बाकी है।')
           + (json.mrp_kept === false ? '। MRP सेव नहीं हुआ: डेटाबेस में MRP कॉलम जोड़ना बाकी है।' : ''),
         good: true
@@ -263,10 +299,27 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
       <div className="flex-1 p-3 bg-[#ECE9D8] flex flex-col gap-2 overflow-hidden relative">
         <div className="flex items-baseline justify-between">
           <h1 className="text-lg font-black text-[#8B0000] tracking-wide">PURCHASE</h1>
+          {tab === 'pakka' && (
           <span className={`text-xs font-bold px-2 py-0.5 border ${billId ? 'bg-amber-50 border-amber-400 text-amber-900' : 'bg-white border-slate-400 text-slate-700'}`}>
-            {billId ? `पुराना बिल #${billId} खुला है — बदलकर Update करें` : 'नया बिल'}
+            {billId ? `पुराना बिल #${billId} खुला है — बदलकर Update करें` : fromDiary ? `नया बिल (कच्ची डायरी ${fromDiary.month} से)` : 'नया बिल'}
           </span>
+          )}
         </div>
+
+        <div className="flex gap-1 border-b-2 border-[#0A246A]">
+          {([['pakka', 'पक्का बिल (Purchase)'], ['kacha', 'कच्चा बिल (डायरी)']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setTab(k)}
+              className={`px-4 py-1.5 text-sm font-bold border border-b-0 cursor-pointer ${tab === k ? 'bg-[#0A246A] text-white border-[#0A246A]' : 'bg-white text-[#0A246A] border-slate-400 hover:bg-slate-100'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'kacha' && (
+          <KachaBillTab publishers={publishers} papersOf={papersOf} pubName={pubName} isNewspaper={isNewspaper} onMakePakka={makePakka} />
+        )}
+
+        {tab === 'pakka' && (<>
 
         {/* Bill details */}
         <div className="bg-white p-3 vb-box-inset grid grid-cols-4 max-md:grid-cols-2 gap-3 text-sm">
@@ -404,6 +457,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
             <button onClick={onClose} className="vb-btn bg-white hover:bg-red-50 text-red-800 cursor-pointer px-3 py-1.5 font-bold text-sm">Exit</button>
           </div>
         </div>
+        </>)}
 
         {/* Find: the saved bills, newest first */}
         {findOpen && (
