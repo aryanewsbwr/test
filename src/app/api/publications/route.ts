@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
     const todayIso = new Date().toISOString().split('T')[0];
 
     const enriched = pubs.map((p: any) => {
-      const decodedHindi = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
+      // An English paper or magazine has no Hindi name, as in the old software; none is guessed
+      const decodedHindi = String(p.pub_hindi || '').trim() ? cleanOrTransliterateHindi(p.pub_hindi, p.public_name) : '';
       const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, '2099-12-31', rates, ratechanges, p.magzine_day) : null;
       
       // A stop counts while it runs today or later, the same dates billing goes by
@@ -127,7 +128,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Publication Name is required' }, { status: 400 });
     }
 
-    const hindiName = cleanOrTransliterateHindi(pub_hindi, public_name);
+    // A blank Hindi name is saved blank (an English publication), never a guess from the English
+    const hindiName = String(pub_hindi || '').trim() ? cleanOrTransliterateHindi(pub_hindi, public_name) : '';
     const pubList = await fetchPublications();
 
     let finalPubId = publica_id ? parseInt(publica_id, 10) : 0;

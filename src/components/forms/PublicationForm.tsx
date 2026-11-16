@@ -2000,7 +2000,7 @@ export default function PublicationForm({
                       >
                         <td className="p-1.5 border-r font-mono text-blue-900 font-bold">#{p.publica_id}</td>
                         <td className="p-1.5 border-r font-bold">{p.public_name}</td>
-                        <td className="p-1.5 border-r font-bold text-blue-800">{cleanOrTransliterateHindi(p.pub_hindi, p.public_name) || '-'}</td>
+                        <td className="p-1.5 border-r font-bold text-blue-800">{String(p.pub_hindi || '').trim() ? cleanOrTransliterateHindi(p.pub_hindi, p.public_name) : '-'}</td>
                         <td className="p-1.5 border-r">{p.type_p || 'Daily'}</td>
                         <td className="p-1.5 text-center">
                           {p.is_permanent ? (
