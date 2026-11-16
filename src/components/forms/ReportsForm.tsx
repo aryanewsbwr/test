@@ -1320,8 +1320,10 @@ export default function ReportsForm({
           style={{ 
             width: activeReport.includes('bill_print') && billPrinterType === 'thermal_58mm'
               ? 'auto'
-              : `${Math.round(880 * (zoomLevel / 100))}px`, 
-            fontSize: `${Math.round(11 * (zoomLevel / 100))}px`
+              : '880px',
+            fontSize: '11px',
+            // Zoom enlarges or shrinks everything on the page, tables and text alike
+            zoom: zoomLevel / 100
           }}
         >
           
@@ -2000,6 +2002,9 @@ export default function ReportsForm({
                       ) : (() => {
                         // One column per paper; Delivery, Discount and Less only when the year has any
                         const papers: string[] = x.paper_names || [];
+                        // More than 6 papers: their short names (TOI, RP...) so the table fits the page
+                        const useShort = papers.length > 6;
+                        const heading = (name: string, i: number) => (useShort ? (x.paper_short?.[i] || name) : name);
                         const t = x.totals;
                         const cols = [
                           { key: 'delivery', label: 'डिलीवरी', show: !!t.delivery },
@@ -2010,12 +2015,13 @@ export default function ReportsForm({
                         const span = 1 + papers.length + cols.length;
                         const payCols = 3 + (lessShown ? 1 : 0);
                         return (
+                        <>
                         <table className="w-full text-xs border-collapse border border-black">
                           <thead>
                             <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
                               <th className="p-1 text-left border-r border-black">माह</th>
-                              {papers.map(name => (
-                                <th key={name} className="p-1 text-right border-r border-black leading-tight">{name}</th>
+                              {papers.map((name, i) => (
+                                <th key={name} title={name} className="p-1 text-right border-r border-black leading-tight">{heading(name, i)}</th>
                               ))}
                               {cols.map(col => (
                                 <th key={col.key} className="p-1 text-right border-r border-black">{col.label}</th>
@@ -2084,6 +2090,13 @@ export default function ReportsForm({
                             </tr>
                           </tbody>
                         </table>
+                        {useShort && (
+                          <div className="text-[10px] text-slate-700 leading-snug">
+                            <b>संक्षिप्त नाम:</b>{' '}
+                            {papers.map((name, i) => heading(name, i) !== name ? `${heading(name, i)} = ${name}` : null).filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                        </>
                         );
                       })()}
                     </div>

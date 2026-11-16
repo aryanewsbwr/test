@@ -72,6 +72,13 @@ export async function GET(request: NextRequest) {
       const hindi = String(p.pub_hindi || p.Pub_Hindi || '').trim();
       return [Number(p.publica_id), hindi ? cleanOrTransliterateHindi(hindi, english) : english];
     }));
+    // A paper's short name (TOI, RP, DB) as saved on the publication, for a customer with many papers
+    const shortOf = new Map<string, string>();
+    pubs.forEach((p: any) => {
+      const name = pubName.get(Number(p.publica_id));
+      const abrv = String(p.abrv || '').trim();
+      if (name && abrv && !shortOf.has(name)) shortOf.set(name, abrv);
+    });
     const regionName = (id: unknown) => regions.find((r: any) => Number(r.region_id) === Number(id))?.region_name || '';
 
     // The customers: the one chosen, or every customer of the region in priority order
@@ -229,6 +236,7 @@ export async function GET(request: NextRequest) {
         customer: head(c),
         opening: round(opening),
         paper_names: paperNames,
+        paper_short: paperNames.map(name => shortOf.get(name) || name),
         paper_totals: paperNames.map(name => round(paperTotals.get(name) || 0)),
         rows: shown,
         totals: { bill: sum('bill'), delivery: sum('delivery'), discount: sum('discount'), total: sum('total'), received: sum('received'), less: sum('less'), balance }
