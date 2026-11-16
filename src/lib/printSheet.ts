@@ -1,6 +1,14 @@
 // Prints just the report page from the Reports screen, on A4, in its own window: no window frame,
 // grey background, scroll bars or buttons around it. The page keeps the screen's own styles.
 
+// Shrinks the page when a wide table is wider than the paper, so nothing is cut off at the sides
+const FIT = `function fit(d) {
+    var s = d.querySelector('.report-sheet'); if (!s) return;
+    s.style.zoom = '';
+    var over = s.scrollWidth / s.clientWidth;
+    if (over > 1.005) s.style.zoom = String(Math.floor(1000 / over) / 1000);
+  }`;
+
 export function printSheet(sheet: HTMLElement | null, title: string): void {
   if (!sheet) return;
   const copy = sheet.cloneNode(true) as HTMLElement;
@@ -22,17 +30,28 @@ export function printSheet(sheet: HTMLElement | null, title: string): void {
 <title>${safeTitle}</title>
 ${styles}
 <style>
-  @page { size: A4; margin: 10mm; }
+  /* Wide side margins, and a little room inside them, so a printer that cannot print near the
+     paper's edge does not cut off the left and right borders */
+  @page { size: A4; margin: 10mm 14mm 12mm; }
   html, body { background: #fff !important; margin: 0; padding: 0; }
-  .report-sheet { width: 100%; padding: 0; font-size: 11px; }
+  *, *::before, *::after { box-sizing: border-box; }
+  /* Exactly the printable width of A4 (210mm less the side margins); a table wider than this is
+     shrunk to fit (see fit below) instead of running off the paper */
+  .report-sheet { width: 182mm; max-width: 182mm; padding: 0 1.5mm; font-size: 12.5px; overflow: visible; }
+  .report-sheet table { width: 100%; max-width: 100%; }
+  /* Darker, bolder text so thin figures read clearly on paper */
+  .report-sheet td, .report-sheet th { font-weight: 700; }
+  .report-sheet .font-mono { font-weight: 700; }
+  .report-sheet td, .report-sheet th, .report-sheet table { border-color: #444 !important; }
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 </style></head>
 <body>${copy.outerHTML}
 <script>
+  ${FIT}
   window.onload = function () {
-    var go = function () { setTimeout(function () { window.focus(); window.print(); }, 250); };
+    var go = function () { fit(document); setTimeout(function () { window.focus(); window.print(); }, 250); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
   };
 </script>
@@ -55,6 +74,8 @@ ${styles}
   doc.write(html.replace(/<script>[\s\S]*?<\/script>/, ''));
   doc.close();
   setTimeout(() => {
+    const s = doc.querySelector('.report-sheet') as HTMLElement | null;
+    if (s && s.scrollWidth > s.clientWidth * 1.005) s.style.zoom = String(Math.floor(1000 * s.clientWidth / s.scrollWidth) / 1000);
     frame.contentWindow?.focus();
     frame.contentWindow?.print();
     setTimeout(() => frame.remove(), 2000);

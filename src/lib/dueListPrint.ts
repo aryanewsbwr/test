@@ -67,7 +67,7 @@ export function dueListHtml(rows: any[], opts: DueListOptions, today = new Date(
 <title>बकाया सूची - ${esc(opts.regionName)} - ${date.replace(/\//g, '-')}</title>
 <style>
   /* The page number sits at the bottom right, so the header stays one line */
-  @page { size: A4; margin: 8mm 10mm 10mm; @bottom-right { content: "पेज " counter(page) " / " counter(pages); font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 11px; font-weight: 700; } }
+  @page { size: A4; margin: 8mm 14mm 10mm; @bottom-right { content: "पेज " counter(page) " / " counter(pages); font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 11px; font-weight: 700; } }
   body { font-family: 'Mangal', 'Nirmala UI', 'Noto Sans Devanagari', Arial, sans-serif; color: #000; margin: 0; }
   .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 3px; }
   .when { flex: 1; text-align: left; font-size: 13px; font-weight: 700; }
