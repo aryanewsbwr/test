@@ -2062,8 +2062,8 @@ export default function ReportsForm({
                               <tr key={r.month} className={`border-b border-slate-300 ${fs} align-top`}>
                                 <td className={`${pad} border-r border-slate-300 font-bold whitespace-nowrap`}>{hindiMonth(r.month)}</td>
                                 {papers.map(name => {
-                                  const amt = r.papers.find((p: any) => p.name === name)?.amount;
-                                  return <td key={name} className={`${pad} text-right border-r border-slate-300 font-mono`}>{amt ? amt(amt) : ''}</td>;
+                                  const paperAmount = r.papers.find((p: any) => p.name === name)?.amount;
+                                  return <td key={name} className={`${pad} text-right border-r border-slate-300 font-mono`}>{paperAmount ? amt(paperAmount) : ''}</td>;
                                 })}
                                 {cols.map(col => (
                                   <td key={col.key} className={`${pad} text-right border-r border-slate-300 font-mono ${col.bold ? 'font-bold' : ''}`}>
