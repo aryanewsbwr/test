@@ -110,8 +110,11 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   // Every paper, whichever publisher it is listed under, in English alphabetical order (a paper with
   // no Hindi name comes just before one with the same English name that has it), shown by the name
   // pubName gives, so typing "Pratiyogita" lands on the English one with the Hindi one just below it.
+  // A marker such as "(E)" or "(Hindi)" is not part of the sort, so "Pratiyogita Darpan(E)" and
+  // "Pratiyogita Darpan" sort together, English first.
+  const sortName = (p: any) => String(p.public_name || '').replace(/\s*\((e|h|eng|english|hin|hindi)\)\s*$/i, '').trim();
   const allPapers = useMemo(() => publications.slice().sort((a: any, b: any) =>
-    String(a.public_name || '').trim().localeCompare(String(b.public_name || '').trim(), 'en', { sensitivity: 'base' }) ||
+    sortName(a).localeCompare(sortName(b), 'en', { sensitivity: 'base' }) ||
     (a.pub_hindi ? 1 : 0) - (b.pub_hindi ? 1 : 0) ||
     Number(a.publica_id) - Number(b.publica_id)
   ), [publications]);
