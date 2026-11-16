@@ -190,5 +190,9 @@ export async function DELETE(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const { error: lineError } = await supabaseAdmin.from('purchasedetail').delete().eq('Purchase_id', id);
   if (lineError) return NextResponse.json({ error: lineError.message }, { status: 500 });
+  // Diary (कच्चा बिल) days that went into this bill are कच्चा again, so they can be billed anew
+  const { error: diaryError } = await supabaseAdmin.from('purchase_kacha').update({ purchase_id: null }).eq('purchase_id', id);
+  const diaryMissing = diaryError && /does not exist|schema cache|relation/i.test(diaryError.message);
+  if (diaryError && !diaryMissing) return NextResponse.json({ error: `Bill deleted, but its diary days were not freed: ${diaryError.message}` }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
