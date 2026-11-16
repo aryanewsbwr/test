@@ -3,10 +3,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Truck, Plus, Save, Trash2, Search, FilePlus2 } from 'lucide-react';
 import { Publisher, Publication } from '@/lib/types';
+import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getPublicationPeriodicityAndRates, getSingleEffectiveRate } from '@/lib/rateEngine';
 
 // Transaction > Purchase: a bill received from a publisher, as in the old software's Purchase screen.
-// Publisher, Pub. Bill No., Bill Date and Received Date at the top; one line per paper and day
-// (Qty x Rate); then Total, Add/Less and Net Amount. Saved to the same purchase tables the old
+// Publisher, Pub. Bill No., Bill Date and Received Date at the top; one line per paper (and day, for a
+// newspaper): Qty, Purchase Rate, MRP (the latest sale rate, filled in), Amount = Qty x Purchase Rate;
+// then Total, Add/Less and Net Amount. F1 or a double-click adds a line, F2 removes the bottom one. Saved to the same purchase tables the old
 // software used, so the Purchase reports show these bills with the old ones.
 
 // Day of the week (DOW) of each line; saved as the full name, shown short
@@ -23,6 +26,7 @@ interface Line {
   day: string;
   qty: string;
   rate: string;
+  mrp: string;
 }
 
 interface PurchaseFormProps {
@@ -63,19 +67,53 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
     [publishers]
   );
   const publisherName = (id: unknown) => publishers.find(p => Number(p.publish_id) === Number(id))?.name || `Publisher #${id}`;
-  const pubName = (id: unknown) => publications.find(p => Number(p.publica_id) === Number(id))?.public_name || `Paper #${id}`;
+  const pubOf = (id: unknown) => publications.find(p => Number(p.publica_id) === Number(id));
+  // A Hindi paper or magazine by its Hindi name, an English one by its English name, as on the bills
+  const pubName = (id: unknown) => {
+    const p: any = pubOf(id);
+    if (!p) return `Paper #${id}`;
+    const english = String(p.public_name || '').trim();
+    return p.pub_hindi ? cleanOrTransliterateHindi(p.pub_hindi, english) : english;
+  };
+
+  // The rate tables billing uses, for the latest MRP and to tell a newspaper from a magazine
+  const [rateTables, setRateTables] = useState<{ rates: any[]; ratechanges: any[] }>({ rates: [], ratechanges: [] });
+  useEffect(() => {
+    fetch('/api/rates?tables=true', { cache: 'no-store' }).then(r => r.json())
+      .then(j => setRateTables({ rates: j.rates || [], ratechanges: j.ratechanges || [] })).catch(() => {});
+  }, []);
+  const isNewspaper = (id: unknown) => {
+    const p: any = pubOf(id);
+    if (!p) return true;
+    return getPublicationPeriodicityAndRates(p, rDate, rateTables.rates, rateTables.ratechanges).isDaily;
+  };
+  // The latest MRP: a newspaper's rate for that day, a magazine's issue rate
+  const mrpFor = (id: number, day: string) => {
+    const p: any = pubOf(id);
+    if (!p || !rateTables.rates.length) return '';
+    const info = getPublicationPeriodicityAndRates(p, rDate, rateTables.rates, rateTables.ratechanges);
+    let mrp = 0;
+    if (info.isDaily) {
+      const dow = DAYS.findIndex(d => d.en === (day || weekday(rDate))) + 1;
+      mrp = getSingleEffectiveRate(id, dow || 1, rDate, rateTables.rates, rateTables.ratechanges, p.magzine_day);
+    } else {
+      mrp = Object.values(info.rates || {}).find(v => Number(v) > 0) || 0;
+    }
+    return mrp > 0 ? String(mrp) : '';
+  };
 
   // The chosen publisher's papers first; every paper when the publisher has none listed
   const papers = useMemo(() => {
     const own = publications.filter(p => publishId && Number(p.publish_id) === Number(publishId));
-    return (own.length ? own : publications).slice().sort((a, b) => String(a.public_name).localeCompare(String(b.public_name)));
+    return (own.length ? own : publications).slice().sort((a, b) => pubName(a.publica_id).localeCompare(pubName(b.publica_id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publications, publishId]);
 
   const loadRates = () => fetch('/api/purchases?last_rates=1', { cache: 'no-store' })
     .then(r => r.json()).then(j => setLastRates(j.rates || {})).catch(() => {});
   useEffect(() => { loadRates(); }, []);
 
-  // The rate last paid for this paper on this day, or on any day
+  // The rate last paid for this paper on this day, or on any day (shown as a hint)
   const rateFor = (pub: number, day: string) => {
     const r = lastRates[`${pub}|${day}`] ?? lastRates[`${pub}|`];
     return r ? String(r) : '';
@@ -86,19 +124,34 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   const copies = lines.reduce((s, l) => s + (Number(l.qty) || 0), 0);
 
   const addLine = () => {
+    if (!publishId) return;
     const pub = Number(papers[0]?.publica_id) || 0;
-    const day = weekday(rDate);
-    setLines(ls => [...ls, { key: Date.now(), publica_id: pub, day, qty: '', rate: rateFor(pub, day) }]);
+    const day = isNewspaper(pub) ? weekday(rDate) : '';
+    setLines(ls => [...ls, { key: Date.now(), publica_id: pub, day, qty: '', rate: '', mrp: mrpFor(pub, day) }]);
   };
   const setLine = (key: number, change: Partial<Line>) => setLines(ls => ls.map(l => {
     if (l.key !== key) return l;
     const next = { ...l, ...change };
-    // A new paper or day brings the rate last paid for it
-    if ((change.publica_id !== undefined || change.day !== undefined) && rateFor(next.publica_id, next.day)) {
-      next.rate = rateFor(next.publica_id, next.day);
+    // A new paper or day: a magazine has no day, and the latest MRP comes in (it can be changed)
+    if (change.publica_id !== undefined || change.day !== undefined) {
+      if (!isNewspaper(next.publica_id)) next.day = '';
+      else if (change.publica_id !== undefined && !next.day) next.day = weekday(rDate);
+      next.mrp = mrpFor(next.publica_id, next.day) || next.mrp;
     }
     return next;
   }));
+  const removeLastLine = () => setLines(ls => ls.slice(0, -1));
+
+  // F1 adds a line, F2 removes the bottom line
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (findOpen) return;
+      if (e.key === 'F1') { e.preventDefault(); addLine(); }
+      if (e.key === 'F2') { e.preventDefault(); removeLastLine(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   const startNew = () => {
     setBillId(null); setBillNo(''); setBillDate(today()); setRDate(today()); setAddless('0'); setLines([]); setMessage(null);
@@ -114,7 +167,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
         body: JSON.stringify({
           purchase_id: billId || undefined,
           publish_id: Number(publishId), bill_no: billNo, bill_date: billDate, r_date: rDate, addless: Number(addless) || 0,
-          lines: lines.map(l => ({ publica_id: l.publica_id, day: l.day, qty: Number(l.qty), rate: Number(l.rate) }))
+          lines: lines.map(l => ({ publica_id: l.publica_id, day: l.day, qty: Number(l.qty), rate: Number(l.rate), mrp: Number(l.mrp) || null }))
         })
       });
       const json = await res.json();
@@ -122,7 +175,8 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
       setBillId(json.purchase_id);
       setMessage({
         text: `${billId ? 'बिल अपडेट हो गया' : 'बिल सेव हो गया'} (#${json.purchase_id}) — Net ₹${money(json.net)}`
-          + (json.day_kept ? '' : '। दिन (Day) अभी सेव नहीं हुआ: डेटाबेस में Day कॉलम जोड़ना बाकी है।'),
+          + (json.day_kept ? '' : '। दिन (DOW) सेव नहीं हुआ: डेटाबेस में Day कॉलम जोड़ना बाकी है।')
+          + (json.mrp_kept === false ? '। MRP सेव नहीं हुआ: डेटाबेस में MRP कॉलम जोड़ना बाकी है।' : ''),
         good: true
       });
       loadRates();
@@ -177,7 +231,8 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
       setRDate(b.R_Date || today());
       setAddless(String(Number(b.Addless) || 0));
       setLines((json.lines || []).map((l: any, i: number) => ({
-        key: Date.now() + i, publica_id: Number(l.Publica_id), day: l.Day || '', qty: String(l.Qty ?? ''), rate: String(l.Rate ?? '')
+        key: Date.now() + i, publica_id: Number(l.Publica_id), day: l.Day || '', qty: String(l.Qty ?? ''), rate: String(l.Rate ?? ''),
+        mrp: l.MRP != null ? String(l.MRP) : ''
       })));
       setFindOpen(false);
       setMessage(null);
@@ -237,7 +292,11 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
         </div>
 
         {/* Papers on the bill */}
-        <div className="flex-1 bg-white vb-grid overflow-auto">
+        <div
+          className="flex-1 bg-white vb-grid overflow-auto"
+          title="F1 या डबल-क्लिक: नई लाइन · F2: नीचे की लाइन हटाएँ"
+          onDoubleClick={e => { if (!(e.target as HTMLElement).closest('input,select,button')) addLine(); }}
+        >
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 bg-[#D4D0C8] text-[13px]">
               <tr>
@@ -245,7 +304,8 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
                 <th className="p-2 border border-slate-400 text-left">Paper (पेपर)</th>
                 <th className="p-2 border border-slate-400 text-center w-28" title="Day of the week">DOW</th>
                 <th className="p-2 border border-slate-400 text-right w-24">Qty</th>
-                <th className="p-2 border border-slate-400 text-right w-24">Rate (₹)</th>
+                <th className="p-2 border border-slate-400 text-right w-28">Purchase Rate</th>
+                <th className="p-2 border border-slate-400 text-right w-24">MRP (₹)</th>
                 <th className="p-2 border border-slate-400 text-right w-32">Amount (₹)</th>
                 <th className="p-2 border border-slate-400 w-10"></th>
               </tr>
@@ -257,20 +317,28 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
                   <td className="p-1.5">
                     <select value={l.publica_id} onChange={e => setLine(l.key, { publica_id: Number(e.target.value) })} className="w-full p-1 border border-slate-300 bg-white font-bold text-sm">
                       {!papers.some(p => Number(p.publica_id) === l.publica_id) && <option value={l.publica_id}>{pubName(l.publica_id)}</option>}
-                      {papers.map(p => <option key={p.publica_id} value={p.publica_id}>{p.public_name}</option>)}
+                      {papers.map(p => <option key={p.publica_id} value={p.publica_id}>{pubName(p.publica_id)}</option>)}
                     </select>
                   </td>
-                  <td className="p-1.5">
+                  <td className="p-1.5 text-center">
+                    {!isNewspaper(l.publica_id) ? <span className="text-slate-400" title="पत्रिका: दिन नहीं">—</span> : (
                     <select value={l.day} onChange={e => setLine(l.key, { day: e.target.value })} className="w-full p-1 border border-slate-300 bg-white text-sm font-bold text-center">
                       <option value="">All</option>
                       {DAYS.map(d => <option key={d.en} value={d.en}>{d.short}</option>)}
                     </select>
+                    )}
                   </td>
                   <td className="p-1.5 text-right">
                     <input type="number" min="0" value={l.qty} onChange={e => setLine(l.key, { qty: e.target.value })} className="w-20 p-1 text-right font-mono font-bold border border-slate-300" />
                   </td>
                   <td className="p-1.5 text-right">
-                    <input type="number" min="0" step="0.01" value={l.rate} onChange={e => setLine(l.key, { rate: e.target.value })} className="w-20 p-1 text-right font-mono border border-slate-300" />
+                    <input type="number" min="0" step="0.01" value={l.rate} onChange={e => setLine(l.key, { rate: e.target.value })}
+                      placeholder={rateFor(l.publica_id, l.day)} title={rateFor(l.publica_id, l.day) ? `पिछली बार: ₹${rateFor(l.publica_id, l.day)}` : 'खरीद दर भरें'}
+                      className="w-24 p-1 text-right font-mono font-bold border border-slate-300" />
+                  </td>
+                  <td className="p-1.5 text-right">
+                    <input type="number" min="0" step="0.01" value={l.mrp} onChange={e => setLine(l.key, { mrp: e.target.value })}
+                      title="नया MRP अपने आप आता है, बदल सकते हैं" className="w-20 p-1 text-right font-mono border border-slate-300 bg-slate-50" />
                   </td>
                   <td className="p-1.5 text-right font-mono font-bold">{money(amountOf(l))}</td>
                   <td className="p-1.5 text-center">
@@ -281,7 +349,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
                 </tr>
               ))}
               {lines.length === 0 && (
-                <tr><td colSpan={7} className="p-6 text-center text-slate-500">Publisher चुनें, फिर &quot;+ पेपर जोड़ें&quot; दबाएँ</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-slate-500">Publisher चुनें, फिर F1 दबाएँ या यहाँ डबल-क्लिक करें (F2: नीचे की लाइन हटाएँ)</td></tr>
               )}
             </tbody>
           </table>
@@ -291,7 +359,10 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
         <div className="flex items-end justify-between gap-3 text-sm">
           <div className="flex items-center gap-3">
             <button onClick={addLine} disabled={!publishId} className="vb-btn bg-white hover:bg-slate-100 disabled:opacity-50 flex items-center gap-1 cursor-pointer px-3 py-1.5 font-bold">
-              <Plus className="w-4 h-4 text-emerald-600" /> पेपर जोड़ें
+              <Plus className="w-4 h-4 text-emerald-600" /> पेपर जोड़ें (F1)
+            </button>
+            <button onClick={removeLastLine} disabled={lines.length === 0} className="vb-btn bg-white hover:bg-slate-100 disabled:opacity-50 flex items-center gap-1 cursor-pointer px-3 py-1.5 font-bold">
+              <Trash2 className="w-4 h-4 text-red-600" /> नीचे की लाइन हटाएँ (F2)
             </button>
             <span className="text-slate-700">कुल Qty: <b className="text-blue-900 font-mono">{copies}</b></span>
           </div>

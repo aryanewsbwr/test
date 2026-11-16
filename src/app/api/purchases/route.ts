@@ -8,9 +8,10 @@ export const dynamic = 'force-dynamic';
 // Transaction > Purchase: the bills received from publishers, kept exactly as the old software
 // kept them, so its bills and these show together in the Purchase reports.
 //   purchase       (Purchase_id, Publish_id, R_Date, Bill_No, Bill_Date, Total, Addless, NetAmt)
-//   purchasedetail (Purchase_id, Bill_No, Publica_id, Qty, Rate, Amt, Day)
+//   purchasedetail (Purchase_id, Bill_No, Publica_id, Qty, Rate, Amt, Day, MRP)
 // Purchase_id has no automatic numbering, so a new bill takes the next number here.
-// Day (Sunday ... Saturday) is the website's own column; bills from the old software have none.
+// Day (Sunday ... Saturday, newspapers only) and MRP are the website's own columns; bills from the
+// old software have none. Rate is the purchase rate the bill charges; Amt = Qty x Rate.
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -105,7 +106,8 @@ export async function POST(req: NextRequest) {
       publica_id: Number(l.publica_id),
       day: DAYS.includes(l.day) ? l.day : null,
       qty: Math.round(Number(l.qty) || 0),
-      rate: round(Number(l.rate) || 0)
+      rate: round(Number(l.rate) || 0),
+      mrp: Number(l.mrp) > 0 ? round(Number(l.mrp)) : null
     }));
     if (lines.length === 0) return NextResponse.json({ error: 'कम से कम एक पेपर जोड़ें' }, { status: 400 });
     const wrong = lines.findIndex((l: any) => !l.publica_id || l.qty <= 0 || l.rate <= 0);
@@ -132,9 +134,12 @@ export async function POST(req: NextRequest) {
       Purchase_id: id, Publish_id: publishId, R_Date: body.r_date, Bill_No: billNo, Bill_Date: body.bill_date,
       Total: total, Addless: addless, NetAmt: round(total + addless)
     };
-    const detail = (withDay: boolean) => lines.map((l: any) => ({
+    // Day and MRP are written while the database has those columns
+    const extra = new Set(['Day', 'MRP']);
+    const detail = () => lines.map((l: any) => ({
       Purchase_id: id, Bill_No: billNo, Publica_id: l.publica_id, Qty: l.qty, Rate: l.rate, Amt: round(l.qty * l.rate),
-      ...(withDay ? { Day: l.day } : {})
+      ...(extra.has('Day') ? { Day: l.day } : {}),
+      ...(extra.has('MRP') ? { MRP: l.mrp } : {})
     }));
 
     // The lines are written first and the bill last, so a bill never shows without its lines.
@@ -147,13 +152,16 @@ export async function POST(req: NextRequest) {
     };
     const { error: clearError } = await supabaseAdmin.from('purchasedetail').delete().eq('Purchase_id', id);
     if (clearError) throw new Error(clearError.message);
-    let dayKept = true;
-    let { error: lineError } = await supabaseAdmin.from('purchasedetail').insert(detail(true));
-    if (lineError && /Day/.test(lineError.message) && /column/i.test(lineError.message)) {
-      // The Day column has not been added to the database yet
-      dayKept = false;
-      ({ error: lineError } = await supabaseAdmin.from('purchasedetail').insert(detail(false)));
+    let { error: lineError } = await supabaseAdmin.from('purchasedetail').insert(detail());
+    // A column not added to the database yet is left out, and the screen is told
+    for (const col of ['Day', 'MRP']) {
+      if (lineError && /column/i.test(lineError.message) && lineError.message.includes(col)) {
+        extra.delete(col);
+        ({ error: lineError } = await supabaseAdmin.from('purchasedetail').insert(detail()));
+      }
     }
+    const dayKept = extra.has('Day');
+    const mrpKept = extra.has('MRP');
     if (lineError) {
       await putBack();
       throw new Error(`Lines not saved: ${lineError.message}`);
@@ -166,7 +174,7 @@ export async function POST(req: NextRequest) {
       await putBack();
       throw new Error(`Bill not saved: ${billError.message}`);
     }
-    return NextResponse.json({ ok: true, purchase_id: id, total, net: header.NetAmt, day_kept: dayKept });
+    return NextResponse.json({ ok: true, purchase_id: id, total, net: header.NetAmt, day_kept: dayKept, mrp_kept: mrpKept });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Could not save the bill' }, { status: 500 });
   }
