@@ -1896,12 +1896,12 @@ export default function ReportsForm({
                 };
                 const hindiMonth = (m: string) => String(m || '').replace(/^([A-Za-z]+)/, w => HINDI_MONTH[w] || w);
                 // Due shows as बकाया, advance as जमा
-                const dueOrAdvance = (n: number) => {
+                const dueOrAdvance = (n: number, f: (v: number) => string = money) => {
                   const v = Number(n) || 0;
-                  if (Math.abs(v) < 0.005) return <span>0.00</span>;
+                  if (Math.abs(v) < 0.005) return <span>{f(0)}</span>;
                   return v > 0
-                    ? <span className="text-red-900">बकाया {money(v)}</span>
-                    : <span className="text-emerald-800">जमा {money(-v)}</span>;
+                    ? <span className="text-red-900">बकाया {f(v)}</span>
+                    : <span className="text-emerald-800">जमा {f(-v)}</span>;
                 };
                 const detailFlow = activeReport === 'cust_detail';
                 if (list.length === 0) return <div className="p-8 text-center text-slate-600">इस क्षेत्र में कोई ग्राहक नहीं मिला</div>;
@@ -2005,6 +2005,16 @@ export default function ReportsForm({
                         // More than 6 papers: their short names (TOI, RP...) so the table fits the page
                         const useShort = papers.length > 6;
                         const heading = (name: string, i: number) => (useShort ? (x.paper_short?.[i] || name) : name);
+                        // A wide table is made compact so it fits the page: whole rupees without .00,
+                        // short dates (15/10/26), smaller text and padding
+                        const amt = (n: number) => {
+                          const v = Number(n) || 0;
+                          if (!useShort) return money(v);
+                          return Number.isInteger(v) ? v.toLocaleString('en-IN') : money(v);
+                        };
+                        const shortDay = (v: string) => (useShort ? day(v).replace(/\/(\d{2})(\d{2})$/, '/$2') : day(v));
+                        const fs = useShort ? 'text-[10px]' : 'text-[11px]';
+                        const pad = useShort ? 'px-0.5 py-1' : 'p-1';
                         const t = x.totals;
                         const cols = [
                           { key: 'delivery', label: 'डिलीवरी', show: !!t.delivery },
@@ -2018,29 +2028,29 @@ export default function ReportsForm({
                         <>
                         <table className="w-full text-xs border-collapse border border-black">
                           <thead>
-                            <tr className="border-b-2 border-black bg-slate-100 font-bold text-[11px]">
-                              <th className="p-1 text-left border-r border-black">माह</th>
+                            <tr className={`border-b-2 border-black bg-slate-100 font-bold ${fs}`}>
+                              <th className={`${pad} text-left border-r border-black`}>माह</th>
                               {papers.map((name, i) => (
-                                <th key={name} title={name} className="p-1 text-right border-r border-black leading-tight">{heading(name, i)}</th>
+                                <th key={name} title={name} className={`${pad} text-right border-r border-black leading-tight`}>{heading(name, i)}</th>
                               ))}
                               {cols.map(col => (
-                                <th key={col.key} className="p-1 text-right border-r border-black">{col.label}</th>
+                                <th key={col.key} className={`${pad} text-right border-r border-black`}>{col.label}</th>
                               ))}
-                              <th className="p-1 text-right border-r border-black">प्राप्त राशि</th>
-                              <th className="p-1 text-center border-r border-black">प्राप्ति दिनांक</th>
-                              <th className="p-1 text-center border-r border-black">रसीद नं.</th>
-                              {lessShown && <th className="p-1 text-right border-r border-black">कटौती</th>}
-                              <th className="p-1 text-right">बकाया / जमा</th>
+                              <th className={`${pad} text-right border-r border-black`}>प्राप्त राशि</th>
+                              <th className={`${pad} text-center border-r border-black`}>प्राप्ति दिनांक</th>
+                              <th className={`${pad} text-center border-r border-black`}>रसीद नं.</th>
+                              {lessShown && <th className={`${pad} text-right border-r border-black`}>कटौती</th>}
+                              <th className={`${pad} text-right`}>बकाया / जमा</th>
                             </tr>
                           </thead>
                           <tbody>
-                            <tr className="border-b border-slate-400 text-[11px] bg-amber-50">
+                            <tr className={`border-b border-slate-400 ${fs} bg-amber-50`}>
                               {/* Brought forward on 1 April: counted in the कुल column, so the total includes it */}
-                              <td colSpan={span - 1} className="p-1 border-r border-slate-300 font-bold">पिछला बकाया (1 अप्रैल {selectedYear})</td>
-                              <td className="p-1 text-right border-r border-slate-300 font-mono font-bold whitespace-nowrap">
-                                {Number(x.opening) < 0 ? <span className="text-emerald-800">जमा {money(-x.opening)}</span> : money(x.opening)}
+                              <td colSpan={span - 1} className={`${pad} border-r border-slate-300 font-bold`}>पिछला बकाया (1 अप्रैल {selectedYear})</td>
+                              <td className={`${pad} text-right border-r border-slate-300 font-mono font-bold whitespace-nowrap`}>
+                                {Number(x.opening) < 0 ? <span className="text-emerald-800">जमा {amt(-x.opening)}</span> : amt(x.opening)}
                               </td>
-                              <td colSpan={payCols} className="p-1 border-r border-slate-300"></td>
+                              <td colSpan={payCols} className={`${pad} border-r border-slate-300`}></td>
                               <td className="p-1"></td>
                             </tr>
                             {x.rows.map((r: any) => {
@@ -2049,44 +2059,44 @@ export default function ReportsForm({
                               const stack = (f: (p: any) => React.ReactNode) => pays.length
                                 ? pays.map((p: any, i: number) => <div key={i}>{f(p)}</div>) : null;
                               return (
-                              <tr key={r.month} className="border-b border-slate-300 text-[11px] align-top">
-                                <td className="p-1 border-r border-slate-300 font-bold whitespace-nowrap">{hindiMonth(r.month)}</td>
+                              <tr key={r.month} className={`border-b border-slate-300 ${fs} align-top`}>
+                                <td className={`${pad} border-r border-slate-300 font-bold whitespace-nowrap`}>{hindiMonth(r.month)}</td>
                                 {papers.map(name => {
                                   const amt = r.papers.find((p: any) => p.name === name)?.amount;
-                                  return <td key={name} className="p-1 text-right border-r border-slate-300 font-mono">{amt ? money(amt) : ''}</td>;
+                                  return <td key={name} className={`${pad} text-right border-r border-slate-300 font-mono`}>{amt ? amt(amt) : ''}</td>;
                                 })}
                                 {cols.map(col => (
-                                  <td key={col.key} className={`p-1 text-right border-r border-slate-300 font-mono ${col.bold ? 'font-bold' : ''}`}>
-                                    {r[col.key] ? money(r[col.key]) : ''}
+                                  <td key={col.key} className={`${pad} text-right border-r border-slate-300 font-mono ${col.bold ? 'font-bold' : ''}`}>
+                                    {r[col.key] ? amt(r[col.key]) : ''}
                                   </td>
                                 ))}
-                                <td className="p-1 text-right border-r border-slate-300 font-mono text-emerald-800">{stack(p => money(p.amount))}</td>
-                                <td className="p-1 text-center border-r border-slate-300 font-mono whitespace-nowrap">{stack(p => day(p.date) || '-')}</td>
-                                <td className="p-1 text-center border-r border-slate-300 font-mono">{stack(p => p.receipt_no || '-')}</td>
-                                {lessShown && <td className="p-1 text-right border-r border-slate-300 font-mono">{stack(p => (p.less ? money(p.less) : ''))}</td>}
-                                <td className="p-1 text-right font-mono font-black whitespace-nowrap">{dueOrAdvance(r.balance)}</td>
+                                <td className={`${pad} text-right border-r border-slate-300 font-mono text-emerald-800`}>{stack(p => amt(p.amount))}</td>
+                                <td className={`${pad} text-center border-r border-slate-300 font-mono whitespace-nowrap`}>{stack(p => shortDay(p.date) || '-')}</td>
+                                <td className={`${pad} text-center border-r border-slate-300 font-mono`}>{stack(p => p.receipt_no || '-')}</td>
+                                {lessShown && <td className={`${pad} text-right border-r border-slate-300 font-mono`}>{stack(p => (p.less ? amt(p.less) : ''))}</td>}
+                                <td className={`${pad} text-right font-mono font-black whitespace-nowrap`}>{dueOrAdvance(r.balance, amt)}</td>
                               </tr>
                               );
                             })}
                             {x.rows.length === 0 && (
                               <tr><td colSpan={span + payCols + 1} className="p-3 text-center text-slate-600">इस साल का कोई बिल या भुगतान नहीं</td></tr>
                             )}
-                            <tr className="border-t-2 border-black font-black text-[11px] bg-slate-100">
-                              <td className="p-1 border-r border-black">कुल</td>
+                            <tr className={`border-t-2 border-black font-black ${fs} bg-slate-100`}>
+                              <td className={`${pad} border-r border-black`}>कुल</td>
                               {papers.map((name, i) => (
-                                <td key={name} className="p-1 text-right border-r border-black font-mono">{money(x.paper_totals?.[i])}</td>
+                                <td key={name} className={`${pad} text-right border-r border-black font-mono`}>{amt(x.paper_totals?.[i])}</td>
                               ))}
                               {cols.map(col => (
-                                <td key={col.key} className="p-1 text-right border-r border-black font-mono">
+                                <td key={col.key} className={`${pad} text-right border-r border-black font-mono`}>
                                   {/* The total includes the balance brought forward on 1 April */}
-                                  {money(col.key === 'total' ? Number(t.total) + Number(x.opening || 0) : t[col.key])}
+                                  {amt(col.key === 'total' ? Number(t.total) + Number(x.opening || 0) : t[col.key])}
                                 </td>
                               ))}
-                              <td className="p-1 text-right border-r border-black font-mono">{money(t.received)}</td>
-                              <td className="p-1 border-r border-black"></td>
-                              <td className="p-1 border-r border-black"></td>
-                              {lessShown && <td className="p-1 text-right border-r border-black font-mono">{money(t.less)}</td>}
-                              <td className="p-1 text-right font-mono whitespace-nowrap">{dueOrAdvance(t.balance)}</td>
+                              <td className={`${pad} text-right border-r border-black font-mono`}>{amt(t.received)}</td>
+                              <td className={`${pad} border-r border-black`}></td>
+                              <td className={`${pad} border-r border-black`}></td>
+                              {lessShown && <td className={`${pad} text-right border-r border-black font-mono`}>{amt(t.less)}</td>}
+                              <td className={`${pad} text-right font-mono whitespace-nowrap`}>{dueOrAdvance(t.balance, amt)}</td>
                             </tr>
                           </tbody>
                         </table>
