@@ -444,7 +444,9 @@ export default function PublicationForm({
     setIsNewMode(false);
     setIsRateChangeMode(false);
     setRateChangeEffDate(todayDdmmyyyy);
-    const hindiName = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
+    // A publication with no Hindi name (an English paper or magazine) keeps none; a guessed one
+    // would be saved back as if it were its Hindi name
+    const hindiName = String(p.pub_hindi || '').trim() ? cleanOrTransliterateHindi(p.pub_hindi, p.public_name) : '';
     const isPerm = Boolean(p.is_permanent || p.closed_to === '2099-12-31' || (p.closed_to && p.closed_to >= '2090-01-01'));
     const isClsd = Boolean(p.is_closed || isPerm);
 
@@ -572,7 +574,8 @@ export default function PublicationForm({
 
     if (pubNameDebounce.current) clearTimeout(pubNameDebounce.current);
     pubNameDebounce.current = setTimeout(async () => {
-      if (!newName.trim()) return;
+      // Suggested only for a new publication; an existing one keeps the Hindi name it has (or none)
+      if (!newName.trim() || !isNewMode) return;
       const autoHindi = await transliterateToHindiAsync(newName);
       setSelectedPub(prev => ({
         ...prev,
