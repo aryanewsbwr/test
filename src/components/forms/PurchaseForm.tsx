@@ -107,19 +107,16 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
     return mrp > 0 ? String(mrp) : '';
   };
 
-  // The chosen publisher's papers first; every paper when the publisher has none listed
-  // A publisher's papers (every paper when the publisher has none listed), by name
-  const papersOf = useCallback((pid: string) => {
-    const own = publications.filter(p => pid && Number(p.publish_id) === Number(pid));
-    return (own.length ? own : publications).slice().sort((a, b) => pubName(a.publica_id).localeCompare(pubName(b.publica_id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publications]);
-
-  const papers = useMemo(() => {
-    const own = publications.filter(p => publishId && Number(p.publish_id) === Number(publishId));
-    return (own.length ? own : publications).slice().sort((a, b) => pubName(a.publica_id).localeCompare(pubName(b.publica_id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publications, publishId]);
+  // Every paper, whichever publisher it is listed under, in English alphabetical order (a paper with
+  // no Hindi name comes just before one with the same English name that has it), shown by the name
+  // pubName gives, so typing "Pratiyogita" lands on the English one with the Hindi one just below it.
+  const allPapers = useMemo(() => publications.slice().sort((a: any, b: any) =>
+    String(a.public_name || '').trim().localeCompare(String(b.public_name || '').trim(), 'en', { sensitivity: 'base' }) ||
+    (a.pub_hindi ? 1 : 0) - (b.pub_hindi ? 1 : 0) ||
+    Number(a.publica_id) - Number(b.publica_id)
+  ), [publications]);
+  const papersOf = useCallback((_pid: string) => allPapers, [allPapers]);
+  const papers = allPapers;
 
   const loadRates = () => fetch('/api/purchases?last_rates=1', { cache: 'no-store' })
     .then(r => r.json()).then(j => setLastRates(j.rates || {})).catch(() => {});
