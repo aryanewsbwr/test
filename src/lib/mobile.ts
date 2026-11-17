@@ -149,7 +149,14 @@ export async function searchList(): Promise<SearchEntry[]> {
   if (searchCache && Date.now() - searchCache.at < 5 * 60 * 1000) return searchCache.list;
   const names = await regionNames();
   const regionName = (id: number) => names.get(id) || '';
-  const rows = await readAll('customer', '*', q => q, 'customer_id');
+  // Only the columns a search needs, read in parallel pages: one page after another took ~25 seconds
+  const cols = 'customer_id, name_eng, name_hindi, name_hindi_unicode, region_id, priority, phone, add1, add2';
+  const { count, error: countError } = await db.from('customer').select('customer_id', { count: 'exact', head: true });
+  if (countError) throw new Error(`Could not read customers: ${countError.message}`);
+  const pages = await Promise.all(Array.from({ length: Math.ceil((count || 0) / 1000) + 1 }, (_, i) =>
+    db.from('customer').select(cols).order('customer_id', { ascending: true }).range(i * 1000, i * 1000 + 999)
+      .then(({ data, error }) => { if (error) throw new Error(`Could not read customers: ${error.message}`); return data || []; })));
+  const rows = pages.flat();
   const list = rows.map(c => {
     const card = customerCard(c, regionName);
     const phones = phonesOf(c);
@@ -186,7 +193,8 @@ export function matchCustomers(list: SearchEntry[], query: string, limit = 30) {
   const scored: { e: SearchEntry; score: number }[] = [];
   for (const e of list) {
     let score = 0;
-    if (words.every(w => e.keys.includes(w))) score = e.keys.startsWith(words[0]) || e.card.name.toLowerCase().startsWith(words[0]) ? 3 : 2;
+    // A name word that starts with what was typed ranks first (श्याम before घनश्याम)
+    if (words.every(w => e.keys.includes(w))) score = words.every(w => e.keys.split(/[\s.]+/).some(k => k.startsWith(w))) ? 3 : 2;
     else {
       const lk = loose(e.keys);
       if (looseWords.length && looseWords.every(w => lk.includes(w))) score = 1;
