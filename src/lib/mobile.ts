@@ -199,6 +199,8 @@ export function matchCustomers(list: SearchEntry[], query: string, limit = 30) {
       const lk = loose(e.keys);
       if (looseWords.length && looseWords.every(w => lk.includes(w))) score = 1;
     }
+    // A name that itself starts with what was typed ranks above all others
+    if (score && (e.card.name_eng.toLowerCase().startsWith(words[0]) || e.card.name.toLowerCase().startsWith(words[0]))) score = 4;
     if (score) scored.push({ e, score });
   }
   scored.sort((a, b) => b.score - a.score || a.e.card.name.localeCompare(b.e.card.name, 'hi'));
