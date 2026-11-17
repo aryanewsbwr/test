@@ -210,7 +210,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   const stopped = (s: any) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
     && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
   // Delivery charges are kept as a 'paper' for billing, but are not copies to hand out
-  const charge = (id: number) => /deli?e?very\s*charge/i.test(m.pubs.get(id)?.english || '');
+  const charge = (id: number) => /del\w*very\s*charge/i.test(m.pubs.get(id)?.english || '');
   const wanted = subs.filter(s => {
     const p = m.pubs.get(s.publica_id);
     return p && p.magazine === magazine && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
