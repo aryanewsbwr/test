@@ -393,25 +393,31 @@ export const REPORTS: Record<string, Builder> = {
   async collection_agent_dues(f) {
     const m = await masters();
     const [books, recs] = await Promise.all([all(`receiptissue${fySuffix()}`, '*').catch(() => [] as any[]), receipts(m)]);
+    // With dates chosen, only the books that have receipts in those dates (or were given out in them)
+    const dated = !!(f.from || f.to);
     const list = books.filter(b => !f.collector || Number(b.Collect_id) === f.collector)
       .map(b => {
         const from = Number(b.ReceiptFrom) || 0, to = Number(b.ReceiptTo) || 0;
-        const used = recs.filter(r => { const n = Number(r.manual); return n >= from && n <= to && inRange(r.date, { ...f, from: f.from, to: f.to }); });
-        const count = new Set(used.map(r => r.manual)).size;
+        const inBook = recs.filter(r => { const n = Number(r.manual); return n >= from && n <= to; });
+        const used = inBook.filter(r => inRange(r.date, f));
+        const issuedOn = iso(b.IssueDate);
         return {
-          collector: Number(b.Collect_id), book: `${from} - ${to}`, issued: dmy(iso(b.IssueDate)), returned: b.RecDate ? dmy(iso(b.RecDate)) : 'बाकी',
-          receipts: count, amount: sum(used, 'amount'), unused: Math.max(0, to - from + 1 - count)
+          collector: Number(b.Collect_id), book: `${from} - ${to}`, issued: dmy(issuedOn), returned: b.RecDate ? dmy(iso(b.RecDate)) : 'बाकी',
+          receipts: new Set(used.map(r => r.manual)).size, amount: sum(used, 'amount'),
+          unused: Math.max(0, to - from + 1 - new Set(inBook.map(r => r.manual)).size),
+          show: !dated || used.length > 0 || inRange(issuedOn, f)
         };
       })
+      .filter(b => b.show)
       .sort((a, b) => a.collector - b.collector || a.book.localeCompare(b.book, undefined, { numeric: true }));
     const groups = groupBy(list, b => m.collectors.get(b.collector) || `#${b.collector}`).map(([name, rows]) => ({
       title: `${name} — ${rows.length} बुक`, rows, totals: totalsOf(rows, ['receipts', 'amount', 'unused'], { book: 'कुल' })
     }));
     return {
-      title: 'COLLECTION AGENT DUES', subtitle: period(f),
+      title: 'COLLECTION AGENT REPORT', subtitle: period(f) + (f.collector ? ` · ${m.collectors.get(f.collector) || ''}` : ''),
       columns: [text('book', 'रसीद बुक'), text('issued', 'दी गई'), text('returned', 'वापस आई'), int('receipts', 'कटी रसीद'), money('amount', 'वसूली राशि'), int('unused', 'बची रसीद')],
       groups, totals: totalsOf(list, ['receipts', 'amount', 'unused'], { book: `कुल ${list.length} बुक` }),
-      note: 'वसूली राशि: बुक की रसीदों से आई रकम (चुनी तारीखों में)। "बाकी" = बुक अभी वापस नहीं आई।'
+      note: 'चुनी तारीखों में जिन बुक से रसीद कटी (या जो बुक दी गई) वही दिख रही हैं। कटी रसीद / वसूली: इन्हीं तारीखों की। बची रसीद: पूरी बुक में अब तक। "बाकी" = बुक अभी वापस नहीं आई।'
     };
   },
 

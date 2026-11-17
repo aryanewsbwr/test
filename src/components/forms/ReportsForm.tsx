@@ -107,7 +107,7 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   dues_ledger: { title: 'Customer Outstanding Dues Ledger', category: 'Outstanding Report', hasRegion: true },
   previous_dues_wise: { title: 'Previous Dues Wise Report', category: 'Outstanding Report', hasRegion: true },
   due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report', hasRegion: true, hasPeriod: false },
-  collection_agent_dues: { title: 'Collection Agent Dues Report', category: 'Outstanding Report', hasPeriod: true },
+  collection_agent_dues: { title: 'Collection Agent Report', category: 'Outstanding Report', hasPeriod: true },
   cust_detail_month: { title: 'Customer Detail / Month Register', category: 'Customer', hasRegion: true, hasPeriod: true },
   cust_detail: { title: 'Customer Detail', category: 'Customer', hasCustId: true, hasRegion: true, hasPeriod: false },
   cust_monthwise: { title: 'Customer MonthWise Detail', category: 'Customer', hasCustId: true, hasRegion: true },
@@ -1229,7 +1229,7 @@ export default function ReportsForm({
               <option value="dues_ledger">Customer Outstanding Dues Ledger</option>
               <option value="previous_dues_wise">Previous Dues Wise Report</option>
               <option value="due_region_summary">Due Region Wise Summary</option>
-              <option value="collection_agent_dues">Collection Agent Dues Report</option>
+              <option value="collection_agent_dues">Collection Agent Report</option>
             </optgroup>
             <optgroup label="9. Sale Reports">
               <option value="consolidated_sale">Consolidated Sale Report</option>
