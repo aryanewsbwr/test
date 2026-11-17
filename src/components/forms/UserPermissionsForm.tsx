@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppUser, UserPermissions } from '@/lib/auth';
+import MobileStaffPanel from './MobileStaffPanel';
 import { Hawker } from '@/lib/types';
 
 interface Props {
@@ -511,6 +512,9 @@ export default function UserPermissionsForm({ onClose, hawkers = [] }: Props) {
                 })}
               </div>
             </fieldset>
+
+            {/* The mobile app's PIN, lines and receipt books, for a saved user */}
+            {selectedUser && !isNewMode && <MobileStaffPanel userId={selectedUser.id} isAdmin={role === 'admin'} />}
 
             {/* Status Message */}
             {statusMsg && (

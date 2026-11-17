@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readSessionToken, SESSION_COOKIE } from '@/lib/session';
 
 // Meta calls the webhook without a login; it checks its own signature
-const OPEN_PATHS = ['/api/auth/login', '/api/auth/logout', '/api/webhooks/whatsapp'];
+// The mobile app's login screen lists the staff and checks a PIN before anyone is logged in
+const OPEN_PATHS = ['/api/auth/login', '/api/auth/logout', '/api/webhooks/whatsapp', '/api/m/staff', '/api/m/login'];
 
 export async function middleware(req: NextRequest) {
   if (OPEN_PATHS.includes(req.nextUrl.pathname)) return NextResponse.next();

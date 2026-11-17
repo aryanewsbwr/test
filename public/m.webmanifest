@@ -1,0 +1,15 @@
+{
+  "name": "आर्यन न्यूज़ एजेंसी",
+  "short_name": "आर्यन न्यूज़",
+  "start_url": "/m",
+  "scope": "/m",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f5ef",
+  "theme_color": "#13315c",
+  "lang": "hi",
+  "icons": [
+    { "src": "/m-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/m-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
