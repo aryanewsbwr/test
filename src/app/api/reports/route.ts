@@ -131,6 +131,17 @@ export async function GET(request: NextRequest) {
     // Bill printing reads its own rows from the database, so it skips this slower load
     // and the due summary reads only the few columns it needs
     if (!reportType.startsWith('bill_print') && reportType !== 'bill_paid_report' && reportType !== 'due_region_summary') await loadLiveData(data);
+    // Regions whose name starts with Z are left out of every report, with their customers
+    const hiddenRegions = new Set(data.regions.filter(r => /^\s*z/i.test(String(r.region_name || r.name || ''))).map(r => Number(r.region_id)));
+    const shownCustomer = (c: any) => !hiddenRegions.has(Number(c?.region_id));
+    if (data.customers.length) {
+      data.customers = data.customers.filter(shownCustomer);
+      const shownIds = new Set(data.customers.map(c => Number(c.customer_id)));
+      data.subscriptions = data.subscriptions.filter(s => shownIds.has(Number(s.customer_id ?? s.Customer_id)));
+      data.discontinues = data.discontinues.filter(d => shownIds.has(Number(d.customer_id ?? d.Customer_id)));
+      data.receipts = data.receipts.filter(r => shownIds.has(Number(r.customer_id)));
+    }
+    data.regions = data.regions.filter(r => !hiddenRegions.has(Number(r.region_id)));
     const custMap = new Map<number, any>(data.customers.map(c => [c.customer_id, c]));
     const pubMap = new Map<number, any>(data.publications.map(p => [p.publica_id, p]));
     const hwMap = new Map<number, any>(data.hawkers.map(h => [h.hawker_id, h]));
@@ -289,7 +300,7 @@ export async function GET(request: NextRequest) {
         fetchAllFromSupabase(`billdel${suffix}`, ['id'], 'customer_id, dely'),
         fetchAllFromSupabase(`receipt${suffix}`, ['id'], 'customer_id, mal_recp_amt, less_amt')
       ]);
-      data.customers = customers;
+      data.customers = customers.filter(shownCustomer);
       const parts = new Map<number, { dues: number; bill: number; delivery: number; receipt: number; less: number }>();
       const part = (id: any) => {
         const key = Number(id);
@@ -868,7 +879,7 @@ export async function GET(request: NextRequest) {
       const trimmedSearch = (search || '').trim();
 
       // All Regions preview leaves out regions starting with Z; a direct customer search still finds them
-      if (reportType === 'bill_print_region' && (!regionId || regionId === 'all') && !trimmedSearch) {
+      if ((reportType === 'bill_print_region' || reportType === 'bill_paid_report') && (!regionId || regionId === 'all') && !trimmedSearch) {
         const hiddenRegionIds = data.regions
           .filter(r => /^\s*z/i.test(String(r.region_name || r.name || '')))
           .map(r => r.region_id);

@@ -68,9 +68,11 @@ async function masters(): Promise<Masters> {
     all('publisher', 'publish_id, name'),
     all('collect', 'Collect_id, name')
   ]);
+  // Regions whose name starts with Z are left out of every report, with their customers
+  const hidden = new Set(regions.filter(r => /^\s*z/i.test(String(r.region_name || ''))).map(r => Number(r.region_id)));
   const value: Masters = {
-    customers: new Map(customers.map(c => [Number(c.customer_id), c])),
-    regions: new Map(regions.map(r => [Number(r.region_id), String(r.region_name || `#${r.region_id}`).trim()])),
+    customers: new Map(customers.filter(c => !hidden.has(Number(c.region_id))).map(c => [Number(c.customer_id), c])),
+    regions: new Map(regions.filter(r => !hidden.has(Number(r.region_id))).map(r => [Number(r.region_id), String(r.region_name || `#${r.region_id}`).trim()])),
     hawkers: new Map(hawkers.map(h => [Number(h.hawker_id), String(h.name || `#${h.hawker_id}`).trim()])),
     pubs: new Map(pubs.map(p => {
       const english = String(p.public_name || `#${p.publica_id}`).trim();
@@ -204,7 +206,7 @@ const receiptRow = (m: Masters, r: Receipt) => ({
   region: regionName(m, custRegion(m, r.customer_id)), month: r.month, mode: /online|upi|bank/i.test(r.mode) ? 'UPI / बैंक' : r.mode === 'Cheque' ? 'चेक' : 'नकद',
   amount: r.amount, less: r.less, collector: m.collectors.get(r.collector) || r.agent || '-'
 });
-const receiptFilter = (m: Masters, f: Filters) => (r: Receipt) => inRange(r.date, f)
+const receiptFilter = (m: Masters, f: Filters) => (r: Receipt) => m.customers.has(r.customer_id) && inRange(r.date, f)
   && (!f.region || custRegion(m, r.customer_id) === f.region) && (!f.collector || r.collector === f.collector);
 
 export const REPORTS: Record<string, Builder> = {

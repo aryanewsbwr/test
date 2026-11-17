@@ -769,7 +769,7 @@ export default function ReportsForm({
                     : activeReport === 'cust_detail' || activeReport === 'cust_monthwise' ? '-- एक ग्राहक (ऊपर चुनें) --' : '-- All Regions --'}</option>
                   {activeReport === 'due_region_summary' && <option value="all_list">-- All Regions (Customer List) --</option>}
                   {[...regions]
-                    .filter(r => (activeReport !== 'bill_print_region' && activeReport !== 'due_region_summary') || !isHiddenBillRegion(r.region_name || r.name))
+                    .filter(r => !isHiddenBillRegion(r.region_name || r.name))
                     .sort((a, b) => String(a.region_name || a.name || '').localeCompare(String(b.region_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
                     .map(r => {
                       const sentInfo = activeReport === 'bill_print_region' ? waRegionStatus[r.region_id || r.id] : undefined;
