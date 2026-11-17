@@ -350,12 +350,15 @@ export function withoutBilledMonths(rows: any[], liveHeaders: any[]) {
 
 // A subscription edited here looks new in the old file; adding it would bill that paper twice.
 // A paper restarted there is different: every row here is closed and its start date is new.
-export function withoutHeldPapers(rows: any[], liveSubscriptions: any[]) {
+// A row here the file closes counts as closed, as it will be once the file's changes are in.
+export function withoutHeldPapers(rows: any[], liveSubscriptions: any[], fileRows: any[] = []) {
   const today = new Date().toISOString().slice(0, 10);
   const isOpen = (sub: any) => !sub.c_date || String(sub.c_date).slice(0, 10) >= today;
   const paper = (sub: any) => `${sub.customer_id}|${sub.publica_id}`;
+  const start = (sub: any) => `${paper(sub)}|${String(sub.s_date ?? '').slice(0, 10)}`;
+  const closedThere = new Set(fileRows.filter(sub => !isOpen(sub)).map(start));
   const held = new Set(liveSubscriptions.map(paper));
-  const running = new Set(liveSubscriptions.filter(isOpen).map(paper));
+  const running = new Set(liveSubscriptions.filter(sub => isOpen(sub) && !closedThere.has(start(sub))).map(paper));
   const starts = new Set(liveSubscriptions.map(sub => `${paper(sub)}|${String(sub.s_date).slice(0, 10)}`));
   return rows.filter(row => {
     if (!held.has(paper(row))) return true;
@@ -363,24 +366,45 @@ export function withoutHeldPapers(rows: any[], liveSubscriptions: any[]) {
   });
 }
 
-// Each software numbers receipts itself, so one payment typed into both looks like two receipts.
-// Only a payment made on this website, one the old software's file doesn't have, can stand for a
-// receipt in the file. A receipt the file already has (same receipt number) is that receipt, so a
-// second ₹155 the old software holds for the same month is brought in, as the old software counts it.
-export function withoutRepeatedReceipts(rows: any[], liveReceipts: any[], fileReceipts: any[] = [], key: string[] = ['customer_id', 'recp_no']) {
+// One payment typed into both softwares, each with its own receipt: the old software's stands. Its
+// receipt comes in and the website's copy (same customer, month and amount, not in the file) goes.
+export function repeatedReceipts(rows: any[], liveReceipts: any[], fileReceipts: any[] = [], key: string[] = ['customer_id', 'recp_no']) {
   const payment = (receipt: any) =>
     `${receipt.customer_id}|${monthCode(receipt.month)}|${Number(receipt.mal_recp_amt) || 0}|${Number(receipt.less_amt) || 0}`;
   const inFile = new Set(fileReceipts.map(r => rowKey(r, key)));
-  const held = new Map<string, number>();
+  const copies = new Map<string, any[]>();
   for (const receipt of liveReceipts) {
     if (inFile.has(rowKey(receipt, key))) continue;
-    held.set(payment(receipt), (held.get(payment(receipt)) || 0) + 1);
+    copies.set(payment(receipt), [...(copies.get(payment(receipt)) || []), receipt]);
   }
-  return rows.filter(row => {
-    const left = held.get(payment(row)) || 0;
-    if (left > 0) held.set(payment(row), left - 1);
-    return left === 0;
-  });
+  const remove: any[] = [];
+  for (const row of rows) {
+    const left = copies.get(payment(row));
+    if (left?.length) remove.push(left.shift());
+  }
+  return remove;
+}
+
+// The receipt details the old software corrects afterwards (book number, date paid, balance) live in
+// remarks here. They follow the file; what only the website keeps there (its bill link, agent) stays.
+const RECEIPT_DETAILS = ['manual_rep_no', 'mal_rep_no', 'mal_recp_dt', 'balance', 'cash_chq', 'r_amt'];
+export function receiptDetailChanges(fileRows: any[], liveRows: any[], key: string[], changes: any[]) {
+  const parse = (text: any) => { try { return JSON.parse(text || '{}') || {}; } catch { return {}; } };
+  const live = new Map(liveRows.map(r => [rowKey(r, key), r]));
+  const changed = new Map(changes.map(c => [rowKey(c, key), c]));
+  for (const row of fileRows) {
+    const k = rowKey(row, key);
+    const current = live.get(k);
+    if (!current) continue;
+    const mine = parse((changed.get(k) || current).remarks);
+    const theirs = parse(row.remarks);
+    const differs = RECEIPT_DETAILS.filter(f => theirs[f] !== undefined && String(theirs[f] ?? '') !== String(mine[f] ?? ''));
+    if (!differs.length) continue;
+    const remarks = JSON.stringify({ ...mine, ...Object.fromEntries(differs.map(f => [f, theirs[f]])) });
+    if (changed.has(k)) changed.get(k).remarks = remarks;
+    else { const c = { ...current, remarks }; changes.push(c); changed.set(k, c); }
+  }
+  return changes;
 }
 
 // The old software keeps mobile numbers in their own table. They only fill a blank phone here,
@@ -404,7 +428,6 @@ export function withoutOutdatedHindi(changes: any[], liveCustomers: any[]) {
 }
 
 const FY_MONTHS = ['apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'jan', 'feb', 'mar'];
-const isGovtSupply = (customer: any) => [1, -1, true, '1', '-1'].includes(customer.govt_supply);
 
 const billsByMonth = (headers: any[], lines: any[]) => {
   const linesOf = new Map<string, any[]>();
@@ -484,44 +507,11 @@ export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeader
   return fixes;
 }
 
-// Each billed customer's balance from their bills and receipts, the way bills work out dues.
-// Government supply customers and customers with no bill this year keep what they have.
-export function balancesToCorrect(customers: any[], headers: any[], lines: any[], receipts: any[]) {
-  const owed = new Map<number, number>();
-  const add = (id: any, amount: number) => owed.set(Number(id), (owed.get(Number(id)) || 0) + amount);
-
-  const linesTotal = new Map<string, number>();
-  for (const line of lines) {
-    const key = `${line.bill_id}|${line.customer_id}`;
-    linesTotal.set(key, (linesTotal.get(key) || 0) + Number(line.total_amt || 0));
-  }
-  for (const header of headers) {
-    const charge = monthCode(header.month) === 'due'
-      ? Number(header.due_amt || 0)
-      : (linesTotal.get(`${header.bill_id}|${header.customer_id}`) || 0) + Number(header.del_amt || 0) - Number(header.dis_amt || 0);
-    add(header.customer_id, charge);
-  }
-  const billed = new Set(owed.keys());
-
-  const seen = new Set<string>();
-  for (const receipt of receipts) {
-    const key = `${receipt.customer_id}|${receipt.recp_no}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    add(receipt.customer_id, -(Number(receipt.mal_recp_amt || 0) + Number(receipt.less_amt || 0)));
-  }
-
-  return customers
-    .filter(c => billed.has(Number(c.customer_id)) && !isGovtSupply(c))
-    .map(c => ({ customer_id: c.customer_id, was: Number(c.cbal || 0), cbal: -Math.round((owed.get(Number(c.customer_id)) || 0) * 100) / 100 }))
-    .filter(c => Math.abs(c.cbal - c.was) > 1)
-    .map(({ customer_id, cbal }) => ({ customer_id, cbal }));
-}
-
 // Bills are corrected one by one through billCorrections instead
 const CAREFUL_ADDS = /^(billno|bill2)/;
-// Settings that make this website match the old software. Saved money rows are never changed this way.
-const FOLLOW_FILE = /^(customer|customer_detail|publication|rate|receiptissue\d+)$/;
+// The old software is the master copy: a row it has comes in as it has it. Bills are corrected one by
+// one through billCorrections instead.
+const FOLLOW_FILE = /^(customer|customer_detail|publication|rate|receiptissue\d+|receipt\d+|retailsale\d+)$/;
 
 // The name can't be trusted, as a file may come with no extension, so the first bytes decide
 async function fileKind(file: Blob): Promise<'backup' | 'zip' | 'old'> {
@@ -548,7 +538,9 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       const table = findBackupTable(definition.target)!;
       onProgress(`Comparing ${table.name} with the database...`);
       const { rows: live } = await fetchTable(table.name);
-      const mapped = rowsOf(tables[definition.source], definition.map);
+      let mapped = rowsOf(tables[definition.source], definition.map);
+      // 'As Per Norm' and 'AsPerNorm' are one circulation; the spelling here is kept
+      if (table.name === 'customer_detail') mapped = mapped.map(r => (/^as\s*per\s*norm$/i.test(String(r.circulation ?? '').trim()) ? { ...r, circulation: 'AsPerNorm' } : r));
       const fileRows = table.name === 'customer' && tables[MOBILE_TABLE]
         ? withMobileNumbers(mapped, rowsOf(tables[MOBILE_TABLE], row => row), live)
         : mapped;
@@ -559,24 +551,26 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
         ignore: table.oldIgnore
       });
       if (table.name === 'customer') difference.change = withoutOutdatedHindi(difference.change, live);
+      if (/^receipt\d/.test(table.name)) difference.change = receiptDetailChanges(fileRows, live, table.oldKey || table.key, difference.change);
 
       let add = difference.add;
       const headers = table.name.startsWith('billno') ? live : table.name.startsWith('bill2') ? billHeaders.get(table.name.slice(4)) : null;
       if (headers) add = withoutBilledMonths(add, headers);
-      if (table.name === 'customer_detail') add = withoutHeldPapers(add, live);
+      if (table.name === 'customer_detail') add = withoutHeldPapers(add, live, fileRows);
       if (table.name.startsWith('billdel')) add = withoutBilledMonths(add, live);
-      if (/^receipt\d/.test(table.name)) add = withoutRepeatedReceipts(add, live, fileRows, table.oldKey || table.key);
+      // A payment in both softwares: the file's receipt comes in, the website's copy of it goes
+      const remove = /^receipt\d/.test(table.name) ? repeatedReceipts(add, live, fileRows, table.oldKey || table.key) : [];
 
       items.push({
         ...difference,
         add,
-        remove: [],
+        remove,
         table,
         fileCount: fileRows.length,
         live,
         useAdd: add.length > 0 && !CAREFUL_ADDS.test(table.name),
         useChange: FOLLOW_FILE.test(table.name) && difference.change.length > 0,
-        useRemove: false,
+        useRemove: remove.length > 0,
         skipped: difference.add.length - add.length
       });
     }
@@ -710,16 +704,7 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
     await writeBatches(billnoName, 'fixBills', billFixes.slice(i, i + BILL_FIX_BATCH), () => {});
   }
 
-  // Last, because the customer updates above write the balance they first read
-  if (plan.kind === 'old') {
-    onProgress('Checking customer balances...');
-    const suffix = fySuffix();
-    const [customers, headers, lines, receipts] = await Promise.all(
-      ['customer', `billno${suffix}`, `bill${suffix}`, `receipt${suffix}`].map(async name => (await fetchTable(name)).rows)
-    );
-    const balances = balancesToCorrect(customers, headers, lines, receipts);
-    if (balances.length > 0) await writeBatches('customer', 'setBalances', balances, () => {});
-  }
+  // Customer balances (Cbal) are not worked out again here: they come in as the old software has them
 
   onProgress('Checking the result...');
   const problems: string[] = [];

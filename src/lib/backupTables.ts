@@ -21,9 +21,10 @@ export interface BackupTable {
 }
 
 const MASTER_TABLES: BackupTable[] = [
-  // Balances are worked out here from bills and receipts, so an old file's figures never replace them
-  { name: 'customer', key: ['customer_id'], oldIgnore: ['cbal', 'paid', 'delivery', 'discount'] },
-  { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'publica_id', 'hawker_id', 'circulation', 's_date'] },
+  // Cbal is the old software's own figure (the last bill's balance) and comes in as it has it
+  { name: 'customer', key: ['customer_id'], oldIgnore: ['paid', 'delivery', 'discount'] },
+  // A paper is the same subscription by its start date; a hawker or circulation changed there is a change to it
+  { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'publica_id', 's_date'] },
   { name: 'hawker', key: ['hawker_id'] },
   { name: 'publication', key: ['publica_id'] },
   { name: 'publisher', key: ['publish_id'] },

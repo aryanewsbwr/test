@@ -173,9 +173,11 @@ const OLD_ONLY: Record<string, string[]> = {
   receipt: ['debit', 'credit'], bill: ['sno'], billdel: ['sno'], billno: ['balance'],
   customer_detail: ['dis'], discontinue: ['hawker_id'], receiptissue: ['sno']
 };
-const ALWAYS_OLD: Record<string, string[]> = { customer: ['paid'], holiday: ['occasion'] };
+// A customer's Cbal and dueamount are the old software's own figures (the last bill's balance); the
+// website works balances out its own way, so for a customer the old software has, its values stay
+const ALWAYS_OLD: Record<string, string[]> = { customer: ['paid', 'cbal', 'dueamount'], holiday: ['occasion'] };
 const FILL_FROM_OLD: Record<string, string[]> = {
-  receipt: ['narr', 'ramt'], customer_detail: ['s_date'], discontinue: ['s_date'], customer: ['phone']
+  receipt: ['narr', 'ramt'], customer_detail: ['s_date', 'hawker_id'], discontinue: ['s_date'], customer: ['phone']
 };
 const SAME_AS: Record<string, Record<string, string[]>> = {
   customer_detail: { from_day: ['', '1-7'] },
@@ -196,8 +198,21 @@ const SAME_ROW: Record<string, string[]> = {
   ratechange: ['publica_id', 'dayofweek', 'dated'],
   holiday: ['oc_date', 'publica_id'],
   discontinue: ['customer_id', 'publica_id', 'temp_from'],
-  receiptissue: ['collect_id', 'receiptfrom', 'receiptto', 'issuedate']
+  receiptissue: ['collect_id', 'receiptfrom', 'receiptto', 'issuedate'],
+  retailsale: ['customer_id', 'vr_date', 'publica_id', 'copies', 'amt']
 };
+
+// Money rows the old software already has are its own: written exactly as it has them, never with
+// the website's value, and never left out. Only rows new on the website are added to them.
+const OLD_SOFTWARE_OWNS = new Set(['receipt', 'bill', 'billno', 'billdel', 'retailsale']);
+// The same payment or sale typed into both softwares, each with its own number: the old software's stands
+// (tried in turn: the same receipt number, corrected there afterwards; then the same month and amount)
+const SAME_ENTRY: Record<string, string[][]> = {
+  receipt: [['customer_id', 'receiptno'], ['customer_id', 'month', 'malrecpamt']],
+  retailsale: [['customer_id', 'vr_date', 'publica_id']]
+};
+// A month the old software has billed is its bill as it stands: no website line or header is added to it
+const BILLED_MONTH: Record<string, string[]> = { bill: ['customer_id', 'month'], billno: ['customer_id', 'month'], billdel: ['customer_id', 'month'] };
 
 /**
  * Finds, for each website row, the same row in the old software's table: by its number when the rest
@@ -293,25 +308,71 @@ function matchOldRows(name: string, body: string, columns: Column[], rows: any[]
 function withOldValues(name: string, body: string, columns: Column[], rows: any[], old: OldRows) {
   const m = matchOldRows(name, body, columns, rows, old);
   const orElse = OR_ELSE[m.base] || {};
-  const lines = m.list.map((x, r) => {
+  const owns = OLD_SOFTWARE_OWNS.has(m.base);
+  const used = new Set(m.list.filter(x => x.match !== undefined).map(x => x.match!));
+
+  // The same payment typed into both softwares: the website's copy is the old software's row
+  for (const wanted of owns ? SAME_ENTRY[m.base] || [] : []) {
+    const entry = wanted.filter(n => m.at.has(n) && m.names.includes(n));
+    if (entry.length !== wanted.length) continue;
+    const free = new Map<string, number[]>();
+    m.decoded.forEach((r, i) => {
+      if (used.has(i)) return;
+      const k = entry.map(n => sameMeaning(r[m.at.get(n)!])).join('|');
+      free.set(k, [...(free.get(k) || []), i]);
+    });
+    for (const x of m.list) {
+      if (x.match !== undefined) continue;
+      const i = (free.get(entry.map(n => x.mine(n)).join('|')) || []).find(j => !used.has(j));
+      if (i !== undefined) { x.match = i; used.add(i); }
+    }
+  }
+  const billed = new Set<string>();
+  const monthKey = (BILLED_MONTH[m.base] || []).filter(n => m.at.has(n) && m.names.includes(n));
+  if (owns && monthKey.length) m.decoded.forEach(r => billed.add(monthKey.map(n => sameMeaning(r[m.at.get(n)!])).join('|')));
+
+  let added = 0, kept = 0, left = 0;
+  const newIds: string[] = [];
+  let changed = 0;
+  const lines: { order: number | undefined; line: string }[] = [];
+  m.list.forEach((x, r) => {
     const o = x.match === undefined ? null : m.decoded[x.match];
+    // A row the old software owns is written as it has it, its own number included
+    if (owns && o) {
+      lines.push({ order: x.match, line: ' (' + m.names.map((n, i) => (m.at.has(n) ? old.rows[x.match!][m.at.get(n)!] : x.tokens[i])).join(',') + ')' });
+      return;
+    }
+    if (owns && !o && monthKey.length && billed.has(monthKey.map(n => x.mine(n)).join('|'))) { left++; return; }
     const unchanged = !!o && m.rest.every(n => x.same(o, n));
     const tokens = m.names.map((n, i) => {
       if (n === m.pk && m.numbers.has(r)) return m.numbers.get(r)!;
       if (!o || !m.at.has(n)) return x.tokens[i];
       const oldToken = old.rows[x.match!][m.at.get(n)!];
       if (m.alwaysOld.has(n)) return oldToken;
-      if (m.oldOnly.has(n)) return unchanged ? oldToken : x.tokens[i];
+      if (m.oldOnly.has(n)) return unchanged || x.same(o, n) ? oldToken : x.tokens[i];
       if (x.same(o, n)) return oldToken;
       if (m.fill.has(n) && x.mine(n) === '') return oldToken;
       return x.tokens[i];
     });
     // Only for a row the old software does not have; its own value (even 0) stands
-    if (!o) m.names.forEach((n, i) => {
-      if (orElse[n] && sameMeaning(tokenValue(tokens[i])) === '') tokens[i] = tokens[m.names.indexOf(orElse[n])];
-    });
-    return { order: x.match, line: ' (' + tokens.join(',') + ')' };
+    if (o && m.names.some((n, i) => m.at.has(n) && tokens[i] !== old.rows[x.match!][m.at.get(n)!])) changed++;
+    if (!o) {
+      added++;
+      if (m.pk) newIds.push(tokens[m.names.indexOf(m.pk)]);
+      m.names.forEach((n, i) => {
+        if (orElse[n] && sameMeaning(tokenValue(tokens[i])) === '') tokens[i] = tokens[m.names.indexOf(orElse[n])];
+      });
+    }
+    lines.push({ order: x.match, line: ' (' + tokens.join(',') + ')' });
   });
+  // Money rows the website does not hold (or holds under another number) still go in, as the old software has them
+  if (owns) {
+    m.decoded.forEach((_, i) => {
+      if (used.has(i)) return;
+      kept++;
+      lines.push({ order: i, line: ' (' + m.names.map(n => (m.at.has(n) ? old.rows[i][m.at.get(n)!] : 'NULL')).join(',') + ')' });
+    });
+  }
   // A row the old software lacks goes right after the row before it here, not to the end
   let previous = -1;
   const placed = lines.map((l, i) => {
@@ -319,7 +380,7 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
     return { line: l.line, order: l.order ?? previous + 0.5, i };
   });
   const out = placed.sort((a, b) => a.order - b.order || a.i - b.i).map(l => l.line);
-  return { out, fromOld: m.list.filter(x => x.match !== undefined).length };
+  return { out, fromOld: m.list.filter(x => x.match !== undefined).length, added, kept, left, changed, newIds };
 }
 
 /**
@@ -984,8 +1045,14 @@ export function* oldSoftwarePart(
       const columns = spec.columns.filter(c => present.has(c[0].toLowerCase()));
       const names = columns.map(c => `\`${c[0]}\``).join(',');
       const history = old.get(name.toLowerCase());
-      const all = history
-        ? withOldValues(name, table.body, columns, spec.rows, history).out
+      const made = history ? withOldValues(name, table.body, columns, spec.rows, history) : null;
+      // What this export adds to or changes in the old software's data, table by table
+      if (made && (made.added || made.changed || made.left)) {
+        notes.push(`${name}: ${made.added} नई लाइन${made.newIds.length ? ` (${made.newIds.slice(0, 15).join(', ')}${made.newIds.length > 15 ? ' …' : ''})` : ''}, ${made.changed} बदली`
+          + (made.left ? `, ${made.left} वेबसाइट लाइन छोड़ी (वह महीना पुराने सॉफ्टवेयर में बना है)` : ''));
+      }
+      const all = made
+        ? made.out
         : spec.rows.map(row => ' (' + columns.map(([, kind, value]) => sqlValue(value(row), kind)).join(',') + ')');
       for (let i = 0; i < all.length; i += BATCH) {
         yield `INSERT INTO \`${name}\` (${names}) VALUES \n${all.slice(i, i + BATCH).join(',\n')};\n`;
