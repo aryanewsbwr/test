@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as db } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { forgetCompany } from '@/lib/companyServer';
+import { listMessages, addMessage, deleteMessage } from '@/lib/messageTable';
 
 export const dynamic = 'force-dynamic';
 
-// Master > Message: the bill messages, kept in the old software's message table
-// (Message_id, Dated, Message). The newest one prints at the bottom of every bill.
-const explain = (m: string) => (/does not exist|schema cache|relation/i.test(m)
-  ? `message टेबल या उसका कॉलम डेटाबेस में नहीं मिला (${m})` : m);
+// Master > Message: the bill messages, kept in the old software's message table.
+// The newest one prints at the bottom of every bill.
 
 // GET -> { messages: [{ message_id, dated, message }] } newest first
 export async function GET(req: NextRequest) {
   const refused = await refuseWithout(req, 'can_access_master');
   if (refused) return refused;
-  const { data, error } = await db.from('message').select('*').order('message_id', { ascending: false }).limit(200);
-  if (error) return NextResponse.json({ error: explain(error.message) }, { status: 500 });
-  return NextResponse.json({ messages: data || [] });
+  try {
+    return NextResponse.json({ messages: await listMessages() });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Could not read messages' }, { status: 500 });
+  }
 }
 
 // POST { dated, message }
@@ -27,22 +27,28 @@ export async function POST(req: NextRequest) {
   const text = String(b.message ?? '').trim().slice(0, 300);
   const dated = String(b.dated ?? '').trim().slice(0, 10);
   if (!text) return NextResponse.json({ error: 'संदेश लिखें' }, { status: 400 });
-  const { data: last, error: lastError } = await db.from('message').select('message_id').order('message_id', { ascending: false }).limit(1);
-  if (lastError) return NextResponse.json({ error: explain(lastError.message) }, { status: 500 });
-  const { error } = await db.from('message').insert({ message_id: (Number(last?.[0]?.message_id) || 0) + 1, dated, message: text });
-  if (error) return NextResponse.json({ error: explain(error.message) }, { status: 500 });
-  forgetCompany();
-  return NextResponse.json({ ok: true });
+  try {
+    await addMessage(dated, text);
+    forgetCompany();
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Could not save' }, { status: 500 });
+  }
 }
 
-// DELETE ?id=3
+// DELETE ?id=3  (or ?text=... for a message without a number)
 export async function DELETE(req: NextRequest) {
   const refused = await refuseWithout(req, 'can_access_master');
   if (refused) return refused;
-  const id = Number(req.nextUrl.searchParams.get('id'));
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
-  const { error } = await db.from('message').delete().eq('message_id', id);
-  if (error) return NextResponse.json({ error: explain(error.message) }, { status: 500 });
-  forgetCompany();
-  return NextResponse.json({ ok: true });
+  const p = req.nextUrl.searchParams;
+  const id = Number(p.get('id')) || null;
+  const text = String(p.get('text') || '').trim();
+  if (!id && !text) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  try {
+    await deleteMessage(id, text);
+    forgetCompany();
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Could not delete' }, { status: 500 });
+  }
 }

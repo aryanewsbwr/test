@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-interface MessageRecord { message_id: number; dated: string; message: string }
+interface MessageRecord { message_id: number | null; dated: string; message: string }
 
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -56,7 +56,7 @@ export default function MessageForm({ onClose }: Props) {
     if (!confirm(`यह संदेश हटाना है?\n\n${m.message}`)) return;
     setBusy(true); setStatus(null);
     try {
-      const res = await fetch(`/api/messages?id=${m.message_id}`, { method: 'DELETE' });
+      const res = await fetch(m.message_id ? `/api/messages?id=${m.message_id}` : `/api/messages?text=${encodeURIComponent(m.message)}`, { method: 'DELETE' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Could not delete');
       await Promise.all([load(), loadCompany(true)]);
@@ -105,7 +105,7 @@ export default function MessageForm({ onClose }: Props) {
             {messages.length === 0 ? (
               <div className="p-3 text-center text-slate-400">कोई संदेश नहीं — बिलों पर कोई संदेश नहीं छपेगा।</div>
             ) : messages.map((m, i) => (
-              <div key={m.message_id} className={`p-2 flex items-start justify-between gap-2 ${i === 0 ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+              <div key={`${m.message_id ?? ''}-${i}`} className={`p-2 flex items-start justify-between gap-2 ${i === 0 ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
                 <div className="space-y-0.5">
                   <span className="font-mono text-[10px] text-blue-800 font-bold block">{m.dated}{i === 0 ? ' · बिलों पर छप रहा है' : ''}</span>
                   <p className="text-slate-800 text-[11px] font-sans">{m.message}</p>

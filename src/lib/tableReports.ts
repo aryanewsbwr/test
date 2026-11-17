@@ -209,23 +209,27 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   const [subs, list, off] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m)]);
   const stopped = (s: any) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
     && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
-  const going = subs.filter(s => {
+  // Delivery charges are kept as a 'paper' for billing, but are not copies to hand out
+  const charge = (id: number) => /deli?e?very\s*charge/i.test(m.pubs.get(id)?.english || '');
+  const wanted = subs.filter(s => {
     const p = m.pubs.get(s.publica_id);
-    return p && p.magazine === magazine && !off.has(s.publica_id) && runsOn(s, day) && !stopped(s)
+    return p && p.magazine === magazine && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
       && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region);
   });
+  const going = wanted.filter(s => !off.has(s.publica_id));
   const paperIds = Array.from(new Set(going.map(s => s.publica_id)))
     .sort((a, b) => (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
   const rows = groupBy(going, s => String(s.hawker_id))
     .map(([hid, ss]) => {
-      const row: Record<string, any> = { hawker: m.hawkers.get(Number(hid)) || `#${hid}`, total: sum(ss, 'qty') };
+      const row: Record<string, any> = { hawker: m.hawkers.get(Number(hid)) || (Number(hid) ? `#${hid}` : 'बिना हॉकर'), total: sum(ss, 'qty') };
       for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => s.publica_id === pid), 'qty');
       return row;
     })
     .sort((a, b) => String(a.hawker).localeCompare(String(b.hawker)));
   rows.forEach((r, i) => { r.sno = i + 1; });
   const keys = [...paperIds.map(pid => `p${pid}`), 'total'];
-  const closedNames = Array.from(off).map(id => m.pubs.get(id)).filter(p => p && p.magazine === magazine).map(p => p!.short);
+  // Only the closed / holiday papers that customers still have running are worth naming
+  const closedNames = Array.from(new Set(wanted.filter(s => off.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
   return {
     title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
     columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
