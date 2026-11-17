@@ -17,8 +17,15 @@ const iso = (v: unknown) => {
 
 async function hawkerCustomers(hawkerId: number) {
   const today = new Date().toISOString().slice(0, 10);
-  const { data: subs, error } = await db.from('customer_detail').select('customer_id, publica_id, qty, s_date, c_date').eq('hawker_id', hawkerId);
-  if (error) throw new Error(error.message);
+  // Page by page: a hawker's rows, old closed ones included, can pass the 1,000 a request returns
+  const subs: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from('customer_detail').select('customer_id, publica_id, qty, s_date, c_date')
+      .eq('hawker_id', hawkerId).order('sno', { ascending: true }).range(from, from + 999);
+    if (error) throw new Error(error.message);
+    subs.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
   const running = (subs || []).filter(s => { const s1 = iso(s.s_date), c = iso(s.c_date); return (!s1 || s1 <= today) && (!c || today < c); });
   const ids = Array.from(new Set(running.map(s => Number(s.customer_id))));
   const customers: any[] = [];
