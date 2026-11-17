@@ -279,12 +279,12 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
               </div>
 
               {plan?.kind === 'old' && (() => {
-                const coming = plan.items.filter(i => (i.useAdd && i.add.length > 0) || (i.useChange && i.change.length > 0));
+                const coming = plan.items.filter(i => (i.useAdd && i.add.length > 0) || (i.useChange && i.change.length > 0) || (i.useRemove && i.remove.length > 0));
                 const billFixes = plan.billFixes?.length || 0;
                 return (
                   <div className="space-y-2">
                     <p className="text-[11px] text-slate-700">
-                      वेबसाइट इस बैकअप जैसी कर दी जाएगी। जो पहले से है वह दोबारा नहीं जुड़ेगा। ग्राहकों का बैलेंस आखिर में बिल और रसीदों से जाँचा जाएगा।
+                      वेबसाइट इस बैकअप जैसी कर दी जाएगी (पुराना सॉफ्टवेयर मुख्य है)। जो पहले से है वह दोबारा नहीं जुड़ेगा। ग्राहकों का बैलेंस (Cbal) फाइल जैसा ही रहेगा। वेबसाइट पर बनी नई एंट्री बनी रहेंगी।
                     </p>
                     {coming.length === 0 && billFixes === 0 ? (
                       <div className="p-2 border rounded bg-emerald-50 text-emerald-900 font-bold text-[11px]">सब कुछ पहले से मौजूद है। कुछ करने की ज़रूरत नहीं।</div>
@@ -298,6 +298,7 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
                                 {i.useAdd && i.add.length > 0 && `${i.add.length.toLocaleString()} नए`}
                                 {i.useAdd && i.add.length > 0 && i.useChange && i.change.length > 0 && ', '}
                                 {i.useChange && i.change.length > 0 && `${i.change.length.toLocaleString()} अपडेट`}
+                                {i.useRemove && i.remove.length > 0 && `, ${i.remove.length.toLocaleString()} डुप्लिकेट हटेगी (वही भुगतान फाइल में है)`}
                               </span>
                             </div>
                           ))}
