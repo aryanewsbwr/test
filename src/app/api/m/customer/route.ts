@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as db } from '@/lib/supabaseAdmin';
 import { fySuffix } from '@/lib/financialYear';
-import { fetchRateTables } from '@/lib/rateTables';
 import { getPublicationPeriodicityAndRates } from '@/lib/rateEngine';
 import { cleanOrTransliterateHindi, sushaToUnicode } from '@/lib/transliteration';
 import { GET as subscriptionsGET } from '@/app/api/subscriptions/route';
@@ -35,44 +34,48 @@ export async function GET(req: NextRequest) {
   try {
     const id = Number(req.nextUrl.searchParams.get('id'));
     if (!id) return NextResponse.json({ error: 'ग्राहक नं. चाहिए' }, { status: 400 });
-    const { data: c, error } = await db.from('customer').select('*').eq('customer_id', id).maybeSingle();
+    // Everything the page needs is read at the same time: each read waits on the database,
+    // and one after another they took several seconds
+    const subscriptions = subscriptionsGET(new NextRequest(new URL(`/api/subscriptions?customer_id=${id}&active_only=true`, req.nextUrl.origin)))
+      .then(r => r.json()).then(j => (j.subscriptions || []) as any[]);
+    const [{ data: c, error }, names, subs, { data: pubs }, rates, balances, bill, book, { data: receipts }] = await Promise.all([
+      db.from('customer').select('*').eq('customer_id', id).maybeSingle(),
+      regionNames(),
+      subscriptions,
+      db.from('publication').select('publica_id, public_name, pub_hindi, type_p, duration, magzine_day'),
+      // Which papers are daily: a paper with a rate for each weekday (the rate rows of this customer's papers)
+      subscriptions.then(async list => {
+        const ids = Array.from(new Set(list.map(x => Number(x.publica_id))));
+        if (!ids.length) return [] as any[];
+        const { data } = await db.from('rate').select('*').in('publica_id', ids);
+        return (data || []) as any[];
+      }),
+      balancesFor([id]),
+      latestBill(id),
+      nextBookNumber(caller.staff?.collect_id),
+      db.from(`receipt${fySuffix()}`).select('recp_no, recp_date, mal_recp_amt, remarks').eq('customer_id', id).order('id', { ascending: false }).limit(1)
+    ]);
     if (error) throw new Error(error.message);
     if (!c) return NextResponse.json({ error: `ग्राहक #${id} नहीं मिला` }, { status: 404 });
     if (!canSeeRegion(caller, c.region_id)) return NextResponse.json({ error: 'यह ग्राहक आपकी लाइन का नहीं है' }, { status: 403 });
 
-    const names = await regionNames();
     const card = customerCard(c, rid => names.get(rid) || '');
     const rawHindi = String(c.hindi_add || '').trim();
     const hindiAddress = rawHindi ? (/[ऀ-ॿ]/.test(rawHindi) ? rawHindi : sushaToUnicode(rawHindi)) : '';
     const address = (hindiAddress || [c.add1, c.add2].filter(Boolean).join(', ')).replace(/(?:\+?91[\s-]?)?[6-9]\d{9}/g, '').replace(/[,\s]+$/, '').trim();
 
-    // Running papers, by the same rules as the Subscriptions screen
-    const subRes = await subscriptionsGET(new NextRequest(new URL(`/api/subscriptions?customer_id=${id}&active_only=true`, req.nextUrl.origin)));
-    const subJson = await subRes.json();
-    const subs: any[] = subJson.subscriptions || [];
-    const pubIds = Array.from(new Set(subs.map(s => Number(s.publica_id))));
-    const [{ data: pubs }, rateTables] = await Promise.all([
-      pubIds.length ? db.from('publication').select('*').in('publica_id', pubIds) : Promise.resolve({ data: [] as any[] }),
-      fetchRateTables().catch(() => ({ rates: [], ratechanges: [] }))
-    ]);
     const today = todayIndia();
     const papers = subs.map(s => {
       const p: any = (pubs || []).find((x: any) => Number(x.publica_id) === Number(s.publica_id));
       const english = String(p?.public_name || s.publication_name || '').trim();
       const name = p?.pub_hindi ? cleanOrTransliterateHindi(p.pub_hindi, english) : english;
-      const info = p ? getPublicationPeriodicityAndRates(p, today.iso, rateTables.rates as any, rateTables.ratechanges as any) : null;
+      const info = p ? getPublicationPeriodicityAndRates(p, today.iso, (rates || []) as any, []) : null;
       const qty = Number(s.qty || 1);
       const how = !info || info.isDaily ? `रोज़ ${qty}` : `${PERIOD_HINDI[info.periodicity] || ''}${qty > 1 ? ` · ${qty}` : ''}`;
       const hold = s.hold_info?.is_on_hold ? `छुट्टी ${s.hold_info.from} – ${s.hold_info.to}` : '';
       return { sno: s.sno, publica_id: Number(s.publica_id), name, how, hold };
     });
 
-    const [balances, bill, book, { data: receipts }] = await Promise.all([
-      balancesFor([id]),
-      latestBill(id),
-      nextBookNumber(caller.staff?.collect_id),
-      db.from(`receipt${fySuffix()}`).select('recp_no, recp_date, mal_recp_amt, remarks').eq('customer_id', id).order('id', { ascending: false }).limit(1)
-    ]);
     const balance = balances.get(id) || 0;
 
     return NextResponse.json({

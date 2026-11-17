@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const pubs = await fetchPublications();
     const { searchParams } = new URL(request.url);
     const customerIdStr = searchParams.get('customer_id') || searchParams.get('customerId');
     const activeOnly = searchParams.get('active_only') === 'true';
@@ -19,7 +18,8 @@ export async function GET(request: NextRequest) {
     const cid = parseInt(customerIdStr, 10);
 
     // Subscriptions, this customer's stops and paper-wide stops, all from the database
-    const [subRes, dRes, cdRes, pdRes] = await Promise.all([
+    const [pubs, subRes, dRes, cdRes, pdRes] = await Promise.all([
+      fetchPublications(),
       supabase.from('customer_detail').select('*').eq('customer_id', cid),
       supabase.from('discontinue').select('*').eq('customer_id', cid),
       supabase.from('customer_discontinue').select('*').eq('customer_id', cid),

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as db } from './supabaseAdmin';
 import { currentUser, AppUser } from './auth';
+import { readSessionToken, SESSION_COOKIE } from './session';
 import { fySuffix } from './financialYear';
 import { monthCode } from './backupTables';
 import { getReliableHindiName, storedHindiName } from './transliteration';
@@ -50,10 +51,11 @@ export interface MobileCaller {
 
 // The logged-in user, with their mobile settings; or a refusal to return
 export async function mobileCaller(req: NextRequest): Promise<MobileCaller | NextResponse> {
-  const user = await currentUser(req);
+  // The user and their mobile settings are read together (one wait instead of two)
+  const userId = await readSessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!userId) return NextResponse.json({ error: 'फिर से लॉगिन करें' }, { status: 401 });
+  const [user, staff] = await Promise.all([currentUser(req), staffRow(userId).catch(() => null)]);
   if (!user) return NextResponse.json({ error: 'फिर से लॉगिन करें' }, { status: 401 });
-  let staff: MobileStaff | null = null;
-  try { staff = await staffRow(user.id); } catch { staff = null; }
   // An admin sees every line; anyone else only their own lines when some are set
   const own = (staff?.region_ids || []).filter(n => Number(n) > 0).map(Number);
   const regions = user.role === 'admin' || own.length === 0 ? null : own;
