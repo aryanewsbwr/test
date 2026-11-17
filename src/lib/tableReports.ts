@@ -8,10 +8,10 @@ import { monthCode } from './backupTables';
 import { isDue } from './dueRule';
 import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, sushaToUnicode } from './transliteration';
 
-export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text' }
+export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
 export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' }
-export interface Filters { from: string; to: string; region: number; hawker: number; pub: number; publisher: number; collector: number }
+export interface Filters { from: string; to: string; region: number; hawker: number; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number }
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -107,7 +107,7 @@ const regionName = (m: Masters, id: number) => m.regions.get(id) || (id ? `#${id
 const pubName = (m: Masters, id: unknown) => m.pubs.get(Number(id))?.name || `#${id}`;
 
 // This year's receipts with their book number, date received and collector
-interface Receipt { id: number; customer_id: number; recp_no: number; manual: string; date: string; month: string; amount: number; less: number; bill_amt: number; mode: string; collector: number; agent: string }
+interface Receipt { id: number; customer_id: number; recp_no: number; manual: string; date: string; month: string; amount: number; less: number; bill_amt: number; mode: string; collector: number; agent: string; bookFrom: number; bookTo: number }
 async function receipts(m: Masters): Promise<Receipt[]> {
   const suffix = fySuffix();
   const [rows, books] = await Promise.all([
@@ -127,7 +127,8 @@ async function receipts(m: Masters): Promise<Receipt[]> {
       id: Number(r.id), customer_id: Number(r.customer_id), recp_no: Number(r.recp_no) || 0, manual,
       date: iso(x.mal_recp_dt) || iso(r.recp_date), month: String(r.month || ''),
       amount: Number(r.mal_recp_amt || 0), less: Number(r.less_amt || 0), bill_amt: Number(r.bill_amt || 0),
-      mode: String(x.cash_chq || 'Cash'), collector: book?.c || byName || 0, agent: agentName
+      mode: String(x.cash_chq || 'Cash'), collector: book?.c || byName || 0, agent: agentName,
+      bookFrom: book?.from || 0, bookTo: book?.to || 0
     };
   });
 }
@@ -247,35 +248,40 @@ export const REPORTS: Record<string, Builder> = {
     };
   },
 
-  // Receipt Number Wise: receipts in paper receipt-number order, with any numbers missing in between
+  // Receipt report (Receipt Number Wise and Actual Amount, one report): receipts in receipt-number
+  // order with what was received. One collector or one receipt book chosen -> shown in the heading.
   async receipt_nowise(f) {
     const m = await masters();
     const list = (await receipts(m)).filter(receiptFilter(m, f))
+      .filter(r => !f.bookFrom || (Number(r.manual) >= f.bookFrom && Number(r.manual) <= (f.bookTo || 0)))
       .sort((a, b) => (Number(a.manual) || 9e12) - (Number(b.manual) || 9e12) || a.recp_no - b.recp_no);
-    const rows = list.map(r => receiptRow(m, r));
+    const rows = list.map(r => ({
+      date: dmy(r.date), manual: r.manual || '-', amount: r.amount, customer: custName(m, r.customer_id),
+      region: regionName(m, custRegion(m, r.customer_id)), less: r.less, bill_amt: r.bill_amt, diff: round(r.bill_amt - r.amount - r.less),
+      book: r.bookFrom ? `${r.bookFrom}-${r.bookTo}` : '-', collector: m.collectors.get(r.collector) || r.agent || '-', id: r.customer_id
+    }));
     const nums = list.map(r => Number(r.manual)).filter(n => n > 0);
     let gaps = 0;
     for (let i = 1; i < nums.length; i++) if (nums[i] - nums[i - 1] > 1 && nums[i] - nums[i - 1] < 50) gaps += nums[i] - nums[i - 1] - 1;
+    const light = (c: Column): Column => ({ ...c, light: true });
+    const heading = [period(f)];
+    if (f.collector) heading.push(`कलेक्टर: ${m.collectors.get(f.collector) || `#${f.collector}`}`);
+    if (f.bookFrom) heading.push(`रसीद बुक: ${f.bookFrom}-${f.bookTo}`);
     return {
-      title: 'RECEIPT NUMBER WISE', subtitle: period(f),
-      columns: [text('manual', 'रसीद नं.'), text('recp_no', 'सि. नं.', 'right'), text('date', 'तारीख'), text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('month', 'बिल माह'), text('collector', 'कलेक्टर'), money('amount', 'राशि'), money('less', 'कटौती')],
-      groups: [{ rows }], totals: totalsOf(rows, ['amount', 'less'], { customer: `कुल ${rows.length} रसीद` }),
-      note: gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी)।` : undefined
+      title: 'RECEIPT REPORT', subtitle: heading.join(' · '),
+      columns: [
+        text('date', 'तारीख'), text('manual', 'रसीद नं.'), money('amount', 'प्राप्त'), text('customer', 'नाम'),
+        light(text('region', 'क्षेत्र')), light(money('less', 'कटौती')), light(money('bill_amt', 'बिल राशि')), light(money('diff', 'बाकी')),
+        ...(f.bookFrom ? [] : [light(text('book', 'बुक'))]),
+        ...(f.collector ? [] : [light(text('collector', 'कलेक्टर'))]),
+        light(text('id', 'ग्राहक नं.', 'right'))
+      ],
+      groups: [{ rows }], totals: totalsOf(rows, ['amount', 'less', 'bill_amt', 'diff'], { customer: `कुल ${rows.length} रसीद` }),
+      note: [gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी)।` : '', 'बाकी = बिल राशि − प्राप्त − कटौती (माइनस = बिल से ज़्यादा जमा)'].filter(Boolean).join(' · ')
     };
   },
-
-  // Actual Amount Receipt: the bill amount against what was actually received (and the difference)
-  async receipt_realamt(f) {
-    const m = await masters();
-    const list = (await receipts(m)).filter(receiptFilter(m, f)).sort((a, b) => a.date.localeCompare(b.date) || a.recp_no - b.recp_no);
-    const rows = list.map(r => ({ ...receiptRow(m, r), bill_amt: r.bill_amt, diff: round(r.bill_amt - r.amount - r.less) }));
-    return {
-      title: 'ACTUAL AMOUNT RECEIPT', subtitle: period(f),
-      columns: [text('date', 'तारीख'), text('manual', 'रसीद नं.'), text('customer', 'ग्राहक'), text('month', 'बिल माह'), money('bill_amt', 'बिल राशि'), money('amount', 'असल प्राप्त'), money('less', 'कटौती'), money('diff', 'अंतर')],
-      groups: [{ rows }], totals: totalsOf(rows, ['bill_amt', 'amount', 'less', 'diff'], { customer: `कुल ${rows.length} रसीद` }),
-      note: 'अंतर = बिल राशि − असल प्राप्त − कटौती (माइनस = बिल से ज़्यादा जमा)'
-    };
-  },
+  // The old "Actual Amount Receipt" menu item opens the same report
+  async receipt_realamt(f) { return REPORTS.receipt_nowise(f); },
 
   // Customer Outstanding Dues Ledger: every customer's balance, region by region
   async dues_ledger(f) {

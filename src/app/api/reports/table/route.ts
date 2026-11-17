@@ -18,10 +18,13 @@ export async function GET(req: NextRequest) {
   const num = (k: string) => Number(p.get(k)) || 0;
   const from = String(p.get('from') || '');
   const to = String(p.get('to') || '');
+  // book=101-200: one receipt book
+  const bm = String(p.get('book') || '').match(/^(\d+)-(\d+)$/);
   try {
     const report = await buildReport(type, {
       from: isDate(from) ? from : '', to: isDate(to) ? to : '',
-      region: num('region'), hawker: num('hawker'), pub: num('pub'), publisher: num('publisher'), collector: num('collector')
+      region: num('region'), hawker: num('hawker'), pub: num('pub'), publisher: num('publisher'), collector: num('collector'),
+      bookFrom: bm ? Number(bm[1]) : 0, bookTo: bm ? Number(bm[2]) : 0
     });
     return NextResponse.json(report);
   } catch (err: any) {

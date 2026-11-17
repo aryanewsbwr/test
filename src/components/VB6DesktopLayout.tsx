@@ -565,7 +565,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 </button>
                 <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
                   <button onClick={() => { setSelectedReportType('receipt_nowise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Receipt Number Wise Report</button>
-                  <button onClick={() => { setSelectedReportType('receipt_realamt'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Actual Amount Receipt Report</button>
                 </div>
               </div>
 

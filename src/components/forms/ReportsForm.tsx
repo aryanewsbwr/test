@@ -69,12 +69,12 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 const waRegionCache = new Map<string, WaRegionStatus>();
 
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
-type TableFilter = 'dates' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector';
+type TableFilter = 'dates' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
   collection_datewise: ['dates', 'region', 'collector'],
   collection_hawker_datewise: ['dates', 'collector', 'region'],
-  receipt_nowise: ['dates', 'collector', 'region'],
-  receipt_realamt: ['dates', 'region', 'collector'],
+  receipt_nowise: ['dates', 'collector', 'book', 'region'],
+  receipt_realamt: ['dates', 'collector', 'book', 'region'],
   dues_ledger: ['region'],
   previous_dues_wise: ['region'],
   collection_agent_dues: ['dates', 'collector'],
@@ -120,7 +120,7 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   countersale_pubwise: { title: 'Counter Sale Publication Wise', category: 'Counter Sale', hasPub: true },
   retailsale_region_datewise: { title: 'Retail Sale Region Date Wise Report', category: 'Retail Customer Sale To Permanent', hasRegion: true, hasPeriod: true },
   receipt_nowise: { title: 'Receipt Number Wise Report', category: 'Reciept', hasPeriod: true },
-  receipt_realamt: { title: 'Actual Amount Receipt Report', category: 'Reciept', hasPeriod: true },
+  receipt_realamt: { title: 'Receipt Number Wise Report', category: 'Reciept', hasPeriod: true },
   hawker_cust_priority: { title: "Hawker's Customer Priority", category: "Hawker's Customer Priority", hasHawker: true },
   sticker_printing: { title: 'Sticker Printing', category: 'Sticker Printing', hasRegion: true },
   consolidated_sale: { title: 'Consolidated Sale Report', category: 'Sale', hasPeriod: true },
@@ -203,10 +203,16 @@ export default function ReportsForm({
   const [publishersList, setPublishersList] = useState<{ publish_id: number; name: string }[]>([]);
   const [selectedCollector, setSelectedCollector] = useState<string>('all');
   const [selectedPublisher, setSelectedPublisher] = useState<string>('all');
+  // Receipt books (Receipt Allotment): 'all' or '101-200'
+  const [books, setBooks] = useState<{ collect_id: number; collector_name: string; from: number; to: number }[]>([]);
+  const [selectedBook, setSelectedBook] = useState<string>('all');
   const tableFilters = TABLE_FILTERS[activeReport];
   const isTable = !!tableFilters;
   useEffect(() => {
     fetch('/api/collection-agents').then(r => r.json()).then(d => setCollectors((d.agents || []).filter((a: any) => a.name))).catch(() => {});
+    fetch('/api/receipt-allotment').then(r => r.json()).then(d => setBooks((d.all_allotments || [])
+      .map((b: any) => ({ collect_id: Number(b.collect_id) || 0, collector_name: String(b.collector_name || ''), from: Number(b.receipt_from) || 0, to: Number(b.receipt_to) || 0 }))
+      .filter((b: any) => b.from && b.to).sort((a: any, b: any) => a.from - b.from))).catch(() => {});
     fetch('/api/publishers').then(r => r.json()).then(d => {
       const list = d.publishers || d.data || (Array.isArray(d) ? d : []);
       setPublishersList(list.map((x: any) => ({ publish_id: Number(x.publish_id ?? x.Publish_id), name: String(x.name ?? x.Name ?? '') })).filter((x: any) => x.name));
@@ -421,6 +427,7 @@ export default function ReportsForm({
         if (f.includes('pub') && /^\d+$/.test(selectedPub)) q.set('pub', selectedPub);
         if (f.includes('publisher') && /^\d+$/.test(selectedPublisher)) q.set('publisher', selectedPublisher);
         if (f.includes('collector') && /^\d+$/.test(selectedCollector)) q.set('collector', selectedCollector);
+        if (f.includes('book') && /^\d+-\d+$/.test(selectedBook)) q.set('book', selectedBook);
         const res = await fetch(`/api/reports/table?${q.toString()}`, { cache: 'no-store' });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Could not load the report');
@@ -958,9 +965,20 @@ export default function ReportsForm({
             {isTable && tableFilters.includes('collector') && (
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">Collector</label>
-                <select value={selectedCollector} onChange={e => setSelectedCollector(e.target.value)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                <select value={selectedCollector} onChange={e => { setSelectedCollector(e.target.value); setSelectedBook('all'); }} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
                   <option value="all">-- All Collectors --</option>
                   {[...collectors].sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.collect_id} value={c.collect_id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+            {isTable && tableFilters.includes('book') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">रसीद बुक</label>
+                <select value={selectedBook} onChange={e => setSelectedBook(e.target.value)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="all">-- सभी बुक --</option>
+                  {books.filter(b => !/^\d+$/.test(selectedCollector) || b.collect_id === Number(selectedCollector)).map(b => (
+                    <option key={`${b.from}-${b.to}`} value={`${b.from}-${b.to}`}>{b.from} से {b.to}{b.collector_name ? ` (${b.collector_name})` : ''}</option>
+                  ))}
                 </select>
               </div>
             )}
@@ -1191,7 +1209,6 @@ export default function ReportsForm({
             </optgroup>
             <optgroup label="6. Receipt Reports">
               <option value="receipt_nowise">Receipt Number Wise Report</option>
-              <option value="receipt_realamt">Actual Amount Receipt Report</option>
             </optgroup>
             <optgroup label="7. Hawker Wise Reports">
               <option value="hawker_daily_qty">Daily Quantity of Newspaper</option>
