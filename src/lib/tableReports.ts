@@ -52,7 +52,7 @@ interface Masters {
   customers: Map<number, any>;
   regions: Map<number, string>;
   hawkers: Map<number, string>;
-  pubs: Map<number, { name: string; english: string; short: string; publish_id: number }>;
+  pubs: Map<number, { name: string; english: string; short: string; publish_id: number; magazine: boolean }>;
   publishers: Map<number, string>;
   collectors: Map<number, string>;
 }
@@ -64,7 +64,7 @@ async function masters(): Promise<Masters> {
     all('customer', 'customer_id, name_eng, name_hindi, name_hindi_unicode, add1, add2, hindi_add, phone, priority, region_id'),
     all('regiond', 'region_id, region_name'),
     all('hawker', 'hawker_id, name'),
-    all('publication', 'publica_id, public_name, pub_hindi, abrv, publish_id'),
+    all('publication', 'publica_id, public_name, pub_hindi, abrv, publish_id, type_p'),
     all('publisher', 'publish_id, name'),
     all('collect', 'Collect_id, name')
   ]);
@@ -76,7 +76,7 @@ async function masters(): Promise<Masters> {
     hawkers: new Map(hawkers.map(h => [Number(h.hawker_id), String(h.name || `#${h.hawker_id}`).trim()])),
     pubs: new Map(pubs.map(p => {
       const english = String(p.public_name || `#${p.publica_id}`).trim();
-      return [Number(p.publica_id), { english, name: p.pub_hindi ? cleanOrTransliterateHindi(p.pub_hindi, english) : english, short: String(p.abrv || '').trim() || english, publish_id: Number(p.publish_id) || 0 }];
+      return [Number(p.publica_id), { english, name: p.pub_hindi ? cleanOrTransliterateHindi(p.pub_hindi, english) : english, short: String(p.abrv || '').trim() || english, publish_id: Number(p.publish_id) || 0, magazine: /mag|period/i.test(String(p.type_p || '')) }];
     })),
     publishers: new Map(publishers.map(p => [Number(p.publish_id), String(p.name || `#${p.publish_id}`).trim()])),
     collectors: new Map(collectors.map(c => [Number(c.Collect_id), String(c.name || `#${c.Collect_id}`).trim()]))
@@ -179,6 +179,61 @@ async function stops(m?: Masters) {
 }
 const runsOn = (s: { s: string; c: string }, day: string) => (!s.s || s.s <= day) && (!s.c || day < s.c);
 
+// Papers that do not come on a day: closed or stopped from Publication Discontinue, or a holiday.
+// A stop or holiday for all papers (paper 0) is for the daily papers only, as in billing.
+async function papersOff(day: string, m: Masters): Promise<Set<number>> {
+  const [dis, hol] = await Promise.all([all('publicationdis', '*').catch(() => [] as any[]), all('holiday', '*').catch(() => [] as any[])]);
+  const off = new Set<number>();
+  let allDailies = false;
+  for (const d of dis) {
+    const from = iso(d.entry_date ?? d.from_date ?? d.FromDate);
+    const to = iso(d.oc_date ?? d.to_date ?? d.ToDate) || '2099-12-31';
+    if ((from && day < from) || day > to) continue;
+    const id = Number(d.publica_id ?? d.Publica_id ?? 0);
+    if (id) off.add(id); else allDailies = true;
+  }
+  for (const h of hol) {
+    if (iso(h.oc_date ?? h.Oc_Date ?? h.dated) !== day) continue;
+    const id = Number(h.publica_id ?? h.Publica_id ?? h.publication_id ?? 0);
+    if (id) off.add(id); else allDailies = true;
+  }
+  if (allDailies) m.pubs.forEach((p, id) => { if (!p.magazine) off.add(id); });
+  return off;
+}
+
+// Daily Quantity of Newspaper / Quantity of Magazine: copies each hawker takes on one day, paper by
+// paper. Only papers that go out that day: running, not stopped by the customer, not closed or on holiday.
+async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableReport> {
+  const m = await masters();
+  const day = f.from || new Date().toISOString().slice(0, 10);
+  const [subs, list, off] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m)]);
+  const stopped = (s: any) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
+    && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
+  const going = subs.filter(s => {
+    const p = m.pubs.get(s.publica_id);
+    return p && p.magazine === magazine && !off.has(s.publica_id) && runsOn(s, day) && !stopped(s)
+      && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region);
+  });
+  const paperIds = Array.from(new Set(going.map(s => s.publica_id)))
+    .sort((a, b) => (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
+  const rows = groupBy(going, s => String(s.hawker_id))
+    .map(([hid, ss]) => {
+      const row: Record<string, any> = { hawker: m.hawkers.get(Number(hid)) || `#${hid}`, total: sum(ss, 'qty') };
+      for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => s.publica_id === pid), 'qty');
+      return row;
+    })
+    .sort((a, b) => String(a.hawker).localeCompare(String(b.hawker)));
+  rows.forEach((r, i) => { r.sno = i + 1; });
+  const keys = [...paperIds.map(pid => `p${pid}`), 'total'];
+  const closedNames = Array.from(off).map(id => m.pubs.get(id)).filter(p => p && p.magazine === magazine).map(p => p!.short);
+  return {
+    title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
+    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
+    groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
+    note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
+  };
+}
+
 // The hawker who brings a customer a paper (or any of their papers)
 function hawkerOf(subs: any[], customerId: number, publicaId = 0): number {
   const mine = subs.filter(s => s.customer_id === customerId && (!publicaId || s.publica_id === publicaId));
@@ -211,6 +266,9 @@ const receiptFilter = (m: Masters, f: Filters) => (r: Receipt) => m.customers.ha
   && (!f.region || custRegion(m, r.customer_id) === f.region) && (!f.collector || r.collector === f.collector);
 
 export const REPORTS: Record<string, Builder> = {
+  async hawker_daily_qty(f) { return quantityByHawker(f, false); },
+  async hawker_magazine_qty(f) { return quantityByHawker(f, true); },
+
   // Collection Datewise: every payment received, day by day, with the day's total
   async collection_datewise(f) {
     const m = await masters();

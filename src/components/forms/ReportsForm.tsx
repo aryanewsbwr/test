@@ -69,8 +69,10 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 const waRegionCache = new Map<string, WaRegionStatus>();
 
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
-type TableFilter = 'dates' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book';
+type TableFilter = 'dates' | 'day' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
+  hawker_daily_qty: ['day', 'hawker', 'region'],
+  hawker_magazine_qty: ['day', 'hawker', 'region'],
   collection_datewise: ['dates', 'region', 'collector'],
   collection_hawker_datewise: ['dates', 'collector', 'region'],
   receipt_nowise: ['dates', 'collector', 'book', 'region'],
@@ -100,8 +102,8 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   bill_print_region: { title: 'Region Wise Bill Printing', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
   bill_print_single: { title: 'Single Bill Printing', category: 'Bill Printing', hasCustId: true, hasPeriod: true },
   bill_paid_report: { title: 'Bill Paid Report', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
-  hawker_daily_qty: { title: 'Daily Quantity of Newspaper', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true, hasPeriod: true },
-  hawker_magazine_qty: { title: 'Quantity of Magazine', category: 'Hawker Wise Report', hasHawker: true, hasPeriod: true },
+  hawker_daily_qty: { title: 'Daily Quantity of Newspaper', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true },
+  hawker_magazine_qty: { title: 'Quantity of Magazine', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true },
   dues_ledger: { title: 'Customer Outstanding Dues Ledger', category: 'Outstanding Report', hasRegion: true },
   previous_dues_wise: { title: 'Previous Dues Wise Report', category: 'Outstanding Report', hasRegion: true },
   due_region_summary: { title: 'Due Region Wise Summary', category: 'Outstanding Report', hasRegion: true, hasPeriod: false },
@@ -206,6 +208,8 @@ export default function ReportsForm({
   // Receipt books (Receipt Allotment): 'all' or '101-200'
   const [books, setBooks] = useState<{ collect_id: number; collector_name: string; from: number; to: number }[]>([]);
   const [selectedBook, setSelectedBook] = useState<string>('all');
+  // One-day reports (Daily Quantity): today unless changed
+  const [dayDate, setDayDate] = useState<string>(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const tableFilters = TABLE_FILTERS[activeReport];
   const isTable = !!tableFilters;
   useEffect(() => {
@@ -422,6 +426,7 @@ export default function ReportsForm({
         const f = TABLE_FILTERS[activeReport];
         const q = new URLSearchParams({ type: activeReport });
         if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
+        if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
         if (f.includes('region') && /^\d+$/.test(selectedRegion)) q.set('region', selectedRegion);
         if (f.includes('hawker') && /^\d+$/.test(selectedHawker)) q.set('hawker', selectedHawker);
         if (f.includes('pub') && /^\d+$/.test(selectedPub)) q.set('pub', selectedPub);
@@ -960,6 +965,12 @@ export default function ReportsForm({
                   <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none" />
                   <span className="font-bold">तक</span>
                 </div>
+              </div>
+            )}
+            {isTable && tableFilters.includes('day') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">तारीख</label>
+                <input type="date" value={dayDate} onChange={e => setDayDate(e.target.value)} className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none" />
               </div>
             )}
             {isTable && tableFilters.includes('collector') && (
