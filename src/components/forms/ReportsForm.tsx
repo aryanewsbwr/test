@@ -1448,7 +1448,7 @@ export default function ReportsForm({
               {activeReport === 'cust_monthwise' ? <span>Year: April {selectedYear} to March {Number(selectedYear) + 1}</span>
                 : isTable ? <span>{reportData?.subtitle || ''}</span>
                 : currentMeta.hasPeriod !== false && <span>Financial Period: {selectedMonth} {selectedYear}</span>}
-              <span>Page: {currentPage} of {totalPages}</span>
+              {!isTable && <span>Page: {currentPage} of {totalPages}</span>}
             </div>
             {reportData?.report_note && (
               <div className="text-[11px] font-sans font-bold text-[#8B0000] bg-[#FFF8DC] border border-[#E0C060] px-2 py-1 inline-block">

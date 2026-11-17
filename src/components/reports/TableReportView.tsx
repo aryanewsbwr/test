@@ -15,6 +15,9 @@ const fmt = (c: Column, v: any) => {
   if (c.type === 'int') { const n = Number(v); return n ? n.toLocaleString('en-IN') : ''; }
   return String(v);
 };
+// The customer's name gets room; a long address is kept narrow and small
+const widthOf = (c: Column): React.CSSProperties | undefined =>
+  c.key === 'customer' || c.key === 'name' ? { minWidth: 150 } : c.key === 'address' ? { maxWidth: 150, fontSize: 10 } : undefined;
 const alignOf = (c: Column) => (c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left');
 
 export const tableRowCount = (d: TableReportData) => d.groups.reduce((s, g) => s + g.rows.length, 0);
@@ -73,7 +76,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
       <table className="w-full border-collapse text-[11px] border border-black">
         <thead>
           <tr className="bg-slate-100 border-b-2 border-black">
-            {cols.map(c => <th key={c.key} className={`px-1.5 py-1 font-bold border-r border-slate-400 ${alignOf(c)}`}>{c.label}</th>)}
+            {cols.map(c => <th key={c.key} style={widthOf(c)} className={`px-1.5 py-1 font-bold border-r border-slate-400 ${alignOf(c)}`}>{c.label}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -86,7 +89,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
               )}
               {g.rows.map((r, ri) => (
                 <tr key={ri} className="border-b border-slate-200">
-                  {cols.map(c => <td key={c.key} className={`px-1.5 py-0.5 border-r border-slate-200 ${alignOf(c)} ${c.type ? 'font-mono' : ''}`}>{fmt(c, r[c.key])}</td>)}
+                  {cols.map(c => <td key={c.key} style={widthOf(c)} className={`px-1.5 py-0.5 border-r border-slate-200 ${alignOf(c)} ${c.type ? 'font-mono whitespace-nowrap' : ''}`}>{fmt(c, r[c.key])}</td>)}
                 </tr>
               ))}
               {g.totals && data.groups.length > 1 && totalRow(g.totals, false, `t${gi}`)}
