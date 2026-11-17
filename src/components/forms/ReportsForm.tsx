@@ -15,6 +15,7 @@ import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
 import { isDue, dueTotal, byPriority, byRegionThenPriority } from '@/lib/dueRule';
 import { printSheet } from '@/lib/printSheet';
+import TableReportView, { tableReportCsv, tableRowCount } from '@/components/reports/TableReportView';
 import { printReminderSlips, reminderSlipsPageHtml, ReminderSlip } from '@/lib/billThermalExport';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
 
@@ -65,6 +66,34 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 
 // Last WhatsApp region counts per month, so the dropdown is red straight away while it refreshes
 const waRegionCache = new Map<string, WaRegionStatus>();
+
+// List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
+type TableFilter = 'dates' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector';
+const TABLE_FILTERS: Record<string, TableFilter[]> = {
+  collection_datewise: ['dates', 'region', 'collector'],
+  collection_hawker_datewise: ['dates', 'collector', 'region'],
+  receipt_nowise: ['dates', 'collector', 'region'],
+  receipt_realamt: ['dates', 'region', 'collector'],
+  dues_ledger: ['region'],
+  previous_dues_wise: ['region'],
+  collection_agent_dues: ['dates', 'collector'],
+  discontinue_datewise: ['dates', 'region'],
+  discontinue_hawkerwise: ['dates', 'hawker', 'region'],
+  purchase_datewise: ['dates', 'publisher'],
+  purchase_publisherwise: ['dates', 'publisher', 'pub'],
+  countersale_datewise: ['dates', 'pub'],
+  countersale_pubwise: ['dates', 'pub'],
+  retailsale_region_datewise: ['dates', 'region', 'pub'],
+  consolidated_sale: ['dates', 'pub'],
+  daily_sale: ['dates'],
+  region_start_end: ['dates', 'region', 'pub'],
+  cust_pub_starting: ['dates', 'pub', 'hawker', 'region'],
+  cust_choose_pub: ['pub', 'region', 'hawker'],
+  circ_type_pub: ['region', 'pub'],
+  hawker_cust_priority: ['hawker', 'region'],
+  hawker_report_datewise: ['dates', 'hawker', 'region', 'pub'],
+  sticker_printing: ['region', 'hawker', 'pub']
+};
 
 const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?: boolean; hasHawker?: boolean; hasPub?: boolean; hasPeriod?: boolean; hasCustId?: boolean }> = {
   bill_print_region: { title: 'Region Wise Bill Printing', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
@@ -147,6 +176,24 @@ export default function ReportsForm({
   const [waRegionStatus, setWaRegionStatus] = useState<WaRegionStatus>({});
   const [waRegionError, setWaRegionError] = useState('');
   const [isUpdatingWaRegion, setIsUpdatingWaRegion] = useState(false);
+
+  // List reports: date range (this month so far), collector and publisher
+  const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [fromDate, setFromDate] = useState<string>(() => isoOf(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [toDate, setToDate] = useState<string>(() => isoOf(new Date()));
+  const [collectors, setCollectors] = useState<{ collect_id: number; name: string }[]>([]);
+  const [publishersList, setPublishersList] = useState<{ publish_id: number; name: string }[]>([]);
+  const [selectedCollector, setSelectedCollector] = useState<string>('all');
+  const [selectedPublisher, setSelectedPublisher] = useState<string>('all');
+  const tableFilters = TABLE_FILTERS[activeReport];
+  const isTable = !!tableFilters;
+  useEffect(() => {
+    fetch('/api/collection-agents').then(r => r.json()).then(d => setCollectors((d.agents || []).filter((a: any) => a.name))).catch(() => {});
+    fetch('/api/publishers').then(r => r.json()).then(d => {
+      const list = d.publishers || d.data || (Array.isArray(d) ? d : []);
+      setPublishersList(list.map((x: any) => ({ publish_id: Number(x.publish_id ?? x.Publish_id), name: String(x.name ?? x.Name ?? '') })).filter((x: any) => x.name));
+    }).catch(() => {});
+  }, []);
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -343,6 +390,22 @@ export default function ReportsForm({
         setTotalPages(1);
         return;
       }
+      if (TABLE_FILTERS[activeReport]) {
+        const f = TABLE_FILTERS[activeReport];
+        const q = new URLSearchParams({ type: activeReport });
+        if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
+        if (f.includes('region') && /^\d+$/.test(selectedRegion)) q.set('region', selectedRegion);
+        if (f.includes('hawker') && /^\d+$/.test(selectedHawker)) q.set('hawker', selectedHawker);
+        if (f.includes('pub') && /^\d+$/.test(selectedPub)) q.set('pub', selectedPub);
+        if (f.includes('publisher') && /^\d+$/.test(selectedPublisher)) q.set('publisher', selectedPublisher);
+        if (f.includes('collector') && /^\d+$/.test(selectedCollector)) q.set('collector', selectedCollector);
+        const res = await fetch(`/api/reports/table?${q.toString()}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Could not load the report');
+        setReportData({ ...json, kind: 'table', type: activeReport });
+        setTotalPages(1);
+        return;
+      }
       const params = new URLSearchParams({
         type: activeReport,
         region_id: selectedRegion,
@@ -371,7 +434,7 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher]);
 
   useEffect(() => {
     if (viewMode === 'preview') {
@@ -593,6 +656,16 @@ export default function ReportsForm({
   };
 
   const handleExportCSV = () => {
+    if (reportData?.kind === 'table') {
+      const lines = tableReportCsv(reportData);
+      const csv = '\uFEFF' + lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${activeReport}_${fromDate}_${toDate}.csv`);
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      return;
+    }
     // Customer Detail / MonthWise: one line per paper or month, with the customer on each line
     const flat: any[] | null = Array.isArray(reportData?.customers)
       ? reportData.customers.flatMap((x: any) => (x.rows || []).map((r: any) => ({
@@ -667,7 +740,7 @@ export default function ReportsForm({
           <div className="space-y-3 bg-[#F0EEE2] p-4 border border-[#808080] shadow-inner text-xs">
             
             {/* Region Dropdown */}
-            {(currentMeta.hasRegion || activeReport === 'bill_print_region' || activeReport === 'retailsale_region_datewise') && (
+            {(isTable ? tableFilters.includes('region') : (currentMeta.hasRegion || activeReport === 'bill_print_region')) && (
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">Region</label>
                 <select 
@@ -732,7 +805,7 @@ export default function ReportsForm({
             )}
 
             {/* Hawker Dropdown */}
-            {(currentMeta.hasHawker || activeReport.includes('hawker')) && (
+            {(isTable ? tableFilters.includes('hawker') : (currentMeta.hasHawker || activeReport.includes('hawker'))) && (
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">Hawker</label>
                 <select 
@@ -754,7 +827,7 @@ export default function ReportsForm({
             )}
 
             {/* Publication Dropdown */}
-            {(currentMeta.hasPub || activeReport === 'cust_choose_pub' || activeReport === 'cust_pub_starting' || activeReport === 'countersale_pubwise') && (
+            {(isTable ? tableFilters.includes('pub') : currentMeta.hasPub) && (
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">Publication</label>
                 <select 
@@ -848,8 +921,39 @@ export default function ReportsForm({
               </div>
             )}
 
+            {/* List reports: date range, collector, publisher */}
+            {isTable && tableFilters.includes('dates') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">तारीख</label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none" />
+                  <span className="font-bold">से</span>
+                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none" />
+                  <span className="font-bold">तक</span>
+                </div>
+              </div>
+            )}
+            {isTable && tableFilters.includes('collector') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Collector</label>
+                <select value={selectedCollector} onChange={e => setSelectedCollector(e.target.value)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="all">-- All Collectors --</option>
+                  {[...collectors].sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.collect_id} value={c.collect_id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+            {isTable && tableFilters.includes('publisher') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Publisher</label>
+                <select value={selectedPublisher} onChange={e => setSelectedPublisher(e.target.value)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="all">-- All Publishers --</option>
+                  {[...publishersList].sort((a, b) => a.name.localeCompare(b.name)).map(x => <option key={x.publish_id} value={x.publish_id}>{x.name}</option>)}
+                </select>
+              </div>
+            )}
+
             {/* Period (Month & Year) */}
-            {(currentMeta.hasPeriod !== false) && (
+            {(!isTable && currentMeta.hasPeriod !== false) && (
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">{activeReport === 'cust_monthwise' ? 'Year' : 'Period'}</label>
                 <div className="flex items-center gap-2">
@@ -1373,6 +1477,10 @@ export default function ReportsForm({
                 </ol>
               </div>
             </div>
+          ) : isTable ? (
+            reportData?.kind === 'table' && reportData.type === activeReport
+              ? <div className="pt-3"><TableReportView data={reportData} /></div>
+              : <div className="p-16 text-center text-slate-500 font-sans">रिपोर्ट बन रही है…</div>
           ) : !reportData || ((activeReport === 'cust_detail' || activeReport === 'cust_monthwise')
             ? !Array.isArray(reportData.customers) || reportData.customers.length === 0
             : !Array.isArray(reportData.rows) || reportData.rows.length === 0) ? (
