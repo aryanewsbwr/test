@@ -5,6 +5,8 @@ import { Calendar, Check, LogIn, X } from 'lucide-react';
 
 interface PeriodFormProps {
   isOpen: boolean;
+  // The period already chosen; the form opens on it (today's month the first time)
+  current?: { month: string; startYear: number; endYear: number };
   onLogin: (month: string, startYear: number, endYear: number) => void;
   onExit?: () => void;
 }
@@ -14,7 +16,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps) {
+export default function PeriodForm({ isOpen, current, onLogin, onExit }: PeriodFormProps) {
   // Helper to get local date values
   const getTodayInfo = () => {
     const today = new Date();
@@ -35,17 +37,18 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
   const [endYear, setEndYear] = useState<number>(initial.endYear);
   const [selectedDate, setSelectedDate] = useState<number>(initial.date);
 
-  // Sync to today's local date when component mounts or dialog opens
+  // Opens on the period already chosen (so a change made before is still there), else on today
   useEffect(() => {
     if (isOpen) {
       const today = new Date();
       const mIdx = today.getMonth();
       const sY = mIdx < 3 ? today.getFullYear() - 1 : today.getFullYear();
       setSelectedDate(today.getDate());
-      setSelectedMonth(MONTHS[mIdx] || 'October');
-      setStartYear(sY);
-      setEndYear(sY + 1);
+      setSelectedMonth(current?.month || MONTHS[mIdx] || 'October');
+      setStartYear(current?.startYear || sY);
+      setEndYear((current?.startYear || sY) + 1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Handle Enter key and keyboard shortcuts when modal is open
@@ -75,9 +78,11 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
   if (!isOpen) return null;
 
   // Calendar generation for the currently selected month and year
+  // The year runs April to March: January to March fall in the ending year
   const selectedMonthIdx = Math.max(0, MONTHS.indexOf(selectedMonth));
-  const daysInMonth = new Date(startYear, selectedMonthIdx + 1, 0).getDate();
-  const firstDay = new Date(startYear, selectedMonthIdx, 1).getDay();
+  const calendarYear = selectedMonthIdx < 3 ? startYear + 1 : startYear;
+  const daysInMonth = new Date(calendarYear, selectedMonthIdx + 1, 0).getDate();
+  const firstDay = new Date(calendarYear, selectedMonthIdx, 1).getDay();
 
   const handleYearChange = (start: number) => {
     setStartYear(start);
@@ -146,8 +151,9 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
               <input 
                 type="number"
                 value={endYear}
-                onChange={(e) => setEndYear(Number(e.target.value))}
-                className="flex-1 px-2 py-1 border border-[#808080] bg-white font-mono font-bold text-blue-900 text-center"
+                readOnly
+                title="Starting Year + 1"
+                className="flex-1 px-2 py-1 border border-[#808080] bg-slate-100 font-mono font-bold text-blue-900 text-center"
               />
             </div>
           </div>
@@ -155,7 +161,7 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
           {/* Mini Calendar */}
           <div className="bg-white border border-[#808080] p-2 shadow-inner">
             <div className="text-center font-bold text-blue-900 pb-1 border-b border-slate-200">
-              {selectedMonth} {startYear}
+              {selectedMonth} {calendarYear}
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-600 pt-1">
               <span className="text-red-600">Su</span>
@@ -174,7 +180,7 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
                 const day = i + 1;
                 const isSel = day === selectedDate;
                 const todayObj = new Date();
-                const isToday = day === todayObj.getDate() && selectedMonthIdx === todayObj.getMonth();
+                const isToday = day === todayObj.getDate() && selectedMonthIdx === todayObj.getMonth() && calendarYear === todayObj.getFullYear();
                 return (
                   <button
                     type="button"

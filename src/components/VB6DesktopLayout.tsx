@@ -1060,6 +1060,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         {isPeriodOpen && (
           <PeriodForm 
             isOpen={isPeriodOpen}
+            current={currentPeriod}
             onLogin={(m, sY, eY) => {
               setCurrentPeriod({ month: m, startYear: sY, endYear: eY });
               setIsPeriodOpen(false);

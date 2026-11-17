@@ -179,8 +179,25 @@ export default function ReportsForm({
 
   // List reports: date range (this month so far), collector and publisher
   const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const [fromDate, setFromDate] = useState<string>(() => isoOf(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
-  const [toDate, setToDate] = useState<string>(() => isoOf(new Date()));
+  // The chosen period's month: from its 1st to its last day (to today, for the month running now)
+  const periodRange = (month: string, startYear: number) => {
+    const idx = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month);
+    if (idx < 0) return { from: isoOf(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), to: isoOf(new Date()) };
+    const year = idx < 3 ? Number(startYear) + 1 : Number(startYear);
+    const last = new Date(year, idx + 1, 0);
+    const end = last > new Date() && new Date() >= new Date(year, idx, 1) ? new Date() : last;
+    return { from: isoOf(new Date(year, idx, 1)), to: isoOf(end) };
+  };
+  const [fromDate, setFromDate] = useState<string>(() => periodRange(periodMonth, periodStartYear).from);
+  const [toDate, setToDate] = useState<string>(() => periodRange(periodMonth, periodStartYear).to);
+  // A new period chosen while the report is open moves its month and dates too
+  useEffect(() => {
+    setSelectedMonth(periodMonth);
+    setSelectedYear(String(periodStartYear));
+    const r = periodRange(periodMonth, periodStartYear);
+    setFromDate(r.from); setToDate(r.to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodMonth, periodStartYear]);
   const [collectors, setCollectors] = useState<{ collect_id: number; name: string }[]>([]);
   const [publishersList, setPublishersList] = useState<{ publish_id: number; name: string }[]>([]);
   const [selectedCollector, setSelectedCollector] = useState<string>('all');
