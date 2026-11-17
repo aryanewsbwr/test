@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Master > Message: the bill messages, kept in the old software's message table
 // (Message_id, Dated, Message). The newest one prints at the bottom of every bill.
 const explain = (m: string) => (/does not exist|schema cache|relation/i.test(m)
-  ? 'message टेबल अभी डेटाबेस में नहीं है। supabase/company_message.sql चलाएँ।' : m);
+  ? `message टेबल या उसका कॉलम डेटाबेस में नहीं मिला (${m})` : m);
 
 // GET -> { messages: [{ message_id, dated, message }] } newest first
 export async function GET(req: NextRequest) {

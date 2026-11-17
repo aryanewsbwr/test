@@ -24,8 +24,11 @@ export const DEFAULT_COMPANY: CompanyInfo = {
   proprietor: 'प्रो. मेहुल अग्रवाल'
 };
 
-// A saved row (old software's company table plus the website's extra columns) as CompanyInfo
+// A saved row as CompanyInfo. The old software's own row (restored with its data) has none of the
+// website's columns and an old address, so it is not used until the firm is saved from the website.
+export const savedFromWebsite = (row: any) => !!(row && (String(row.hindi_name ?? '').trim() || String(row.short_address ?? '').trim() || String(row.proprietor ?? '').trim()));
 export function companyFromRow(row: any): CompanyInfo {
+  if (!savedFromWebsite(row)) return { ...DEFAULT_COMPANY };
   const pick = (v: unknown, d: string) => (String(v ?? '').trim() || d);
   return {
     name: pick(row?.name, DEFAULT_COMPANY.name),
