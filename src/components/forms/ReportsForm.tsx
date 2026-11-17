@@ -1369,7 +1369,12 @@ export default function ReportsForm({
               April {selectedYear} to March {Number(selectedYear) + 1}
             </span>
           </div>
-        ) : currentMeta.hasPeriod !== false && (
+        ) : isTable ? (reportData?.subtitle ? (
+          <div className="flex items-center gap-1 font-bold text-slate-700">
+            <span>Period:</span>
+            <span className="bg-white px-1.5 py-0.5 border border-[#808080] font-mono text-[#000080]">{reportData.subtitle}</span>
+          </div>
+        ) : null) : currentMeta.hasPeriod !== false && (
           <div className="flex items-center gap-1 font-bold text-slate-700">
             <span>Period:</span>
             <span className="bg-white px-1.5 py-0.5 border border-[#808080] font-mono text-[#000080]">
@@ -1436,11 +1441,12 @@ export default function ReportsForm({
             <h1 className="text-xl font-black tracking-wider uppercase">ARYAN NEWS AGENCY</h1>
             <p className="text-[11px] text-slate-700 font-sans font-bold">5(1), Old Bus Stand, Beawar (Raj.) 305901 • WhatsApp: 9462558949 • Ph: 9829058949</p>
             <h2 className="text-sm font-black text-[#000080] underline tracking-wide uppercase pt-1 font-sans">
-              {reportData?.report_title || currentMeta.title}
+              {(isTable ? reportData?.title : reportData?.report_title) || currentMeta.title}
             </h2>
             <div className="flex justify-between text-[10px] font-sans font-bold text-slate-600 pt-1">
               <span>Date: {printDateStr}</span>
               {activeReport === 'cust_monthwise' ? <span>Year: April {selectedYear} to March {Number(selectedYear) + 1}</span>
+                : isTable ? <span>{reportData?.subtitle || ''}</span>
                 : currentMeta.hasPeriod !== false && <span>Financial Period: {selectedMonth} {selectedYear}</span>}
               <span>Page: {currentPage} of {totalPages}</span>
             </div>
@@ -2779,7 +2785,7 @@ export default function ReportsForm({
           )}
 
           {/* Footer Signatures matching Crystal Reports */}
-          {activeReport !== 'cust_detail' && activeReport !== 'cust_monthwise' && <div className="pt-14 flex justify-between text-xs font-serif font-bold">
+          {activeReport !== 'cust_detail' && activeReport !== 'cust_monthwise' && activeReport !== 'sticker_printing' && <div className="pt-14 flex justify-between text-xs font-serif font-bold">
             <div className="text-center">
               <div className="w-36 border-t border-black pt-1">Prepared By</div>
             </div>

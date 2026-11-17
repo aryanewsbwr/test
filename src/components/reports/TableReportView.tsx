@@ -33,12 +33,8 @@ export function tableReportCsv(d: TableReportData): string[][] {
 
 export default function TableReportView({ data }: { data: TableReportData }) {
   const count = tableRowCount(data);
-  const header = (
-    <div className="text-center mb-2">
-      <div className="text-[15px] font-black tracking-wide underline">{data.title}</div>
-      {data.subtitle && <div className="text-[12px] font-bold text-slate-700">{data.subtitle}</div>}
-    </div>
-  );
+  // The page heading above already shows the title and the dates
+  const header = null;
 
   if (count === 0) {
     return <div>{header}<div className="p-12 text-center text-slate-500 font-sans">चुनी तारीखों / फ़िल्टर में कोई रिकॉर्ड नहीं मिला।</div></div>;

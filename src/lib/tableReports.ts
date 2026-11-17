@@ -5,6 +5,7 @@
 import { supabaseAdmin as db } from './supabaseAdmin';
 import { fySuffix } from './financialYear';
 import { monthCode } from './backupTables';
+import { isDue } from './dueRule';
 import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, sushaToUnicode } from './transliteration';
 
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text' }
@@ -159,17 +160,19 @@ async function balanceParts(): Promise<Map<number, { opening: number; bills: num
 }
 
 // Subscriptions with their dates as 2026-11-05, and every stop
-async function subscriptions() {
-  const rows = await all('customer_detail', 'sno, customer_id, publica_id, hawker_id, qty, circulation, s_date, c_date');
+// Subscriptions of customers that still exist (a deleted customer's papers are left out)
+async function subscriptions(m?: Masters) {
+  const rows = (await all('customer_detail', 'sno, customer_id, publica_id, hawker_id, qty, circulation, s_date, c_date'))
+    .filter(r => !m || m.customers.has(Number(r.customer_id)));
   return rows.map(r => ({ ...r, customer_id: Number(r.customer_id), publica_id: Number(r.publica_id), hawker_id: Number(r.hawker_id), qty: Number(r.qty || 1), s: iso(r.s_date), c: iso(r.c_date) }));
 }
-async function stops() {
+async function stops(m?: Masters) {
   const [a, b] = await Promise.all([all('discontinue', '*'), all('customer_discontinue', '*').catch(() => [] as any[])]);
   return [...a, ...b].map(d => ({
     customer_id: Number(d.customer_id ?? d.Customer_id), publica_id: Number(d.publica_id ?? d.Publica_id ?? 0),
     permanent: String(d.temp_perma ?? d.Temp_Perma ?? '').toUpperCase().startsWith('P'),
     from: iso(d.temp_from ?? d.Temp_From), to: iso(d.temp_to ?? d.Temp_To), entered: iso(d.entry_date ?? d.Entry_Date)
-  })).filter(d => d.customer_id && d.from);
+  })).filter(d => d.customer_id && d.from && (!m || m.customers.has(d.customer_id)));
 }
 const runsOn = (s: { s: string; c: string }, day: string) => (!s.s || s.s <= day) && (!s.c || day < s.c);
 
@@ -217,7 +220,7 @@ export const REPORTS: Record<string, Builder> = {
     const cash = sum(rows.filter(r => r.mode === 'नकद'), 'amount');
     return {
       title: 'COLLECTION DATEWISE', subtitle: period(f),
-      columns: [text('manual', 'रसीद नं.'), int('recp_no', 'सि. नं.'), text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('month', 'बिल माह'), text('mode', 'तरीका'), text('collector', 'कलेक्टर'), money('amount', 'राशि'), money('less', 'कटौती')],
+      columns: [text('manual', 'रसीद नं.'), text('recp_no', 'सि. नं.', 'right'), text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('month', 'बिल माह'), text('mode', 'तरीका'), text('collector', 'कलेक्टर'), money('amount', 'राशि'), money('less', 'कटौती')],
       groups, totals: totalsOf(rows, ['amount', 'less'], { customer: `कुल ${rows.length} रसीद` }),
       note: `नकद ₹${cash.toLocaleString('en-IN')} · UPI / बैंक / चेक ₹${round(sum(rows, 'amount') - cash).toLocaleString('en-IN')}`
     };
@@ -253,7 +256,7 @@ export const REPORTS: Record<string, Builder> = {
     for (let i = 1; i < nums.length; i++) if (nums[i] - nums[i - 1] > 1 && nums[i] - nums[i - 1] < 50) gaps += nums[i] - nums[i - 1] - 1;
     return {
       title: 'RECEIPT NUMBER WISE', subtitle: period(f),
-      columns: [text('manual', 'रसीद नं.'), int('recp_no', 'सि. नं.'), text('date', 'तारीख'), text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('month', 'बिल माह'), text('collector', 'कलेक्टर'), money('amount', 'राशि'), money('less', 'कटौती')],
+      columns: [text('manual', 'रसीद नं.'), text('recp_no', 'सि. नं.', 'right'), text('date', 'तारीख'), text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('month', 'बिल माह'), text('collector', 'कलेक्टर'), money('amount', 'राशि'), money('less', 'कटौती')],
       groups: [{ rows }], totals: totalsOf(rows, ['amount', 'less'], { customer: `कुल ${rows.length} रसीद` }),
       note: gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी)।` : undefined
     };
@@ -279,7 +282,7 @@ export const REPORTS: Record<string, Builder> = {
     const list = Array.from(m.customers.values())
       .filter(c => (!f.region || Number(c.region_id) === f.region))
       .map(c => ({ c, p: parts.get(Number(c.customer_id)) }))
-      .filter(x => x.p && Math.abs(x.p.balance) >= 1)
+      .filter(x => x.p && (isDue(x.p.balance) || x.p.balance < 0))
       .sort((a, b) => Number(a.c.region_id) - Number(b.c.region_id) || Number(a.c.priority) - Number(b.c.priority));
     const row = (x: any) => ({
       customer: `${custName(m, x.c.customer_id)} #${x.c.customer_id}`, address: custAddress(m, x.c.customer_id), phone: custPhone(m, x.c.customer_id),
@@ -349,7 +352,7 @@ export const REPORTS: Record<string, Builder> = {
   // Discontinue Date Wise: stops starting in the period, day by day
   async discontinue_datewise(f) {
     const m = await masters();
-    const list = (await stops()).filter(d => inRange(d.from, f) && (!f.region || custRegion(m, d.customer_id) === f.region))
+    const list = (await stops(m)).filter(d => inRange(d.from, f) && (!f.region || custRegion(m, d.customer_id) === f.region))
       .sort((a, b) => a.from.localeCompare(b.from) || a.customer_id - b.customer_id);
     const row = (d: any) => ({
       customer: `${custName(m, d.customer_id)} #${d.customer_id}`, region: regionName(m, custRegion(m, d.customer_id)), address: custAddress(m, d.customer_id),
@@ -367,7 +370,7 @@ export const REPORTS: Record<string, Builder> = {
   // Discontinue Hawker Wise With Address: stops in force during the period, by the hawker who delivers
   async discontinue_hawkerwise(f) {
     const m = await masters();
-    const [subs, list] = await Promise.all([subscriptions(), stops()]);
+    const [subs, list] = await Promise.all([subscriptions(m), stops(m)]);
     const from = f.from || '0000-01-01', to = f.to || '9999-12-31';
     const active = list.filter(d => (d.permanent ? d.from <= to && d.from >= from : d.from <= to && (d.to || d.from) >= from))
       .map(d => ({ ...d, hawker: hawkerOf(subs, d.customer_id, d.publica_id) }))
@@ -540,7 +543,7 @@ export const REPORTS: Record<string, Builder> = {
   // Region-Wise Start End: papers started and stopped in the period, region by region
   async region_start_end(f) {
     const m = await masters();
-    const [subs, list] = await Promise.all([subscriptions(), stops()]);
+    const [subs, list] = await Promise.all([subscriptions(m), stops(m)]);
     const events: any[] = [];
     for (const s of subs) {
       if (inRange(s.s, f)) events.push({ cid: s.customer_id, pub: s.publica_id, qty: s.qty, kind: 'शुरू', d: s.s });
@@ -571,7 +574,7 @@ export const REPORTS: Record<string, Builder> = {
   // Customer Publication Starting: papers started in the period
   async cust_pub_starting(f) {
     const m = await masters();
-    const list = (await subscriptions()).filter(s => inRange(s.s, f) && (!f.pub || s.publica_id === f.pub) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region))
+    const list = (await subscriptions(m)).filter(s => inRange(s.s, f) && (!f.pub || s.publica_id === f.pub) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region))
       .sort((a, b) => a.s.localeCompare(b.s));
     const groups = groupBy(list, s => pubName(m, s.publica_id)).sort((a, b) => a[0].localeCompare(b[0])).map(([name, ss]) => ({
       title: `${name} — ${ss.length}`,
@@ -589,7 +592,7 @@ export const REPORTS: Record<string, Builder> = {
   async cust_choose_pub(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const list = (await subscriptions()).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region))
+    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region))
       .sort((a, b) => custRegion(m, a.customer_id) - custRegion(m, b.customer_id) || Number(m.customers.get(a.customer_id)?.priority || 0) - Number(m.customers.get(b.customer_id)?.priority || 0));
     const groups = groupBy(list, s => regionName(m, custRegion(m, s.customer_id))).map(([name, ss]) => ({
       title: `${name} — ${ss.length}`,
@@ -607,7 +610,7 @@ export const REPORTS: Record<string, Builder> = {
   async circ_type_pub(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const list = (await subscriptions()).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && (!f.region || custRegion(m, s.customer_id) === f.region));
+    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && (!f.region || custRegion(m, s.customer_id) === f.region));
     const groups = groupBy(list, s => String(s.circulation || 'Morning').trim() || 'Morning').map(([name, ss]) => {
       const rows = groupBy(ss, s => String(s.publica_id)).map(([id, xs]) => ({ paper: pubName(m, id), customers: new Set(xs.map(x => x.customer_id)).size, qty: sum(xs, 'qty') }))
         .sort((a, b) => b.qty - a.qty);
@@ -624,7 +627,7 @@ export const REPORTS: Record<string, Builder> = {
   async hawker_cust_priority(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const running = (await subscriptions()).filter(s => runsOn(s, today) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region));
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region));
     const groups = groupBy(running, s => String(s.hawker_id)).sort((a, b) => (m.hawkers.get(Number(a[0])) || '').localeCompare(m.hawkers.get(Number(b[0])) || '')).map(([hid, ss]) => {
       const rows = groupBy(ss, s => String(s.customer_id)).map(([cid, xs]) => ({
         priority: Number(m.customers.get(Number(cid))?.priority || 0), customer: `${custName(m, cid)} #${cid}`, address: custAddress(m, cid), phone: custPhone(m, cid),
@@ -646,7 +649,7 @@ export const REPORTS: Record<string, Builder> = {
     const to = f.to && f.to >= from ? f.to : from;
     const dayList: string[] = [];
     for (let d = new Date(`${from}T00:00:00Z`); d.toISOString().slice(0, 10) <= to && dayList.length < 31; d.setUTCDate(d.getUTCDate() + 1)) dayList.push(d.toISOString().slice(0, 10));
-    const [subs, list] = await Promise.all([subscriptions(), stops()]);
+    const [subs, list] = await Promise.all([subscriptions(m), stops(m)]);
     const stopped = (s: any, day: string) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
       && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
     const mine = subs.filter(s => (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region) && (!f.pub || s.publica_id === f.pub));
@@ -670,7 +673,7 @@ export const REPORTS: Record<string, Builder> = {
   async sticker_printing(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const running = (await subscriptions()).filter(s => runsOn(s, today) && (!f.hawker || s.hawker_id === f.hawker) && (!f.pub || s.publica_id === f.pub));
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.hawker || s.hawker_id === f.hawker) && (!f.pub || s.publica_id === f.pub));
     const ids = Array.from(new Set(running.map(s => s.customer_id))).filter(id => !f.region || custRegion(m, id) === f.region)
       .sort((a, b) => custRegion(m, a) - custRegion(m, b) || Number(m.customers.get(a)?.priority || 0) - Number(m.customers.get(b)?.priority || 0));
     const rows = ids.map(id => ({
