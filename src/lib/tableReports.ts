@@ -181,24 +181,27 @@ const runsOn = (s: { s: string; c: string }, day: string) => (!s.s || s.s <= day
 
 // Papers that do not come on a day: closed or stopped from Publication Discontinue, or a holiday.
 // A stop or holiday for all papers (paper 0) is for the daily papers only, as in billing.
-async function papersOff(day: string, m: Masters): Promise<Set<number>> {
+async function papersOff(day: string, m: Masters): Promise<{ off: Set<number>; recent: Set<number> }> {
   const [dis, hol] = await Promise.all([all('publicationdis', '*').catch(() => [] as any[]), all('holiday', '*').catch(() => [] as any[])]);
   const off = new Set<number>();
+  // Closed in the last 60 days, or a holiday: worth naming under the report
+  const recent = new Set<number>();
+  const since = new Date(Date.parse(`${day}T00:00:00Z`) - 60 * 86400000).toISOString().slice(0, 10);
   let allDailies = false;
   for (const d of dis) {
     const from = iso(d.entry_date ?? d.from_date ?? d.FromDate);
     const to = iso(d.oc_date ?? d.to_date ?? d.ToDate) || '2099-12-31';
     if ((from && day < from) || day > to) continue;
     const id = Number(d.publica_id ?? d.Publica_id ?? 0);
-    if (id) off.add(id); else allDailies = true;
+    if (id) { off.add(id); if (!from || from >= since) recent.add(id); } else allDailies = true;
   }
   for (const h of hol) {
     if (iso(h.oc_date ?? h.Oc_Date ?? h.dated) !== day) continue;
     const id = Number(h.publica_id ?? h.Publica_id ?? h.publication_id ?? 0);
-    if (id) off.add(id); else allDailies = true;
+    if (id) { off.add(id); recent.add(id); } else allDailies = true;
   }
-  if (allDailies) m.pubs.forEach((p, id) => { if (!p.magazine) off.add(id); });
-  return off;
+  if (allDailies) m.pubs.forEach((p, id) => { if (!p.magazine) { off.add(id); recent.add(id); } });
+  return { off, recent };
 }
 
 // Daily Quantity of Newspaper / Quantity of Magazine: copies each hawker takes on one day, paper by
@@ -206,7 +209,7 @@ async function papersOff(day: string, m: Masters): Promise<Set<number>> {
 async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableReport> {
   const m = await masters();
   const day = f.from || new Date().toISOString().slice(0, 10);
-  const [subs, list, off] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m)]);
+  const [subs, list, { off, recent }] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m)]);
   const stopped = (s: any) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
     && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
   // Delivery charges are kept as a 'paper' for billing, but are not copies to hand out
@@ -229,7 +232,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   rows.forEach((r, i) => { r.sno = i + 1; });
   const keys = [...paperIds.map(pid => `p${pid}`), 'total'];
   // Only the closed / holiday papers that customers still have running are worth naming
-  const closedNames = Array.from(new Set(wanted.filter(s => off.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
+  const closedNames = Array.from(new Set(wanted.filter(s => recent.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
   return {
     title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
     columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],

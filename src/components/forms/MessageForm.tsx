@@ -14,6 +14,9 @@ interface Props {
 
 interface MessageRecord { message_id: number | null; dated: string; message: string }
 
+// Same rule as the prints: a message prints for 90 days from its date
+const recent = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && Date.now() - Date.parse(`${d}T00:00:00Z`) < 90 * 86400000;
+
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function MessageForm({ onClose }: Props) {
@@ -100,14 +103,14 @@ export default function MessageForm({ onClose }: Props) {
         </div>
 
         <div>
-          <span className="font-bold text-slate-800 block mb-1">संदेश (सबसे ऊपर वाला बिलों पर छपता है):</span>
+          <span className="font-bold text-slate-800 block mb-1">संदेश (सबसे ऊपर वाला, अपनी तारीख से 90 दिन तक, बिलों पर छपता है):</span>
           <div className="border border-[#808080] bg-white max-h-48 overflow-y-auto divide-y divide-slate-200">
             {messages.length === 0 ? (
               <div className="p-3 text-center text-slate-400">कोई संदेश नहीं — बिलों पर कोई संदेश नहीं छपेगा।</div>
             ) : messages.map((m, i) => (
-              <div key={`${m.message_id ?? ''}-${i}`} className={`p-2 flex items-start justify-between gap-2 ${i === 0 ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+              <div key={`${m.message_id ?? ''}-${i}`} className={`p-2 flex items-start justify-between gap-2 ${i === 0 && recent(m.dated) ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
                 <div className="space-y-0.5">
-                  <span className="font-mono text-[10px] text-blue-800 font-bold block">{m.dated}{i === 0 ? ' · बिलों पर छप रहा है' : ''}</span>
+                  <span className="font-mono text-[10px] text-blue-800 font-bold block">{m.dated}{i === 0 && recent(m.dated) ? ' · बिलों पर छप रहा है' : i === 0 ? ' · पुराना (90 दिन से ज़्यादा), नहीं छपता' : ''}</span>
                   <p className="text-slate-800 text-[11px] font-sans">{m.message}</p>
                 </div>
                 <button onClick={() => handleDelete(m)} disabled={busy} className="text-red-600 hover:text-red-800 p-0.5" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>

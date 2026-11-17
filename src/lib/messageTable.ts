@@ -43,6 +43,13 @@ const isoDate = (v: unknown) => {
   return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : s;
 };
 
+// A message prints on bills for 90 days from its date (Diwali wishes, a notice ...). Old ones,
+// like the old software's 'bill printing' rows from 2007, stay in the list but do not print.
+export const printsOnBills = (dated: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dated)) return false;
+  return Date.now() - Date.parse(`${dated}T00:00:00Z`) < 90 * 86400000;
+};
+
 // Newest first
 export async function listMessages(limit = 200): Promise<BillMessage[]> {
   const c = await cols();
