@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       const qty = Number(s.qty || 1);
       const how = !info || info.isDaily ? `रोज़ ${qty}` : `${PERIOD_HINDI[info.periodicity] || ''}${qty > 1 ? ` · ${qty}` : ''}`;
       const hold = s.hold_info?.is_on_hold ? `छुट्टी ${s.hold_info.from} – ${s.hold_info.to}` : '';
-      return { sno: s.sno, publica_id: Number(s.publica_id), name, how, hold };
+      return { sno: s.sno, publica_id: Number(s.publica_id), name, english, how, hold };
     });
 
     const balance = balances.get(id) || 0;
