@@ -1,4 +1,5 @@
 import { getReliableHindiName } from '@/lib/transliteration';
+import { company, billMessage, esc } from './companyInfo';
 import { billRoundOff, formatRoundOff, roundToFoxProRule } from '@/lib/billingEngine';
 import { BOY_LOGO_B64 } from './logoBase64';
 
@@ -178,10 +179,10 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
         </div>
         <div class="agency-info">
           <div class="agency-title">
-            ARYAN NEWS AGENCY<span class="reg-mark">®</span>
+            ${esc(company().name)}<span class="reg-mark">®</span>
           </div>
-          <div class="agency-sub">5 Old Bus stand Beawar</div>
-          <div class="agency-sub">Ph: 9462558949, 9829058949</div>
+          <div class="agency-sub">${esc(company().short_address)}</div>
+          <div class="agency-sub">Ph: ${esc([company().whatsapp, company().phone].filter(Boolean).join(', '))}</div>
         </div>
       </div>
 
@@ -262,10 +263,11 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
               <div>नोट: 1. बिल का भुगतान कर फर्म की रसीद प्राप्त करना आवश्यक है।</div>
               <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. बिल का भुगतान 5 तारीख तक करना आवश्यक है।</div>
               <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. सभी विवादों का न्याय क्षेत्र ब्यावर रहेगा।</div>
+              ${billMessage() ? `<div class="bill-message">${esc(billMessage())}</div>` : ''}
             </div>
             <div class="sig-box">
               <img src="${SIGNATURE_GLYPH_B64}" class="sig-glyph" alt="sig" />
-              <div class="sig-name">प्रो. मेहुल अग्रवाल</div>
+              <div class="sig-name">${esc(company().proprietor)}</div>
               <div class="sig-eoe">E.&O.E.</div>
             </div>
           </div>
@@ -668,6 +670,7 @@ export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Arya
       align-items: flex-end;
       padding-bottom: 1px;
     }
+    .bill-message { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .notes-box {
       font-size: 6.5px;
       line-height: 1.25;

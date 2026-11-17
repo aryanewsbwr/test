@@ -12,6 +12,7 @@ import path from 'path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+import { companyAndMessage } from '@/lib/companyServer';
 
 function getEmbeddedMangalBase64(): string {
   return MANGAL_FONT_BASE64;
@@ -65,6 +66,7 @@ async function logWhatsAppMessage(row: Record<string, any>) {
  * and rasterizes it to a clean PNG buffer using sharp.
  */
 async function generateBillPngBuffer(bill: any): Promise<Buffer> {
+  const { company: firm } = await companyAndMessage();
   const rawEngName = (bill.customer_name || bill.name_eng || '').trim();
   const engName = rawEngName.replace(/\s+crd\b/i, '').trim();
   const billNo = bill.bill_no || bill.customer_id || '37210';
@@ -177,9 +179,9 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     
     <g>
     <!-- Header -->
-    <text x="200" y="32" font-size="19" class="t-bold" fill="#000000" text-anchor="middle" letter-spacing="0.5">ARYAN NEWS AGENCY</text>
-    <text x="200" y="56" font-size="12" class="t-mid" fill="#000000" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
-    <text x="200" y="76" font-size="12" class="t-reg" fill="#000000" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
+    <text x="200" y="32" font-size="19" class="t-bold" fill="#000000" text-anchor="middle" letter-spacing="0.5">${escapeXml(firm.name)}</text>
+    <text x="200" y="56" font-size="12" class="t-mid" fill="#000000" text-anchor="middle">${escapeXml(firm.address)}</text>
+    <text x="200" y="76" font-size="12" class="t-reg" fill="#000000" text-anchor="middle">WhatsApp: ${escapeXml(firm.whatsapp)} | Ph: ${escapeXml(firm.phone)}</text>
     <text x="200" y="96" font-size="11" class="t-reg" fill="#000000" text-anchor="middle">www.aryannewsagency.com</text>
     
     <!-- Thick Rule -->
@@ -248,7 +250,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <!-- Footer Notice -->
     <text x="200" y="${footerNotice1Y}" font-size="11" class="t-bold" fill="#000000" text-anchor="middle">Please pay the bill before 5th of the month.</text>
     <text x="200" y="${footerNotice2Y}" font-size="10.5" class="t-mid" fill="#000000" text-anchor="middle">After payment kindly send screenshot on WhatsApp.</text>
-    <text x="200" y="${footerNotice3Y}" font-size="11" class="t-reg" fill="#000000" text-anchor="middle">Queries: WhatsApp 9462558949</text>
+    <text x="200" y="${footerNotice3Y}" font-size="11" class="t-reg" fill="#000000" text-anchor="middle">Queries: WhatsApp ${escapeXml(firm.whatsapp)}</text>
     <text x="200" y="${footerThankYouY}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Thank You!</text>
     </g>
   </svg>

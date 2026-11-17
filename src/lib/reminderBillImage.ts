@@ -1,4 +1,5 @@
 import { svgToPng } from '@/lib/svgToPng';
+import { companyAndMessage } from './companyServer';
 import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
 
@@ -38,6 +39,7 @@ const money = (n: number) => Math.abs(n).toLocaleString('en-IN', { minimumFracti
  * due and a UPI code for that amount.
  */
 export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
+  const { company: firm } = await companyAndMessage();
   const font = `'Mangal', Arial, sans-serif`;
   // Only the papers of the last bill and the total due: no delivery, discount or receipts. One
   // line holds the rest of the balance so the lines add up: earlier dues, or money already paid.
@@ -83,9 +85,9 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
     <rect width="400" height="${height}" fill="#ffffff"/>
     <rect x="0" y="0" width="400" height="8" fill="#B91C1C"/>
 
-    <text x="200" y="40" font-size="19" class="b" text-anchor="middle" letter-spacing="0.5">ARYAN NEWS AGENCY</text>
-    <text x="200" y="62" font-size="12" class="m" fill="#000" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
-    <text x="200" y="81" font-size="12" class="r" fill="#000" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
+    <text x="200" y="40" font-size="19" class="b" text-anchor="middle" letter-spacing="0.5">${xml(firm.name)}</text>
+    <text x="200" y="62" font-size="12" class="m" fill="#000" text-anchor="middle">${xml(firm.address)}</text>
+    <text x="200" y="81" font-size="12" class="r" fill="#000" text-anchor="middle">WhatsApp: ${xml(firm.whatsapp)} | Ph: ${xml(firm.phone)}</text>
 
     <rect x="16" y="94" width="368" height="44" rx="6" fill="#FEF2F2" stroke="#B91C1C" stroke-width="2"/>
     <text x="200" y="114" font-size="16" class="b" fill="#B91C1C" text-anchor="middle">पेमेंट रिमाइंडर</text>

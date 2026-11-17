@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchRateTables } from '@/lib/rateTables';
+import { loadCompany } from '@/lib/companyInfo';
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
@@ -86,6 +87,8 @@ interface VB6DesktopLayoutProps {
 export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutProps = {}) {
   // Active Form Window (starts null on clean MDI desktop)
   const [activeWindow, setActiveWindow] = useState<string | null>(null);
+  // The firm's details and bill message (Master > Company / Message) for every print
+  useEffect(() => { loadCompany(); }, []);
   // Desktop 2 is the modern white look; each computer remembers its own choice
   // layout.tsx already turned the look on before the first paint, so it starts from there without a flash
   const [desktop2, setDesktop2] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('desktop2'));

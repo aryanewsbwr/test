@@ -15,6 +15,7 @@ import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
 import { isDue, dueTotal, byPriority, byRegionThenPriority } from '@/lib/dueRule';
 import { printSheet } from '@/lib/printSheet';
+import { company, loadCompany } from '@/lib/companyInfo';
 import TableReportView, { tableReportCsv, tableRowCount } from '@/components/reports/TableReportView';
 import { printReminderSlips, reminderSlipsPageHtml, ReminderSlip } from '@/lib/billThermalExport';
 import { REMINDER_GAP_DAYS, reminderAmount, reminderText } from '@/lib/paymentReminder';
@@ -211,6 +212,10 @@ export default function ReportsForm({
       setPublishersList(list.map((x: any) => ({ publish_id: Number(x.publish_id ?? x.Publish_id), name: String(x.name ?? x.Name ?? '') })).filter((x: any) => x.name));
     }).catch(() => {});
   }, []);
+
+  // The firm's details for the page heading (Master > Company)
+  const [firm, setFirm] = useState(company());
+  useEffect(() => { loadCompany().then(() => setFirm(company())); }, []);
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -1455,8 +1460,8 @@ export default function ReportsForm({
           
           {/* Header */}
           <div className="text-center pb-3 border-b-2 border-black space-y-1">
-            <h1 className="text-xl font-black tracking-wider uppercase">ARYAN NEWS AGENCY</h1>
-            <p className="text-[11px] text-slate-700 font-sans font-bold">5(1), Old Bus Stand, Beawar (Raj.) 305901 • WhatsApp: 9462558949 • Ph: 9829058949</p>
+            <h1 className="text-xl font-black tracking-wider uppercase">{firm.name}</h1>
+            <p className="text-[11px] text-slate-700 font-sans font-bold">{firm.address} • WhatsApp: {firm.whatsapp} • Ph: {firm.phone}</p>
             <h2 className="text-sm font-black text-[#000080] underline tracking-wide uppercase pt-1 font-sans">
               {(isTable ? reportData?.title : reportData?.report_title) || currentMeta.title}
             </h2>

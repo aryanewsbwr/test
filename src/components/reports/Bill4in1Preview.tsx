@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { company } from '@/lib/companyInfo';
 import { createPortal } from 'react-dom';
 import { Printer, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
 import { 
@@ -261,13 +262,13 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       </div>
                       <div className="w-full text-center px-8">
                         <div className="text-sm font-black text-[#004B87] uppercase tracking-wider font-serif leading-tight">
-                          ARYAN NEWS AGENCY<sup className="text-[9px]">®</sup>
+                          {company().name}<sup className="text-[9px]">®</sup>
                         </div>
                         <div className="text-[9px] text-slate-900 leading-tight font-medium">
-                          5 Old Bus stand Beawar
+                          {company().short_address}
                         </div>
                         <div className="text-[9px] text-slate-900 leading-tight font-medium">
-                          Ph: 9462558949, 9829058949
+                          Ph: {[company().whatsapp, company().phone].filter(Boolean).join(', ')}
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { company, billMessage } from '@/lib/companyInfo';
 import { createPortal } from 'react-dom';
 import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -501,16 +502,16 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         {/* Agency Header (Centered without logo) */}
         <div className="flex flex-col items-center justify-center mb-2.5 text-center">
           <div className="font-black text-[15px] tracking-tight text-black uppercase leading-tight whitespace-nowrap">
-            ARYAN NEWS AGENCY
+            {company().name}
           </div>
           <div className="font-bold text-[13px] text-slate-900 mt-0.5 leading-tight">
-            आर्यन न्यूज़ एजेंसी
+            {company().hindi_name}
           </div>
           <div className="text-[9.5px] text-slate-800 mt-1 leading-snug">
-            5(1), Old Bus Stand, Beawar (Raj.) 305901
+            {company().address}
           </div>
           <div className="text-[9.5px] text-slate-800 leading-snug">
-            WhatsApp: 9462558949 | Ph: 9829058949
+            WhatsApp: {company().whatsapp} | Ph: {company().phone}
           </div>
           <div className="text-[9.5px] text-slate-800 leading-snug">
             www.aryannewsagency.com
@@ -642,9 +643,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Footer Policy Notice */}
         <div className="flex flex-col items-center gap-0.5 text-[9.5px] text-slate-700 leading-normal">
+          {billMessage() && <div className="font-bold text-black">{billMessage()}</div>}
           <div className="font-bold text-black">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
           <div className="font-semibold text-black text-[9px]">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</div>
-          <div className="font-medium text-slate-800">Queries: WhatsApp 9462558949</div>
+          <div className="font-medium text-slate-800">Queries: WhatsApp {company().whatsapp}</div>
           <div className="font-extrabold text-[12px] leading-snug text-red-600 text-center mt-1 mb-0.5 px-1.5 py-1 border-[1.5px] border-red-600 rounded-md bg-red-50">यदि यह बिल आपका नहीं है, तो कृपया इसे अनदेखा करें और व्हाट्सएप पर केवल "यह मेरा बिल नहीं है" लिखकर भेज दें।</div>
           <div className="font-black text-[11px] text-black mt-0.5">धन्यवाद!</div>
         </div>

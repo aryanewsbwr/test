@@ -1,4 +1,5 @@
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from './bill4in1Export';
+import { company, billMessage, esc } from './companyInfo';
 import { getReliableHindiName } from './transliteration';
 import { billRoundOff, formatRoundOff, roundToFoxProRule } from './billingEngine';
 import { generateDynamicUpiQrSvg } from './upiQrHelper';
@@ -191,10 +192,10 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       
       <!-- Agency Header -->
       <div class="agency-header">
-        <div class="agency-name-en">ARYAN NEWS AGENCY</div>
-        <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
-        <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
-        <div class="agency-contact">WhatsApp: 9462558949 | Ph: 9829058949</div>
+        <div class="agency-name-en">${esc(company().name)}</div>
+        <div class="agency-name-hi">${esc(company().hindi_name)}</div>
+        <div class="agency-address">${esc(company().address)}</div>
+        <div class="agency-contact">WhatsApp: ${esc(company().whatsapp)} | Ph: ${esc(company().phone)}</div>
         <div class="agency-web">www.aryannewsagency.com</div>
       </div>
 
@@ -299,9 +300,10 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
       <!-- Footer Policy & Thank You Notice -->
       <div class="footer-notice">
+        ${billMessage() ? `<div class="footer-due-line">${esc(billMessage())}</div>` : ''}
         <div class="footer-due-line">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
         <div class="footer-ss-line">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</div>
-        <div class="footer-query-line">Queries: WhatsApp 9462558949</div>
+        <div class="footer-query-line">Queries: WhatsApp ${esc(company().whatsapp)}</div>
         <div class="footer-wrong-number-line">यदि यह बिल आपका नहीं है, तो कृपया इसे अनदेखा करें और व्हाट्सएप पर केवल "यह मेरा बिल नहीं है" लिखकर भेज दें।</div>
         <div class="footer-thanks-line">धन्यवाद!</div>
       </div>
@@ -949,10 +951,10 @@ export function renderThermalReminderHtml(r: ReminderSlip): string {
   return `
     <div class="bill-card">
       <div class="agency-header">
-        <div class="agency-name-en">ARYAN NEWS AGENCY</div>
-        <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
-        <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
-        <div class="agency-contact">WhatsApp: 9462558949 | Ph: 9829058949</div>
+        <div class="agency-name-en">${esc(company().name)}</div>
+        <div class="agency-name-hi">${esc(company().hindi_name)}</div>
+        <div class="agency-address">${esc(company().address)}</div>
+        <div class="agency-contact">WhatsApp: ${esc(company().whatsapp)} | Ph: ${esc(company().phone)}</div>
       </div>
       <div class="solid-rule-thick"></div>
       <div class="pill-badge-container"><span class="pill-badge">पेमेंट रिमाइंडर</span></div>

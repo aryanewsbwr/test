@@ -1,176 +1,95 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Building2, Save, X, CheckCircle2, Phone, Mail, MapPin } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Building2, Save, CheckCircle2 } from 'lucide-react';
+import { CompanyInfo, DEFAULT_COMPANY, loadCompany } from '@/lib/companyInfo';
+
+// Master > Company: the firm's name, address and numbers printed at the top of every bill, report
+// and WhatsApp bill image. Saved in the database; the prints use them from the next print on.
 
 interface CompanyFormProps {
   onClose: () => void;
 }
 
 export default function CompanyForm({ onClose }: CompanyFormProps) {
-  const [agencyName, setAgencyName] = useState('ARYAN NEWS AGENCY');
-  const [hindiName, setHindiName] = useState('आर्यन न्यूज एजेंसी');
-  const [proprietor, setProprietor] = useState('Himanshu Agarwal');
-  const [address, setAddress] = useState('5(1), Old Bus Stand, Beawar (Raj.) 305901');
-  const [phone, setPhone] = useState('9829058949, WhatsApp 9462558949');
-  const [email, setEmail] = useState('aryanewsbwr@gmail.com');
-  const [tagline, setTagline] = useState('Complete Newspaper & Periodical Distributors');
-  const [billingTerms, setBillingTerms] = useState('1. Please pay your monthly bill before the 10th of every month.\n2. Please mention your Customer ID on all payment receipts.\n3. Inform in advance for vacation/temporary stops.');
-  const [isSaved, setIsSaved] = useState(false);
+  const [form, setForm] = useState<CompanyInfo>({ ...DEFAULT_COMPANY });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; good: boolean } | null>(null);
 
-  // This screen only displays the firm's details; nothing typed here is kept anywhere yet.
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetch('/api/company', { cache: 'no-store' }).then(r => r.json()).then(d => { if (d.company) setForm({ ...DEFAULT_COMPANY, ...d.company }); }).catch(() => {});
+  }, []);
+
+  const set = (k: keyof CompanyInfo) => (e: React.ChangeEvent<HTMLInputElement>) => { setMsg(null); setForm(f => ({ ...f, [k]: e.target.value })); };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('यह स्क्रीन अभी कुछ सेव नहीं करती। बिल और रिपोर्ट पर फर्म का पता कोड में तय है — बदलवाना हो तो बताइए।');
+    setBusy(true); setMsg(null);
+    try {
+      const res = await fetch('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Could not save');
+      await loadCompany(true);
+      setMsg({ text: 'फर्म का विवरण सेव हो गया। अगले प्रिंट से बिल और रिपोर्ट पर यही छपेगा।', good: true });
+    } catch (err: any) {
+      setMsg({ text: err.message || String(err), good: false });
+    } finally {
+      setBusy(false);
+    }
   };
 
+  const field = (k: keyof CompanyInfo, label: string, extra = '') => (
+    <div>
+      <label className="block font-bold text-slate-700 mb-0.5">{label}</label>
+      <input type="text" value={form[k]} onChange={set(k)} className={`vb-input w-full ${extra}`} />
+    </div>
+  );
+
   return (
-    <div className="d2-window relative w-[720px] h-[520px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
-      {/* Title Bar */}
+    <div className="d2-window relative w-[720px] max-w-[96vw] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
       <div className="d2-title vb-titlebar-xp select-none">
         <div className="flex items-center gap-1.5">
           <Building2 className="w-3.5 h-3.5" />
-          <span>Company & Agency Profile Setup (फर्म विवरण एवं बिलिंग नियम)</span>
+          <span>Company & Agency Profile (फर्म विवरण)</span>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
-        </div>
+        <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
       </div>
 
-      {/* Main Form */}
-      <form onSubmit={handleSave} className="flex-1 p-3 bg-[#ECE9D8] flex flex-col justify-between overflow-hidden">
-        
-        {/* Header */}
-        <div className="text-center pb-1">
-          <h1 className="text-base font-black text-[#8B0000] tracking-wider uppercase">
-            AGENCY MASTER PROFILE & BILL INVOICE HEADER
-          </h1>
-          <p className="text-[11px] text-slate-700 font-bold">
-            These details appear on all printed monthly bills, delivery slips, and payment receipts.
-          </p>
+      <form onSubmit={handleSave} className="flex-1 p-3 bg-[#ECE9D8] flex flex-col gap-2">
+        <div className="text-center">
+          <h1 className="text-base font-black text-[#8B0000] tracking-wider uppercase">AGENCY PROFILE & BILL HEADER</h1>
+          <p className="text-[11px] text-slate-700 font-bold">ये विवरण सभी बिल (4-in-1 और 58mm), रिपोर्ट और WhatsApp बिल पर छपते हैं।</p>
         </div>
 
-        {/* Fields Box */}
-        <div className="bg-white p-3 vb-box-inset flex-1 overflow-auto space-y-2 text-xs">
-          
+        <div className="bg-white p-3 vb-box-inset space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-[#8B0000] mb-0.5">Agency Name (English):</label>
-              <input 
-                type="text" 
-                value={agencyName}
-                onChange={(e) => setAgencyName(e.target.value)}
-                required
-                className="vb-input w-full font-bold uppercase"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-700 mb-0.5">फर्म का नाम (हिंदी):</label>
-              <input 
-                type="text" 
-                value={hindiName}
-                onChange={(e) => setHindiName(e.target.value)}
-                className="vb-input w-full font-bold"
-              />
-            </div>
+            {field('name', 'Agency Name (English):', 'font-bold uppercase')}
+            {field('hindi_name', 'फर्म का नाम (हिंदी):', 'font-bold')}
           </div>
-
+          {field('address', 'पूरा पता (रिपोर्ट, 58mm बिल, WhatsApp बिल पर):')}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Proprietor / Contact Person:</label>
-              <input 
-                type="text" 
-                value={proprietor}
-                onChange={(e) => setProprietor(e.target.value)}
-                className="vb-input w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Phone / Mobile:</label>
-              <input 
-                type="text" 
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="vb-input w-full font-mono"
-              />
-            </div>
+            {field('short_address', 'छोटा पता (4-in-1 बिल पर):')}
+            {field('proprietor', 'हस्ताक्षर के नीचे नाम (4-in-1 बिल):')}
           </div>
-
-          <div>
-            <label className="block font-bold text-slate-700 mb-0.5">Agency Office Address:</label>
-            <input 
-              type="text" 
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="vb-input w-full"
-            />
+          <div className="grid grid-cols-3 gap-3">
+            {field('whatsapp', 'WhatsApp नंबर:', 'font-mono')}
+            {field('phone', 'फ़ोन नंबर:', 'font-mono')}
+            {field('email', 'Email:')}
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Email Address:</label>
-              <input 
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="vb-input w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Agency Tagline / Slogan:</label>
-              <input 
-                type="text" 
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-                className="vb-input w-full text-slate-600"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-bold text-slate-700 mb-0.5">Bill Invoice Terms & Conditions (बिल शर्तें):</label>
-            <textarea 
-              rows={3}
-              value={billingTerms}
-              onChange={(e) => setBillingTerms(e.target.value)}
-              className="vb-input w-full text-[11px] font-mono leading-relaxed"
-            />
-          </div>
-
-          {isSaved && (
-            <div className="p-1.5 bg-emerald-100 border border-emerald-400 text-emerald-900 font-bold text-[11px] flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Agency profile configuration updated and saved successfully!</span>
+          {msg && (
+            <div className={`p-1.5 border font-bold text-[11px] flex items-center gap-1.5 ${msg.good ? 'bg-emerald-100 border-emerald-400 text-emerald-900' : 'bg-red-50 border-red-400 text-red-800'}`}>
+              {msg.good && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+              <span>{msg.text}</span>
             </div>
           )}
-
         </div>
 
-        {/* Footer */}
-        <div className="bg-[#ECE9D8] pt-2 border-t border-slate-300 flex items-center justify-between text-xs font-bold">
-          <span className="text-slate-500 font-mono text-[10px]">Config: AryanNews.cfg</span>
-          <div className="flex items-center gap-2">
-            <button 
-              type="submit"
-              className="vb-btn bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 cursor-pointer px-3 py-1"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Profile</span>
-            </button>
-            <button 
-              type="button"
-              onClick={onClose} 
-              className="vb-btn bg-white hover:bg-red-50 text-red-800 flex items-center gap-1 cursor-pointer px-3 py-1"
-            >
-              <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>
-              <span>Close</span>
-            </button>
-          </div>
+        <div className="pt-2 border-t border-slate-300 flex items-center justify-end gap-2 text-xs font-bold">
+          <button type="submit" disabled={busy} className="vb-btn bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white flex items-center gap-1 cursor-pointer px-3 py-1">
+            <Save className="w-3.5 h-3.5" /> <span>{busy ? 'रुकिए…' : 'Save Profile'}</span>
+          </button>
+          <button type="button" onClick={onClose} className="vb-btn bg-white hover:bg-red-50 text-red-800 cursor-pointer px-3 py-1">Close</button>
         </div>
-
       </form>
     </div>
   );
