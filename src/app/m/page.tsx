@@ -6,7 +6,10 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-type View = 'loading' | 'login' | 'home' | 'search' | 'customer' | 'pay' | 'confirm' | 'done' | 'dues' | 'voice' | 'later';
+type View = 'loading' | 'login' | 'home' | 'search' | 'customer' | 'pay' | 'confirm' | 'done' | 'dues' | 'voice' | 'later'
+  | 'stop' | 'start' | 'extra' | 'change-confirm' | 'change-done';
+// What a home tile was pressed for: after the customer is picked, that screen opens
+type Intent = 'pay' | 'stop' | 'start' | 'extra' | null;
 
 interface Me { id: string; name: string; can_collect: boolean; can_stop: boolean; lines: { region_id: number; name: string }[]; today: { amount: number; count: number } }
 interface Card { customer_id: number; name: string; name_eng: string; region: string; region_id: number }
@@ -20,6 +23,15 @@ interface Customer extends Card {
 }
 interface Payment { amount: string; mode: 'cash' | 'upi'; receiptNo: string; requestId: string }
 interface Saved { amount: number; receipt_no: string; recp_no: number; balance: number }
+// A paper change waiting for its जाँच screen: stop (छुट्टी / हमेशा), start, or one day's extra copy
+interface Change {
+  kind: 'stop' | 'start' | 'extra';
+  publica_id: number; paper: string;
+  permanent: boolean; from: string; to: string; qty: number; reason: string;
+}
+interface Paper { publica_id: number; name: string; english: string }
+const isoDay = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const showDate = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '');
 
 const C = { navy: '#13315c', green: '#1a7340', orange: '#c2410c', red: '#9f1d1d', cream: '#f8f5ef', line: '#e7e1d6', ink: '#1f2328', grey: '#5f6670' };
 const rupees = (n: number) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
@@ -156,6 +168,9 @@ export default function MobileApp() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [payment, setPayment] = useState<Payment>({ amount: '', mode: 'cash', receiptNo: '', requestId: '' });
   const [saved, setSaved] = useState<Saved | null>(null);
+  const [intent, setIntent] = useState<Intent>(null);
+  const [change, setChange] = useState<Change | null>(null);
+  const [changeDone, setChangeDone] = useState<{ by: string; at: string } | null>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean }>({ text: '' });
   const [busy, setBusy] = useState(false);
   const history = useRef<View[]>([]);
@@ -212,11 +227,39 @@ export default function MobileApp() {
 
   switch (view) {
     case 'home':
-      return shell(<Home me={me} go={go} logout={logout} refresh={loadMe} />, true);
-    case 'search':
-      return shell(<><Header title="ग्राहक खोजें" onBack={back} /><div className="p-4"><Notice {...message} /><Search onPick={c => openCustomer(c.customer_id)} /></div></>, true);
+      return shell(<Home me={me} go={go} logout={logout} refresh={loadMe} pick={i => { setIntent(i); go('search'); }} />, true);
+    case 'search': {
+      const titles: Record<string, string> = { pay: 'पैसे जमा: ग्राहक चुनें', stop: 'अखबार बंद: ग्राहक चुनें', start: 'अखबार चालू: ग्राहक चुनें', extra: 'अतिरिक्त अखबार: ग्राहक चुनें' };
+      return shell(<><Header title={(intent && titles[intent]) || 'ग्राहक खोजें'} onBack={() => { setIntent(null); back(); }} /><div className="p-4"><Notice {...message} />
+        <Search onPick={c => { const then: View = intent || 'customer'; setIntent(null); setChange(null); openCustomer(c.customer_id, then); }} /></div></>, true);
+    }
     case 'customer':
-      return shell(customer && <CustomerPage c={customer} back={back} go={go} />);
+      return shell(customer && <CustomerPage c={customer} canStop={me.can_stop} back={back} go={v => { setChange(null); go(v); }} />);
+    case 'stop':
+      return shell(customer && <StopForm c={customer} initial={change?.kind === 'stop' ? change : null} back={() => { setChange(null); back(); }} next={ch => { setChange(ch); go('change-confirm'); }} />);
+    case 'start':
+    case 'extra':
+      return shell(customer && <StartForm key={view} kind={view} c={customer} initial={change?.kind === view ? change : null} back={() => { setChange(null); back(); }} next={ch => { setChange(ch); go('change-confirm'); }} />);
+    case 'change-confirm':
+      return shell(customer && change && (
+        <ChangeConfirm c={customer} ch={change} back={back} message={message}
+          save={async () => {
+            setBusy(true);
+            const r = change.kind === 'stop'
+              ? await api('/api/m/stop', { method: 'POST', body: JSON.stringify({ customer_id: customer.customer_id, publica_id: change.publica_id, kind: change.permanent ? 'permanent' : 'temporary', from: change.from, to: change.to, reason: change.reason }) })
+              : await api('/api/m/start', { method: 'POST', body: JSON.stringify({ customer_id: customer.customer_id, publica_id: change.publica_id, qty: change.qty, date: change.from, kind: change.kind }) });
+            setBusy(false);
+            if (!r.ok) { setMessage({ text: r.data.error || 'सेव नहीं हुआ', error: true }); return; }
+            setChangeDone({ by: r.data.by, at: r.data.at });
+            history.current = []; go('change-done', false);
+          }} />
+      ));
+    case 'change-done':
+      return shell(customer && change && changeDone && (
+        <ChangeDone c={customer} ch={change} done={changeDone}
+          toCustomer={() => { history.current = ['home']; openCustomer(customer.customer_id, 'customer'); }}
+          home={() => { history.current = []; setView('home'); }} />
+      ));
     case 'pay':
       return shell(customer && <Pay c={customer} payment={payment} setPayment={setPayment} back={back} next={() => go('confirm')} />);
     case 'confirm':
@@ -334,15 +377,15 @@ function Login({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Home({ me, go, logout, refresh }: { me: Me; go: (v: View) => void; logout: () => void; refresh: () => void }) {
+function Home({ me, go, logout, refresh, pick }: { me: Me; go: (v: View) => void; logout: () => void; refresh: () => void; pick: (i: Intent) => void }) {
   useEffect(() => { refresh(); }, [refresh]);
-  const tiles: { icon: string; color: string; title: string; sub: string; to: View; show: boolean }[] = [
-    { icon: 'rupee', color: C.green, title: 'पैसे जमा', sub: 'रसीद काटें', to: 'search', show: me.can_collect },
-    { icon: 'search', color: C.navy, title: 'ग्राहक खोजें', sub: 'नाम / नंबर', to: 'search', show: true },
-    { icon: 'plus', color: C.navy, title: 'अखबार चालू', sub: 'नया या और', to: 'later', show: me.can_stop },
-    { icon: 'stop', color: C.orange, title: 'अखबार बंद', sub: 'छुट्टी या हमेशा', to: 'later', show: me.can_stop },
-    { icon: 'list', color: C.navy, title: 'बकाया सूची', sub: 'लाइन के हिसाब से', to: 'dues', show: true },
-    { icon: 'paper', color: C.navy, title: 'अतिरिक्त अखबार', sub: 'एक दिन वाला', to: 'later', show: me.can_stop }
+  const tiles: { icon: string; color: string; title: string; sub: string; open: () => void; show: boolean }[] = [
+    { icon: 'rupee', color: C.green, title: 'पैसे जमा', sub: 'रसीद काटें', open: () => pick('pay'), show: me.can_collect },
+    { icon: 'search', color: C.navy, title: 'ग्राहक खोजें', sub: 'नाम / नंबर', open: () => pick(null), show: true },
+    { icon: 'plus', color: C.navy, title: 'अखबार चालू', sub: 'नया या और', open: () => pick('start'), show: me.can_stop },
+    { icon: 'stop', color: C.orange, title: 'अखबार बंद', sub: 'छुट्टी या हमेशा', open: () => pick('stop'), show: me.can_stop },
+    { icon: 'list', color: C.navy, title: 'बकाया सूची', sub: 'लाइन के हिसाब से', open: () => go('dues'), show: true },
+    { icon: 'paper', color: C.navy, title: 'अतिरिक्त अखबार', sub: 'एक दिन वाला', open: () => pick('extra'), show: me.can_stop }
   ];
   return (
     <>
@@ -355,7 +398,7 @@ function Home({ me, go, logout, refresh }: { me: Me; go: (v: View) => void; logo
       </div>
       <div className="p-4">
         <div className="flex gap-3">
-          <button onClick={() => go('search')} className="flex-1 h-[64px] rounded-2xl border-2 bg-white flex items-center gap-3 px-4 text-left text-[19px]" style={{ borderColor: C.navy, color: C.grey }}>
+          <button onClick={() => pick(null)} className="flex-1 h-[64px] rounded-2xl border-2 bg-white flex items-center gap-3 px-4 text-left text-[19px]" style={{ borderColor: C.navy, color: C.grey }}>
             <Icon name="search" /> नाम, ग्राहक नं. या मोबाइल
           </button>
           <button onClick={() => go('voice')} aria-label="बोलें" className="w-[64px] h-[64px] rounded-full flex items-center justify-center" style={{ background: C.orange }}><Icon name="mic" color="#fff" /></button>
@@ -363,7 +406,7 @@ function Home({ me, go, logout, refresh }: { me: Me; go: (v: View) => void; logo
         <p className="text-[16px] mt-2" style={{ color: C.grey }}>बोलकर भी कर सकते हैं: “राम जी 350 जमा”</p>
         <div className="grid grid-cols-2 gap-3 mt-4">
           {tiles.filter(t => t.show).map(t => (
-            <button key={t.title} onClick={() => go(t.to)} className="rounded-2xl bg-white border p-4 text-left min-h-[150px]" style={{ borderColor: C.line }}>
+            <button key={t.title} onClick={t.open} className="rounded-2xl bg-white border p-4 text-left min-h-[150px]" style={{ borderColor: C.line }}>
               <span className="w-[56px] h-[56px] rounded-xl flex items-center justify-center" style={{ background: t.color }}><Icon name={t.icon} size={30} color="#fff" /></span>
               <span className="block text-[23px] font-bold mt-3 leading-tight">{t.title}</span>
               <span className="block text-[17px]" style={{ color: C.grey }}>{t.sub}</span>
@@ -430,7 +473,7 @@ function BalanceBox({ balance }: { balance: number }) {
   );
 }
 
-function CustomerPage({ c, back, go }: { c: Customer; back: () => void; go: (v: View) => void }) {
+function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean; back: () => void; go: (v: View) => void }) {
   const phone = c.phones[0];
   const billText = `नमस्ते ${c.name} जी,\nआर्यन न्यूज़ एजेंसी, ब्यावर\nग्राहक नं. ${c.customer_id}\n${c.balance > 1 ? `आपका बकाया ${rupees(c.balance)} है` : c.balance < 0 ? `आपके ${rupees(c.balance)} जमा (एडवांस) हैं` : 'आपका कोई बकाया नहीं है'}${c.bill ? ` (${c.bill.month_hindi} ${c.bill.year} तक का बिल)` : ''}।\nधन्यवाद।`;
   return (
@@ -462,8 +505,14 @@ function CustomerPage({ c, back, go }: { c: Customer; back: () => void; go: (v: 
         </div>
         {c.last_payment && <p className="text-[17px]" style={{ color: C.grey }}>आखिरी जमा: {c.last_payment.date} · {rupees(c.last_payment.amount)}{c.last_payment.receipt_no ? ` · रसीद ${c.last_payment.receipt_no}` : ''}</p>}
         {c.can_collect && <BigButton onClick={() => go('pay')}><Icon name="rupee" /> पैसे जमा करें</BigButton>}
+        {canStop && (
+          <div className="grid grid-cols-2 gap-3">
+            <BigButton outline color={C.orange} onClick={() => go('stop')} disabled={c.papers.length === 0}>अखबार बंद</BigButton>
+            <BigButton outline color={C.navy} onClick={() => go('start')}>अखबार चालू</BigButton>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <BigButton outline color={C.orange} onClick={() => go('later')}>अखबार बंद</BigButton>
+          {canStop && <BigButton outline color={C.navy} onClick={() => go('extra')}>अतिरिक्त अखबार</BigButton>}
           {phone
             ? <a href={wa(phone, billText)} className="w-full min-h-[64px] rounded-2xl text-[22px] font-bold flex items-center justify-center border-2 bg-white" style={{ borderColor: C.navy, color: C.navy }}>बिल भेजें</a>
             : <BigButton outline color={C.navy} disabled>बिल भेजें</BigButton>}
@@ -708,5 +757,208 @@ function Voice({ back, onDo }: { back: () => void; onDo: (c: Card, amount: numbe
         </div>
       </div>
     </>
+  );
+}
+
+// --- Paper changes: अखबार बंद, अखबार चालू, अतिरिक्त अखबार -------------------------------------
+
+function DateField({ label, value, onChange, min }: { label: string; value: string; onChange: (v: string) => void; min?: string }) {
+  return (
+    <label className="block">
+      <span className="text-[17px]" style={{ color: C.grey }}>{label}</span>
+      <input type="date" value={value} min={min} onChange={e => onChange(e.target.value)}
+        className="w-full h-[60px] rounded-xl border bg-white px-3 text-[20px]" style={{ borderColor: C.line }} />
+    </label>
+  );
+}
+
+function StopForm({ c, initial, back, next }: { c: Customer; initial: Change | null; back: () => void; next: (ch: Change) => void }) {
+  const [paperId, setPaperId] = useState<number>(initial?.publica_id || (c.papers.length === 1 ? c.papers[0].publica_id : 0));
+  const [permanent, setPermanent] = useState(initial?.permanent || false);
+  const [from, setFrom] = useState(initial?.from || isoDay(1));
+  const [to, setTo] = useState(initial && !initial.permanent ? initial.to : isoDay(7));
+  const [reason, setReason] = useState(initial?.reason || '');
+  const [listening, setListening] = useState(false);
+  const [error, setError] = useState('');
+  const speak = () => {
+    const stop = listen(t => setReason(t), () => setListening(false));
+    if (stop) setListening(true); else alert('इस फ़ोन में बोलकर लिखना नहीं चलता');
+  };
+  const goNext = () => {
+    const paper = c.papers.find(p => p.publica_id === paperId);
+    if (!paper) { setError('कौन सा अखबार बंद करना है, चुनें'); return; }
+    if (!from || (!permanent && !to)) { setError('तारीख भरें'); return; }
+    if (!permanent && to < from) { setError('"कब तक" की तारीख "कब से" के बाद की हो'); return; }
+    next({ kind: 'stop', publica_id: paper.publica_id, paper: paper.name, permanent, from, to: permanent ? from : to, qty: 0, reason: reason.trim() });
+  };
+  return (
+    <>
+      <Header title="अखबार बंद करें" onBack={back} />
+      <div className="p-4 space-y-4">
+        <p className="text-[23px] font-bold" style={{ color: C.navy }}>{c.name} · #{c.customer_id}</p>
+        <div>
+          <p className="text-[20px] font-bold mb-2">कौन सा अखबार?</p>
+          <div className="space-y-3">
+            {c.papers.map(p => {
+              const on = p.publica_id === paperId;
+              return (
+                <button key={`${p.sno}-${p.publica_id}`} onClick={() => { setPaperId(p.publica_id); setError(''); }}
+                  className="w-full min-h-[64px] rounded-2xl border-2 px-4 text-left text-[22px] font-bold"
+                  style={on ? { borderColor: C.orange, background: '#fde5da', color: '#7c2d12' } : { borderColor: C.line, background: '#fff' }}>
+                  {on ? '✓ ' : ''}{p.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <p className="text-[20px] font-bold mb-2">कब तक?</p>
+          <div className="grid grid-cols-2 gap-3">
+            {[false, true].map(perm => (
+              <button key={String(perm)} onClick={() => setPermanent(perm)} className="min-h-[60px] rounded-xl border-2 text-[20px] font-bold"
+                style={permanent === perm ? { background: C.navy, borderColor: C.navy, color: '#fff' } : { borderColor: C.navy, color: C.navy, background: '#fff' }}>
+                {perm ? 'हमेशा के लिए' : 'कुछ दिन (छुट्टी)'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={permanent ? '' : 'grid grid-cols-2 gap-3'}>
+          <DateField label="कब से" value={from} onChange={v => { setFrom(v); setError(''); }} min={isoDay(0).slice(0, 8) + '01'} />
+          {!permanent && <DateField label="कब तक" value={to} onChange={v => { setTo(v); setError(''); }} min={from} />}
+        </div>
+        <label className="block">
+          <span className="text-[17px]" style={{ color: C.grey }}>कारण (बोलकर भी)</span>
+          <div className="flex gap-3">
+            <input value={reason} onChange={e => setReason(e.target.value)} placeholder="जैसे: बाहर जा रहे हैं"
+              className="flex-1 min-w-0 h-[60px] rounded-xl border bg-white px-3 text-[20px]" style={{ borderColor: C.line }} />
+            <button onClick={speak} aria-label="बोलकर कारण" className="w-[60px] h-[60px] rounded-full flex items-center justify-center shrink-0" style={{ background: listening ? C.red : C.orange }}><Icon name="mic" color="#fff" /></button>
+          </div>
+        </label>
+        {error && <Notice text={error} error />}
+        <BigButton color={C.orange} onClick={goNext}>आगे: जाँचें</BigButton>
+      </div>
+    </>
+  );
+}
+
+let paperCache: Paper[] | null = null;
+
+function StartForm({ kind, c, initial, back, next }: { kind: 'start' | 'extra'; c: Customer; initial: Change | null; back: () => void; next: (ch: Change) => void }) {
+  const [papers, setPapers] = useState<Paper[]>(paperCache || []);
+  const [q, setQ] = useState('');
+  const [picked, setPicked] = useState<Paper | null>(initial ? { publica_id: initial.publica_id, name: initial.paper, english: '' } : null);
+  const [qty, setQty] = useState(initial?.qty || 1);
+  const [date, setDate] = useState(initial?.from || (kind === 'extra' ? isoDay(0) : isoDay(1)));
+  const [error, setError] = useState('');
+  useEffect(() => {
+    if (paperCache) return;
+    api<{ papers: Paper[] }>('/api/m/papers').then(r => {
+      if (!r.ok) { setError(r.data.error || 'अखबार की सूची नहीं आई'); return; }
+      paperCache = r.data.papers || []; setPapers(paperCache);
+    });
+  }, []);
+  const needle = q.trim().toLowerCase();
+  const shown = needle ? papers.filter(p => p.name.toLowerCase().includes(needle) || p.english.toLowerCase().includes(needle)).slice(0, 30) : [];
+  const running = picked && c.papers.some(p => p.publica_id === picked.publica_id);
+  const goNext = () => {
+    if (!picked) { setError('अखबार चुनें'); return; }
+    if (!date) { setError('तारीख भरें'); return; }
+    next({ kind, publica_id: picked.publica_id, paper: picked.name, permanent: false, from: date, to: date, qty, reason: '' });
+  };
+  return (
+    <>
+      <Header title={kind === 'extra' ? 'अतिरिक्त अखबार' : 'अखबार चालू करें'} onBack={back} />
+      <div className="p-4 space-y-4">
+        <p className="text-[23px] font-bold" style={{ color: C.navy }}>{c.name} · #{c.customer_id}</p>
+        <p className="text-[18px]" style={{ color: C.grey }}>{kind === 'extra' ? 'सिर्फ़ एक दिन के लिए (जैसे किसी दिन एक और कॉपी)। अगले दिन से अपने-आप बंद।' : 'चुने दिन से रोज़ आएगा, जब तक बंद न करें।'}</p>
+        {picked ? (
+          <div className="rounded-2xl border-2 px-4 py-3 flex items-center justify-between gap-3" style={{ borderColor: C.green, background: '#e8f1ea' }}>
+            <span className="text-[22px] font-bold">✓ {picked.name}</span>
+            <button onClick={() => { setPicked(null); setQ(''); }} className="text-[18px] underline min-h-[44px]" style={{ color: C.navy }}>बदलें</button>
+          </div>
+        ) : (
+          <div>
+            <p className="text-[20px] font-bold mb-2">कौन सा अखबार?</p>
+            <input autoFocus value={q} onChange={e => { setQ(e.target.value); setError(''); }} placeholder="नाम लिखें (हिंदी या English)"
+              className="w-full h-[60px] rounded-2xl border-2 bg-white px-4 text-[20px]" style={{ borderColor: C.navy }} />
+            <div className="mt-3 space-y-2">
+              {needle && shown.length === 0 && <p className="text-[18px]" style={{ color: C.grey }}>{papers.length ? 'कोई अखबार नहीं मिला' : 'सूची आ रही है…'}</p>}
+              {shown.map(p => (
+                <button key={p.publica_id} onClick={() => { setPicked(p); setError(''); }} className="w-full min-h-[60px] rounded-2xl bg-white border px-4 text-left" style={{ borderColor: C.line }}>
+                  <span className="text-[21px] font-bold">{p.name}</span>{p.english !== p.name && <span className="text-[16px] ml-2" style={{ color: C.grey }}>{p.english}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {running && kind === 'start' && <Notice text="यह अखबार इस ग्राहक का पहले से चालू है। फिर भी जोड़ेंगे तो एक और कॉपी आएगी।" error />}
+        <div>
+          <p className="text-[20px] font-bold mb-2">कितनी कॉपी?</p>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setQty(n => Math.max(1, n - 1))} aria-label="कम" className="w-[64px] h-[64px] rounded-2xl bg-white border text-[32px] font-bold" style={{ borderColor: C.line }}>−</button>
+            <span className="text-[34px] font-extrabold w-[60px] text-center">{qty}</span>
+            <button onClick={() => setQty(n => Math.min(50, n + 1))} aria-label="ज़्यादा" className="w-[64px] h-[64px] rounded-2xl bg-white border text-[32px] font-bold" style={{ borderColor: C.line }}>+</button>
+          </div>
+        </div>
+        <DateField label={kind === 'extra' ? 'किस दिन' : 'कब से'} value={date} onChange={v => { setDate(v); setError(''); }} min={isoDay(0).slice(0, 8) + '01'} />
+        {error && <Notice text={error} error />}
+        <BigButton onClick={goNext}>आगे: जाँचें</BigButton>
+      </div>
+    </>
+  );
+}
+
+const changeTitle = (ch: Change) => (ch.kind === 'stop' ? (ch.permanent ? 'हमेशा के लिए बंद' : 'छुट्टी (कुछ दिन बंद)') : ch.kind === 'start' ? 'अखबार चालू' : 'अतिरिक्त अखबार (एक दिन)');
+
+function ChangeConfirm({ c, ch, back, save, message }: { c: Customer; ch: Change; back: () => void; save: () => Promise<void>; message: { text: string; error?: boolean } }) {
+  const [saving, setSaving] = useState(false);
+  const run = async () => { if (saving) return; setSaving(true); await save(); setSaving(false); };
+  const rows: [string, string][] = [
+    ['ग्राहक', `${c.name} · #${c.customer_id}`],
+    ['काम', changeTitle(ch)],
+    ['अखबार', ch.paper],
+    ...(ch.kind === 'stop'
+      ? (ch.permanent ? [['कब से', showDate(ch.from)]] : [['कब से', showDate(ch.from)], ['कब तक', showDate(ch.to)]]) as [string, string][]
+      : [['कॉपी', String(ch.qty)], [ch.kind === 'extra' ? 'किस दिन' : 'कब से', showDate(ch.from)]] as [string, string][]),
+    ...(ch.reason ? [['कारण', ch.reason]] as [string, string][] : [])
+  ];
+  return (
+    <>
+      <Header title="एक बार जाँच लें" onBack={back} />
+      <div className="p-4 space-y-4">
+        <div className="rounded-2xl bg-white border px-5 py-2" style={{ borderColor: C.line }}>
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between items-center gap-4 py-3 text-[20px]"><span style={{ color: C.grey }}>{k}</span><span className="font-bold text-right">{v}</span></div>
+          ))}
+        </div>
+        {ch.kind === 'stop' && ch.permanent && <p className="text-[17px]" style={{ color: C.red }}>हमेशा के लिए बंद करने पर यह अखबार इस तारीख से बिल में नहीं जुड़ेगा।</p>}
+        <Notice {...message} />
+        <div className="pt-6 space-y-3">
+          <BigButton color={ch.kind === 'stop' ? C.orange : C.green} onClick={run} disabled={saving}><Icon name="check" /> {saving ? 'सेव हो रहा है…' : 'सही है, सेव करें'}</BigButton>
+          <BigButton outline color={C.navy} onClick={back} disabled={saving}>बदलें</BigButton>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ChangeDone({ c, ch, done, toCustomer, home }: { c: Customer; ch: Change; done: { by: string; at: string }; toCustomer: () => void; home: () => void }) {
+  const at = new Date(done.at);
+  const when = `${String(at.getDate()).padStart(2, '0')}/${String(at.getMonth() + 1).padStart(2, '0')}/${at.getFullYear()} ${at.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })}`;
+  const what = ch.kind === 'stop'
+    ? (ch.permanent ? `${ch.paper} ${showDate(ch.from)} से हमेशा के लिए बंद` : `${ch.paper} ${showDate(ch.from)} से ${showDate(ch.to)} तक बंद`)
+    : ch.kind === 'start' ? `${ch.paper} (${ch.qty}) ${showDate(ch.from)} से चालू` : `${ch.paper} (${ch.qty}) ${showDate(ch.from)} को एक दिन`;
+  return (
+    <div className="px-5 pt-16 text-center">
+      <div className="mx-auto w-[120px] h-[120px] rounded-full flex items-center justify-center" style={{ background: C.green }}><Icon name="check" size={64} color="#fff" /></div>
+      <h2 className="text-[30px] font-extrabold mt-6" style={{ color: C.green }}>सेव हो गया</h2>
+      <p className="text-[21px] mt-3">{c.name} · #{c.customer_id}</p>
+      <p className="text-[20px] mt-2 font-semibold">{what}</p>
+      <p className="text-[17px] mt-3" style={{ color: C.grey }}>{done.by} · {when}</p>
+      <div className="mt-14 space-y-3">
+        <BigButton outline color={C.navy} onClick={toCustomer}>ग्राहक पर वापस</BigButton>
+        <button onClick={home} className="w-full min-h-[54px] text-[19px]" style={{ color: C.grey }}>होम पर जाएँ</button>
+      </div>
+    </div>
   );
 }

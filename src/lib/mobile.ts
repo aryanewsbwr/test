@@ -265,3 +265,33 @@ export async function collectorName(collectId: number | null | undefined): Promi
   const { data } = await db.from('collect').select('name').eq('Collect_id', collectId).maybeSingle();
   return String((data as any)?.name || '').trim();
 }
+
+// --- Paper changes (stop / start / extra) --------------------------------------------------
+
+// Who saved what from the phone. The table is optional: without it the change still saves.
+export async function logAction(caller: MobileCaller, action: string, customerId: number, details: any) {
+  try {
+    await db.from('mobile_log').insert({
+      user_id: caller.user.id, user_name: caller.user.name || caller.user.username, action, customer_id: customerId, details
+    });
+  } catch { /* table not made yet */ }
+}
+
+export function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// The earliest date a change may take effect: the 1st of this month, since earlier months are billed
+export function earliestChangeDate(): string {
+  return `${todayIndia().iso.slice(0, 8)}01`;
+}
+
+export async function customerInLine(caller: MobileCaller, customerId: number): Promise<{ customer?: any; refusal?: NextResponse }> {
+  const { data, error } = await db.from('customer').select('customer_id, region_id').eq('customer_id', customerId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return { refusal: NextResponse.json({ error: `ग्राहक #${customerId} नहीं मिला` }, { status: 404 }) };
+  if (!canSeeRegion(caller, data.region_id)) return { refusal: NextResponse.json({ error: 'यह ग्राहक आपकी लाइन का नहीं है' }, { status: 403 }) };
+  return { customer: data };
+}
