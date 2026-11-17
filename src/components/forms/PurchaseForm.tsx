@@ -5,7 +5,7 @@ import { Truck, Plus, Save, Trash2, Search, FilePlus2 } from 'lucide-react';
 import { Publisher, Publication } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getPublicationPeriodicityAndRates, getSingleEffectiveRate } from '@/lib/rateEngine';
-import KachaBillTab, { PakkaLine } from './KachaBillTab';
+import KachaBillTab, { PakkaLine, DiaryRef } from './KachaBillTab';
 
 // Transaction > Purchase: a bill received from a publisher, as in the old software's Purchase screen.
 // Publisher, Pub. Bill No., Bill Date and Received Date at the top; one line per paper (and day, for a
@@ -65,7 +65,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   // पक्का बिल (the real bill) or कच्चा बिल (the daily diary)
   const [tab, setTab] = useState<'pakka' | 'kacha'>('pakka');
   // A bill being made from the diary: once saved, those diary days are marked with it
-  const [fromDiary, setFromDiary] = useState<{ publishId: string; month: string } | null>(null);
+  const [fromDiary, setFromDiary] = useState<{ month: string; diary: DiaryRef[] } | null>(null);
 
   const sortedPublishers = useMemo(
     () => [...publishers].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
@@ -165,16 +165,24 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  // The diary's month, not yet billed, filled into a new bill (Bill No. and purchase rates are typed in)
-  const makePakka = (pid: string, month: string, diary: PakkaLine[]) => {
+  // The diary's month, not yet billed, filled into a new bill with the diary's rates (Bill No. is typed in).
+  // The publisher is chosen here; when every paper in it is from one publisher, that one is chosen already.
+  // Lines of another publisher's papers can be removed (F2) before saving: only the papers saved in
+  // the bill are marked as billed in the diary.
+  const makePakka = (month: string, diary: PakkaLine[], refs: DiaryRef[]) => {
     setTab('pakka');
     setBillId(null); setBillNo(''); setBillDate(today()); setRDate(today()); setAddless('0'); setMessage(null);
-    setPublishId(pid);
+    const owners = new Set(diary.map(l => Number((pubOf(l.publica_id) as any)?.publish_id) || 0));
+    const only = owners.size === 1 ? Array.from(owners)[0] : 0;
+    setPublishId(only ? String(only) : '');
     setLines(diary.map((l, i) => ({
-      key: Date.now() + i, publica_id: l.publica_id, day: l.day, qty: String(l.qty), rate: '', mrp: mrpFor(l.publica_id, l.day)
+      key: Date.now() + i, publica_id: l.publica_id, day: l.day, qty: String(l.qty), rate: l.rate ? String(l.rate) : '', mrp: mrpFor(l.publica_id, l.day)
     })));
-    setFromDiary({ publishId: pid, month });
-    setMessage({ text: `कच्ची डायरी (${month}) से ${diary.length} लाइन भरी गईं। Pub. Bill No. और Purchase Rate भरकर Save करें।`, good: true });
+    setFromDiary({ month, diary: refs });
+    setMessage({
+      text: `कच्ची डायरी (${month}) से ${diary.length} लाइन भरी गईं। ${only ? '' : 'Publisher चुनें, दूसरे Publisher के पेपर की लाइन हटाएँ, '}Pub. Bill No. भरें और Rate जाँचकर Save करें।`,
+      good: true
+    });
   };
 
   const startNew = () => {
@@ -200,11 +208,14 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
       setBillId(json.purchase_id);
       // A bill made from the diary: its days are now part of this bill
       let diaryNote = '';
-      if (!billId && fromDiary && fromDiary.publishId === publishId) {
+      if (!billId && fromDiary) {
+        // Only the diary lines of papers that are in this bill
+        const inBill = new Set(lines.map(l => Number(l.publica_id)));
+        const ids = fromDiary.diary.filter(d => inBill.has(d.publica_id)).map(d => d.id);
         const marked = await fetch('/api/purchases/kacha', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'billed', publish_id: Number(publishId), month: fromDiary.month, purchase_id: json.purchase_id })
+          body: JSON.stringify({ action: 'billed', purchase_id: json.purchase_id, ids })
         }).then(r => r.json()).catch(() => ({}));
         diaryNote = marked.ok ? `। कच्ची डायरी की ${marked.marked} लाइन इस बिल में जुड़ गईं` : '। कच्ची डायरी पर बिल नहीं लग पाया';
         setFromDiary(null);
@@ -316,7 +327,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
         </div>
 
         {tab === 'kacha' && (
-          <KachaBillTab publishers={publishers} papersOf={papersOf} pubName={pubName} isNewspaper={isNewspaper} onMakePakka={makePakka} />
+          <KachaBillTab papers={papers} pubName={pubName} isNewspaper={isNewspaper} onMakePakka={makePakka} />
         )}
 
         {tab === 'pakka' && (<>
