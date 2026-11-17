@@ -262,6 +262,18 @@ function Login({ onDone }: { onDone: () => void }) {
       if (r.data.staff?.some(s => s.id === last)) setWho(last);
     });
   }, []);
+  // The admin (or anyone with a website login) can open the app with username and password
+  const [adminMode, setAdminMode] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const adminLogin = async () => {
+    if (!username.trim() || !password) { setError('यूज़र नेम और पासवर्ड डालें'); return; }
+    setBusy(true);
+    const r = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: username.trim(), password }) });
+    setBusy(false);
+    if (!r.ok) { setError(r.data.error === 'Invalid username or password' ? 'गलत यूज़र नेम या पासवर्ड' : (r.data.error || 'लॉगिन नहीं हुआ')); setPassword(''); return; }
+    onDone();
+  };
   const submit = async () => {
     if (!who || pin.length !== 4) { setError('नाम चुनें और 4 अंकों का पिन डालें'); return; }
     setBusy(true);
@@ -276,6 +288,24 @@ function Login({ onDone }: { onDone: () => void }) {
       <div className="mx-auto w-[88px] h-[88px] rounded-[24px] flex items-center justify-center" style={{ background: C.navy }}><Icon name="paper" size={48} color="#fff" /></div>
       <h1 className="text-center text-[34px] font-extrabold mt-5" style={{ color: C.navy }}>आर्यन न्यूज़ एजेंसी</h1>
       <p className="text-center text-[20px]" style={{ color: C.grey }}>ब्यावर</p>
+      {adminMode ? (
+        <div className="mt-8 space-y-4">
+          <label className="block">
+            <span className="block text-[20px] font-bold mb-2">यूज़र नेम</span>
+            <input value={username} onChange={e => { setUsername(e.target.value); setError(''); }} autoCapitalize="none" autoComplete="username"
+              className="w-full h-[64px] rounded-2xl border-2 bg-white px-4 text-[22px]" style={{ borderColor: C.navy }} />
+          </label>
+          <label className="block">
+            <span className="block text-[20px] font-bold mb-2">पासवर्ड</span>
+            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} autoComplete="current-password"
+              onKeyDown={e => { if (e.key === 'Enter') adminLogin(); }}
+              className="w-full h-[64px] rounded-2xl border-2 bg-white px-4 text-[22px]" style={{ borderColor: C.navy }} />
+          </label>
+          {error && <Notice text={error} error />}
+          <BigButton color={C.navy} onClick={adminLogin} disabled={busy}>खोलें</BigButton>
+          <button onClick={() => { setAdminMode(false); setError(''); }} className="w-full min-h-[54px] text-[19px] underline" style={{ color: C.grey }}>पिन से लॉगिन</button>
+        </div>
+      ) : (<>
       <label className="block text-[20px] font-bold mt-8 mb-2">आपका नाम</label>
       <select value={who} onChange={e => { setWho(e.target.value); setError(''); }} className="w-full h-[64px] rounded-2xl border-2 bg-white px-4 text-[22px]" style={{ borderColor: C.navy }}>
         <option value="">— चुनें —</option>
@@ -298,6 +328,8 @@ function Login({ onDone }: { onDone: () => void }) {
           </button>
         ))}
       </div>
+      <button onClick={() => { setAdminMode(true); setError(''); }} className="w-full min-h-[54px] mt-4 text-[18px] underline" style={{ color: C.grey }}>एडमिन लॉगिन (यूज़र नेम / पासवर्ड)</button>
+      </>)}
     </div>
   );
 }
