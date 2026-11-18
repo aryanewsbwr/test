@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Download, Upload, Database, RefreshCw, FileText, ShieldCheck } from 'lucide-react';
+import { Download, Upload, Database, RefreshCw, FileText } from 'lucide-react';
 import { applyRestore, downloadBackup, downloadOldSoftwareFile, oldHistoryInfo, OldHistoryInfo, planRestore, readJson, RestorePlan, saveOldHistory } from '@/lib/backupClient';
 import { validDatabaseName } from '@/lib/oldSoftwareExport';
 
@@ -185,81 +185,109 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
         </div>
 
         <div className="flex gap-1 border-b border-slate-400 pb-0.5 mb-2 px-1">
-          {tabButton('backup', 'बैकअप (Backup)', <Download className="w-3.5 h-3.5 text-emerald-700" />)}
-          {tabButton('restore', 'रिस्टोर (Restore)', <Upload className="w-3.5 h-3.5 text-blue-700" />)}
+          {tabButton('backup', 'बैकअप (VB6 में भेजें)', <Download className="w-3.5 h-3.5 text-emerald-700" />)}
+          {tabButton('restore', 'रिस्टोर (VB6 से लाएँ)', <Upload className="w-3.5 h-3.5 text-blue-700" />)}
           {tabButton('balance_forward', 'Balance Forward', <RefreshCw className="w-3.5 h-3.5 text-amber-700" />)}
         </div>
 
         <div className="bg-white p-4 vb-box-inset text-xs space-y-3 min-h-[260px]">
           {activeTab === 'backup' && (
             <div className="space-y-3">
-              <p className="text-slate-700 leading-relaxed">
-                यह लाइव डाटाबेस का बैकअप लेता है: ग्राहक, सब्सक्रिप्शन, पेपर, दरें, हॉकर, बिल, रसीदें और रिटेल सेल। हर टेबल की गिनती जाँची जाती है।
-              </p>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={includeOlderYears} disabled={isProcessing} onChange={e => setIncludeOlderYears(e.target.checked)} />
-                <span>पुराने सालों के बिल भी शामिल करें (All older years, takes several minutes)</span>
-              </label>
-              <button
-                onClick={handleBackup}
-                disabled={isProcessing}
-                className="w-full vb-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Download className="w-4 h-4" />
-                <span>{isProcessing ? 'Working...' : 'Download Backup (बैकअप डाउनलोड करें)'}</span>
-              </button>
-              <p className="text-[10px] text-slate-500">
-                This file restores into this software only, not into the old software. Login accounts are not included.
-              </p>
-              <div className="border-t border-slate-300 pt-3 space-y-2">
+              {/* The everyday job: the website's work into the old software */}
+              <div className="border-2 border-blue-700 rounded p-3 space-y-2">
+                <div className="font-bold text-blue-900 text-[13px]">पुराने सॉफ्टवेयर (VB6) में भेजें</div>
+                <ol className="space-y-1.5 text-[12px] text-slate-800">
+                  <li className="flex gap-2">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center">1</span>
+                    <span>
+                      पहले VB6 का ताज़ा बैकअप <b>रिस्टोर</b> टैब से वेबसाइट में डालें।
+                      {historyInfo && !historyInfo.missing && historyInfo.restored_at && <> आखिरी बार डाला: <b>{when(historyInfo.restored_at)}</b> ({historyInfo.restored_name})</>}
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center">2</span>
+                    <span>नीचे का नीला बटन दबाएँ और फाइल सेव करें। कुछ मिनट लगते हैं, खिड़की बंद न करें।</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center">3</span>
+                    <span>बनी हुई <b>.sql</b> फाइल VB6 वाले कंप्यूटर पर MySQL Administrator → Restore से चलाएँ।</span>
+                  </li>
+                </ol>
+                {historyInfo?.missing && (
+                  <div className="text-[11px] font-bold text-red-700">पहले स्टेप 1 करें: वेबसाइट पर अभी VB6 का कोई बैकअप नहीं डाला गया है।</div>
+                )}
+                {historyStale && (
+                  <div className="border border-red-400 bg-red-50 text-red-800 p-2 rounded text-[11px] font-bold">
+                    चेतावनी: आखिरी रिस्टोर की फाइल ({historyInfo?.restored_name}) वेबसाइट पर पूरी नहीं रखी गई। रिस्टोर टैब में वही फाइल दोबारा रिस्टोर करें, फिर यह बैकअप बनाएँ।
+                  </div>
+                )}
                 <button
                   onClick={handleOldSoftwareFile}
                   disabled={isProcessing}
-                  className="w-full vb-btn bg-white hover:bg-slate-50 text-blue-900 border border-blue-800 font-bold py-2.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full vb-btn bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isProcessing ? 'Working...' : 'पुराने सॉफ्टवेयर के लिए बैकअप (Backup for old software)'}</span>
+                  <span>{isProcessing ? 'बन रहा है...' : forCheck ? `VB6 के लिए बैकअप बनाएँ (जाँच: ${checkName.trim()})` : 'VB6 के लिए बैकअप बनाएँ'}</span>
                 </button>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  पुराने सॉफ्टवेयर की पूरी बैकअप फाइल: वेबसाइट का डाटा, और जो वेबसाइट पर नहीं है (पुराने साल, पुराने सॉफ्टवेयर की अपनी टेबल) वह वेबसाइट पर रखे पुराने इतिहास से। पुराने सॉफ्टवेयर के Restore से चलाएँ।
+                <details className="text-[11px] text-slate-600">
+                  <summary className="cursor-pointer select-none">और विकल्प</summary>
+                  <div className="pt-1.5 pl-3 space-y-1.5">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={forCheck} disabled={isProcessing} onChange={e => setForCheck(e.target.checked)} />
+                      <span>जाँच के लिए अलग डाटाबेस में बनाएँ (असली "test" नहीं बदलेगा)</span>
+                    </label>
+                    {forCheck && (
+                      <div className="flex items-center gap-2 pl-5">
+                        <span>डाटाबेस का नाम:</span>
+                        <input value={checkName} disabled={isProcessing} onChange={e => setCheckName(e.target.value)} className="border border-slate-400 px-1.5 py-0.5 w-40 font-mono" />
+                        {!validDatabaseName(checkName.trim()) && <span className="text-red-700">सिर्फ अंग्रेज़ी अक्षर, अंक और _</span>}
+                      </div>
+                    )}
+                    <div>
+                      फाइल में वेबसाइट का डाटा होता है, और जो वेबसाइट पर नहीं है (पुराने साल, VB6 की अपनी टेबल) वह आखिरी रिस्टोर की फाइल से आता है।
+                      {historyInfo && !historyInfo.missing && <> अभी रखी फाइल: <b>{historyInfo.name}</b> ({when(historyInfo.saved_at)})।</>}
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              {/* The website's own safety copy */}
+              <div className="border border-slate-300 rounded p-3 space-y-2">
+                <div className="font-bold text-emerald-800 text-[13px]">वेबसाइट की सेफ्टी कॉपी</div>
+                <p className="text-[11px] text-slate-600">
+                  सिर्फ इसी वेबसाइट में वापस डालने के लिए (VB6 में नहीं चलती)। हफ्ते में एक बार लेकर सुरक्षित रखें।
                 </p>
-                {historyInfo && (historyInfo.missing
-                  ? <div className="text-[11px] font-bold text-red-700">पुराना इतिहास अभी वेबसाइट पर नहीं है: Restore टैब में पुराने सॉफ्टवेयर की फाइल रखें।</div>
-                  : <div className="text-[11px] text-slate-700">पुराना इतिहास: <b>{historyInfo.name}</b>, रखा गया {when(historyInfo.saved_at)}{historyInfo.restored_at && <> · आखिरी रिस्टोर: {when(historyInfo.restored_at)}</>}</div>)}
-                {historyStale && (
-                  <div className="border border-red-400 bg-red-50 text-red-800 p-2 rounded text-[11px] font-bold">
-                    चेतावनी: पुराना इतिहास आखिरी रिस्टोर ({historyInfo?.restored_name}, {when(historyInfo?.restored_at)}) से पुराना है। पुराने सॉफ्टवेयर की अपनी टेबल (purchase, area, mobile...) इस बैकअप में पुरानी आएँगी और उसमें बाद में डाली गई एंट्री मिट सकती हैं। Restore टैब के नीले बॉक्स में वही फाइल दोबारा रखें।
-                  </div>
-                )}
-                <label className="flex items-center gap-2 cursor-pointer text-[11px]">
-                  <input type="checkbox" checked={forCheck} disabled={isProcessing} onChange={e => setForCheck(e.target.checked)} />
-                  <span>जाँच के लिए अलग डाटाबेस में (Write for a check database, the live "test" is not touched)</span>
+                <button
+                  onClick={handleBackup}
+                  disabled={isProcessing}
+                  className="w-full vb-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isProcessing ? 'बन रहा है...' : 'सेफ्टी कॉपी डाउनलोड करें'}</span>
+                </button>
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-600">
+                  <input type="checkbox" checked={includeOlderYears} disabled={isProcessing} onChange={e => setIncludeOlderYears(e.target.checked)} />
+                  <span>पुराने सालों के बिल भी (ज़्यादा समय लगता है)</span>
                 </label>
-                {forCheck && (
-                  <div className="flex items-center gap-2 text-[11px] pl-5">
-                    <span>डाटाबेस का नाम:</span>
-                    <input value={checkName} disabled={isProcessing} onChange={e => setCheckName(e.target.value)} className="border border-slate-400 px-1.5 py-0.5 w-40 font-mono" />
-                    {!validDatabaseName(checkName.trim()) && <span className="text-red-700">सिर्फ अंग्रेज़ी अक्षर, अंक और _</span>}
-                  </div>
-                )}
               </div>
             </div>
           )}
 
           {activeTab === 'restore' && (
             <div className="space-y-3">
-              <div className="border border-blue-300 bg-blue-50 p-2 rounded text-[11px] space-y-1.5">
-                <div className="font-bold text-blue-900">पुराना इतिहास वेबसाइट पर रखें</div>
-                <div className="text-slate-700">
-                  पुराने सॉफ्टवेयर की पूरी बैकअप फाइल (जैसे New Project 20261104 1222.sql) चुनें। इससे पुराने बंद साल और पुराने सॉफ्टवेयर की अपनी टेबल वेबसाइट पर रख ली जाती हैं, ताकि "पुराने सॉफ्टवेयर के लिए बैकअप" पूरी बने। वेबसाइट का कोई डाटा नहीं बदलता। नीचे से पुराने सॉफ्टवेयर की फाइल रिस्टोर करने पर यह अपने आप भी हो जाता है।
-                  {historyInfo && !historyInfo.missing && <> अभी रखा है: <b>{historyInfo.name}</b> ({when(historyInfo.saved_at)})।</>}
-                </div>
-                <input type="file" disabled={isProcessing} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleSaveHistory(f); }} className="text-[11px]" />
-              </div>
-              <div className="bg-amber-50 border border-amber-300 p-2 rounded text-[11px] text-amber-950 flex items-start gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
-                <span>फाइल चुनने से कुछ नहीं बदलता। पहले अंतर दिखेगा, फिर आप तय करेंगे। बदलने से पहले सेफ्टी कॉपी अपने आप डाउनलोड होगी।</span>
-              </div>
+              <div className="font-bold text-blue-900 text-[13px]">VB6 का डाटा वेबसाइट में लाएँ</div>
+              <ol className="space-y-1.5 text-[12px] text-slate-800">
+                {[
+                  <>VB6 में बैकअप लें (MySQL Administrator → Backup)। फाइल का नाम जैसे <b>New Project 20261117 1846.sql</b></>,
+                  <>नीचे <b>फाइल चुनें</b> दबाकर वह फाइल चुनें। इससे अभी कुछ नहीं बदलता, सिर्फ लिस्ट दिखती है।</>,
+                  <>लिस्ट देखें, फिर <b>रिस्टोर करें</b> दबाएँ। पहले एक सेफ्टी कॉपी अपने आप डाउनलोड होगी। "रिस्टोर पूरा हुआ" आने तक खिड़की बंद न करें।</>
+                ].map((text, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center">{i + 1}</span>
+                    <span>{text}</span>
+                  </li>
+                ))}
+              </ol>
 
               <div className="border-2 border-dashed border-slate-300 rounded p-3 text-center bg-slate-50">
                 <input
@@ -367,6 +395,19 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
                   </button>
                 </div>
               )}
+              <details className="text-[11px] text-slate-600">
+                <summary className="cursor-pointer select-none">और विकल्प</summary>
+                <div className="pt-1.5">
+                <div className="border border-blue-300 bg-blue-50 p-2 rounded text-[11px] space-y-1.5">
+                  <div className="font-bold text-blue-900">पुराना इतिहास वेबसाइट पर रखें</div>
+                  <div className="text-slate-700">
+                    पुराने सॉफ्टवेयर की पूरी बैकअप फाइल (जैसे New Project 20261104 1222.sql) चुनें। इससे पुराने बंद साल और पुराने सॉफ्टवेयर की अपनी टेबल वेबसाइट पर रख ली जाती हैं, ताकि "पुराने सॉफ्टवेयर के लिए बैकअप" पूरी बने। वेबसाइट का कोई डाटा नहीं बदलता। नीचे से पुराने सॉफ्टवेयर की फाइल रिस्टोर करने पर यह अपने आप भी हो जाता है।
+                    {historyInfo && !historyInfo.missing && <> अभी रखा है: <b>{historyInfo.name}</b> ({when(historyInfo.saved_at)})।</>}
+                  </div>
+                  <input type="file" disabled={isProcessing} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleSaveHistory(f); }} className="text-[11px]" />
+                </div>
+                </div>
+              </details>
             </div>
           )}
 
