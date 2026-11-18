@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSecureWhatsAppToken } from '@/lib/whatsappService';
+import sharp from 'sharp';
 
 // Keeps a copy of everything WhatsApp tells the webhook (supabase/whatsapp_replies.sql):
 // every customer message in wa_incoming, with photos and voice notes in the wa-media bucket,
@@ -75,11 +76,19 @@ async function keepMedia(mediaId: string, from: string, wamid: string): Promise<
     if (!info?.url) return null;
     const file = await fetch(info.url, { headers: auth });
     if (!file.ok) return null;
-    const mime = String(info.mime_type || 'application/octet-stream').split(';')[0];
+    let mime = String(info.mime_type || 'application/octet-stream').split(';')[0];
+    let body = Buffer.from(await file.arrayBuffer());
+    // Photos are made smaller (still easy to read) so 2 months of screenshots fit the free storage
+    if (/^image\/(jpeg|png)$/.test(mime)) {
+      try {
+        const small = await sharp(body).rotate().resize({ width: 1080, height: 1800, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer();
+        if (small.length < body.length) { body = small; mime = 'image/jpeg'; }
+      } catch { /* keep the photo as it came */ }
+    }
     const ext = mime.split('/')[1]?.replace('jpeg', 'jpg').replace('mpeg', 'mp3') || 'bin';
     const path = `${from}/${wamid.replace(/[^\w.-]/g, '_')}.${ext}`;
     const { error } = await supabaseAdmin.storage.from('wa-media')
-      .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: mime, upsert: true });
+      .upload(path, body, { contentType: mime, upsert: true });
     if (error) {
       console.error('[WhatsApp Inbox] media not stored:', error.message);
       return null;

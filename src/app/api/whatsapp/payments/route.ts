@@ -4,6 +4,7 @@ import { refuseWithout } from '@/lib/auth';
 import { customersFor } from '@/lib/waCustomers';
 import { balancesFor } from '@/lib/mobile';
 import { fySuffix } from '@/lib/financialYear';
+import { cleanOldWhatsApp, KEEP_DAYS } from '@/lib/waCleanup';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,8 @@ async function lastReceipts(ids: number[]) {
 export async function GET(req: NextRequest) {
   const refused = await refuseWithout(req, 'can_reports');
   if (refused) return refused;
-  const days = Math.min(60, Math.max(1, Number(req.nextUrl.searchParams.get('days')) || 7));
+  await cleanOldWhatsApp();
+  const days = Math.min(KEEP_DAYS, Math.max(1, Number(req.nextUrl.searchParams.get('days')) || 7));
   const since = new Date(Date.now() + 5.5 * 3600 * 1000 - (days - 1) * 86400000).toISOString().slice(0, 10);
 
   const { data, error } = await supabaseAdmin.from('wa_replies_report').select('*').gte('tareekh', since).limit(5000);
