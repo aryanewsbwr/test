@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import WhatsAppPaymentsView from './WhatsAppPaymentsView';
 
 interface WhatsAppRepliesFormProps {
   onClose: () => void;
@@ -31,7 +32,7 @@ function Customers({ list }: { list: Match[] }) {
 export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProps) {
   const [date, setDate] = useState(today());
   const [pendingOnly, setPendingOnly] = useState(false);
-  const [tab, setTab] = useState<'replies' | 'failed'>('replies');
+  const [tab, setTab] = useState<'payments' | 'replies' | 'failed'>('payments');
   const [replies, setReplies] = useState<any[]>([]);
   const [failed, setFailed] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,6 +97,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
 
         {/* Controls */}
         <div className="flex items-center gap-3 pb-2 border-b text-xs flex-wrap">
+          {tab !== 'payments' && <>
           <label className="font-bold text-[#800000]">तारीख</label>
           <input type="date" value={date} disabled={pendingOnly} onChange={e => setDate(e.target.value)}
             className="px-2 py-1 border border-[#808080] font-bold outline-none disabled:opacity-40" />
@@ -104,7 +106,12 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
             सभी बाकी जवाब (हर तारीख के)
           </label>
           <button onClick={load} className="px-3 py-1 bg-[#ECE9D8] border border-[#808080] font-bold cursor-pointer hover:bg-white">↻ Refresh</button>
+          </>}
           <div className="ml-auto flex gap-1">
+            <button onClick={() => setTab('payments')}
+              className={`px-3 py-1 border font-bold cursor-pointer ${tab === 'payments' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white border-emerald-700 text-emerald-800'}`}>
+              💰 ऑनलाइन पेमेंट
+            </button>
             <button onClick={() => setTab('replies')}
               className={`px-3 py-1 border font-bold cursor-pointer ${tab === 'replies' ? 'bg-[#0A246A] text-white border-[#0A246A]' : 'bg-white border-[#808080]'}`}>
               जवाब ({replies.length}, बाकी {left})
@@ -120,6 +127,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
 
         {msg && <div className="mt-2 text-xs font-bold text-red-800 bg-red-50 border border-red-300 px-2 py-1">{msg}</div>}
 
+        {tab === 'payments' ? <div className="flex-1 flex flex-col overflow-hidden pt-2"><WhatsAppPaymentsView /></div> : <>
         {/* Grid */}
         <div className="flex-1 border border-[#808080] mt-2 overflow-auto select-text">
           {loading ? (
@@ -201,6 +209,8 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
             </table>
           )}
         </div>
+
+        </>}
 
         <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500">
           <span>श्रेणी शब्दों से अंदाज़ा है — &quot;खुद देखें&quot; वाले जवाब ज़रूर पढ़ें।</span>
