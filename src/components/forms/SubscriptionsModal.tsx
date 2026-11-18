@@ -74,9 +74,10 @@ export default function SubscriptionsModal({
               </div>
 
               <div>
-                <span className="text-[10px] text-slate-500 font-bold block">Current Balance:</span>
-                <strong className={`font-mono ${customer.cbal > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                  ₹{customer.cbal?.toFixed(2)}
+                <span className="text-[10px] text-slate-500 font-bold block">पिछले बिल का बकाया:</span>
+                {/* Cbal is the last bill's balance, minus when owed */}
+                <strong className={`font-mono ${Number(customer.cbal || 0) < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                  ₹{(-Number(customer.cbal || 0)).toFixed(2)}
                 </strong>
               </div>
             </div>

@@ -777,7 +777,8 @@ export default function RetailSalePermanentForm({
                   </div>
                 </div>
                 <div className="text-right font-mono font-bold text-xs text-emerald-900">
-                  Balance: ₹{Number(selectedCust.cbal || selectedCust.dueamount || selectedCust.due_amount || 0).toFixed(2)}
+                  {/* Cbal is the last bill's balance, minus when owed */}
+                  पिछले बिल का बकाया: ₹{(-Number(selectedCust.cbal || 0)).toFixed(2)}
                 </div>
               </div>
             ) : (
@@ -1271,21 +1272,24 @@ export default function RetailSalePermanentForm({
                       className="p-1.5 hover:bg-[#F0F4FF] flex justify-between items-center"
                     >
                       <div 
-                        onClick={() => {
-                          const targetCust: Customer = {
+                        onClick={async () => {
+                          setIsFindOpen(false);
+                          // The customer's own saved record (address, balance), not a made-up one
+                          let targetCust: Customer | undefined;
+                          try {
+                            const res = await fetch(`/api/customers?search=${sCustId}&limit=20`);
+                            const data = await res.json();
+                            targetCust = (data.customers || data.data || []).find((c: any) => Number(c.customer_id) === sCustId);
+                          } catch { targetCust = undefined; }
+                          handleSelectCustomer(targetCust || {
                             customer_id: sCustId,
                             name_eng: s.Customer_Name || s.customer_name || `Customer #${sCustId}`,
                             security_deposit: 0,
                             priority: 0,
-                            dueamount: sCustId === 24669 ? 3206 : 0,
-                            due_amount: sCustId === 24669 ? 3206 : 0,
-                            cbal: sCustId === 24669 ? 3206 : 0,
-                            region_id: 1,
+                            region_id: 0,
                             delivery: 0,
                             discount: 0
-                          };
-                          handleSelectCustomer(targetCust);
-                          setIsFindOpen(false);
+                          } as Customer);
                         }}
                         className="cursor-pointer flex-1 min-w-0"
                       >

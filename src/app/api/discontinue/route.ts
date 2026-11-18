@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { fyLabel, fySuffix } from '@/lib/financialYear';
 import { fetchAllRows, fetchPublications, fetchRegions } from '@/lib/publicationsData';
 import { closeSubscriptions, reopenSubscriptions } from '@/lib/subscriptionStops';
@@ -77,6 +78,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_mark_discontinue');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const {
@@ -145,6 +148,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_mark_discontinue');
+  if (refused) return refused;
   try {
     const { searchParams } = new URL(request.url);
     const idStr = searchParams.get('discontinue_id') || searchParams.get('id');

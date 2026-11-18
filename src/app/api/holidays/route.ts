@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { fetchAllRows } from '@/lib/publicationsData';
 
@@ -52,6 +53,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const { holidays: newItems, publica_id, oc_date, remark } = body;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const refused = await refuseWithout(req, 'can_access_master');
+  if (refused) return refused;
   try {
     const body = await req.json();
     const name = String(body.name || '').trim();
@@ -58,6 +61,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const refused = await refuseWithout(req, 'can_access_master');
+  if (refused) return refused;
   const id = Number(req.nextUrl.searchParams.get('id'));
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 

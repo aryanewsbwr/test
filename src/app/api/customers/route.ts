@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { cleanOrTransliterateHindi, storedHindiName } from '@/lib/transliteration';
 import { nextId } from '@/lib/publicationsData';
-import { currentUser } from '@/lib/auth';
+import { currentUser, refuseWithout } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +86,8 @@ export async function GET(request: NextRequest) {
 
 // Save / Update Customer in Supabase and Local Cache
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const { customer_id, name_eng, name_hindi, add1, hindi_add, phone, region_id = 1, security_deposit = 0, dueamount = 0, priority = 1, ...rest } = body;
@@ -175,6 +177,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const { searchParams } = new URL(request.url);
     const idStr = searchParams.get('customer_id') || searchParams.get('id');

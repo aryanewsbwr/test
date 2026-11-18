@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
@@ -102,6 +103,8 @@ export async function GET(request: NextRequest) {
 
 /** POST { region_id, month, year }: records a region's bills as already sent, without sending anything */
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const { month, year, regionId } = readPeriod(await request.json());
     if (!month || !year || !regionId) {
@@ -148,6 +151,8 @@ export async function POST(request: NextRequest) {
 
 /** DELETE ?region_id=&month=&year=: undoes a manual mark. Real sends are never removed. */
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const { month, year, regionId } = readPeriod(new URL(request.url).searchParams);
     if (!month || !year || !regionId) {

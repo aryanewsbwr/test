@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { fetchAllRows } from '@/lib/publicationsData';
 
@@ -14,6 +15,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const { publish_id, name, address = '', city = 'BEAWAR', phone = '', mobile = '', category = 'Main Publisher', type = 'Publisher' } = body;
@@ -58,6 +61,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const { searchParams } = new URL(request.url);
     const idStr = searchParams.get('publish_id') || searchParams.get('id');

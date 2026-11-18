@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { formatWhatsAppPhone, getSecureWhatsAppToken, sendWhatsAppReminderMessage, whatsAppDisplayName } from '@/lib/whatsappService';
 import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
@@ -261,6 +262,8 @@ export async function GET(request: NextRequest) {
  * reminder in REMINDER_GAP_DAYS days.
  */
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_reports');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const leaveOut = leaveOutOf(body.leave_out);

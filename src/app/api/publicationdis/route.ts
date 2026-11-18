@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { parseDateToIso } from '@/lib/discontinueEngine';
 
@@ -30,6 +31,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const {
@@ -89,6 +92,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const { searchParams } = new URL(request.url);
     const idStr = searchParams.get('id');

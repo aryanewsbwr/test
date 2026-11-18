@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { fySuffix, previousFySuffix } from '@/lib/financialYear';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { storedHindiName } from '@/lib/transliteration';
@@ -125,6 +126,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_retail_sale');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const {
@@ -218,6 +221,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_retail_sale');
+  if (refused) return refused;
   try {
     const { searchParams } = new URL(request.url);
     const retailId = searchParams.get('retail_id');

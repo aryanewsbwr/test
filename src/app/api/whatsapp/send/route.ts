@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken, whatsAppDisplayName } from '@/lib/whatsappService';
 import { getThermalPublicationDisplayName } from '@/lib/billThermalExport';
@@ -267,6 +268,8 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
  * - Bulk select by customer IDs
  */
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_reports');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const { 

@@ -6,6 +6,9 @@ import { AppUser } from '@/lib/auth';
 import { Customer, Publication, Hawker } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
+// What a customer owes: Cbal is the last bill's balance and is minus when owed
+const owedBy = (c: any) => (c?.cbal !== null && c?.cbal !== undefined ? -Number(c.cbal) || 0 : Number(c?.due_amount ?? c?.dueamount ?? 0) || 0);
+
 interface Props {
   user: AppUser;
   onLogout: () => void;
@@ -120,7 +123,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
     let dueCustomersCount = 0;
 
     hawkerCustomers.forEach(c => {
-      const due = Number(c.cbal || c.dueamount || c.due_amount || 0);
+      const due = owedBy(c);
       if (due > 0) {
         totalDues += due;
         dueCustomersCount++;
@@ -196,10 +199,10 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
       // Update customer local balance
       setCustomers(prev => prev.map(c => {
         if (c.customer_id === selectedCustForCollect.customer_id) {
-          const curBal = Number(c.cbal || c.dueamount || c.due_amount || 0);
+          const curBal = owedBy(c);
           return {
             ...c,
-            cbal: Math.max(0, curBal - amt),
+            cbal: -Math.max(0, curBal - amt),
             dueamount: Math.max(0, curBal - amt),
             due_amount: Math.max(0, curBal - amt)
           };
@@ -437,7 +440,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
                 </div>
               ) : (
                 filteredCustomers.map(cust => {
-                  const due = Number(cust.cbal || cust.dueamount || cust.due_amount || 0);
+                  const due = owedBy(cust);
                   const isDue = due > 0;
                   const phoneClean = (cust.phone || '').trim();
 
@@ -543,7 +546,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
                       {[selectedCustForCollect.add1, selectedCustForCollect.phone].filter(Boolean).join(' • ')}
                     </div>
                     <div className="text-xs font-bold text-red-800 pt-0.5">
-                      वर्तमान बकाया: ₹{Number(selectedCustForCollect.cbal || selectedCustForCollect.dueamount || 0).toFixed(2)}
+                      वर्तमान बकाया: ₹{owedBy(selectedCustForCollect).toFixed(2)}
                     </div>
                   </div>
                   <button
@@ -571,7 +574,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
                           key={c.customer_id}
                           onClick={() => {
                             setSelectedCustForCollect(c);
-                            const due = Number(c.cbal || c.dueamount || 0);
+                            const due = owedBy(c);
                             setCollectAmount(due > 0 ? String(due) : '');
                             setSearchTerm('');
                           }}
@@ -581,7 +584,7 @@ export default function HawkerMobilePortal({ user, onLogout, onSwitchToDesktop }
                             <strong>#{c.customer_id}</strong> {c.name_eng}
                           </div>
                           <span className="font-mono text-red-700 font-bold">
-                            ₹{Number(c.cbal || c.dueamount || 0).toFixed(2)}
+                            ₹{owedBy(c).toFixed(2)}
                           </span>
                         </div>
                       ))}

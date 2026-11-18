@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { fetchAllRows, fetchPublications, nextId, replaceBaseRates } from '@/lib/publicationsData';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
@@ -70,6 +71,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const { 
@@ -153,6 +156,8 @@ export async function POST(request: NextRequest) {
 
 // DELETE a specific rate change revision (by publica_id and effective_date or by id)
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_access_master');
+  if (refused) return refused;
   try {
     const { searchParams } = new URL(request.url);
     const pubIdStr = searchParams.get('publica_id');

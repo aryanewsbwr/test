@@ -47,7 +47,10 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
     .update(rawBody, 'utf8')
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedHash, 'hex'));
+  // A malformed signature (wrong length) is refused, not a crash
+  const given = Buffer.from(signature, 'hex');
+  const expected = Buffer.from(expectedHash, 'hex');
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected);
 }
 
 /**

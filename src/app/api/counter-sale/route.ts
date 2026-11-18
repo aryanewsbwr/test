@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseWithout } from '@/lib/auth';
 import { fetchPublications } from '@/lib/publicationsData';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 
@@ -72,6 +73,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_retail_sale');
+  if (refused) return refused;
   try {
     const body = await request.json();
     const {
@@ -136,6 +139,8 @@ export async function POST(request: NextRequest) {
 
 // Removes one sale by its row number, so other sales of the same paper that day stay
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseWithout(request, 'can_retail_sale');
+  if (refused) return refused;
   try {
     const id = Number(new URL(request.url).searchParams.get('id'));
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
