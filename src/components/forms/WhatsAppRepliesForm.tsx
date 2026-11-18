@@ -89,7 +89,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
 
       {/* Title Bar */}
       <div className="d2-title bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between">
-        <span className="font-bold text-xs text-[#808080]">WhatsApp Replies (ग्राहकों के जवाब)</span>
+        <span className="font-bold text-xs text-[#0A246A]">WhatsApp Replies (ग्राहकों के जवाब)</span>
         <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
       </div>
 
@@ -213,7 +213,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
         </>}
 
         <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500">
-          <span>श्रेणी शब्दों से अंदाज़ा है — &quot;खुद देखें&quot; वाले जवाब ज़रूर पढ़ें।</span>
+          <span>{tab === 'payments' ? '' : <>श्रेणी शब्दों से अंदाज़ा है — &quot;खुद देखें&quot; वाले जवाब ज़रूर पढ़ें।</>}</span>
           <button onClick={onClose} className="px-4 py-1 bg-white hover:bg-red-50 text-red-800 border border-slate-300 text-xs font-bold cursor-pointer">Close</button>
         </div>
       </div>

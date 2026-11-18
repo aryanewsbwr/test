@@ -54,7 +54,11 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin.from('wa_replies_report').select('*').gte('tareekh', since).limit(5000);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const payments = (data || []).filter(r => PAYMENT_TYPES.includes(r.msg_type) || r.shreni === 'पेमेंट किया' || PAID_WORDS.test(String(r.body || '')));
+  // The office's and staff's own numbers are not customers paying
+  const { data: own } = await supabaseAdmin.from('wa_own_numbers').select('number');
+  const ownNumbers = new Set((own || []).map((o: any) => String(o.number)));
+  const payments = (data || []).filter(r => !ownNumbers.has(String(r.from_number))
+    && (PAYMENT_TYPES.includes(r.msg_type) || r.shreni === 'पेमेंट किया' || PAID_WORDS.test(String(r.body || ''))));
 
   // One card per number, its messages oldest first
   const byNumber = new Map<string, any[]>();
@@ -97,6 +101,29 @@ export async function GET(req: NextRequest) {
   }).sort((a, b) => ORDER.indexOf(a.colour) - ORDER.indexOf(b.colour) || b.last_time.localeCompare(a.last_time));
 
   return NextResponse.json({ cards, since, today: indiaToday() });
+}
+
+// POST { own: '919950209949', name }   this number is ours (office / staff): hide its messages
+// DELETE ?own=919950209949               show it again
+export async function POST(req: NextRequest) {
+  const refused = await refuseWithout(req, 'can_reports');
+  if (refused) return refused;
+  const body = await req.json().catch(() => ({}));
+  const number = String(body.own || '').replace(/\D/g, '');
+  if (!/^\d{10,15}$/.test(number)) return NextResponse.json({ error: 'नंबर सही नहीं है' }, { status: 400 });
+  const { error } = await supabaseAdmin.from('wa_own_numbers').upsert({ number, name: String(body.name || '').slice(0, 80) || null });
+  if (error) return NextResponse.json({ error: /does not exist|schema cache/i.test(error.message) ? 'पहले supabase/wa_own_numbers.sql एक बार SQL Editor में चलाएँ' : error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(req: NextRequest) {
+  const refused = await refuseWithout(req, 'can_reports');
+  if (refused) return refused;
+  const number = String(req.nextUrl.searchParams.get('own') || '').replace(/\D/g, '');
+  if (!number) return NextResponse.json({ error: 'number required' }, { status: 400 });
+  const { error } = await supabaseAdmin.from('wa_own_numbers').delete().eq('number', number);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }
 
 export async function PATCH(req: NextRequest) {

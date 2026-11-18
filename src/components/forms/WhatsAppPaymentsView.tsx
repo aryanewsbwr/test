@@ -47,6 +47,16 @@ export default function WhatsAppPaymentsView() {
     else if (!handled) load();
   };
 
+  // Office / staff number: its messages are not customer payments
+  const hideOwn = async (card: any) => {
+    if (!confirm(`${shown(card.number)} (${card.profile_name || 'बिना नाम'}) हमारा / स्टाफ का नंबर है?\n\nइसके मैसेज इस लिस्ट में आगे नहीं दिखेंगे।`)) return;
+    const res = await fetch('/api/whatsapp/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ own: card.number, name: card.profile_name }) });
+    if (!res.ok) { setMsg((await res.json().catch(() => ({}))).error || 'सेव नहीं हुआ'); return; }
+    setCards(list => list.filter(c => c.number !== card.number));
+  };
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggleOpen = (n: string) => setOpen(s => { const x = new Set(s); if (x.has(n)) x.delete(n); else x.add(n); return x; });
+
   const count = (c: Colour) => cards.filter(x => x.colour === c).length;
   const list = show === 'all' ? cards : cards.filter(c => c.colour === show);
 
@@ -76,16 +86,21 @@ export default function WhatsAppPaymentsView() {
         ) : list.length === 0 ? (
           <div className="p-6 text-center text-slate-500">कोई पेमेंट मैसेज नहीं</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
             {list.map(card => {
               const look = LOOK[card.colour as Colour];
               const shots = card.messages.filter((m: any) => m.link);
               const texts = card.messages.filter((m: any) => m.body);
               return (
                 <div key={card.number} className={`border-2 rounded overflow-hidden ${look.card}`}>
-                  <div className={`${look.band} text-white px-2 py-1 flex items-center justify-between font-bold`}>
-                    <span>{look.label} — {card.why}</span>
-                    <span className="font-mono">{dmy(card.last_time.slice(0, 10))} {card.last_time.slice(11)}</span>
+                  <div className={`${look.band} text-white px-2 py-1 flex items-center gap-2 font-bold`}>
+                    <span className="flex-1 min-w-0 truncate" title={card.why}>{look.label} — {card.why}</span>
+                    <span className="font-mono text-[11px] shrink-0">{dmy(card.last_time.slice(0, 10))} {card.last_time.slice(11)}</span>
+                    {card.colour === 'grey' ? (
+                      card.why.startsWith('हो गया') && <button onClick={() => tick(card, false)} className="shrink-0 px-2 py-0.5 bg-white text-slate-700 rounded font-bold cursor-pointer">↩ वापस</button>
+                    ) : (
+                      <button onClick={() => tick(card, true)} className="shrink-0 px-2 py-0.5 bg-white text-[#0A246A] rounded font-bold cursor-pointer">✓ हो गया</button>
+                    )}
                   </div>
                   <div className="p-2 flex gap-2">
                     <div className="flex-1 min-w-0 space-y-1">
@@ -101,11 +116,18 @@ export default function WhatsAppPaymentsView() {
                           </div>
                         </div>
                       ))}
-                      {texts.map((m: any) => (
-                        <div key={m.id} className="bg-white border border-slate-200 rounded px-1.5 py-0.5 whitespace-pre-wrap break-words">
-                          <span className="text-slate-400 font-mono text-[10px]">{m.time} </span>{m.body}
-                        </div>
-                      ))}
+                      {texts.map((m: any) => {
+                        const long = String(m.body).length > 160 || String(m.body).split('\n').length > 3;
+                        const full = open.has(`${card.number}|${m.id}`);
+                        return (
+                          <div key={m.id} className="bg-white border border-slate-200 rounded px-1.5 py-0.5">
+                            <div className={`whitespace-pre-wrap break-words ${long && !full ? 'line-clamp-3' : ''}`}>
+                              <span className="text-slate-400 font-mono text-[10px]">{m.time} </span>{m.body}
+                            </div>
+                            {long && <button onClick={() => toggleOpen(`${card.number}|${m.id}`)} className="text-[10px] font-bold text-blue-800 cursor-pointer">{full ? 'कम दिखाएँ ▲' : 'पूरा पढ़ें ▼'}</button>}
+                          </div>
+                        );
+                      })}
                     </div>
                     {shots.length > 0 && (
                       <div className="flex flex-col gap-1 shrink-0">
@@ -121,13 +143,11 @@ export default function WhatsAppPaymentsView() {
                       </div>
                     )}
                   </div>
-                  <div className="px-2 pb-2 flex justify-end">
-                    {card.colour === 'grey' ? (
-                      card.why.startsWith('हो गया') && <button onClick={() => tick(card, false)} className="px-2 py-0.5 border border-slate-400 bg-white font-bold cursor-pointer">↩ वापस बाकी में</button>
-                    ) : (
-                      <button onClick={() => tick(card, true)} className="px-3 py-1 bg-[#0A246A] text-white font-bold rounded cursor-pointer">✓ हो गया</button>
-                    )}
-                  </div>
+                  {card.customers.length !== 1 && (
+                    <div className="px-2 pb-1.5 flex justify-end">
+                      <button onClick={() => hideOwn(card)} className="text-[10px] text-slate-600 underline cursor-pointer">हमारा / स्टाफ का नंबर — छिपाएँ</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -135,8 +155,8 @@ export default function WhatsAppPaymentsView() {
         )}
       </div>
 
-      <div className="pt-2 text-[11px] text-slate-500">
-        हरा: स्क्रीनशॉट आया, रसीद काटें · पीला: खुद देखें · लाल: नंबर किसी ग्राहक का नहीं · ग्रे: रसीद बन गई या टिक किया। रसीद काटते ही कार्ड अपने आप ग्रे हो जाता है (Refresh करें)।
+      <div className="pt-1.5 text-[11px] text-slate-500 border-t">
+        हरा: स्क्रीनशॉट आया, रसीद काटें · पीला: खुद देखें · लाल: नंबर किसी ग्राहक का नहीं · ग्रे: रसीद बन गई या टिक किया (रसीद काटने के बाद Refresh करें)।
       </div>
 
       {big && (
