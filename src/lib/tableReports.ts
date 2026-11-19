@@ -344,7 +344,8 @@ async function saleByMonth(f: Filters, byRate: boolean): Promise<TableReport> {
   return {
     title: byRate ? 'SALES REPORT' : 'SALE CONSOLIDATED REPORT',
     subtitle: [f.month || '', f.region ? `क्षेत्र: ${regionName(m, f.region)}` : 'सभी क्षेत्र'].filter(Boolean).join(' · '),
-    columns: [text('paper', 'पेपर'), ...(byRate ? [money('rate', 'रेट')] : []), int('qty', 'कॉपी'), money('amt', 'पेपर राशि'), money('dely', 'डिलीवरी'), money('total', 'कुल राशि')],
+    // The old software's own column names
+    columns: [text('paper', 'PUBLICATION'), ...(byRate ? [money('rate', 'RATE')] : []), int('qty', 'QUANTITY'), money('amt', 'P. Amt.'), money('dely', 'Del. Amt.'), money('total', 'Total. Amt.')],
     groups: [{ rows }], totals: totalsOf(rows, ['qty', 'amt', 'dely', 'total'], { paper: 'TOTAL' }),
     note: rows.length ? undefined : `${f.month || 'इस महीने'} के बिल अभी नहीं बने।`
   };
@@ -368,8 +369,9 @@ export const REPORTS: Record<string, Builder> = {
     }));
     return {
       title: 'COLLECTION DATEWISE REPORT', subtitle: period(f),
-      columns: [int('sno', 'क्र.'), text('date', 'तारीख'), int('count', 'रसीदें'), money('amount', 'रसीद राशि'), money('balance', 'बाकी'), money('less', 'कटौती'), money('ramt', 'असल राशि')],
-      groups: [{ rows }], totals: totalsOf(rows, ['count', 'amount', 'balance', 'less', 'ramt'], { date: 'कुल' })
+      // The old software's columns: S No|Date|Receipt Amt.|Balance|Less Amt.|Actual Amt.
+      columns: [int('sno', 'S No'), text('date', 'Date'), money('amount', 'Receipt Amt.'), money('balance', 'Balance'), money('less', 'Less Amt.'), money('ramt', 'Actual Amt.')],
+      groups: [{ rows }], totals: totalsOf(rows, ['amount', 'balance', 'less', 'ramt'], { date: `Total (${sum(rows, 'count')} receipts)` })
     };
   },
 
@@ -770,12 +772,13 @@ export const REPORTS: Record<string, Builder> = {
           priority: Number(m.customers.get(Number(cid))?.priority || 0), qty: sum(xs, 'qty')
         })).sort((a, b) => a.priority - b.priority || a.customer.localeCompare(b.customer));
         const hindi = priorities?.get(hawkerKey(hname))?.hindi_name;
-        return { title: `${hindi || hname} — ${rows.length} ग्राहक`, rows, totals: totalsOf(rows, ['qty'], { customer: `${rows.length} ग्राहक` }) };
+        return { title: `${hindi || hname} — ${rows.length} customers`, rows };
       });
     return {
       title: "HAWKER'S CUSTOMER PRIORITY REPORT", subtitle: [`आज (${dmy(today)}) चालू`, f.circ || ''].filter(Boolean).join(' · '),
-      columns: [text('customer', 'ग्राहक'), text('address', 'पता'), text('papers', 'अखबार'), int('qty', 'कॉपी'), int('priority', 'प्राथमिकता')],
-      groups, totals: { customer: `कुल ${new Set(running.map(s => s.customer_id)).size} ग्राहक`, qty: sum(running, 'qty') }
+      // The old software's columns: Customer|Address|Publication|Priority
+      columns: [text('customer', 'Customer'), text('address', 'Address'), text('papers', 'Publication'), int('priority', 'Priority')],
+      groups, totals: { customer: `Total ${new Set(running.map(s => s.customer_id)).size} customers` }
     };
   },
 
@@ -796,14 +799,15 @@ export const REPORTS: Record<string, Builder> = {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([name, rs]) => {
         const rows = rs.map(row);
-        return { title: `${name} — ${rows.length} रसीद`, rows, totals: totalsOf(rows, ['bill_amt', 'amount', 'balance', 'less', 'ramt'], { manual: `${name} का कुल` }) };
+        return { title: `${name} — ${rows.length} receipts`, rows, totals: totalsOf(rows, ['bill_amt', 'amount', 'balance', 'less', 'ramt'], { manual: `${name} Total` }) };
       });
     const all_ = list.map(row);
     return {
       title: 'HAWKER REPORT DATEWISE', subtitle: [period(f), f.collector ? `कलेक्टर: ${m.collectors.get(f.collector) || `#${f.collector}`}` : ''].filter(Boolean).join(' · '),
-      columns: [int('sno', 'क्र.'), text('manual', 'रसीद नं.'), text('date', 'तारीख'), { ...text('customer', 'ग्राहक'), light: true }, money('bill_amt', 'बिल राशि'),
-        text('month', 'माह'), text('year', 'वर्ष'), money('amount', 'रसीद राशि'), money('balance', 'बाकी'), money('less', 'कटौती'), money('ramt', 'असल राशि')],
-      groups, totals: totalsOf(all_, ['bill_amt', 'amount', 'balance', 'less', 'ramt'], { manual: `कुल ${all_.length} रसीद` }),
+      // The old software's columns: S No|Receipt No|Receipt Date|Bill Amount|Month|Year|Receipt Amt.|Balance|Less Amt.|Actual Amt.
+      columns: [int('sno', 'S No'), text('manual', 'Receipt No'), text('date', 'Receipt Date'), money('bill_amt', 'Bill Amount'),
+        text('month', 'Month'), text('year', 'Year'), money('amount', 'Receipt Amt.'), money('balance', 'Balance'), money('less', 'Less Amt.'), money('ramt', 'Actual Amt.')],
+      groups, totals: totalsOf(all_, ['bill_amt', 'amount', 'balance', 'less', 'ramt'], { manual: `Total ${all_.length}` }),
       note: 'कलेक्टर: जिसकी रसीद बुक (Receipt Allotment) में वह रसीद नंबर है।'
     };
   },
