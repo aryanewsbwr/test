@@ -133,7 +133,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
                 </tr>
               )}
               {g.rows.map((r, ri) => (
-                <tr key={ri} className="border-b border-slate-200 print:border-black">
+                <tr key={ri} className="border-b border-black">
                   {cols.map(c => <td key={c.key} style={cellStyle(c)} className={`px-1.5 py-0.5 border-r border-slate-200 ${alignOf(c)} ${c.type ? 'font-mono whitespace-nowrap' : ''}`}>{fmt(c, r[c.key])}</td>)}
                 </tr>
               ))}

@@ -259,7 +259,8 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   return {
     layout: f.layout === 'boxes' ? 'boxes' : 'table',
     title: kind === 'magazine' ? 'QUANTITY OF MAGAZINE' : kind === 'all' ? 'DAILY QUANTITY OF NEWSPAPER & MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
-    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, label(pid))), int('total', 'कुल')],
+    // Every column centred
+    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, label(pid))), int('total', 'कुल')].map(c => ({ ...c, align: 'center' as const })),
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
   };
