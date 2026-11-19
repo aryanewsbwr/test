@@ -222,6 +222,13 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
     (h.mobile || '').includes(searchQuery) ||
     (h.address || '').toLowerCase().includes(searchQuery.toLowerCase())
   ));
+  // One line per hawker name (the same name is saved under several hawker numbers)
+  const hawkerNames = Array.from(filteredHawkers.reduce((map, h) => {
+    const key = (h.name || '').trim().toLowerCase();
+    const g = map.get(key);
+    if (g) g.ids.push(h.hawker_id); else map.set(key, { h, ids: [h.hawker_id] });
+    return map;
+  }, new Map<string, { h: Hawker; ids: number[] }>()).values());
 
   return (
     <div className="d2-window relative w-full max-w-[700px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
@@ -477,7 +484,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
           <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-lg space-y-2 text-xs flex flex-col max-h-[85vh]">
             
             <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
-              <span>Find Hawker ({filteredHawkers.length} Hawkers Found)</span>
+              <span>Find Hawker ({hawkerNames.length} Hawkers Found)</span>
               <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>
 
@@ -510,7 +517,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHawkers.map(h => (
+                  {hawkerNames.map(({ h, ids }) => (
                     <tr 
                       key={h.hawker_id}
                       onClick={() => {
@@ -519,7 +526,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                       }}
                       className="border-b hover:bg-blue-100 cursor-pointer"
                     >
-                      <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{h.hawker_id}</td>
+                      <td className="p-1.5 border-r font-mono font-bold text-blue-900" title={ids.map(id => `#${id}`).join(', ')}>#{h.hawker_id}{ids.length > 1 && <span className="text-[10px] text-slate-500 font-normal"> +{ids.length - 1}</span>}</td>
                       <td className="p-1.5 border-r text-center font-mono">{h.priority ?? '—'}</td>
                       <td className="p-1.5 border-r font-bold text-slate-800">{h.name}</td>
                       <td className="p-1.5 border-r text-slate-700">{h.area_hindi || ''}</td>
@@ -535,7 +542,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                       </td>
                     </tr>
                   ))}
-                  {filteredHawkers.length === 0 && (
+                  {hawkerNames.length === 0 && (
                     <tr>
                       <td colSpan={5} className="p-4 text-center text-slate-500 italic">
                         No hawkers found matching &quot;{searchQuery}&quot;
