@@ -69,7 +69,7 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 const waRegionCache = new Map<string, WaRegionStatus>();
 
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
-type TableFilter = 'dates' | 'day' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book';
+type TableFilter = 'dates' | 'day' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
   hawker_daily_qty: ['day', 'hawker', 'region'],
   hawker_magazine_qty: ['day', 'hawker', 'region'],
@@ -86,7 +86,7 @@ const TABLE_FILTERS: Record<string, TableFilter[]> = {
   purchase_publisherwise: ['dates', 'publisher', 'pub'],
   countersale_datewise: ['dates', 'pub'],
   countersale_pubwise: ['dates', 'pub'],
-  retailsale_region_datewise: ['dates', 'region', 'pub'],
+  retailsale_region_datewise: ['dates', 'customer', 'region', 'pub'],
   consolidated_sale: ['dates', 'pub'],
   daily_sale: ['dates'],
   region_start_end: ['dates', 'region', 'pub'],
@@ -432,6 +432,9 @@ export default function ReportsForm({
     setIsCustomerDropdownOpen(false);
   };
 
+  // A report with a customer choice: once a customer is chosen, region cannot be chosen
+  const regionLocked = !!tableFilters?.includes('customer') && /^\d+$/.test(targetCustId.trim());
+
   // Fetch Report Data from API
   const fetchReport = useCallback(async () => {
     setIsLoading(true);
@@ -455,7 +458,10 @@ export default function ReportsForm({
         const q = new URLSearchParams({ type: activeReport });
         if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
         if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
-        if (f.includes('region') && /^\d+$/.test(selectedRegion)) q.set('region', selectedRegion);
+        // One customer chosen -> that customer only, region is not used
+        const oneCustomer = f.includes('customer') && /^\d+$/.test(targetCustId.trim());
+        if (oneCustomer) q.set('customer', targetCustId.trim());
+        if (!oneCustomer && f.includes('region') && /^\d+$/.test(selectedRegion)) q.set('region', selectedRegion);
         if (f.includes('hawker') && /^\d+(,\d+)*$/.test(selectedHawker)) q.set('hawker', selectedHawker);
         if (f.includes('pub') && /^\d+$/.test(selectedPub)) q.set('pub', selectedPub);
         if (f.includes('publisher') && /^\d+$/.test(selectedPublisher)) q.set('publisher', selectedPublisher);
@@ -806,9 +812,11 @@ export default function ReportsForm({
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">Region</label>
                 <select 
-                  value={selectedRegion}
+                  value={regionLocked ? 'all' : selectedRegion}
                   onChange={(e) => setSelectedRegion(e.target.value)}
-                  className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
+                  disabled={regionLocked}
+                  title={regionLocked ? 'ग्राहक चुना है, इसलिए क्षेत्र नहीं चुन सकते' : undefined}
+                  className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none disabled:bg-slate-100 disabled:text-slate-400"
                 >
                   <option value="all">{activeReport === 'due_region_summary' ? '-- All Regions (Summary) --'
                     : activeReport === 'cust_detail' || activeReport === 'cust_monthwise' ? '-- एक ग्राहक (ऊपर चुनें) --' : '-- All Regions --'}</option>
@@ -903,7 +911,7 @@ export default function ReportsForm({
             )}
 
             {/* Customer ID / Name Filter for Single Bill Printing with live autocomplete dropdown */}
-            {(currentMeta.hasCustId || activeReport === 'bill_print_single') && (
+            {(currentMeta.hasCustId || activeReport === 'bill_print_single' || (isTable && tableFilters.includes('customer'))) && (
               <div className="flex items-center relative">
                 <label className="w-28 font-bold text-[#800000] shrink-0">{activeReport === 'cust_detail' || activeReport === 'cust_monthwise' ? 'Customer' : 'Customer ID'}</label>
                 <div className="relative flex-1 flex items-center gap-2 max-w-sm">

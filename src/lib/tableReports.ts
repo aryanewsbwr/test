@@ -11,7 +11,7 @@ import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, susha
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
 export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' }
-export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number }
+export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number }
 // One hawker name can have several hawker numbers; choosing the name means all of them
 const hawkerOk = (f: Filters, id: number) => !f.hawker || (f.hawkers?.length ? f.hawkers.includes(Number(id)) : Number(id) === f.hawker);
 
@@ -564,7 +564,8 @@ export const REPORTS: Record<string, Builder> = {
   async retailsale_region_datewise(f) {
     const m = await masters();
     const list = (await all(`retailsale${fySuffix()}`, '*')).map(s => ({ ...s, d: iso(s.vr_date ?? s.Vr_Date), cid: Number(s.customer_id ?? s.Customer_id) }))
-      .filter(s => inRange(s.d, f) && (!f.region || custRegion(m, s.cid) === f.region) && (!f.pub || Number(s.publica_id) === f.pub))
+      // One customer chosen -> only that customer (region is then not used)
+      .filter(s => inRange(s.d, f) && (f.customer ? s.cid === f.customer : (!f.region || custRegion(m, s.cid) === f.region)) && (!f.pub || Number(s.publica_id) === f.pub))
       .sort((a, b) => custRegion(m, a.cid) - custRegion(m, b.cid) || a.d.localeCompare(b.d));
     const row = (s: any) => ({ date: dmy(s.d), customer: `${custName(m, s.cid)} #${s.cid}`, paper: pubName(m, s.publica_id), qty: Number(s.copies || 0), rate: Number(s.rate || 0), amount: Number(s.amt || 0), narr: s.narr || '' });
     const groups = groupBy(list, s => regionName(m, custRegion(m, s.cid))).map(([name, ss]) => {
@@ -573,7 +574,7 @@ export const REPORTS: Record<string, Builder> = {
     });
     const rows = list.map(row);
     return {
-      title: 'RETAIL SALE REGION DATE WISE', subtitle: period(f),
+      title: 'RETAIL SALE REGION DATE WISE', subtitle: [period(f), f.customer ? `ग्राहक: ${custName(m, f.customer)} #${f.customer}` : ''].filter(Boolean).join(' · '),
       columns: [text('date', 'तारीख'), text('customer', 'ग्राहक'), text('paper', 'पेपर'), int('qty', 'कॉपी'), money('rate', 'रेट'), money('amount', 'राशि'), text('narr', 'नोट')],
       groups, totals: totalsOf(rows, ['qty', 'amount'], { customer: `कुल ${rows.length}` })
     };

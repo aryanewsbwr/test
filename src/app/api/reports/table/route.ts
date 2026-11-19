@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const report = await buildReport(type, {
       from: isDate(from) ? from : '', to: isDate(to) ? to : '',
       region: num('region'), hawker: hawkers[0] || 0, hawkers, pub: num('pub'), publisher: num('publisher'), collector: num('collector'),
-      bookFrom: bm ? Number(bm[1]) : 0, bookTo: bm ? Number(bm[2]) : 0
+      bookFrom: bm ? Number(bm[1]) : 0, bookTo: bm ? Number(bm[2]) : 0, customer: num('customer')
     });
     return NextResponse.json(report);
   } catch (err: any) {
