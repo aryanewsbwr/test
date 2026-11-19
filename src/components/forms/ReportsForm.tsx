@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   Printer, RefreshCw, Search, Download, ZoomIn, ZoomOut, 
   ChevronLeft, ChevronRight, FileText, X, Filter, Calendar,
@@ -160,6 +160,21 @@ export default function ReportsForm({
   // Filters / Parameters
   const [regions, setRegions] = useState<any[]>(propsRegions || []);
   const [hawkers, setHawkers] = useState<any[]>(propsHawkers || []);
+  // The same hawker name is saved under several hawker numbers: one choice per name, covering all its numbers
+  const hawkerGroups = useMemo(() => {
+    const byName = new Map<string, { name: string; ids: string[] }>();
+    for (const h of hawkers) {
+      const name = String(h.name || h.hawker_name || '').trim();
+      const id = String(h.hawker_id || h.id || '');
+      if (!name || !/^\d+$/.test(id)) continue;
+      const key = name.toLowerCase();
+      if (!byName.has(key)) byName.set(key, { name, ids: [] });
+      byName.get(key)!.ids.push(id);
+    }
+    return Array.from(byName.values())
+      .map(g => ({ ...g, value: g.ids.join(',') }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [hawkers]);
   const [publications, setPublications] = useState<any[]>(propsPubs || []);
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion !== undefined && initialRegion !== 'undefined' ? String(initialRegion) : 'all');
   const [selectedHawker, setSelectedHawker] = useState<string>(initialHawker !== undefined && initialHawker !== 'undefined' ? String(initialHawker) : 'all');
@@ -430,7 +445,7 @@ export default function ReportsForm({
         if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
         if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
         if (f.includes('region') && /^\d+$/.test(selectedRegion)) q.set('region', selectedRegion);
-        if (f.includes('hawker') && /^\d+$/.test(selectedHawker)) q.set('hawker', selectedHawker);
+        if (f.includes('hawker') && /^\d+(,\d+)*$/.test(selectedHawker)) q.set('hawker', selectedHawker);
         if (f.includes('pub') && /^\d+$/.test(selectedPub)) q.set('pub', selectedPub);
         if (f.includes('publisher') && /^\d+$/.test(selectedPublisher)) q.set('publisher', selectedPublisher);
         if (f.includes('collector') && /^\d+$/.test(selectedCollector)) q.set('collector', selectedCollector);
@@ -845,19 +860,12 @@ export default function ReportsForm({
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">Hawker</label>
                 <select 
-                  value={selectedHawker}
+                  value={hawkerGroups.find(g => g.value === selectedHawker || g.ids.includes(selectedHawker.split(',')[0]))?.value || 'all'}
                   onChange={(e) => setSelectedHawker(e.target.value)}
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
                   <option value="all">-- All Hawkers --</option>
-                  {[...hawkers]
-                    .filter(h => h.name || h.hawker_name)
-                    .sort((a, b) => String(a.name || a.hawker_name || '').localeCompare(String(b.name || b.hawker_name || ''), undefined, { numeric: true, sensitivity: 'base' }))
-                    .map(h => (
-                      <option key={h.hawker_id || h.id} value={h.hawker_id || h.id}>
-                        {h.name || h.hawker_name} (#{h.hawker_id || h.id})
-                      </option>
-                    ))}
+                  {hawkerGroups.map(g => <option key={g.value} value={g.value}>{g.name}</option>)}
                 </select>
               </div>
             )}
@@ -1448,7 +1456,7 @@ export default function ReportsForm({
           <div className="flex items-center gap-1 font-bold text-slate-700">
             <span>Hawker:</span>
             <span className="bg-white px-1.5 py-0.5 border border-[#808080] text-blue-900">
-              {hawkers.find(h => String(h.hawker_id) === String(selectedHawker))?.name || `#${selectedHawker}`}
+              {hawkerGroups.find(g => g.ids.includes(selectedHawker.split(',')[0]))?.name || `#${selectedHawker}`}
             </span>
           </div>
         )}

@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
   const type = String(p.get('type') || '');
   if (!REPORTS[type]) return NextResponse.json({ error: `Unknown report: ${type}` }, { status: 400 });
   const num = (k: string) => Number(p.get(k)) || 0;
+  // hawker=12 or 12,40,77 (one name with several hawker numbers)
+  const hawkers = String(p.get('hawker') || '').split(',').map(Number).filter(n => n > 0);
   const from = String(p.get('from') || '');
   const to = String(p.get('to') || '');
   // book=101-200: one receipt book
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
   try {
     const report = await buildReport(type, {
       from: isDate(from) ? from : '', to: isDate(to) ? to : '',
-      region: num('region'), hawker: num('hawker'), pub: num('pub'), publisher: num('publisher'), collector: num('collector'),
+      region: num('region'), hawker: hawkers[0] || 0, hawkers, pub: num('pub'), publisher: num('publisher'), collector: num('collector'),
       bookFrom: bm ? Number(bm[1]) : 0, bookTo: bm ? Number(bm[2]) : 0
     });
     return NextResponse.json(report);

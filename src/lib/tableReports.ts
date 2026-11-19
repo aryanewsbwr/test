@@ -11,7 +11,9 @@ import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, susha
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
 export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' }
-export interface Filters { from: string; to: string; region: number; hawker: number; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number }
+export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number }
+// One hawker name can have several hawker numbers; choosing the name means all of them
+const hawkerOk = (f: Filters, id: number) => !f.hawker || (f.hawkers?.length ? f.hawkers.includes(Number(id)) : Number(id) === f.hawker);
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -217,7 +219,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   const wanted = subs.filter(s => {
     const p = m.pubs.get(s.publica_id);
     return p && p.magazine === magazine && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
-      && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region);
+      && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region);
   });
   const going = wanted.filter(s => !off.has(s.publica_id));
   const paperIds = Array.from(new Set(going.map(s => s.publica_id)))
@@ -453,7 +455,7 @@ export const REPORTS: Record<string, Builder> = {
     const from = f.from || '0000-01-01', to = f.to || '9999-12-31';
     const active = list.filter(d => (d.permanent ? d.from <= to && d.from >= from : d.from <= to && (d.to || d.from) >= from))
       .map(d => ({ ...d, hawker: hawkerOf(subs, d.customer_id, d.publica_id) }))
-      .filter(d => (!f.hawker || d.hawker === f.hawker) && (!f.region || custRegion(m, d.customer_id) === f.region))
+      .filter(d => hawkerOk(f, d.hawker) && (!f.region || custRegion(m, d.customer_id) === f.region))
       .sort((a, b) => a.hawker - b.hawker || Number(m.customers.get(a.customer_id)?.priority || 0) - Number(m.customers.get(b.customer_id)?.priority || 0));
     const groups = groupBy(active, d => m.hawkers.get(d.hawker) || 'हॉकर नहीं').map(([name, ds]) => ({
       title: `${name} — ${ds.length}`,
@@ -653,7 +655,7 @@ export const REPORTS: Record<string, Builder> = {
   // Customer Publication Starting: papers started in the period
   async cust_pub_starting(f) {
     const m = await masters();
-    const list = (await subscriptions(m)).filter(s => inRange(s.s, f) && (!f.pub || s.publica_id === f.pub) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region))
+    const list = (await subscriptions(m)).filter(s => inRange(s.s, f) && (!f.pub || s.publica_id === f.pub) && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region))
       .sort((a, b) => a.s.localeCompare(b.s));
     const groups = groupBy(list, s => pubName(m, s.publica_id)).sort((a, b) => a[0].localeCompare(b[0])).map(([name, ss]) => ({
       title: `${name} — ${ss.length}`,
@@ -671,7 +673,7 @@ export const REPORTS: Record<string, Builder> = {
   async cust_choose_pub(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region))
+    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region))
       .sort((a, b) => custRegion(m, a.customer_id) - custRegion(m, b.customer_id) || Number(m.customers.get(a.customer_id)?.priority || 0) - Number(m.customers.get(b.customer_id)?.priority || 0));
     const groups = groupBy(list, s => regionName(m, custRegion(m, s.customer_id))).map(([name, ss]) => ({
       title: `${name} — ${ss.length}`,
@@ -706,7 +708,7 @@ export const REPORTS: Record<string, Builder> = {
   async hawker_cust_priority(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region));
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region));
     const groups = groupBy(running, s => String(s.hawker_id)).sort((a, b) => (m.hawkers.get(Number(a[0])) || '').localeCompare(m.hawkers.get(Number(b[0])) || '')).map(([hid, ss]) => {
       const rows = groupBy(ss, s => String(s.customer_id)).map(([cid, xs]) => ({
         priority: Number(m.customers.get(Number(cid))?.priority || 0), customer: `${custName(m, cid)} #${cid}`, address: custAddress(m, cid), phone: custPhone(m, cid),
@@ -731,7 +733,7 @@ export const REPORTS: Record<string, Builder> = {
     const [subs, list] = await Promise.all([subscriptions(m), stops(m)]);
     const stopped = (s: any, day: string) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
       && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
-    const mine = subs.filter(s => (!f.hawker || s.hawker_id === f.hawker) && (!f.region || custRegion(m, s.customer_id) === f.region) && (!f.pub || s.publica_id === f.pub));
+    const mine = subs.filter(s => hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region) && (!f.pub || s.publica_id === f.pub));
     const groups = groupBy(mine, s => String(s.hawker_id)).sort((a, b) => (m.hawkers.get(Number(a[0])) || '').localeCompare(m.hawkers.get(Number(b[0])) || '')).map(([hid, ss]) => {
       const rows: any[] = [];
       for (const day of dayList) {
@@ -752,7 +754,7 @@ export const REPORTS: Record<string, Builder> = {
   async sticker_printing(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.hawker || s.hawker_id === f.hawker) && (!f.pub || s.publica_id === f.pub));
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && hawkerOk(f, s.hawker_id) && (!f.pub || s.publica_id === f.pub));
     const ids = Array.from(new Set(running.map(s => s.customer_id))).filter(id => !f.region || custRegion(m, id) === f.region)
       .sort((a, b) => custRegion(m, a) - custRegion(m, b) || Number(m.customers.get(a)?.priority || 0) - Number(m.customers.get(b)?.priority || 0));
     const rows = ids.map(id => ({

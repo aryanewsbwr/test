@@ -184,8 +184,8 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => b.total - a.total);
 
       if (hawkerId && hawkerId !== 'all') {
-        const hIdNum = parseInt(hawkerId, 10);
-        rows = rows.filter(r => r.hawker.hawker_id === hIdNum);
+        const hIds = hawkerId.split(',').map(Number);
+        rows = rows.filter(r => hIds.includes(Number(r.hawker.hawker_id)));
       }
       if (regionId && regionId !== 'all') {
         const rIdNum = parseInt(regionId, 10);
@@ -718,12 +718,13 @@ export async function GET(request: NextRequest) {
 
     // 12. Hawker Customer Priority Report
     if (reportType === 'hawker_cust_priority') {
-      let targetHId = hawkerId && hawkerId !== 'all' ? parseInt(hawkerId, 10) : 1;
-      const hw = hwMap.get(targetHId) || data.hawkers[0];
-      targetHId = hw ? hw.hawker_id : 1;
+      // One hawker name can have several hawker numbers: all of them
+      const targetIds = hawkerId && hawkerId !== 'all' ? hawkerId.split(',').map(Number).filter(n => n > 0) : [];
+      const hw = hwMap.get(targetIds[0]) || data.hawkers[0];
+      const ids = targetIds.length ? targetIds : [hw ? hw.hawker_id : 1];
 
       // Find all customers with subscriptions belonging to this hawker
-      const hwSubs = data.subscriptions.filter(s => !s.c_date && s.hawker_id === targetHId);
+      const hwSubs = data.subscriptions.filter(s => !s.c_date && ids.includes(Number(s.hawker_id)));
       const uniqueCustIds = Array.from(new Set(hwSubs.map(s => s.customer_id)));
 
       let custRows = uniqueCustIds.map(cid => {
