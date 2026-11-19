@@ -86,7 +86,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
       <div className="flex border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
         <div className="shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[14px]" style={{ width: NAME }}>{title}</div>
         <div className="flex-1">
-          <div className="grid text-[9px] font-bold border-b border-black items-center" style={{ ...wide, height: '3mm' }}>
+          <div className="grid text-[9px] font-bold border-b border-black items-center leading-none" style={{ ...wide, height: '3.8mm' }}>
             {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}<div className="px-0.5 text-center">कुल</div>
           </div>
           <div className="grid text-[14px] font-black font-mono" style={{ ...wide, height }}>
@@ -103,7 +103,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
           {r && <div className="font-black text-[13px] font-mono leading-tight mt-0.5">{count(r.total) || 0}</div>}
         </div>
         <div className="flex-1 flex flex-col">
-          <div className="grid border-b border-black text-[9.5px] font-bold items-center" style={{ ...grid, height: '3mm' }}>
+          <div className="grid border-b border-black text-[9.5px] font-bold items-center leading-none" style={{ ...grid, height: '3.8mm' }}>
             {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}
           </div>
           <div className="grid border-b-[1.5px] border-black text-[15px] font-black font-mono" style={{ ...grid, height: '5.5mm' }}>
