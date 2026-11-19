@@ -65,10 +65,10 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     );
   }
 
-  // One box per hawker (like the office's paper sheet): the name and total, each paper's copies, and
-  // an empty space to write a note. The boxes fill one A4 page, in priority order down the left
-  // column and then down the right. Above them an empty line to write the copies that came in
-  // (आवक), below them the total of each paper.
+  // One box per hawker (like the office's paper sheet), each across the full width of the page:
+  // the name and total, each paper's copies, and an empty line to write a note. In priority order,
+  // over two A4 pages. Above them a box to write the copies that came in (आवक), below them the total
+  // of each paper.
   if (data.layout === 'boxes') {
     const rows = data.groups.flatMap(g => g.rows);
     const papers = data.columns.filter(c => /^p\d+$/.test(c.key));
@@ -76,44 +76,43 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     const count = (v: any) => fmt({ key: 'n', label: '', type: 'int' }, v);
     // Each paper's column is as wide as its name needs, the spare room shared out
     const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(max-content, 1fr))` });
-    const perColumn = Math.ceil(rows.length / 2);
-    // Heights in mm so that 13 boxes a side, the incoming lines and the total fill one A4 page;
-    // fewer hawkers get bigger boxes (up to half as big again)
-    const k = Math.max(1, Math.min(1.5, 13 / Math.max(perColumn, 1)));
-    const line = `${(4.3 * k).toFixed(2)}mm`;   // a line of copies, and the note line under it
-    const head = `${(4.6 * k).toFixed(2)}mm`;
-    const names = '3mm';
-    const strip = (title: string, lines: (Record<string, any> | null)[]) => (
+    // In the incoming and total boxes नवज्योति, पत्रिका and भास्कर (the big papers) get four times the room of the others
+    const BIG = ['नवज्योति', 'पत्रिका', 'भास्कर'];
+    const wide: React.CSSProperties = { gridTemplateColumns: [...papers.map(c => (BIG.includes(c.label) ? 'minmax(max-content, 4fr)' : 'minmax(max-content, 1fr)')), 'minmax(max-content, 1fr)'].join(' ') };
+    // Heights in mm so that 25 hawkers fill two A4 pages; fewer hawkers get bigger boxes (up to half as big again)
+    const k = Math.max(1, Math.min(1.5, 25 / Math.max(rows.length, 1)));
+    const line = `${(5 * k).toFixed(2)}mm`;   // a line of copies, and the note line under it
+    const head = `${(5.2 * k).toFixed(2)}mm`;
+    const names = '3.2mm';
+    const strip = (title: string, values: Record<string, any> | null, height: string) => (
       <div className="flex border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
-        <div className="w-14 shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[12px]">{title}</div>
+        <div className="w-14 shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[13px]">{title}</div>
         <div className="flex-1">
-          <div className="grid text-[8.5px] font-bold border-b border-black items-center" style={{ ...grid(papers.length + 1), height: names }}>
+          <div className="grid text-[9px] font-bold border-b border-black items-center" style={{ ...wide, height: names }}>
             {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}<div className="px-0.5 text-center">कुल</div>
           </div>
-          {lines.map((values, li) => (
-            <div key={li} className={`grid text-[13px] font-black font-mono ${li ? 'border-t-[1.5px] border-black' : ''}`} style={{ ...grid(papers.length + 1), height: line }}>
-              {papers.map(c => <div key={c.key} className={`${cell} flex items-center justify-center`}>{values ? count(values[c.key]) : ''}</div>)}
-              <div className="px-0.5 flex items-center justify-center">{values ? count(values.total) : ''}</div>
-            </div>
-          ))}
+          <div className="grid text-[14px] font-black font-mono" style={{ ...wide, height }}>
+            {papers.map(c => <div key={c.key} className={`${cell} flex items-center justify-center`}>{values ? count(values[c.key]) : ''}</div>)}
+            <div className="px-0.5 flex items-center justify-center">{values ? count(values.total) : ''}</div>
+          </div>
         </div>
       </div>
     );
     return (
       <div className="font-sans">
-        {/* Three empty lines to write the copies that came in */}
-        <div className="mb-1">{strip('आवक', [null, null, null])}</div>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-[0.6mm]" style={{ gridAutoFlow: 'column', gridTemplateRows: `repeat(${perColumn}, auto)` }}>
+        {/* One tall empty line to write the copies that came in */}
+        <div className="mb-1">{strip('आवक', null, '13mm')}</div>
+        <div className="flex flex-col gap-[0.8mm]">
           {rows.map((r, i) => (
             <div key={i} className="border-[1.5px] border-black flex flex-col overflow-hidden break-inside-avoid" style={{ breakInside: 'avoid' }}>
               <div className="flex items-stretch border-b-[1.5px] border-black" style={{ height: head }}>
-                <div className="flex-1 px-1.5 font-black text-[14px] text-center leading-none flex items-center justify-center">{r.hawker}</div>
-                <div className="shrink-0 border-l-[1.5px] border-black px-1.5 flex items-center font-black text-[13px] font-mono">{count(r.total) || 0}</div>
+                <div className="flex-1 px-1.5 font-black text-[16px] text-center leading-none flex items-center justify-center">{r.hawker}</div>
+                <div className="shrink-0 w-16 border-l-[1.5px] border-black px-1.5 flex items-center justify-center font-black text-[15px] font-mono">{count(r.total) || 0}</div>
               </div>
-              <div className="grid border-b border-black text-[8.5px] font-bold items-center" style={{ ...grid(papers.length), height: names }}>
+              <div className="grid border-b border-black text-[10px] font-bold items-center" style={{ ...grid(papers.length), height: names }}>
                 {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}
               </div>
-              <div className="grid border-b-[1.5px] border-black text-[13px] font-black font-mono" style={{ ...grid(papers.length), height: line }}>
+              <div className="grid border-b-[1.5px] border-black text-[15px] font-black font-mono" style={{ ...grid(papers.length), height: line }}>
                 {papers.map(c => <div key={c.key} className={`${cell} flex items-center justify-center`}>{count(r[c.key])}</div>)}
               </div>
               {/* Empty, as tall as the copies line: for a note written by hand */}
@@ -121,7 +120,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
             </div>
           ))}
         </div>
-        {data.totals && <div className="mt-1">{strip('कुल', [data.totals])}</div>}
+        {data.totals && <div className="mt-1">{strip('कुल', data.totals, '6mm')}</div>}
         {data.note && <p className="mt-1 text-[10px] text-slate-700">{data.note}</p>}
       </div>
     );
