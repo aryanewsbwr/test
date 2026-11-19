@@ -145,6 +145,7 @@ export default function DiscontinueForm({
         e.preventDefault();
         setHoldType('Permanent');
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         if (showFindModal) {
           setShowFindModal(false);
         } else if (showCustSuggestions) {

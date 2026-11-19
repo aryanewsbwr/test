@@ -159,6 +159,7 @@ export default function CounterSaleForm({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
       if (e.key === 'Escape') {
+        e.preventDefault();
         onClose();
       } else if (e.altKey && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();

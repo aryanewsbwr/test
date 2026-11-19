@@ -1433,7 +1433,8 @@ export default function ReceiptForm({ onClose, initialCustomerId }: ReceiptFormP
                           setTimeout(() => bookButtonRef.current?.focus(), 50);
                         }
                       }
-                    } else if (e.key === 'Escape') {
+                    } else if (e.key === 'Escape' && isCollectionDropdownOpen) {
+                      e.preventDefault();
                       setIsCollectionDropdownOpen(false);
                     } else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
                       // Quick typeahead jump
@@ -1529,7 +1530,8 @@ export default function ReceiptForm({ onClose, initialCustomerId }: ReceiptFormP
                           customerInputRef.current?.focus();
                         }
                       }
-                    } else if (e.key === 'Escape') {
+                    } else if (e.key === 'Escape' && isBookDropdownOpen) {
+                      e.preventDefault();
                       setIsBookDropdownOpen(false);
                     }
                   }}

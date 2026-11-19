@@ -295,6 +295,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
         e.preventDefault();
         onClose();
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         onClose();
       }
     };
@@ -367,7 +368,8 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                         handleSelectCollector(collectorName.trim());
                         if (fromInputRef.current) fromInputRef.current.focus();
                       }
-                    } else if (e.key === 'Escape') {
+                    } else if (e.key === 'Escape' && isDropdownOpen) {
+                      e.preventDefault();
                       setIsDropdownOpen(false);
                     }
                   }}

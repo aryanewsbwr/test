@@ -312,7 +312,8 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
                   } else if (e.key === 'Enter') {
                     e.preventDefault();
                     handleSelectCustomer(custSuggestions[highlightedCust]);
-                  } else if (e.key === 'Escape') {
+                  } else if (e.key === 'Escape' && custSuggestions.length) {
+                    e.preventDefault();
                     setCustSuggestions([]);
                   }
                 }}

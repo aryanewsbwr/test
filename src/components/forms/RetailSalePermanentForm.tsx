@@ -305,7 +305,8 @@ export default function RetailSalePermanentForm({
           setStatusMsg({ text: `Search failed for "${custInput}".`, isError: true });
         }
       }
-    } else if (e.key === 'Escape') {
+    } else if (e.key === 'Escape' && showSuggestions) {
+      e.preventDefault();
       setShowSuggestions(false);
     }
   };

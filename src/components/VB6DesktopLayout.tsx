@@ -308,27 +308,25 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
 
   // Keyboard Shortcuts (Esc to close, F1 for Rates, Ctrl+C for Customer, Ctrl+D for Discontinue, Ctrl+R for Receipt)
   useEffect(() => {
+    // Esc closes one thing only: the top-most menu, pop-up or window
+    const closeOne = () => {
+      if (activeMenu !== null) { setActiveMenu(null); return; }
+      if (isSubsModalOpen) { setIsSubsModalOpen(false); return; }
+      if (isRateMatrixOpen) { setIsRateMatrixOpen(false); return; }
+      if (isCollectionAgentsOpen) { setIsCollectionAgentsOpen(false); return; }
+      if (isUserPermOpen) { setIsUserPermOpen(false); return; }
+      if (isCounterSaleOpen) { setIsCounterSaleOpen(false); return; }
+      if (isRetailSalePermanentOpen) { setIsRetailSalePermanentOpen(false); return; }
+      if (isMessageOpen) { setIsMessageOpen(false); return; }
+      if (backupModalMode !== null) { setBackupModalMode(null); return; }
+      if (isPeriodOpen) { setIsPeriodOpen(false); return; }
+      if (activeWindow !== null) setActiveWindow(null);
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (activeMenu !== null) {
-          e.preventDefault();
-          setActiveMenu(null);
-          return;
-        }
-        if (isSubsModalOpen) { e.preventDefault(); setIsSubsModalOpen(false); return; }
-        if (isRateMatrixOpen) { e.preventDefault(); setIsRateMatrixOpen(false); return; }
-        if (isCollectionAgentsOpen) { e.preventDefault(); setIsCollectionAgentsOpen(false); return; }
-        if (isUserPermOpen) { e.preventDefault(); setIsUserPermOpen(false); return; }
-        if (isCounterSaleOpen) { e.preventDefault(); setIsCounterSaleOpen(false); return; }
-        if (isRetailSalePermanentOpen) { e.preventDefault(); setIsRetailSalePermanentOpen(false); return; }
-        if (isMessageOpen) { e.preventDefault(); setIsMessageOpen(false); return; }
-        if (backupModalMode !== null) { e.preventDefault(); setBackupModalMode(null); return; }
-        if (isPeriodOpen) { e.preventDefault(); setIsPeriodOpen(false); return; }
-        if (activeWindow !== null) {
-          e.preventDefault();
-          setActiveWindow(null);
-          return;
-        }
+        // The open screen gets Esc first (closes its own pop-up, or goes from a report back to
+        // its range screen). Only when it did nothing with it does Esc close something here.
+        setTimeout(() => { if (!e.defaultPrevented) closeOne(); }, 0);
       } else if (e.key === 'F1') {
         if (activeWindow !== null) return;
         e.preventDefault();

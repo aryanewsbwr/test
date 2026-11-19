@@ -147,6 +147,17 @@ export default function ReportsForm({
   periodStartYear
 }: ReportsFormProps) {
   const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
+  // Esc on a report goes back to its range screen; Esc there closes Reports
+  useEffect(() => {
+    if (viewMode !== 'preview') return;
+    const back = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      e.preventDefault();
+      setViewMode('criteria');
+    };
+    window.addEventListener('keydown', back);
+    return () => window.removeEventListener('keydown', back);
+  }, [viewMode]);
   // Where the bill previews put their Prev / Next, WhatsApp and Print buttons
   const [billBarSlot, setBillBarSlot] = useState<HTMLDivElement | null>(null);
   const [activeReport, setActiveReport] = useState<string>(initialReport);
@@ -917,7 +928,8 @@ export default function ReportsForm({
                         } else if (e.key === 'Enter') {
                           e.preventDefault();
                           handleSelectCustomer(customerSuggestions[highlightedCustIndex]);
-                        } else if (e.key === 'Escape') {
+                        } else if (e.key === 'Escape' && isCustomerDropdownOpen) {
+                          e.preventDefault();
                           setIsCustomerDropdownOpen(false);
                         }
                       }
