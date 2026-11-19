@@ -113,6 +113,11 @@ export default function CustomerForm({
 
   // Find Dialog State
   const [isFindOpen, setIsFindOpen] = useState(false);
+  // Find list: the highlighted line (arrow keys), the text the shown results are for, and an Enter
+  // pressed before the results for the typed text arrived
+  const [findIndex, setFindIndex] = useState(0);
+  const [resultsFor, setResultsFor] = useState<string | null>(null);
+  const [enterPending, setEnterPending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -152,16 +157,27 @@ export default function CustomerForm({
     if (!isFindOpen) return;
     const timer = setTimeout(() => {
       setIsSearching(true);
-      fetch(`/api/customers?search=${encodeURIComponent(searchQuery)}&page=1&limit=50&order=desc`)
+      const asked = searchQuery;
+      fetch(`/api/customers?search=${encodeURIComponent(asked)}&page=1&limit=50&order=desc`)
         .then(r => r.json())
         .then(data => {
           setSearchResults(data.customers || []);
+          setResultsFor(asked);
+          setFindIndex(0);
         })
         .catch(() => setSearchResults([]))
         .finally(() => setIsSearching(false));
     }, 200);
     return () => clearTimeout(timer);
   }, [searchQuery, isFindOpen]);
+
+  // Enter was pressed before the results came: open the first customer as soon as they do
+  useEffect(() => {
+    if (!enterPending || isSearching || resultsFor !== searchQuery) return;
+    setEnterPending(false);
+    if (searchResults[0]) handleSelectFoundCustomer(searchResults[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enterPending, isSearching, resultsFor, searchQuery, searchResults]);
 
   const handleCancel = () => {
     setSelectedCustId(0);
@@ -188,10 +204,18 @@ export default function CustomerForm({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Esc goes back one step: closes a pop-up; from a customer back to the Find list (with the
+      // same search); from the Find list to the empty form; only then closes Customer Info
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isInsertOpen) setIsInsertOpen(false);
         else if (isFindOpen) setIsFindOpen(false);
+        else if (selectedCustId) {
+          const search = searchQuery;
+          handleCancel();
+          setSearchQuery(search);
+          setIsFindOpen(true);
+        }
         else onClose();
         return;
       }
@@ -223,7 +247,7 @@ export default function CustomerForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isFindOpen, isInsertOpen, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
+  }, [isOpen, isFindOpen, isInsertOpen, searchQuery, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
 
   if (!isOpen) return null;
 
@@ -240,6 +264,18 @@ export default function CustomerForm({
     setPriority(cust.priority || 1);
     if (onSelectCustomer) onSelectCustomer(cust);
     setIsFindOpen(false);
+  };
+
+  // Enter in the Find box: open the highlighted customer (the first unless arrows moved it).
+  // When the results for what was just typed have not come yet, open the first once they do.
+  const handleFindKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setFindIndex(i => Math.min(i + 1, Math.max(searchResults.length - 1, 0))); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setFindIndex(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (resultsFor === searchQuery && !isSearching) { if (searchResults[findIndex]) handleSelectFoundCustomer(searchResults[findIndex]); }
+      else setEnterPending(true);
+    }
   };
 
   const handleNameEngChange = (val: string) => {
@@ -497,17 +533,32 @@ export default function CustomerForm({
     }
   };
 
+  // Restarting a stopped paper starts a NEW line from today (date can be changed) with the same
+  // paper, hawker, copies and days. The stopped line stays as it was, so its old start and close
+  // dates remain in the history and are not billed again.
   const handleReactivateSubscriptionRow = (sno: number) => {
-    setSubscriptions(subscriptions.map(s => {
-      if (s.sno === sno) {
-        return {
-          ...s,
-          c_date: null,
-          is_active: true
-        };
-      }
-      return s;
-    }));
+    const sub = subscriptions.find(s => s.sno === sno);
+    if (!sub) return;
+    if (!selectedCustId) {
+      setStatus('Please find the customer first.');
+      setTimeout(() => setStatus(''), 3500);
+      return;
+    }
+    const pub = publications.find(p => p.publica_id === sub.publica_id);
+    const hawker = insertHawkers.find(h => h.hawker_id === sub.hawker_id);
+    setInsertForm({
+      pubText: pub ? publicationLabel(pub) : '',
+      hawkerText: hawker ? hawker.name.trim() : '',
+      qty: Number(sub.qty) || 1,
+      circulation: sub.circulation && CIRCULATION_OPTIONS.includes(sub.circulation) ? sub.circulation : 'Morning',
+      fromDay: String(sub.from_day || '1-7'),
+      sDate: todayLocalIso(),
+      cDate: '',
+      dis: Number(sub.dis) || 0,
+      dely: Number(sub.dely) || 0
+    });
+    setInsertError(hawker ? '' : 'पुराना हॉकर अब लिस्ट में नहीं है — हॉकर चुनें।');
+    setIsInsertOpen(true);
   };
 
   const handleSave = async () => {
@@ -1174,7 +1225,8 @@ export default function CustomerForm({
                 type="text"
                 placeholder="Type Name, Hindi Name, Customer ID, or Phone..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setEnterPending(false); }}
+                onKeyDown={handleFindKey}
                 className="flex-1 px-2.5 py-1 border border-slate-400 bg-white font-bold text-blue-900"
                 autoFocus
               />
@@ -1195,13 +1247,15 @@ export default function CustomerForm({
                     </tr>
                   </thead>
                   <tbody>
-                    {searchResults.map(c => {
+                    {searchResults.map((c, ci) => {
                       const regName = regions.find(r => r.region_id === c.region_id)?.region_name || (c as any).region_name || '-';
                       return (
                         <tr 
                           key={c.customer_id}
                           onClick={() => handleSelectFoundCustomer(c)}
-                          className="border-b hover:bg-blue-100 cursor-pointer"
+                          onMouseEnter={() => setFindIndex(ci)}
+                          ref={ci === findIndex ? (el => el?.scrollIntoView({ block: 'nearest' })) : undefined}
+                          className={`border-b cursor-pointer ${ci === findIndex ? 'bg-[#0A246A] text-white [&_td]:text-white' : 'hover:bg-blue-100'}`}
                         >
                           <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{c.customer_id}</td>
                           <td className="p-1.5 border-r font-bold text-slate-800">{c.name_eng}</td>
