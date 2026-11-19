@@ -78,7 +78,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` });
     // In the incoming and total boxes नवज्योति, पत्रिका and भास्कर (the big papers) get four times the room of the others
     const BIG = ['नवज्योति', 'पत्रिका', 'भास्कर'];
-    const wide: React.CSSProperties = { gridTemplateColumns: [...papers.map(c => (BIG.includes(c.label) ? 'minmax(0, 4fr)' : 'minmax(0, 1fr)')), 'minmax(0, 1fr)'].join(' ') };
+    const wide: React.CSSProperties = { gridTemplateColumns: [...papers.map(c => (BIG.includes(c.label) ? 'minmax(0, 4fr)' : 'minmax(0, 1fr)')), 'minmax(0, 2fr)'].join(' ') };  // कुल: room for 4-5 figures
     // Heights in mm so that 25 hawkers fill two A4 pages; fewer hawkers get bigger boxes (up to half as big again)
     const k = Math.max(1, Math.min(1.5, 25 / Math.max(rows.length, 1)));
     const line = `${(5 * k).toFixed(2)}mm`;   // a line of copies, and the note line under it
