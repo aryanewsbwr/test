@@ -26,7 +26,7 @@ insert into public.hawker_priority (name_key, name, priority, hindi_name) values
   ('collegeroad', 'CollegeRoad', 7, 'जटिया कॉलोनी'),
   ('dungarifatak', 'DungariFatak', 15, 'डूंगरी रोड'),
   ('ganeshpura', 'Ganeshpura', 12, 'गणेशपुरा'),
-  ('hb', 'HB', 11, 'हाउसिंग रोड'),
+  ('hb', 'HB', 11, 'हाउसिंग बोर्ड'),
   ('iocroad', 'IocRoad', 6, 'आई.ओ.सी. रोड'),
   ('jamalpura', 'Jamalpura', 4, 'जमालपुरा'),
   ('masudaroad i', 'MasudaRoad I', 21, 'मसूदा रोड I'),

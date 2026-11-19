@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // A name without a priority is not shown in any list; hawkers starting with Z never are.
 export interface HawkerPriority { priority: number; hindi_name: string }
 
+// Order of a priority in lists: 1, 2, 3 ... then 0 (e.g. Whatsapp) at the end, then none
+export const priorityRank = (p: number | null | undefined) => (p === null || p === undefined ? 1e9 : p === 0 ? 1e8 : p);
+
 export const hawkerKey = (name: unknown) => String(name ?? '').trim().toLowerCase();
 
 // null when the table is not made yet, so nothing is hidden before the SQL is run

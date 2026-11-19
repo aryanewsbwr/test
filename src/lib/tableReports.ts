@@ -6,7 +6,7 @@ import { supabaseAdmin as db } from './supabaseAdmin';
 import { fySuffix } from './financialYear';
 import { monthCode } from './backupTables';
 import { isDue } from './dueRule';
-import { hawkerKey, loadHawkerPriorities } from './hawkerPriority';
+import { hawkerKey, loadHawkerPriorities, priorityRank } from './hawkerPriority';
 import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, sushaToUnicode } from './transliteration';
 
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
@@ -228,13 +228,21 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   // ... and a hawker name without a priority (Hawker Master) is not shown either
   const going = wanted.filter(s => !off.has(s.publica_id) && !/^z/i.test(hawkerName(s.hawker_id))
     && (!priorities || priorities.has(hawkerKey(hawkerName(s.hawker_id)))));
-  const paperIds = Array.from(new Set(going.map(s => s.publica_id)))
-    .sort((a, b) => (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
+  // Navajyoti is counted in the NJ column (only in this report)
+  const shortOf = (id: number) => String(m.pubs.get(id)?.short || '').trim().toLowerCase();
+  const njId = Array.from(m.pubs.keys()).find(id => shortOf(id) === 'nj');
+  const column = (id: number) => (njId && shortOf(id) === 'navajyoti' ? njId : id);
+  // Newspapers in the office's order, then the rest (magazines) by name
+  const ORDER = ['nj', 'rp', 'db', 'nafa', 'toi', 'thin', 'et', 'ie', 'ht', 'bl'];
+  const place = (id: number) => { const i = ORDER.indexOf(shortOf(id)); return i < 0 ? ORDER.length : i; };
+  const paperIds = Array.from(new Set(going.map(s => column(s.publica_id))))
+    .sort((a, b) => place(a) - place(b) || (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
   const rows = groupBy(going, s => hawkerName(s.hawker_id).toLowerCase())
     .map(([, ss]) => {
       const p = priorities?.get(hawkerKey(hawkerName(ss[0].hawker_id)));
-      const row: Record<string, any> = { hawker: hawkerName(ss[0].hawker_id), hindi: p?.hindi_name || '', priority: p ? p.priority : 1e9, total: sum(ss, 'qty') };
-      for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => s.publica_id === pid), 'qty');
+      // The hawker's Hindi name (Hawker Master); the English name only when there is none
+      const row: Record<string, any> = { hawker: p?.hindi_name || hawkerName(ss[0].hawker_id), priority: priorityRank(p ? p.priority : null), total: sum(ss, 'qty') };
+      for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => column(s.publica_id) === pid), 'qty');
       return row;
     })
     .sort((a, b) => a.priority - b.priority || String(a.hawker).localeCompare(String(b.hawker)));
@@ -244,7 +252,7 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   const closedNames = Array.from(new Set(wanted.filter(s => recent.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
   return {
     title: kind === 'magazine' ? 'QUANTITY OF MAGAZINE' : kind === 'all' ? 'DAILY QUANTITY OF NEWSPAPER & MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
-    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...(priorities ? [text('hindi', 'हिंदी नाम')] : []), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
+    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
   };

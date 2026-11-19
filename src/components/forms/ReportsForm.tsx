@@ -179,7 +179,8 @@ export default function ReportsForm({
       const id = String(h.hawker_id || h.id || '');
       if (!name || !/^\d+$/.test(id)) continue;
       const key = name.toLowerCase();
-      if (!byName.has(key)) byName.set(key, { name, ids: [], priority: h.priority ?? 1e9 });
+      // Priority 1, 2, 3 ... first, 0 (e.g. Whatsapp) at the end, none after that
+      if (!byName.has(key)) byName.set(key, { name, ids: [], priority: h.priority === null || h.priority === undefined ? 1e9 : h.priority === 0 ? 1e8 : h.priority });
       byName.get(key)!.ids.push(id);
     }
     return Array.from(byName.values())

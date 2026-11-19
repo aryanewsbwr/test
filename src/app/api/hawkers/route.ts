@@ -3,7 +3,7 @@ import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { fetchAllRows, nextId } from '@/lib/publicationsData';
-import { hawkerKey, loadHawkerPriorities, saveHawkerPriority } from '@/lib/hawkerPriority';
+import { hawkerKey, loadHawkerPriorities, priorityRank, saveHawkerPriority } from '@/lib/hawkerPriority';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         return { ...h, priority: p ? p.priority : null, area_hindi: p?.hindi_name || '' };
       })
       .filter((h: any) => showAll || master || !priorities || h.priority !== null)
-      .sort((a: any, b: any) => (a.priority ?? 1e9) - (b.priority ?? 1e9)
+      .sort((a: any, b: any) => priorityRank(a.priority) - priorityRank(b.priority)
         || String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' }));
 
     if (search) {
@@ -75,6 +75,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { hawker_id, name, hindi_name, address, city, phone, mobile } = body;
+
+    // { name, priority, area_hindi, only_priority: true } changes only the name's priority / Hindi name
+    if (body.only_priority) {
+      if (!name || !String(name).trim()) return NextResponse.json({ error: 'Hawker Name is required' }, { status: 400 });
+      await saveHawkerPriority(String(name), body.priority ?? '', body.area_hindi);
+      return NextResponse.json({ success: true });
+    }
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Hawker Name is required' }, { status: 400 });
