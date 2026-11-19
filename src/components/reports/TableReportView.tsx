@@ -65,30 +65,28 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     );
   }
 
-  // One box per hawker (like the office's paper sheet), each across the full width of the page:
-  // the name and total, each paper's copies, and an empty line to write a note. In priority order,
-  // over two A4 pages. Above them a box to write the copies that came in (आवक), below them the total
-  // of each paper.
+  // One box per hawker (like the office's paper sheet), across the full width of the page: on the
+  // left the hawker's name with the total under it; on the right each paper's name, its copies,
+  // and under them a tall empty line to write a note. 14 boxes on every A4 page; empty boxes fill
+  // the last page (28 over two pages), to write a hawker in by hand. Page 1 starts with a box to
+  // write the copies that came in (आवक); the last page ends with the total of each paper.
   if (data.layout === 'boxes') {
     const rows = data.groups.flatMap(g => g.rows);
     const papers = data.columns.filter(c => /^p\d+$/.test(c.key));
     const cell = 'border-r border-black px-0.5 text-center last:border-r-0';
     const count = (v: any) => fmt({ key: 'n', label: '', type: 'int' }, v);
     // Every box has the same, equal columns, so the lines run straight down the page
-    const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` });
+    const grid: React.CSSProperties = { gridTemplateColumns: `repeat(${papers.length}, minmax(0, 1fr))` };
     // In the incoming and total boxes नवज्योति, पत्रिका and भास्कर (the big papers) get four times the room of the others
     const BIG = ['नवज्योति', 'पत्रिका', 'भास्कर'];
     const wide: React.CSSProperties = { gridTemplateColumns: [...papers.map(c => (BIG.includes(c.label) ? 'minmax(0, 4fr)' : 'minmax(0, 1fr)')), 'minmax(0, 2fr)'].join(' ') };  // कुल: room for 4-5 figures
-    // Heights in mm so that 25 hawkers fill two A4 pages; fewer hawkers get bigger boxes (up to half as big again)
-    const k = Math.max(1, Math.min(1.5, 25 / Math.max(rows.length, 1)));
-    const line = `${(5 * k).toFixed(2)}mm`;   // a line of copies, and the note line under it
-    const head = `${(5.2 * k).toFixed(2)}mm`;
-    const names = '3.2mm';
+    const PER_PAGE = 14;
+    const NAME = '34mm';           // the name column, as wide in every box
     const strip = (title: string, values: Record<string, any> | null, height: string) => (
       <div className="flex border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
-        <div className="w-14 shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[13px]">{title}</div>
+        <div className="shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[14px]" style={{ width: NAME }}>{title}</div>
         <div className="flex-1">
-          <div className="grid text-[9px] font-bold border-b border-black items-center" style={{ ...wide, height: names }}>
+          <div className="grid text-[9px] font-bold border-b border-black items-center" style={{ ...wide, height: '3mm' }}>
             {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}<div className="px-0.5 text-center">कुल</div>
           </div>
           <div className="grid text-[14px] font-black font-mono" style={{ ...wide, height }}>
@@ -98,39 +96,39 @@ export default function TableReportView({ data }: { data: TableReportData }) {
         </div>
       </div>
     );
-    // Pages: the first holds the heading, the incoming box and 12 hawkers, the others 13 (the last
-    // also the total); fewer, bigger boxes when there are fewer hawkers. Each page is as tall as
-    // A4's printable height and its boxes are spread evenly down it, so no paper is left empty.
-    const first = Math.max(1, Math.floor(12 / k));
-    const rest = Math.max(1, Math.floor(13 / k));
-    const pages: Record<string, any>[][] = [rows.slice(0, first)];
-    for (let i = first; i < rows.length; i += rest) pages.push(rows.slice(i, i + rest));
-    const box = (r: Record<string, any>, i: number) => (
-            <div key={i} className="border-[1.5px] border-black flex flex-col overflow-hidden break-inside-avoid" style={{ breakInside: 'avoid' }}>
-              <div className="flex items-stretch border-b-[1.5px] border-black" style={{ height: head }}>
-                <div className="flex-1 px-1.5 font-black text-[16px] text-center leading-none flex items-center justify-center">{r.hawker}</div>
-                <div className="shrink-0 w-16 border-l-[1.5px] border-black px-1.5 flex items-center justify-center font-black text-[15px] font-mono">{count(r.total) || 0}</div>
-              </div>
-              <div className="grid border-b border-black text-[10px] font-bold items-center" style={{ ...grid(papers.length), height: names }}>
-                {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}
-              </div>
-              <div className="grid border-b-[1.5px] border-black text-[15px] font-black font-mono" style={{ ...grid(papers.length), height: line }}>
-                {papers.map(c => <div key={c.key} className={`${cell} flex items-center justify-center`}>{count(r[c.key])}</div>)}
-              </div>
-              {/* Empty, as tall as the copies line: for a note written by hand */}
-              <div style={{ height: line }} />
-            </div>
+    const box = (r: Record<string, any> | null, i: number) => (
+      <div key={i} className="flex border-[1.5px] border-black overflow-hidden break-inside-avoid" style={{ height: '17.5mm', breakInside: 'avoid' }}>
+        <div className="shrink-0 border-r-[1.5px] border-black flex flex-col items-center justify-center px-1 text-center" style={{ width: NAME }}>
+          <div className="font-black text-[15px] leading-tight">{r?.hawker || ''}</div>
+          {r && <div className="font-black text-[13px] font-mono leading-tight mt-0.5">{count(r.total) || 0}</div>}
+        </div>
+        <div className="flex-1 flex flex-col">
+          <div className="grid border-b border-black text-[9.5px] font-bold items-center" style={{ ...grid, height: '3mm' }}>
+            {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}
+          </div>
+          <div className="grid border-b-[1.5px] border-black text-[15px] font-black font-mono" style={{ ...grid, height: '5.5mm' }}>
+            {papers.map(c => <div key={c.key} className={`${cell} flex items-center justify-center`}>{r ? count(r[c.key]) : ''}</div>)}
+          </div>
+          {/* Empty: for a note written by hand */}
+          <div className="flex-1" />
+        </div>
+      </div>
     );
+    // Whole pages: the hawkers, then empty boxes up to the end of the last page
+    const slots: (Record<string, any> | null)[] = [...rows];
+    while (slots.length < PER_PAGE * Math.max(1, Math.ceil(rows.length / PER_PAGE))) slots.push(null);
+    const pages: (Record<string, any> | null)[][] = [];
+    for (let i = 0; i < slots.length; i += PER_PAGE) pages.push(slots.slice(i, i + PER_PAGE));
     return (
       <div className="font-sans">
         {pages.map((list, pi) => {
           const last = pi === pages.length - 1;
+          // As tall as A4's printable height (less the heading on page 1); the boxes spread evenly down it
           return (
             <div key={pi} className="flex flex-col justify-between"
-              style={{ height: pi === 0 ? '257mm' : '270mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
-              {/* One tall empty line to write the copies that came in */}
-              {pi === 0 && strip('आवक', null, '13mm')}
-              {list.map((r, i) => box(r, i))}
+              style={{ height: pi === 0 ? '263mm' : '271mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
+              {pi === 0 && strip('आवक', null, '10mm')}
+              {list.map((r, i) => box(r, pi * PER_PAGE + i))}
               {last && data.totals && strip('कुल', data.totals, '6mm')}
               {last && data.note && <p className="text-[10px] text-slate-700">{data.note}</p>}
             </div>

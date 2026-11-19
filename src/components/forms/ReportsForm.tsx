@@ -1543,9 +1543,9 @@ export default function ReportsForm({
           
           {/* Header (the box sheet has only the firm's name and the day, to leave the page for the boxes) */}
           {isTable && reportData?.layout === 'boxes' ? (
-            <div className="flex items-end justify-between pb-1 border-b-2 border-black">
-              <h1 className="text-2xl font-black tracking-wider uppercase">{firm.name}</h1>
-              <span className="text-lg font-black font-sans">{reportData?.subtitle || ''}</span>
+            <div className="flex items-end justify-between pb-0.5 border-b-2 border-black leading-none">
+              <h1 className="text-xl font-black tracking-wider uppercase leading-none">{firm.name}</h1>
+              <span className="text-base font-black font-sans leading-none">{reportData?.subtitle || ''}</span>
             </div>
           ) : (
           <div className="text-center pb-3 border-b-2 border-black space-y-1">
@@ -1597,7 +1597,7 @@ export default function ReportsForm({
             </div>
           ) : isTable ? (
             reportData?.kind === 'table' && reportData.type === activeReport
-              ? <div className={reportData.layout === 'boxes' ? 'pt-1.5' : 'pt-3'}><TableReportView data={reportData} /></div>
+              ? <div className={reportData.layout === 'boxes' ? 'pt-1' : 'pt-3'}><TableReportView data={reportData} /></div>
               : <div className="p-16 text-center text-slate-500 font-sans">रिपोर्ट बन रही है…</div>
           ) : !reportData || ((activeReport === 'cust_detail' || activeReport === 'cust_monthwise')
             ? !Array.isArray(reportData.customers) || reportData.customers.length === 0
