@@ -72,10 +72,10 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     const papers = data.columns.filter(c => /^p\d+$/.test(c.key));
     const cell = 'border-r border-black px-0.5 text-center last:border-r-0';
     const count = (v: any) => fmt({ key: 'n', label: '', type: 'int' }, v);
-    const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` });
+    // Each paper's column is as wide as its name needs, the spare room shared out
+    const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(max-content, 1fr))` });
     return (
       <div className="font-sans">
-        <style>{'@media print { @page { size: A4 portrait; margin: 7mm; } }'}</style>
         <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
           {rows.map((r, i) => (
             <div key={i} className="border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
@@ -84,8 +84,8 @@ export default function TableReportView({ data }: { data: TableReportData }) {
                 <div className="flex-1 px-1.5 py-0.5 font-black text-[13px] text-center leading-tight">{r.hawker}</div>
                 <div className="shrink-0 border-l-[1.5px] border-black px-1.5 flex items-center font-black text-[12px] font-mono">{count(r.total) || 0}</div>
               </div>
-              <div className="grid border-b border-black text-[8.5px] font-bold leading-tight" style={grid(papers.length)}>
-                {papers.map(c => <div key={c.key} className={`${cell} py-0.5 truncate`}>{c.label}</div>)}
+              <div className="grid border-b border-black text-[8px] font-bold leading-tight" style={grid(papers.length)}>
+                {papers.map(c => <div key={c.key} className={`${cell} py-0.5 whitespace-nowrap`}>{c.label}</div>)}
               </div>
               <div className="grid text-[12px] font-black font-mono" style={grid(papers.length)}>
                 {papers.map(c => <div key={c.key} className={`${cell} py-0.5 min-h-[20px]`}>{count(r[c.key])}</div>)}
@@ -95,7 +95,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
         </div>
         {data.totals && (
           <div className="mt-2 border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
-            <div className="grid text-[8.5px] font-bold border-b border-black" style={grid(papers.length + 1)}>
+            <div className="grid text-[8px] font-bold border-b border-black" style={grid(papers.length + 1)}>
               {papers.map(c => <div key={c.key} className={`${cell} py-0.5`}>{c.label}</div>)}<div className="px-0.5 text-center py-0.5">कुल</div>
             </div>
             <div className="grid text-[12px] font-black font-mono" style={grid(papers.length + 1)}>
