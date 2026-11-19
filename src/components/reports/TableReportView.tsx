@@ -74,11 +74,11 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     const papers = data.columns.filter(c => /^p\d+$/.test(c.key));
     const cell = 'border-r border-black px-0.5 text-center last:border-r-0';
     const count = (v: any) => fmt({ key: 'n', label: '', type: 'int' }, v);
-    // Each paper's column is as wide as its name needs, the spare room shared out
-    const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(max-content, 1fr))` });
+    // Every box has the same, equal columns, so the lines run straight down the page
+    const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` });
     // In the incoming and total boxes नवज्योति, पत्रिका and भास्कर (the big papers) get four times the room of the others
     const BIG = ['नवज्योति', 'पत्रिका', 'भास्कर'];
-    const wide: React.CSSProperties = { gridTemplateColumns: [...papers.map(c => (BIG.includes(c.label) ? 'minmax(max-content, 4fr)' : 'minmax(max-content, 1fr)')), 'minmax(max-content, 1fr)'].join(' ') };
+    const wide: React.CSSProperties = { gridTemplateColumns: [...papers.map(c => (BIG.includes(c.label) ? 'minmax(0, 4fr)' : 'minmax(0, 1fr)')), 'minmax(0, 1fr)'].join(' ') };
     // Heights in mm so that 25 hawkers fill two A4 pages; fewer hawkers get bigger boxes (up to half as big again)
     const k = Math.max(1, Math.min(1.5, 25 / Math.max(rows.length, 1)));
     const line = `${(5 * k).toFixed(2)}mm`;   // a line of copies, and the note line under it
