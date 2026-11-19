@@ -216,7 +216,9 @@ export default function ReportsForm({
     fetch('/api/collection-agents').then(r => r.json()).then(d => setCollectors((d.agents || []).filter((a: any) => a.name))).catch(() => {});
     fetch('/api/receipt-allotment').then(r => r.json()).then(d => setBooks((d.all_allotments || [])
       .map((b: any) => ({ collect_id: Number(b.collect_id) || 0, collector_name: String(b.collector_name || ''), from: Number(b.receipt_from) || 0, to: Number(b.receipt_to) || 0 }))
-      .filter((b: any) => b.from && b.to).sort((a: any, b: any) => a.from - b.from))).catch(() => {});
+      // A book entered twice for the same collector shows once
+      .filter((b: any, i: number, all: any[]) => b.from && b.to && all.findIndex((x: any) => x.collect_id === b.collect_id && x.from === b.from && x.to === b.to) === i)
+      .sort((a: any, b: any) => a.from - b.from))).catch(() => {});
     fetch('/api/publishers').then(r => r.json()).then(d => {
       const list = d.publishers || d.data || (Array.isArray(d) ? d : []);
       setPublishersList(list.map((x: any) => ({ publish_id: Number(x.publish_id ?? x.Publish_id), name: String(x.name ?? x.Name ?? '') })).filter((x: any) => x.name));
@@ -988,7 +990,7 @@ export default function ReportsForm({
                 <select value={selectedBook} onChange={e => setSelectedBook(e.target.value)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
                   <option value="all">-- सभी बुक --</option>
                   {books.filter(b => !/^\d+$/.test(selectedCollector) || b.collect_id === Number(selectedCollector)).map(b => (
-                    <option key={`${b.from}-${b.to}`} value={`${b.from}-${b.to}`}>{b.from} से {b.to}{b.collector_name ? ` (${b.collector_name})` : ''}</option>
+                    <option key={`${b.collect_id}-${b.from}-${b.to}`} value={`${b.from}-${b.to}`}>{b.from} से {b.to}{b.collector_name ? ` (${b.collector_name})` : ''}</option>
                   ))}
                 </select>
               </div>
