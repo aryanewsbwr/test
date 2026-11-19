@@ -328,8 +328,16 @@ export const REPORTS: Record<string, Builder> = {
       book: r.bookFrom ? `${r.bookFrom}-${r.bookTo}` : '-', collector: m.collectors.get(r.collector) || r.agent || '-', id: r.customer_id
     }));
     const nums = list.map(r => Number(r.manual)).filter(n => n > 0);
+    // Receipt numbers skipped inside a run (cancelled or not entered), written as 101, 105-107
+    const missing: string[] = [];
     let gaps = 0;
-    for (let i = 1; i < nums.length; i++) if (nums[i] - nums[i - 1] > 1 && nums[i] - nums[i - 1] < 50) gaps += nums[i] - nums[i - 1] - 1;
+    for (let i = 1; i < nums.length; i++) {
+      const jump = nums[i] - nums[i - 1];
+      if (jump > 1 && jump < 50) {
+        gaps += jump - 1;
+        missing.push(jump === 2 ? String(nums[i - 1] + 1) : `${nums[i - 1] + 1}-${nums[i] - 1}`);
+      }
+    }
     const light = (c: Column): Column => ({ ...c, light: true });
     const heading = [period(f)];
     if (f.collector) heading.push(`कलेक्टर: ${m.collectors.get(f.collector) || `#${f.collector}`}`);
@@ -344,7 +352,7 @@ export const REPORTS: Record<string, Builder> = {
         light(text('id', 'ग्राहक नं.', 'right'))
       ],
       groups: [{ rows }], totals: totalsOf(rows, ['amount', 'less', 'bill_amt', 'diff'], { customer: `कुल ${rows.length} रसीद` }),
-      note: [gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी)।` : '', 'बाकी = बिल राशि − प्राप्त − कटौती (माइनस = बिल से ज़्यादा जमा)'].filter(Boolean).join(' · ')
+      note: [gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी): ${missing.slice(0, 200).join(', ')}${missing.length > 200 ? ' …' : ''}` : '', 'बाकी = बिल राशि − प्राप्त − कटौती (माइनस = बिल से ज़्यादा जमा)'].filter(Boolean).join(' · ')
     };
   },
   // The old "Actual Amount Receipt" menu item opens the same report

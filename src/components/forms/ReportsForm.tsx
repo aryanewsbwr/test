@@ -2844,23 +2844,6 @@ export default function ReportsForm({
             </div>
           )}
 
-          {/* Footer Signatures matching Crystal Reports */}
-          {activeReport !== 'cust_detail' && activeReport !== 'cust_monthwise' && activeReport !== 'sticker_printing' && <div className="pt-14 flex justify-between text-xs font-serif font-bold">
-            <div className="text-center">
-              <div className="w-36 border-t border-black pt-1">Prepared By</div>
-            </div>
-            <div className="text-center">
-              <div className="w-36 border-t border-black pt-1">Checked By</div>
-            </div>
-            <div className="text-center">
-              <div className="w-36 border-t border-black pt-1">For Aryan News Agency</div>
-            </div>
-          </div>}
-
-          <div data-noprint className="text-center pt-8 text-[10px] text-slate-500 font-sans">
-            --- End of Report (Crystal Reports for Windows • Aryan News Agency) ---
-          </div>
-
         </div>
 
       </div>
