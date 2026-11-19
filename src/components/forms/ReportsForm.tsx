@@ -102,7 +102,7 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   bill_print_region: { title: 'Region Wise Bill Printing', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
   bill_print_single: { title: 'Single Bill Printing', category: 'Bill Printing', hasCustId: true, hasPeriod: true },
   bill_paid_report: { title: 'Bill Paid Report', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
-  hawker_daily_qty: { title: 'Daily Quantity of Newspaper', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true },
+  hawker_daily_qty: { title: 'Quantity of Newspaper and Magazine', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true },
   hawker_magazine_qty: { title: 'Quantity of Magazine', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true },
   dues_ledger: { title: 'Customer Outstanding Dues Ledger', category: 'Outstanding Report', hasRegion: true },
   previous_dues_wise: { title: 'Previous Dues Wise Report', category: 'Outstanding Report', hasRegion: true },
@@ -1266,8 +1266,7 @@ export default function ReportsForm({
               <option value="receipt_nowise">Receipt Number Wise Report</option>
             </optgroup>
             <optgroup label="7. Hawker Wise Reports">
-              <option value="hawker_daily_qty">Daily Quantity of Newspaper</option>
-              <option value="hawker_magazine_qty">Quantity of Magazine</option>
+              <option value="hawker_daily_qty">Quantity of Newspaper and Magazine</option>
             </optgroup>
             <optgroup label="8. Outstanding Reports">
               <option value="dues_ledger">Customer Outstanding Dues Ledger</option>
