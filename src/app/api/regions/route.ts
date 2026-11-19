@@ -8,7 +8,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const regions = await fetchRegions();
+    // Regions whose name starts with Z are old / closed: left out of every list (?all=1 lists them too)
+    const showAll = new URL(request.url).searchParams.get('all') === '1';
+    const regions = (await fetchRegions()).filter((r: any) => showAll || !/^z/i.test(String(r.region_name || r.name || '').trim()));
     const decoded = regions.map((r: any) => {
       const rName = String(r.region_name || r.name || '');
       return {

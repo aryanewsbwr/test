@@ -213,13 +213,15 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
     setTimeout(() => nameInputRef.current?.focus(), 50);
   };
 
-  const filteredHawkers = hawkerList.filter(h => 
+  // Only hawkers with a priority, unless "show all" is ticked (to give one a priority)
+  const [showAllHawkers, setShowAllHawkers] = useState(false);
+  const filteredHawkers = hawkerList.filter(h => (showAllHawkers || (h.priority !== null && h.priority !== undefined)) && (
     (h.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
     String(h.hawker_id || '').includes(searchQuery) ||
     (h.phone || '').includes(searchQuery) ||
     (h.mobile || '').includes(searchQuery) ||
     (h.address || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ));
 
   return (
     <div className="d2-window relative w-full max-w-[700px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
@@ -488,6 +490,10 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                 className="flex-1 px-2 py-1 border border-slate-400 bg-white font-bold text-blue-900 outline-none"
                 autoFocus
               />
+              <label className="flex items-center gap-1 font-bold text-slate-700 whitespace-nowrap cursor-pointer" title="Priority के बिना वाले हॉकर भी दिखाएँ">
+                <input type="checkbox" checked={showAllHawkers} onChange={e => setShowAllHawkers(e.target.checked)} />
+                सभी दिखाएँ
+              </label>
             </div>
 
             <div className="flex-1 overflow-auto border border-slate-300 bg-white max-h-64">
