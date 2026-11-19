@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const report = await buildReport(type, {
       from: isDate(from) ? from : '', to: isDate(to) ? to : '',
       region: num('region'), hawker: hawkers[0] || 0, hawkers, pub: num('pub'), publisher: num('publisher'), collector: num('collector'),
-      bookFrom: bm ? Number(bm[1]) : 0, bookTo: bm ? Number(bm[2]) : 0, customer: num('customer'), kind: ['magazine', 'all'].includes(String(p.get('kind'))) ? String(p.get('kind')) as any : 'newspaper'
+      bookFrom: bm ? Number(bm[1]) : 0, bookTo: bm ? Number(bm[2]) : 0, customer: num('customer'), layout: p.get('layout') === 'boxes' ? 'boxes' : 'table', kind: ['magazine', 'all'].includes(String(p.get('kind'))) ? String(p.get('kind')) as any : 'newspaper'
     });
     return NextResponse.json(report);
   } catch (err: any) {

@@ -11,8 +11,8 @@ import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, susha
 
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
-export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' }
-export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all' }
+export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' }
+export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all'; layout?: 'table' | 'boxes' }
 // One hawker name can have several hawker numbers; choosing the name means all of them
 const hawkerOk = (f: Filters, id: number) => !f.hawker || (f.hawkers?.length ? f.hawkers.includes(Number(id)) : Number(id) === f.hawker);
 
@@ -235,13 +235,16 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   // Newspapers in the office's order, then the rest (magazines) by name
   const ORDER = ['nj', 'rp', 'db', 'nafa', 'toi', 'thin', 'et', 'ie', 'ht', 'bl'];
   const place = (id: number) => { const i = ORDER.indexOf(shortOf(id)); return i < 0 ? ORDER.length : i; };
-  const paperIds = Array.from(new Set(going.map(s => column(s.publica_id))))
+  // The box print shows every one of the office's newspapers, even with no copies, like the paper sheet
+  const fixed = f.layout === 'boxes' && kind !== 'magazine'
+    ? ORDER.map(k => Array.from(m.pubs.keys()).find(id => shortOf(id) === k)).filter((id): id is number => !!id) : [];
+  const paperIds = Array.from(new Set([...fixed, ...going.map(s => column(s.publica_id))]))
     .sort((a, b) => place(a) - place(b) || (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
   const rows = groupBy(going, s => hawkerName(s.hawker_id).toLowerCase())
     .map(([, ss]) => {
       const p = priorities?.get(hawkerKey(hawkerName(ss[0].hawker_id)));
       // The hawker's Hindi name (Hawker Master); the English name only when there is none
-      const row: Record<string, any> = { hawker: p?.hindi_name || hawkerName(ss[0].hawker_id), priority: priorityRank(p ? p.priority : null), total: sum(ss, 'qty') };
+      const row: Record<string, any> = { hawker: p?.hindi_name || hawkerName(ss[0].hawker_id), no: p ? p.priority : '', priority: priorityRank(p ? p.priority : null), total: sum(ss, 'qty') };
       for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => column(s.publica_id) === pid), 'qty');
       return row;
     })
@@ -250,9 +253,13 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   const keys = [...paperIds.map(pid => `p${pid}`), 'total'];
   // Only the closed / holiday papers that customers still have running are worth naming
   const closedNames = Array.from(new Set(wanted.filter(s => recent.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
+  // Box print: the office sheet's Hindi names for the papers
+  const BOX_LABEL: Record<string, string> = { nj: 'नवज्योति', rp: 'पत्रिका', db: 'भास्कर', nafa: 'नफा', thin: 'Hindu' };
+  const label = (pid: number) => (f.layout === 'boxes' && BOX_LABEL[shortOf(pid)]) || m.pubs.get(pid)?.short || `#${pid}`;
   return {
+    layout: f.layout === 'boxes' ? 'boxes' : 'table',
     title: kind === 'magazine' ? 'QUANTITY OF MAGAZINE' : kind === 'all' ? 'DAILY QUANTITY OF NEWSPAPER & MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
-    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
+    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, label(pid))), int('total', 'कुल')],
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
   };

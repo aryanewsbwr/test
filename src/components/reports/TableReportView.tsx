@@ -7,7 +7,7 @@ import React from 'react';
 
 interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
-export interface TableReportData { kind: 'table'; type: string; title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' }
+export interface TableReportData { kind: 'table'; type: string; title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' }
 
 const fmt = (c: Column, v: any) => {
   if (v === null || v === undefined || v === '') return '';
@@ -61,6 +61,49 @@ export default function TableReportView({ data }: { data: TableReportData }) {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // One box per hawker (like the office's paper sheet): number and name, then each paper's copies.
+  // Two boxes side by side, small enough that about 26 hawkers fit one A4 page.
+  if (data.layout === 'boxes') {
+    const rows = data.groups.flatMap(g => g.rows);
+    const papers = data.columns.filter(c => /^p\d+$/.test(c.key));
+    const cell = 'border-r border-black px-0.5 text-center last:border-r-0';
+    const count = (v: any) => fmt({ key: 'n', label: '', type: 'int' }, v);
+    const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` });
+    return (
+      <div className="font-sans">
+        <style>{'@media print { @page { size: A4 portrait; margin: 7mm; } }'}</style>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+          {rows.map((r, i) => (
+            <div key={i} className="border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
+              <div className="flex items-stretch border-b-[1.5px] border-black">
+                <div className="w-7 shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[13px]">{r.no}</div>
+                <div className="flex-1 px-1.5 py-0.5 font-black text-[13px] text-center leading-tight">{r.hawker}</div>
+                <div className="shrink-0 border-l-[1.5px] border-black px-1.5 flex items-center font-black text-[12px] font-mono">{count(r.total) || 0}</div>
+              </div>
+              <div className="grid border-b border-black text-[8.5px] font-bold leading-tight" style={grid(papers.length)}>
+                {papers.map(c => <div key={c.key} className={`${cell} py-0.5 truncate`}>{c.label}</div>)}
+              </div>
+              <div className="grid text-[12px] font-black font-mono" style={grid(papers.length)}>
+                {papers.map(c => <div key={c.key} className={`${cell} py-0.5 min-h-[20px]`}>{count(r[c.key])}</div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+        {data.totals && (
+          <div className="mt-2 border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
+            <div className="grid text-[8.5px] font-bold border-b border-black" style={grid(papers.length + 1)}>
+              {papers.map(c => <div key={c.key} className={`${cell} py-0.5`}>{c.label}</div>)}<div className="px-0.5 text-center py-0.5">कुल</div>
+            </div>
+            <div className="grid text-[12px] font-black font-mono" style={grid(papers.length + 1)}>
+              {papers.map(c => <div key={c.key} className={`${cell} py-0.5`}>{count(data.totals![c.key])}</div>)}<div className="px-0.5 text-center py-0.5">{count(data.totals.total)}</div>
+            </div>
+          </div>
+        )}
+        {data.note && <p className="mt-1 text-[10px] text-slate-700">{data.note}</p>}
       </div>
     );
   }

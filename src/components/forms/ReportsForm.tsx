@@ -239,6 +239,8 @@ export default function ReportsForm({
   // One-day reports (Daily Quantity): today unless changed
   // Daily Quantity: newspapers, magazines or both
   const [paperKind, setPaperKind] = useState<'newspaper' | 'magazine' | 'all'>('newspaper');
+  // ... as a table, or one box per hawker like the office's paper sheet (fits A4)
+  const [boxPrint, setBoxPrint] = useState(false);
   const [dayDate, setDayDate] = useState<string>(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const tableFilters = TABLE_FILTERS[activeReport];
   const isTable = !!tableFilters;
@@ -462,7 +464,7 @@ export default function ReportsForm({
         const q = new URLSearchParams({ type: activeReport });
         if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
         if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
-        if (f.includes('kind')) q.set('kind', paperKind);
+        if (f.includes('kind')) { q.set('kind', paperKind); if (boxPrint) q.set('layout', 'boxes'); }
         // One customer chosen -> that customer only, region is not used
         const oneCustomer = f.includes('customer') && /^\d+$/.test(targetCustId.trim());
         if (oneCustomer) q.set('customer', targetCustId.trim());
@@ -507,7 +509,7 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind, boxPrint]);
 
   useEffect(() => {
     if (viewMode === 'preview') {
@@ -1015,6 +1017,15 @@ export default function ReportsForm({
                   <option value="newspaper">अख़बार (Newspaper)</option>
                   <option value="magazine">मैगज़ीन (Magazine)</option>
                   <option value="all">सभी (Newspaper + Magazine)</option>
+                </select>
+              </div>
+            )}
+            {isTable && tableFilters.includes('kind') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">छपाई</label>
+                <select value={boxPrint ? 'boxes' : 'table'} onChange={e => setBoxPrint(e.target.value === 'boxes')} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="table">तालिका (एक लाइन में एक हॉकर)</option>
+                  <option value="boxes">बॉक्स — विस्तृत (हर हॉकर का अलग बॉक्स, A4)</option>
                 </select>
               </div>
             )}
