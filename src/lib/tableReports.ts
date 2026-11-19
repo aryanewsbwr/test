@@ -12,7 +12,7 @@ import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, susha
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
 export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' }
-export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all'; layout?: 'table' | 'boxes' }
+export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all'; layout?: 'table' | 'boxes'; month?: string; circ?: string }
 // One hawker name can have several hawker numbers; choosing the name means all of them
 const hawkerOk = (f: Filters, id: number) => !f.hawker || (f.hawkers?.length ? f.hawkers.includes(Number(id)) : Number(id) === f.hawker);
 
@@ -110,7 +110,7 @@ const regionName = (m: Masters, id: number) => m.regions.get(id) || (id ? `#${id
 const pubName = (m: Masters, id: unknown) => m.pubs.get(Number(id))?.name || `#${id}`;
 
 // This year's receipts with their book number, date received and collector
-interface Receipt { id: number; customer_id: number; recp_no: number; manual: string; date: string; month: string; amount: number; less: number; bill_amt: number; mode: string; collector: number; agent: string; bookFrom: number; bookTo: number }
+interface Receipt { id: number; customer_id: number; recp_no: number; manual: string; date: string; month: string; amount: number; less: number; bill_amt: number; balance: number; ramt: number; entered: string; mode: string; collector: number; agent: string; bookFrom: number; bookTo: number }
 async function receipts(m: Masters): Promise<Receipt[]> {
   const suffix = fySuffix();
   const [rows, books] = await Promise.all([
@@ -130,6 +130,8 @@ async function receipts(m: Masters): Promise<Receipt[]> {
       id: Number(r.id), customer_id: Number(r.customer_id), recp_no: Number(r.recp_no) || 0, manual,
       date: iso(x.mal_recp_dt) || iso(r.recp_date), month: String(r.month || ''),
       amount: Number(r.mal_recp_amt || 0), less: Number(r.less_amt || 0), bill_amt: Number(r.bill_amt || 0),
+      balance: Number(x.balance || 0), ramt: x.r_amt !== undefined && x.r_amt !== null && x.r_amt !== '' ? Number(x.r_amt) : Number(r.mal_recp_amt || 0),
+      entered: iso(r.recp_date),
       mode: String(x.cash_chq || 'Cash'), collector: book?.c || byName || 0, agent: agentName,
       bookFrom: book?.from || 0, bookTo: book?.to || 0
     };
@@ -209,7 +211,7 @@ async function papersOff(day: string, m: Masters): Promise<{ off: Set<number>; r
 
 // Daily Quantity of Newspaper / Quantity of Magazine: copies each hawker takes on one day, paper by
 // paper. Only papers that go out that day: running, not stopped by the customer, not closed or on holiday.
-async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'all'): Promise<TableReport> {
+async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'all', by: 'hawker' | 'region' = 'hawker'): Promise<TableReport> {
   const m = await masters();
   const day = f.from || new Date().toISOString().slice(0, 10);
   const [subs, list, { off, recent }, priorities] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m), loadHawkerPriorities()]);
@@ -220,14 +222,16 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   const wanted = subs.filter(s => {
     const p = m.pubs.get(s.publica_id);
     return p && (kind === 'all' || p.magazine === (kind === 'magazine')) && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
-      && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region);
+      && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region)
+      && (!f.circ || String(s.circulation || 'Morning').toLowerCase() === f.circ.toLowerCase());
   });
   // One line per hawker name (the same name is saved under several hawker numbers);
   // hawkers whose name starts with Z are not shown
   const hawkerName = (hid: number) => String(m.hawkers.get(Number(hid)) || (Number(hid) ? `#${hid}` : 'बिना हॉकर')).trim();
   // ... and a hawker name without a priority (Hawker Master) is not shown either
-  const going = wanted.filter(s => !off.has(s.publica_id) && !/^z/i.test(hawkerName(s.hawker_id))
-    && (!priorities || priorities.has(hawkerKey(hawkerName(s.hawker_id)))));
+  // (the region report counts every hawker's copies)
+  const going = wanted.filter(s => !off.has(s.publica_id) && (by === 'region' || (!/^z/i.test(hawkerName(s.hawker_id))
+    && (!priorities || priorities.has(hawkerKey(hawkerName(s.hawker_id)))))));
   // Navajyoti is counted in the NJ column (only in this report)
   const shortOf = (id: number) => String(m.pubs.get(id)?.short || '').trim().toLowerCase();
   const njId = Array.from(m.pubs.keys()).find(id => shortOf(id) === 'nj');
@@ -240,15 +244,21 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
     ? ORDER.map(k => Array.from(m.pubs.keys()).find(id => shortOf(id) === k)).filter((id): id is number => !!id) : [];
   const paperIds = Array.from(new Set([...fixed, ...going.map(s => column(s.publica_id))]))
     .sort((a, b) => place(a) - place(b) || (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
-  const rows = groupBy(going, s => hawkerName(s.hawker_id).toLowerCase())
+  const rows = (by === 'region'
+    ? groupBy(going, s => String(custRegion(m, s.customer_id))).map(([rid, ss]) => {
+      const row: Record<string, any> = { hawker: regionName(m, Number(rid)) || 'बिना क्षेत्र', no: '', priority: 0, total: sum(ss, 'qty') };
+      for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => column(s.publica_id) === pid), 'qty');
+      return row;
+    })
+    : groupBy(going, s => hawkerName(s.hawker_id).toLowerCase())
     .map(([, ss]) => {
       const p = priorities?.get(hawkerKey(hawkerName(ss[0].hawker_id)));
       // The hawker's Hindi name (Hawker Master); the English name only when there is none
       const row: Record<string, any> = { hawker: p?.hindi_name || hawkerName(ss[0].hawker_id), no: p ? p.priority : '', priority: priorityRank(p ? p.priority : null), total: sum(ss, 'qty') };
       for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => column(s.publica_id) === pid), 'qty');
       return row;
-    })
-    .sort((a, b) => a.priority - b.priority || String(a.hawker).localeCompare(String(b.hawker)));
+    }))
+    .sort((a, b) => a.priority - b.priority || String(a.hawker).localeCompare(String(b.hawker), undefined, { numeric: true }));
   rows.forEach((r, i) => { r.sno = i + 1; });
   const keys = [...paperIds.map(pid => `p${pid}`), 'total'];
   // Only the closed / holiday papers that customers still have running are worth naming
@@ -258,9 +268,10 @@ async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'al
   const label = (pid: number) => (f.layout === 'boxes' && BOX_LABEL[shortOf(pid)]) || m.pubs.get(pid)?.short || `#${pid}`;
   return {
     layout: f.layout === 'boxes' ? 'boxes' : 'table',
-    title: kind === 'magazine' ? 'QUANTITY OF MAGAZINE' : kind === 'all' ? 'DAILY QUANTITY OF NEWSPAPER & MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
+    title: by === 'region' ? 'REGION WISE PUBLICATION REPORT'
+      : kind === 'magazine' ? 'QUANTITY OF MAGAZINE' : kind === 'all' ? 'DAILY QUANTITY OF NEWSPAPER & MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
     // Every column centred
-    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, label(pid))), int('total', 'कुल')].map(c => ({ ...c, align: 'center' as const })),
+    columns: [int('sno', 'क्र.'), text('hawker', by === 'region' ? 'क्षेत्र' : 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, label(pid))), int('total', 'कुल')].map(c => ({ ...c, align: 'center' as const })),
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
   };
@@ -297,25 +308,68 @@ const receiptRow = (m: Masters, r: Receipt) => ({
 const receiptFilter = (m: Masters, f: Filters) => (r: Receipt) => m.customers.has(r.customer_id) && inRange(r.date, f)
   && (!f.region || custRegion(m, r.customer_id) === f.region) && (!f.collector || r.collector === f.collector);
 
+// Sale reports from a month's bills: each paper's copies (sum of bill qty), paper amount and delivery
+// charge, for one region or all. With byRate, a paper billed at two rates gets a line for each.
+async function saleByMonth(f: Filters, byRate: boolean): Promise<TableReport> {
+  const m = await masters();
+  const s = fySuffix();
+  const month = monthCode(f.month || '');
+  const [lines, dels] = await Promise.all([
+    all(`bill${s}`, 'customer_id, publica_id, qty, rate, total_amt, month'),
+    all(`billdel${s}`, 'customer_id, publica_id, dely, month').catch(() => [] as any[])
+  ]);
+  const mine = (r: any) => (!month || monthCode(r.month) === month) && m.customers.has(Number(r.customer_id))
+    && (!f.region || custRegion(m, r.customer_id) === f.region) && (!f.pub || Number(r.publica_id) === f.pub);
+  const map = new Map<string, { pid: number; rate: number; qty: number; amt: number }>();
+  for (const r of lines) {
+    if (!mine(r)) continue;
+    const rate = Number(r.rate || 0);
+    const k = byRate ? `${Number(r.publica_id)}|${rate}` : String(Number(r.publica_id));
+    const g = map.get(k) || { pid: Number(r.publica_id), rate, qty: 0, amt: 0 };
+    g.qty += Number(r.qty || 0); g.amt += Number(r.total_amt || 0);
+    map.set(k, g);
+  }
+  const delivery = new Map<number, number>();
+  for (const d of dels) if (mine(d)) delivery.set(Number(d.publica_id), (delivery.get(Number(d.publica_id)) || 0) + Number(d.dely || 0));
+  const seen = new Set<number>();
+  const rows: Record<string, any>[] = Array.from(map.values())
+    .sort((a, b) => byRate ? pubName(m, a.pid).localeCompare(pubName(m, b.pid)) || a.rate - b.rate : b.amt - a.amt)
+    .map(g => {
+      // The delivery charge is the paper's, so it goes on its first line
+      const dely = seen.has(g.pid) ? 0 : (delivery.get(g.pid) || 0);
+      seen.add(g.pid);
+      return { paper: pubName(m, g.pid), rate: g.rate, qty: g.qty, amt: round(g.amt), dely: round(dely), total: round(g.amt + dely) };
+    });
+  for (const [pid, dely] of Array.from(delivery.entries())) if (!seen.has(pid) && dely) rows.push({ paper: pubName(m, pid), rate: 0, qty: 0, amt: 0, dely: round(dely), total: round(dely) });
+  return {
+    title: byRate ? 'SALES REPORT' : 'SALE CONSOLIDATED REPORT',
+    subtitle: [f.month || '', f.region ? `क्षेत्र: ${regionName(m, f.region)}` : 'सभी क्षेत्र'].filter(Boolean).join(' · '),
+    columns: [text('paper', 'पेपर'), ...(byRate ? [money('rate', 'रेट')] : []), int('qty', 'कॉपी'), money('amt', 'पेपर राशि'), money('dely', 'डिलीवरी'), money('total', 'कुल राशि')],
+    groups: [{ rows }], totals: totalsOf(rows, ['qty', 'amt', 'dely', 'total'], { paper: 'TOTAL' }),
+    note: rows.length ? undefined : `${f.month || 'इस महीने'} के बिल अभी नहीं बने।`
+  };
+}
+
 export const REPORTS: Record<string, Builder> = {
   async hawker_daily_qty(f) { return quantityByHawker(f, f.kind || 'newspaper'); },
   async hawker_magazine_qty(f) { return quantityByHawker(f, 'magazine'); },
+  // Region Wise Publication Report (old software): copies of each paper going to each region on one
+  // day, Newspaper or Magazine, Morning or Evening
+  async region_pub_daily(f) { return quantityByHawker(f, f.kind || 'newspaper', 'region'); },
 
-  // Collection Datewise: every payment received, day by day, with the day's total
+  // Collection Datewise (as in the old software): one line per day the money was received, with the
+  // day's receipt amount, balance, less amount and actual amount
   async collection_datewise(f) {
     const m = await masters();
-    const list = (await receipts(m)).filter(receiptFilter(m, f)).sort((a, b) => a.date.localeCompare(b.date) || a.recp_no - b.recp_no);
-    const groups = groupBy(list, r => r.date).map(([d, rs]) => {
-      const rows = rs.map(r => receiptRow(m, r));
-      return { title: `${dmy(d)} ${dayName(d)} — ${rows.length} रसीद`, rows, totals: totalsOf(rows, ['amount', 'less'], { customer: 'दिन का कुल' }) };
-    });
-    const rows = list.map(r => receiptRow(m, r));
-    const cash = sum(rows.filter(r => r.mode === 'नकद'), 'amount');
+    const list = (await receipts(m)).filter(receiptFilter(m, f)).sort((a, b) => a.date.localeCompare(b.date));
+    const rows = groupBy(list, r => r.date).map(([d, rs], i) => ({
+      sno: i + 1, date: `${dmy(d)} ${dayName(d)}`, count: rs.length,
+      amount: sum(rs, 'amount'), balance: sum(rs, 'balance'), less: sum(rs, 'less'), ramt: sum(rs, 'ramt')
+    }));
     return {
-      title: 'COLLECTION DATEWISE', subtitle: period(f),
-      columns: [text('manual', 'रसीद नं.'), text('recp_no', 'सि. नं.', 'right'), text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('month', 'बिल माह'), text('mode', 'तरीका'), text('collector', 'कलेक्टर'), money('amount', 'राशि'), money('less', 'कटौती')],
-      groups, totals: totalsOf(rows, ['amount', 'less'], { customer: `कुल ${rows.length} रसीद` }),
-      note: `नकद ₹${cash.toLocaleString('en-IN')} · UPI / बैंक / चेक ₹${round(sum(rows, 'amount') - cash).toLocaleString('en-IN')}`
+      title: 'COLLECTION DATEWISE REPORT', subtitle: period(f),
+      columns: [int('sno', 'क्र.'), text('date', 'तारीख'), int('count', 'रसीदें'), money('amount', 'रसीद राशि'), money('balance', 'बाकी'), money('less', 'कटौती'), money('ramt', 'असल राशि')],
+      groups: [{ rows }], totals: totalsOf(rows, ['count', 'amount', 'balance', 'less', 'ramt'], { date: 'कुल' })
     };
   },
 
@@ -603,55 +657,12 @@ export const REPORTS: Record<string, Builder> = {
     };
   },
 
-  // Consolidated Sale: each paper's sale in the period: customer bills, counter sale, retail sale
-  async consolidated_sale(f) {
-    const m = await masters();
-    const s = fySuffix();
-    const months = new Set<string>();
-    if (f.from && f.to) {
-      for (let d = new Date(`${f.from.slice(0, 7)}-01T00:00:00Z`); d.toISOString().slice(0, 7) <= f.to.slice(0, 7); d.setUTCMonth(d.getUTCMonth() + 1)) {
-        months.add(d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }).toLowerCase());
-      }
-    }
-    const [bills, counter, retail] = await Promise.all([
-      all(`bill${s}`, 'publica_id, qty, total_amt, month'),
-      all('countersale', '*'),
-      all(`retailsale${s}`, '*')
-    ]);
-    const map = new Map<number, { bill: number; billQty: number; counter: number; retail: number }>();
-    const get = (id: any) => { const k = Number(id); if (!map.has(k)) map.set(k, { bill: 0, billQty: 0, counter: 0, retail: 0 }); return map.get(k)!; };
-    for (const b of bills) if (!months.size || months.has(monthCode(b.month))) { const g = get(b.publica_id); g.bill += Number(b.total_amt || 0); g.billQty += Number(b.qty || 0); }
-    for (const c of counter) if (inRange(iso(c.vr_date ?? c.sale_date), f)) get(c.publica_id).counter += Number(c.amt ?? c.Amt ?? 0);
-    for (const r of retail) if (inRange(iso(r.vr_date ?? r.Vr_Date), f)) get(r.publica_id).retail += Number(r.amt || 0);
-    const rows = Array.from(map.entries()).filter(([id]) => !f.pub || id === f.pub).map(([id, g]) => ({
-      paper: pubName(m, id), bill_qty: g.billQty, bill: round(g.bill), counter: round(g.counter), retail: round(g.retail), total: round(g.bill + g.counter + g.retail)
-    })).filter(r => r.total).sort((a, b) => b.total - a.total);
-    return {
-      title: 'CONSOLIDATED SALE', subtitle: period(f),
-      columns: [text('paper', 'पेपर'), int('bill_qty', 'बिल कॉपी'), money('bill', 'ग्राहक बिल'), money('counter', 'काउंटर सेल'), money('retail', 'रिटेल सेल'), money('total', 'कुल बिक्री')],
-      groups: [{ rows }], totals: totalsOf(rows, ['bill_qty', 'bill', 'counter', 'retail', 'total'], { paper: 'कुल' }),
-      note: 'ग्राहक बिल चुने महीनों के बने बिलों से (डिलीवरी चार्ज और छूट के बिना); काउंटर और रिटेल चुनी तारीखों से।'
-    };
-  },
+  // Sale Consolidated Report (as in the old software): the chosen month's bills, paper by paper:
+  // copies, paper amount, delivery and total (one region or all)
+  async consolidated_sale(f) { return saleByMonth(f, false); },
 
-  // Daily / Periodic Sale: day by day: counter sale, retail sale and money received
-  async daily_sale(f) {
-    const m = await masters();
-    const [counter, retail, recs] = await Promise.all([all('countersale', '*'), all(`retailsale${fySuffix()}`, '*'), receipts(m)]);
-    const days = new Map<string, { counter: number; retail: number; received: number; receipts: number }>();
-    const get = (d: string) => { if (!days.has(d)) days.set(d, { counter: 0, retail: 0, received: 0, receipts: 0 }); return days.get(d)!; };
-    for (const c of counter) { const d = iso(c.vr_date ?? c.sale_date); if (inRange(d, f)) get(d).counter += Number(c.amt ?? c.Amt ?? 0); }
-    for (const r of retail) { const d = iso(r.vr_date ?? r.Vr_Date); if (inRange(d, f)) get(d).retail += Number(r.amt || 0); }
-    for (const r of recs) if (inRange(r.date, f)) { get(r.date).received += r.amount; get(r.date).receipts++; }
-    const rows = Array.from(days.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([d, v]) => ({
-      date: `${dmy(d)} ${dayName(d)}`, counter: round(v.counter), retail: round(v.retail), sale: round(v.counter + v.retail), receipts: v.receipts, received: round(v.received)
-    }));
-    return {
-      title: 'DAILY / PERIODIC SALE', subtitle: period(f),
-      columns: [text('date', 'तारीख'), money('counter', 'काउंटर सेल'), money('retail', 'रिटेल सेल'), money('sale', 'कुल बिक्री'), int('receipts', 'रसीद'), money('received', 'वसूली')],
-      groups: [{ rows }], totals: totalsOf(rows, ['counter', 'retail', 'sale', 'receipts', 'received'], { date: 'कुल' })
-    };
-  },
+  // Sales Report (as in the old software): the same, paper by paper and rate by rate
+  async daily_sale(f) { return saleByMonth(f, true); },
 
   // Region-Wise Start End: papers started and stopped in the period, region by region
   async region_start_end(f) {
@@ -736,49 +747,64 @@ export const REPORTS: Record<string, Builder> = {
     };
   },
 
-  // Hawker's Customer Priority: a hawker's customers in delivery order with their papers
+  // Hawker's Customer Priority (as in the old software): a hawker's customers (Morning or Evening) in
+  // the order he delivers them (the priority set in Transaction > Hawker's Customer Priority):
+  // customer, address, papers, priority. One hawker name covers all its hawker numbers.
   async hawker_cust_priority(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region));
-    const groups = groupBy(running, s => String(s.hawker_id)).sort((a, b) => (m.hawkers.get(Number(a[0])) || '').localeCompare(m.hawkers.get(Number(b[0])) || '')).map(([hid, ss]) => {
-      const rows = groupBy(ss, s => String(s.customer_id)).map(([cid, xs]) => ({
-        priority: Number(m.customers.get(Number(cid))?.priority || 0), customer: `${custName(m, cid)} #${cid}`, address: custAddress(m, cid), phone: custPhone(m, cid),
-        papers: xs.map(x => `${m.pubs.get(x.publica_id)?.short || x.publica_id}${x.qty > 1 ? ` ×${x.qty}` : ''}`).join(', '), qty: sum(xs, 'qty')
-      })).sort((a, b) => a.priority - b.priority);
-      return { title: `${m.hawkers.get(Number(hid)) || `#${hid}`} — ${rows.length} ग्राहक`, rows, totals: totalsOf(rows, ['qty'], { customer: `${rows.length} ग्राहक` }) };
-    });
+    const priorities = await loadHawkerPriorities();
+    const name = (hid: number) => String(m.hawkers.get(Number(hid)) || `#${hid}`).trim();
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && hawkerOk(f, s.hawker_id)
+      && (!f.region || custRegion(m, s.customer_id) === f.region)
+      && (!f.circ || String(s.circulation || 'Morning').toLowerCase() === f.circ.toLowerCase())
+      && !/^z/i.test(name(s.hawker_id)) && (!priorities || priorities.has(hawkerKey(name(s.hawker_id)))));
+    const rank = (n: string) => priorityRank(priorities?.get(hawkerKey(n))?.priority ?? null);
+    const groups = groupBy(running, s => name(s.hawker_id).toLowerCase())
+      .map(([, ss]) => [name(ss[0].hawker_id), ss] as [string, typeof ss])
+      .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+      .map(([hname, ss]) => {
+        const rows = groupBy(ss, s => String(s.customer_id)).map(([cid, xs]) => ({
+          customer: `${custName(m, cid)} #${cid}`, address: custAddress(m, cid),
+          papers: xs.map(x => `${m.pubs.get(x.publica_id)?.short || x.publica_id}${x.qty > 1 ? ` ×${x.qty}` : ''}`).join(', '),
+          priority: Number(m.customers.get(Number(cid))?.priority || 0), qty: sum(xs, 'qty')
+        })).sort((a, b) => a.priority - b.priority || a.customer.localeCompare(b.customer));
+        const hindi = priorities?.get(hawkerKey(hname))?.hindi_name;
+        return { title: `${hindi || hname} — ${rows.length} ग्राहक`, rows, totals: totalsOf(rows, ['qty'], { customer: `${rows.length} ग्राहक` }) };
+      });
     return {
-      title: "HAWKER'S CUSTOMER PRIORITY", subtitle: `आज (${dmy(today)}) चालू`,
-      columns: [int('priority', 'क्रम'), text('customer', 'ग्राहक'), text('address', 'पता'), text('phone', 'फ़ोन'), text('papers', 'अखबार'), int('qty', 'कॉपी')],
+      title: "HAWKER'S CUSTOMER PRIORITY REPORT", subtitle: [`आज (${dmy(today)}) चालू`, f.circ || ''].filter(Boolean).join(' · '),
+      columns: [text('customer', 'ग्राहक'), text('address', 'पता'), text('papers', 'अखबार'), int('qty', 'कॉपी'), int('priority', 'प्राथमिकता')],
       groups, totals: { customer: `कुल ${new Set(running.map(s => s.customer_id)).size} ग्राहक`, qty: sum(running, 'qty') }
     };
   },
 
-  // Hawker Report Datewise: copies each hawker takes each day (running papers less stops), paper by paper
+  // Hawker Report Datewise (as in the old software): the receipts from a collector's receipt books in
+  // the chosen dates, in receipt-number order: receipt no., date, bill amount, month, year, receipt
+  // amount, balance, less amount and actual amount
   async hawker_report_datewise(f) {
     const m = await masters();
-    const from = f.from || new Date().toISOString().slice(0, 10);
-    const to = f.to && f.to >= from ? f.to : from;
-    const dayList: string[] = [];
-    for (let d = new Date(`${from}T00:00:00Z`); d.toISOString().slice(0, 10) <= to && dayList.length < 31; d.setUTCDate(d.getUTCDate() + 1)) dayList.push(d.toISOString().slice(0, 10));
-    const [subs, list] = await Promise.all([subscriptions(m), stops(m)]);
-    const stopped = (s: any, day: string) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
-      && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
-    const mine = subs.filter(s => hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region) && (!f.pub || s.publica_id === f.pub));
-    const groups = groupBy(mine, s => String(s.hawker_id)).sort((a, b) => (m.hawkers.get(Number(a[0])) || '').localeCompare(m.hawkers.get(Number(b[0])) || '')).map(([hid, ss]) => {
-      const rows: any[] = [];
-      for (const day of dayList) {
-        const today = ss.filter(s => runsOn(s, day) && !stopped(s, day));
-        for (const [pid, xs] of groupBy(today, s => String(s.publica_id))) rows.push({ date: `${dmy(day)} ${dayName(day)}`, paper: pubName(m, pid), customers: new Set(xs.map(x => x.customer_id)).size, qty: sum(xs, 'qty') });
-      }
-      return { title: m.hawkers.get(Number(hid)) || `#${hid}`, rows, totals: totalsOf(rows, ['qty'], { paper: 'कुल कॉपी' }) };
-    }).filter(g => g.rows.length);
+    const start = Number(fySuffix().slice(0, 4)) || new Date().getFullYear();
+    const yearOf = (month: string) => (['jan', 'feb', 'mar'].includes(monthCode(month)) ? start + 1 : start);
+    const list = (await receipts(m)).filter(receiptFilter(m, f)).filter(r => r.collector)
+      .sort((a, b) => (Number(a.manual) || 0) - (Number(b.manual) || 0));
+    const row = (r: Receipt, i: number) => ({
+      sno: i + 1, manual: r.manual || '-', date: dmy(r.date), customer: `${custName(m, r.customer_id)} #${r.customer_id}`,
+      bill_amt: r.bill_amt, month: r.month, year: r.month ? yearOf(r.month) : '', amount: r.amount, balance: r.balance, less: r.less, ramt: r.ramt
+    });
+    const groups = groupBy(list, r => m.collectors.get(r.collector) || `#${r.collector}`)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, rs]) => {
+        const rows = rs.map(row);
+        return { title: `${name} — ${rows.length} रसीद`, rows, totals: totalsOf(rows, ['bill_amt', 'amount', 'balance', 'less', 'ramt'], { manual: `${name} का कुल` }) };
+      });
+    const all_ = list.map(row);
     return {
-      title: 'HAWKER REPORT DATEWISE', subtitle: `${dmy(from)} से ${dmy(to)} तक${dayList.length === 31 ? ' (31 दिन तक)' : ''}`,
-      columns: [text('date', 'तारीख'), text('paper', 'अखबार'), int('customers', 'ग्राहक'), int('qty', 'कॉपी')],
-      groups, totals: { paper: 'कुल', qty: groups.reduce((s, g) => s + Number(g.totals?.qty || 0), 0) },
-      note: 'चालू अखबार में से उस दिन की छुट्टी / बंद घटाकर। अखबार की छुट्टी (Holiday) यहाँ नहीं घटाई गई।'
+      title: 'HAWKER REPORT DATEWISE', subtitle: [period(f), f.collector ? `कलेक्टर: ${m.collectors.get(f.collector) || `#${f.collector}`}` : ''].filter(Boolean).join(' · '),
+      columns: [int('sno', 'क्र.'), text('manual', 'रसीद नं.'), text('date', 'तारीख'), { ...text('customer', 'ग्राहक'), light: true }, money('bill_amt', 'बिल राशि'),
+        text('month', 'माह'), text('year', 'वर्ष'), money('amount', 'रसीद राशि'), money('balance', 'बाकी'), money('less', 'कटौती'), money('ramt', 'असल राशि')],
+      groups, totals: totalsOf(all_, ['bill_amt', 'amount', 'balance', 'less', 'ramt'], { manual: `कुल ${all_.length} रसीद` }),
+      note: 'कलेक्टर: जिसकी रसीद बुक (Receipt Allotment) में वह रसीद नंबर है।'
     };
   },
 

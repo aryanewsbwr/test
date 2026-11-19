@@ -69,9 +69,10 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 const waRegionCache = new Map<string, WaRegionStatus>();
 
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
-type TableFilter = 'dates' | 'day' | 'kind' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
+type TableFilter = 'dates' | 'day' | 'kind' | 'month' | 'circ' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
   hawker_daily_qty: ['day', 'kind', 'hawker', 'region'],
+  region_pub_daily: ['day', 'kind', 'circ', 'region'],
   hawker_magazine_qty: ['day', 'hawker', 'region'],
   collection_datewise: ['dates', 'region', 'collector'],
   collection_hawker_datewise: ['dates', 'collector', 'region'],
@@ -87,14 +88,14 @@ const TABLE_FILTERS: Record<string, TableFilter[]> = {
   countersale_datewise: ['dates', 'pub'],
   countersale_pubwise: ['dates', 'pub'],
   retailsale_region_datewise: ['dates', 'customer', 'region', 'pub'],
-  consolidated_sale: ['dates', 'pub'],
-  daily_sale: ['dates'],
+  consolidated_sale: ['month', 'region', 'pub'],
+  daily_sale: ['month', 'region', 'pub'],
   region_start_end: ['dates', 'region', 'pub'],
   cust_pub_starting: ['dates', 'pub', 'hawker', 'region'],
   cust_choose_pub: ['pub', 'region', 'hawker'],
   circ_type_pub: ['region', 'pub'],
-  hawker_cust_priority: ['hawker', 'region'],
-  hawker_report_datewise: ['dates', 'hawker', 'region', 'pub'],
+  hawker_cust_priority: ['hawker', 'circ', 'region'],
+  hawker_report_datewise: ['dates', 'collector'],
   sticker_printing: ['region', 'hawker', 'pub']
 };
 
@@ -126,7 +127,7 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   hawker_cust_priority: { title: "Hawker's Customer Priority", category: "Hawker's Customer Priority", hasHawker: true },
   sticker_printing: { title: 'Sticker Printing', category: 'Sticker Printing', hasRegion: true },
   consolidated_sale: { title: 'Consolidated Sale Report', category: 'Sale', hasPeriod: true },
-  daily_sale: { title: 'Daily / Periodic Sale Report', category: 'Sale', hasPeriod: true },
+  daily_sale: { title: 'Sale Report', category: 'Sale', hasPeriod: true },
   region_pub_daily: { title: 'Region Wise Publication Report', category: 'Publication Daily Report', hasRegion: true, hasPeriod: true },
   region_start_end: { title: 'Region-Wise Start End Report', category: 'Publication Daily Report', hasRegion: true, hasPeriod: true },
   hawker_report_datewise: { title: 'Hawker Report Datewise', category: 'Hawker Report Datewise', hasPeriod: true },
@@ -241,6 +242,8 @@ export default function ReportsForm({
   const [paperKind, setPaperKind] = useState<'newspaper' | 'magazine' | 'all'>('newspaper');
   // ... as a table, or one box per hawker like the office's paper sheet (fits A4)
   const [boxPrint, setBoxPrint] = useState(false);
+  // Morning / Evening papers ('' = both), as in the old software's reports
+  const [circ, setCirc] = useState<'' | 'Morning' | 'Evening'>('');
   const [dayDate, setDayDate] = useState<string>(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const tableFilters = TABLE_FILTERS[activeReport];
   const isTable = !!tableFilters;
@@ -464,7 +467,9 @@ export default function ReportsForm({
         const q = new URLSearchParams({ type: activeReport });
         if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
         if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
-        if (f.includes('kind')) { q.set('kind', paperKind); if (boxPrint) q.set('layout', 'boxes'); }
+        if (f.includes('kind')) { q.set('kind', paperKind); if (boxPrint && activeReport === 'hawker_daily_qty') q.set('layout', 'boxes'); }
+        if (f.includes('month')) q.set('month', selectedMonth);
+        if (f.includes('circ') && circ) q.set('circ', circ);
         // One customer chosen -> that customer only, region is not used
         const oneCustomer = f.includes('customer') && /^\d+$/.test(targetCustId.trim());
         if (oneCustomer) q.set('customer', targetCustId.trim());
@@ -509,7 +514,7 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind, boxPrint]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind, boxPrint, circ]);
 
   useEffect(() => {
     if (viewMode === 'preview') {
@@ -1020,12 +1025,30 @@ export default function ReportsForm({
                 </select>
               </div>
             )}
-            {isTable && tableFilters.includes('kind') && (
+            {isTable && tableFilters.includes('kind') && activeReport === 'hawker_daily_qty' && (
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">छपाई</label>
                 <select value={boxPrint ? 'boxes' : 'table'} onChange={e => setBoxPrint(e.target.value === 'boxes')} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
                   <option value="table">तालिका (एक लाइन में एक हॉकर)</option>
                   <option value="boxes">बॉक्स — विस्तृत (हर हॉकर का अलग बॉक्स, A4)</option>
+                </select>
+              </div>
+            )}
+            {isTable && tableFilters.includes('month') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">महीना</label>
+                <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  {['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March'].map(mn => <option key={mn} value={mn}>{mn}</option>)}
+                </select>
+              </div>
+            )}
+            {isTable && tableFilters.includes('circ') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Circulation</label>
+                <select value={circ} onChange={e => setCirc(e.target.value as any)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="">Morning + Evening</option>
+                  <option value="Morning">Morning</option>
+                  <option value="Evening">Evening</option>
                 </select>
               </div>
             )}
@@ -1288,7 +1311,7 @@ export default function ReportsForm({
             </optgroup>
             <optgroup label="9. Sale Reports">
               <option value="consolidated_sale">Consolidated Sale Report</option>
-              <option value="daily_sale">Daily / Periodic Sale Report</option>
+              <option value="daily_sale">Sale Report</option>
             </optgroup>
             <optgroup label="10. Publication Daily Report">
               <option value="region_pub_daily">Region Wise Publication Report</option>

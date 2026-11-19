@@ -612,7 +612,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 </button>
                 <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
                   <button onClick={() => { setSelectedReportType('consolidated_sale'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Consolidated Sale Report</button>
-                  <button onClick={() => { setSelectedReportType('daily_sale'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Daily / Periodic Sale Report</button>
+                  <button onClick={() => { setSelectedReportType('daily_sale'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Sale Report</button>
                 </div>
               </div>
 
