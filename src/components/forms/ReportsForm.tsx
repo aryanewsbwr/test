@@ -69,9 +69,9 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 const waRegionCache = new Map<string, WaRegionStatus>();
 
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
-type TableFilter = 'dates' | 'day' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
+type TableFilter = 'dates' | 'day' | 'kind' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
-  hawker_daily_qty: ['day', 'hawker', 'region'],
+  hawker_daily_qty: ['day', 'kind', 'hawker', 'region'],
   hawker_magazine_qty: ['day', 'hawker', 'region'],
   collection_datewise: ['dates', 'region', 'collector'],
   collection_hawker_datewise: ['dates', 'collector', 'region'],
@@ -236,6 +236,8 @@ export default function ReportsForm({
   const [books, setBooks] = useState<{ collect_id: number; collector_name: string; from: number; to: number }[]>([]);
   const [selectedBook, setSelectedBook] = useState<string>('all');
   // One-day reports (Daily Quantity): today unless changed
+  // Daily Quantity: newspapers, magazines or both
+  const [paperKind, setPaperKind] = useState<'newspaper' | 'magazine' | 'all'>('newspaper');
   const [dayDate, setDayDate] = useState<string>(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const tableFilters = TABLE_FILTERS[activeReport];
   const isTable = !!tableFilters;
@@ -459,6 +461,7 @@ export default function ReportsForm({
         const q = new URLSearchParams({ type: activeReport });
         if (f.includes('dates')) { q.set('from', fromDate); q.set('to', toDate); }
         if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
+        if (f.includes('kind')) q.set('kind', paperKind);
         // One customer chosen -> that customer only, region is not used
         const oneCustomer = f.includes('customer') && /^\d+$/.test(targetCustId.trim());
         if (oneCustomer) q.set('customer', targetCustId.trim());
@@ -503,7 +506,7 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind]);
 
   useEffect(() => {
     if (viewMode === 'preview') {
@@ -1002,6 +1005,16 @@ export default function ReportsForm({
               <div className="flex items-center">
                 <label className="w-28 font-bold text-[#000080] shrink-0">तारीख</label>
                 <input type="date" value={dayDate} onChange={e => setDayDate(e.target.value)} className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none" />
+              </div>
+            )}
+            {isTable && tableFilters.includes('kind') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">पेपर</label>
+                <select value={paperKind} onChange={e => setPaperKind(e.target.value as any)} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="newspaper">अख़बार (Newspaper)</option>
+                  <option value="magazine">मैगज़ीन (Magazine)</option>
+                  <option value="all">सभी (Newspaper + Magazine)</option>
+                </select>
               </div>
             )}
             {isTable && tableFilters.includes('collector') && (

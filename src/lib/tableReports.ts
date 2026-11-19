@@ -12,7 +12,7 @@ import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, susha
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
 export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' }
-export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number }
+export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all' }
 // One hawker name can have several hawker numbers; choosing the name means all of them
 const hawkerOk = (f: Filters, id: number) => !f.hawker || (f.hawkers?.length ? f.hawkers.includes(Number(id)) : Number(id) === f.hawker);
 
@@ -209,7 +209,7 @@ async function papersOff(day: string, m: Masters): Promise<{ off: Set<number>; r
 
 // Daily Quantity of Newspaper / Quantity of Magazine: copies each hawker takes on one day, paper by
 // paper. Only papers that go out that day: running, not stopped by the customer, not closed or on holiday.
-async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableReport> {
+async function quantityByHawker(f: Filters, kind: 'newspaper' | 'magazine' | 'all'): Promise<TableReport> {
   const m = await masters();
   const day = f.from || new Date().toISOString().slice(0, 10);
   const [subs, list, { off, recent }, priorities] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m), loadHawkerPriorities()]);
@@ -219,7 +219,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   const charge = (id: number) => /del\w*very\s*charge/i.test(m.pubs.get(id)?.english || '');
   const wanted = subs.filter(s => {
     const p = m.pubs.get(s.publica_id);
-    return p && p.magazine === magazine && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
+    return p && (kind === 'all' || p.magazine === (kind === 'magazine')) && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
       && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region);
   });
   // One line per hawker name (the same name is saved under several hawker numbers);
@@ -243,7 +243,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   // Only the closed / holiday papers that customers still have running are worth naming
   const closedNames = Array.from(new Set(wanted.filter(s => recent.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
   return {
-    title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
+    title: kind === 'magazine' ? 'QUANTITY OF MAGAZINE' : kind === 'all' ? 'DAILY QUANTITY OF NEWSPAPER & MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
     columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...(priorities ? [text('hindi', 'हिंदी नाम')] : []), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
@@ -282,8 +282,8 @@ const receiptFilter = (m: Masters, f: Filters) => (r: Receipt) => m.customers.ha
   && (!f.region || custRegion(m, r.customer_id) === f.region) && (!f.collector || r.collector === f.collector);
 
 export const REPORTS: Record<string, Builder> = {
-  async hawker_daily_qty(f) { return quantityByHawker(f, false); },
-  async hawker_magazine_qty(f) { return quantityByHawker(f, true); },
+  async hawker_daily_qty(f) { return quantityByHawker(f, f.kind || 'newspaper'); },
+  async hawker_magazine_qty(f) { return quantityByHawker(f, 'magazine'); },
 
   // Collection Datewise: every payment received, day by day, with the day's total
   async collection_datewise(f) {
