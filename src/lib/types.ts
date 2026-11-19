@@ -51,6 +51,8 @@ export interface Hawker {
   mobile?: string;
   region_id: number;
   commission_rate?: number;
+  priority?: number | null;   // hawker_priority, by name
+  area_hindi?: string;
 }
 
 export interface CollectionAgent {

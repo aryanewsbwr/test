@@ -173,18 +173,19 @@ export default function ReportsForm({
   const [hawkers, setHawkers] = useState<any[]>(propsHawkers || []);
   // The same hawker name is saved under several hawker numbers: one choice per name, covering all its numbers
   const hawkerGroups = useMemo(() => {
-    const byName = new Map<string, { name: string; ids: string[] }>();
+    const byName = new Map<string, { name: string; ids: string[]; priority: number }>();
     for (const h of hawkers) {
       const name = String(h.name || h.hawker_name || '').trim();
       const id = String(h.hawker_id || h.id || '');
       if (!name || !/^\d+$/.test(id)) continue;
       const key = name.toLowerCase();
-      if (!byName.has(key)) byName.set(key, { name, ids: [] });
+      if (!byName.has(key)) byName.set(key, { name, ids: [], priority: h.priority ?? 1e9 });
       byName.get(key)!.ids.push(id);
     }
     return Array.from(byName.values())
       .map(g => ({ ...g, value: g.ids.join(',') }))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      // In priority order (Hawker Master), then by name
+      .sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }, [hawkers]);
   const [publications, setPublications] = useState<any[]>(propsPubs || []);
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion !== undefined && initialRegion !== 'undefined' ? String(initialRegion) : 'all');

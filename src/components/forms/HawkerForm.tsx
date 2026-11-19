@@ -21,6 +21,8 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [mobile, setMobile] = useState('');
+  const [priority, setPriority] = useState('');
+  const [areaHindi, setAreaHindi] = useState('');
   const [allottedRegions, setAllottedRegions] = useState<number[]>([]);
   
   const [isFindOpen, setIsFindOpen] = useState(false);
@@ -31,14 +33,11 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   // Load Hawkers and Regions from API if not already provided
   const loadHawkersAndRegions = async () => {
     try {
-      if (!hawkers || hawkers.length === 0) {
-        const hRes = await fetch('/api/hawkers');
-        const hData = await hRes.json();
-        if (hData.hawkers) setHawkerList(hData.hawkers);
-        else if (Array.isArray(hData)) setHawkerList(hData);
-      } else {
-        setHawkerList(hawkers);
-      }
+      // Hawker Master lists also the hawkers without a priority, so one can be given
+      const hRes = await fetch('/api/hawkers?master=1');
+      const hData = await hRes.json();
+      if (hData.hawkers) setHawkerList(hData.hawkers);
+      else if (Array.isArray(hData)) setHawkerList(hData);
 
       if (!regions || regions.length === 0) {
         const rRes = await fetch('/api/regions');
@@ -65,6 +64,8 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
     setCity(h.city || '');
     setPhone(h.phone || '');
     setMobile(h.mobile || '');
+    setPriority(h.priority === null || h.priority === undefined ? '' : String(h.priority));
+    setAreaHindi(h.area_hindi || '');
     setAllottedRegions(h.region_id ? [Number(h.region_id)] : []);
     setStatus(`Hawker #${h.hawker_id} "${h.name}" loaded.`);
     setTimeout(() => setStatus(''), 2500);
@@ -139,6 +140,8 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
       city: city.trim(),
       phone: phone.trim(),
       mobile: mobile.trim(),
+      priority: priority.trim(),
+      area_hindi: areaHindi.trim(),
       region_id: allottedRegions[0] || 1,
       allottedRegions
     };
@@ -156,7 +159,10 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
       if (saved.hawker_id && !selectedHawkerId) {
         setSelectedHawkerId(saved.hawker_id);
       }
-      setHawkerList(prev => [saved, ...prev.filter(h => h.hawker_id !== saved.hawker_id)]);
+      // The priority and Hindi name are the same for every hawker number with this name
+      const key = saved.name.trim().toLowerCase();
+      setHawkerList(prev => [saved, ...prev.filter(h => h.hawker_id !== saved.hawker_id)
+        .map(h => (h.name || '').trim().toLowerCase() === key ? { ...h, priority: saved.priority, area_hindi: saved.area_hindi } : h)]);
 
       if (onSaveHawker) {
         onSaveHawker(saved, allottedRegions);
@@ -199,6 +205,8 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
     setCity('');
     setPhone('');
     setMobile('');
+    setPriority('');
+    setAreaHindi('');
     setAllottedRegions([]);
     setStatus('');
     setIsFindOpen(false);
@@ -307,6 +315,34 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   className="w-full bg-transparent font-mono text-black outline-none text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Priority and Hindi name: for the hawker name (all its numbers). No priority = not shown in lists */}
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0 text-right pr-1">Priority</label>
+              <div className="w-20 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value.replace(/\D/g, ''))}
+                  placeholder="—"
+                  className="w-full bg-transparent font-mono text-black outline-none text-xs"
+                />
+              </div>
+              <span className="text-[10px] text-slate-500">{priority === '' ? 'खाली = किसी लिस्ट में नहीं दिखेगा' : ''}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0 text-right pr-1">हिंदी नाम</label>
+              <div className="flex-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
+                <input
+                  type="text"
+                  value={areaHindi}
+                  onChange={(e) => setAreaHindi(e.target.value)}
+                  className="w-full bg-transparent text-black outline-none text-xs"
                 />
               </div>
             </div>
@@ -459,7 +495,9 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                 <thead className="bg-[#ECE9D8] sticky top-0 border-b font-bold">
                   <tr>
                     <th className="p-1.5 border-r w-14">ID</th>
+                    <th className="p-1.5 border-r w-14 text-center">Priority</th>
                     <th className="p-1.5 border-r">Hawker Name</th>
+                    <th className="p-1.5 border-r">हिंदी नाम</th>
                     <th className="p-1.5 border-r">Address / Line</th>
                     <th className="p-1.5 border-r">Phone</th>
                     <th className="p-1.5 w-16 text-center">Action</th>
@@ -476,7 +514,9 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                       className="border-b hover:bg-blue-100 cursor-pointer"
                     >
                       <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{h.hawker_id}</td>
+                      <td className="p-1.5 border-r text-center font-mono">{h.priority ?? '—'}</td>
                       <td className="p-1.5 border-r font-bold text-slate-800">{h.name}</td>
+                      <td className="p-1.5 border-r text-slate-700">{h.area_hindi || ''}</td>
                       <td className="p-1.5 border-r text-slate-600">{h.address || h.city || '-'}</td>
                       <td className="p-1.5 border-r font-mono text-slate-700">{h.mobile || h.phone || '-'}</td>
                       <td className="p-1.5 text-center">

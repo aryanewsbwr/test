@@ -6,6 +6,7 @@ import { supabaseAdmin as db } from './supabaseAdmin';
 import { fySuffix } from './financialYear';
 import { monthCode } from './backupTables';
 import { isDue } from './dueRule';
+import { hawkerKey, loadHawkerPriorities } from './hawkerPriority';
 import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, sushaToUnicode } from './transliteration';
 
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
@@ -211,7 +212,7 @@ async function papersOff(day: string, m: Masters): Promise<{ off: Set<number>; r
 async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableReport> {
   const m = await masters();
   const day = f.from || new Date().toISOString().slice(0, 10);
-  const [subs, list, { off, recent }] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m)]);
+  const [subs, list, { off, recent }, priorities] = await Promise.all([subscriptions(m), stops(m), papersOff(day, m), loadHawkerPriorities()]);
   const stopped = (s: any) => list.some(d => d.customer_id === s.customer_id && (!d.publica_id || d.publica_id === s.publica_id)
     && (d.permanent ? day >= d.from && !(s.s && s.s >= d.from) : day >= d.from && day <= (d.to || d.from)));
   // Delivery charges are kept as a 'paper' for billing, but are not copies to hand out
@@ -224,23 +225,26 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   // One line per hawker name (the same name is saved under several hawker numbers);
   // hawkers whose name starts with Z are not shown
   const hawkerName = (hid: number) => String(m.hawkers.get(Number(hid)) || (Number(hid) ? `#${hid}` : 'बिना हॉकर')).trim();
-  const going = wanted.filter(s => !off.has(s.publica_id) && !/^z/i.test(hawkerName(s.hawker_id)));
+  // ... and a hawker name without a priority (Hawker Master) is not shown either
+  const going = wanted.filter(s => !off.has(s.publica_id) && !/^z/i.test(hawkerName(s.hawker_id))
+    && (!priorities || priorities.has(hawkerKey(hawkerName(s.hawker_id)))));
   const paperIds = Array.from(new Set(going.map(s => s.publica_id)))
     .sort((a, b) => (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
   const rows = groupBy(going, s => hawkerName(s.hawker_id).toLowerCase())
     .map(([, ss]) => {
-      const row: Record<string, any> = { hawker: hawkerName(ss[0].hawker_id), total: sum(ss, 'qty') };
+      const p = priorities?.get(hawkerKey(hawkerName(ss[0].hawker_id)));
+      const row: Record<string, any> = { hawker: hawkerName(ss[0].hawker_id), hindi: p?.hindi_name || '', priority: p ? p.priority : 1e9, total: sum(ss, 'qty') };
       for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => s.publica_id === pid), 'qty');
       return row;
     })
-    .sort((a, b) => String(a.hawker).localeCompare(String(b.hawker)));
+    .sort((a, b) => a.priority - b.priority || String(a.hawker).localeCompare(String(b.hawker)));
   rows.forEach((r, i) => { r.sno = i + 1; });
   const keys = [...paperIds.map(pid => `p${pid}`), 'total'];
   // Only the closed / holiday papers that customers still have running are worth naming
   const closedNames = Array.from(new Set(wanted.filter(s => recent.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
   return {
     title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
-    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
+    columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...(priorities ? [text('hindi', 'हिंदी नाम')] : []), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
   };

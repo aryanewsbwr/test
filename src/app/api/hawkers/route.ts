@@ -3,6 +3,7 @@ import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { fetchAllRows, nextId } from '@/lib/publicationsData';
+import { hawkerKey, loadHawkerPriorities, saveHawkerPriority } from '@/lib/hawkerPriority';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +32,21 @@ export async function GET(request: NextRequest) {
 
     const hawkers = await fetchAllRows('hawker', 'hawker_id');
 
-    // Hawkers whose name starts with Z are old / closed: shown nowhere (?all=1 lists them too)
+    // Hawkers whose name starts with Z are old / closed, and a name without a priority is not in use:
+    // neither is listed. ?master=1 (Hawker Master) also lists those without a priority, so one can be
+    // given; ?all=1 lists every hawker.
     const showAll = searchParams.get('all') === '1';
-    let filtered = hawkers.filter((h: any) => h.name && h.name.trim().length > 0 && (showAll || !/^z/i.test(h.name.trim())));
+    const master = searchParams.get('master') === '1';
+    const priorities = await loadHawkerPriorities();
+    let filtered = hawkers
+      .filter((h: any) => h.name && h.name.trim().length > 0 && (showAll || !/^z/i.test(h.name.trim())))
+      .map((h: any) => {
+        const p = priorities?.get(hawkerKey(h.name));
+        return { ...h, priority: p ? p.priority : null, area_hindi: p?.hindi_name || '' };
+      })
+      .filter((h: any) => showAll || master || !priorities || h.priority !== null)
+      .sort((a: any, b: any) => (a.priority ?? 1e9) - (b.priority ?? 1e9)
+        || String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' }));
 
     if (search) {
       filtered = filtered.filter((h: any) =>
@@ -90,11 +103,13 @@ export async function POST(request: NextRequest) {
       ? await supabase.from('hawker').update(record).eq('hawker_id', finalHawkerId)
       : await supabase.from('hawker').insert([record]);
     if (error) throw new Error(`Could not save hawker: ${error.message}`);
+    // Priority and Hindi name belong to the name (all its hawker numbers)
+    if (body.priority !== undefined) await saveHawkerPriority(name, body.priority, body.area_hindi);
 
     return NextResponse.json({
       success: true,
       message: `Hawker #${finalHawkerId} (${name}) ${isUpdate ? 'updated' : 'created'} successfully!`,
-      hawker: { ...record, hindi_name: cleanOrTransliterateHindi(hindi_name, name) }
+      hawker: { ...record, hindi_name: cleanOrTransliterateHindi(hindi_name, name), priority: body.priority === '' || body.priority === undefined ? null : Number(body.priority), area_hindi: String(body.area_hindi || '').trim() }
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
