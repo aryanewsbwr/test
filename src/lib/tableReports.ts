@@ -219,8 +219,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   const wanted = subs.filter(s => {
     const p = m.pubs.get(s.publica_id);
     return p && p.magazine === magazine && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
-      // One customer chosen -> only that customer's papers (region is then not used)
-      && hawkerOk(f, s.hawker_id) && (f.customer ? Number(s.customer_id) === f.customer : (!f.region || custRegion(m, s.customer_id) === f.region));
+      && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region);
   });
   // One line per hawker name (the same name is saved under several hawker numbers);
   // hawkers whose name starts with Z are not shown
@@ -240,7 +239,7 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
   // Only the closed / holiday papers that customers still have running are worth naming
   const closedNames = Array.from(new Set(wanted.filter(s => recent.has(s.publica_id)).map(s => s.publica_id))).map(id => m.pubs.get(id)?.short || `#${id}`);
   return {
-    title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}${f.customer ? ` · ग्राहक: ${custName(m, f.customer)} #${f.customer}` : ''}`,
+    title: magazine ? 'QUANTITY OF MAGAZINE' : 'DAILY QUANTITY OF NEWSPAPER', subtitle: `${dmy(day)} ${dayName(day)}`,
     columns: [int('sno', 'क्र.'), text('hawker', 'हॉकर'), ...paperIds.map(pid => int(`p${pid}`, m.pubs.get(pid)?.short || `#${pid}`)), int('total', 'कुल')],
     groups: [{ rows }], totals: totalsOf(rows, keys, { hawker: 'कुल कॉपी' }),
     note: closedNames.length ? `इस दिन बंद / छुट्टी (नहीं गिने): ${closedNames.join(', ')}` : undefined
@@ -568,7 +567,8 @@ export const REPORTS: Record<string, Builder> = {
   async retailsale_region_datewise(f) {
     const m = await masters();
     const list = (await all(`retailsale${fySuffix()}`, '*')).map(s => ({ ...s, d: iso(s.vr_date ?? s.Vr_Date), cid: Number(s.customer_id ?? s.Customer_id) }))
-      .filter(s => inRange(s.d, f) && (!f.region || custRegion(m, s.cid) === f.region) && (!f.pub || Number(s.publica_id) === f.pub))
+      // One customer chosen -> only that customer (region is then not used)
+      .filter(s => inRange(s.d, f) && (f.customer ? s.cid === f.customer : (!f.region || custRegion(m, s.cid) === f.region)) && (!f.pub || Number(s.publica_id) === f.pub))
       .sort((a, b) => custRegion(m, a.cid) - custRegion(m, b.cid) || a.d.localeCompare(b.d));
     const row = (s: any) => ({ date: dmy(s.d), customer: `${custName(m, s.cid)} #${s.cid}`, paper: pubName(m, s.publica_id), qty: Number(s.copies || 0), rate: Number(s.rate || 0), amount: Number(s.amt || 0), narr: s.narr || '' });
     const groups = groupBy(list, s => regionName(m, custRegion(m, s.cid))).map(([name, ss]) => {
@@ -577,7 +577,7 @@ export const REPORTS: Record<string, Builder> = {
     });
     const rows = list.map(row);
     return {
-      title: 'RETAIL SALE REGION DATE WISE', subtitle: period(f),
+      title: 'RETAIL SALE REGION DATE WISE', subtitle: [period(f), f.customer ? `ग्राहक: ${custName(m, f.customer)} #${f.customer}` : ''].filter(Boolean).join(' · '),
       columns: [text('date', 'तारीख'), text('customer', 'ग्राहक'), text('paper', 'पेपर'), int('qty', 'कॉपी'), money('rate', 'रेट'), money('amount', 'राशि'), text('narr', 'नोट')],
       groups, totals: totalsOf(rows, ['qty', 'amount'], { customer: `कुल ${rows.length}` })
     };
