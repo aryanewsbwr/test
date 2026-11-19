@@ -98,12 +98,14 @@ export default function TableReportView({ data }: { data: TableReportData }) {
         </div>
       </div>
     );
-    return (
-      <div className="font-sans">
-        {/* One tall empty line to write the copies that came in */}
-        <div className="mb-1">{strip('आवक', null, '13mm')}</div>
-        <div className="flex flex-col gap-[0.8mm]">
-          {rows.map((r, i) => (
+    // Pages: the first holds the heading, the incoming box and 12 hawkers, the others 13 (the last
+    // also the total); fewer, bigger boxes when there are fewer hawkers. Each page is as tall as
+    // A4's printable height and its boxes are spread evenly down it, so no paper is left empty.
+    const first = Math.max(1, Math.floor(12 / k));
+    const rest = Math.max(1, Math.floor(13 / k));
+    const pages: Record<string, any>[][] = [rows.slice(0, first)];
+    for (let i = first; i < rows.length; i += rest) pages.push(rows.slice(i, i + rest));
+    const box = (r: Record<string, any>, i: number) => (
             <div key={i} className="border-[1.5px] border-black flex flex-col overflow-hidden break-inside-avoid" style={{ breakInside: 'avoid' }}>
               <div className="flex items-stretch border-b-[1.5px] border-black" style={{ height: head }}>
                 <div className="flex-1 px-1.5 font-black text-[16px] text-center leading-none flex items-center justify-center">{r.hawker}</div>
@@ -118,10 +120,22 @@ export default function TableReportView({ data }: { data: TableReportData }) {
               {/* Empty, as tall as the copies line: for a note written by hand */}
               <div style={{ height: line }} />
             </div>
-          ))}
-        </div>
-        {data.totals && <div className="mt-1">{strip('कुल', data.totals, '6mm')}</div>}
-        {data.note && <p className="mt-1 text-[10px] text-slate-700">{data.note}</p>}
+    );
+    return (
+      <div className="font-sans">
+        {pages.map((list, pi) => {
+          const last = pi === pages.length - 1;
+          return (
+            <div key={pi} className="flex flex-col justify-between"
+              style={{ height: pi === 0 ? '257mm' : '270mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
+              {/* One tall empty line to write the copies that came in */}
+              {pi === 0 && strip('आवक', null, '13mm')}
+              {list.map((r, i) => box(r, i))}
+              {last && data.totals && strip('कुल', data.totals, '6mm')}
+              {last && data.note && <p className="text-[10px] text-slate-700">{data.note}</p>}
+            </div>
+          );
+        })}
       </div>
     );
   }
