@@ -221,12 +221,15 @@ async function quantityByHawker(f: Filters, magazine: boolean): Promise<TableRep
     return p && p.magazine === magazine && !charge(s.publica_id) && runsOn(s, day) && !stopped(s)
       && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region);
   });
-  const going = wanted.filter(s => !off.has(s.publica_id));
+  // One line per hawker name (the same name is saved under several hawker numbers);
+  // hawkers whose name starts with Z are not shown
+  const hawkerName = (hid: number) => String(m.hawkers.get(Number(hid)) || (Number(hid) ? `#${hid}` : 'बिना हॉकर')).trim();
+  const going = wanted.filter(s => !off.has(s.publica_id) && !/^z/i.test(hawkerName(s.hawker_id)));
   const paperIds = Array.from(new Set(going.map(s => s.publica_id)))
     .sort((a, b) => (m.pubs.get(a)?.english || '').localeCompare(m.pubs.get(b)?.english || ''));
-  const rows = groupBy(going, s => String(s.hawker_id))
-    .map(([hid, ss]) => {
-      const row: Record<string, any> = { hawker: m.hawkers.get(Number(hid)) || (Number(hid) ? `#${hid}` : 'बिना हॉकर'), total: sum(ss, 'qty') };
+  const rows = groupBy(going, s => hawkerName(s.hawker_id).toLowerCase())
+    .map(([, ss]) => {
+      const row: Record<string, any> = { hawker: hawkerName(ss[0].hawker_id), total: sum(ss, 'qty') };
       for (const pid of paperIds) row[`p${pid}`] = sum(ss.filter(s => s.publica_id === pid), 'qty');
       return row;
     })
