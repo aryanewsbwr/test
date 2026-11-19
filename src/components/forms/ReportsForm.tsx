@@ -71,7 +71,7 @@ const waRegionCache = new Map<string, WaRegionStatus>();
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
 type TableFilter = 'dates' | 'day' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
-  hawker_daily_qty: ['day', 'hawker', 'region'],
+  hawker_daily_qty: ['day', 'customer', 'hawker', 'region'],
   hawker_magazine_qty: ['day', 'hawker', 'region'],
   collection_datewise: ['dates', 'region', 'collector'],
   collection_hawker_datewise: ['dates', 'collector', 'region'],
@@ -86,7 +86,7 @@ const TABLE_FILTERS: Record<string, TableFilter[]> = {
   purchase_publisherwise: ['dates', 'publisher', 'pub'],
   countersale_datewise: ['dates', 'pub'],
   countersale_pubwise: ['dates', 'pub'],
-  retailsale_region_datewise: ['dates', 'customer', 'region', 'pub'],
+  retailsale_region_datewise: ['dates', 'region', 'pub'],
   consolidated_sale: ['dates', 'pub'],
   daily_sale: ['dates'],
   region_start_end: ['dates', 'region', 'pub'],
