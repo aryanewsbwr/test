@@ -65,8 +65,10 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     );
   }
 
-  // One box per hawker (like the office's paper sheet): number and name, then each paper's copies.
-  // Two boxes side by side, small enough that about 26 hawkers fit one A4 page.
+  // One box per hawker (like the office's paper sheet): the name and total, each paper's copies, and
+  // an empty space to write a note. The boxes fill one A4 page, in priority order down the left
+  // column and then down the right. Above them an empty line to write the copies that came in
+  // (आवक), below them the total of each paper.
   if (data.layout === 'boxes') {
     const rows = data.groups.flatMap(g => g.rows);
     const papers = data.columns.filter(c => /^p\d+$/.test(c.key));
@@ -74,35 +76,46 @@ export default function TableReportView({ data }: { data: TableReportData }) {
     const count = (v: any) => fmt({ key: 'n', label: '', type: 'int' }, v);
     // Each paper's column is as wide as its name needs, the spare room shared out
     const grid = (n: number): React.CSSProperties => ({ gridTemplateColumns: `repeat(${n}, minmax(max-content, 1fr))` });
+    const perColumn = Math.ceil(rows.length / 2);
+    // About 222mm of the A4 page is left for the boxes; a box is never smaller than 16mm or bigger than 30mm
+    const boxHeight = Math.max(16, Math.min(30, 222 / Math.max(perColumn, 1)));
+    const strip = (title: string, values: Record<string, any> | null) => (
+      <div className="flex border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
+        <div className="w-14 shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[12px]">{title}</div>
+        <div className="flex-1">
+          <div className="grid text-[9px] font-bold border-b border-black" style={grid(papers.length + 1)}>
+            {papers.map(c => <div key={c.key} className={`${cell} py-0.5 whitespace-nowrap`}>{c.label}</div>)}<div className="px-0.5 text-center py-0.5">कुल</div>
+          </div>
+          <div className="grid text-[13px] font-black font-mono" style={grid(papers.length + 1)}>
+            {papers.map(c => <div key={c.key} className={`${cell} min-h-[22px] flex items-center justify-center`}>{values ? count(values[c.key]) : ''}</div>)}
+            <div className="px-0.5 min-h-[22px] flex items-center justify-center">{values ? count(values.total) : ''}</div>
+          </div>
+        </div>
+      </div>
+    );
     return (
       <div className="font-sans">
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+        <div className="mb-1.5">{strip('आवक', null)}</div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1"
+          style={{ gridAutoFlow: 'column', gridTemplateRows: `repeat(${perColumn}, ${boxHeight}mm)` }}>
           {rows.map((r, i) => (
-            <div key={i} className="border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
+            <div key={i} className="border-[1.5px] border-black flex flex-col overflow-hidden break-inside-avoid" style={{ breakInside: 'avoid' }}>
               <div className="flex items-stretch border-b-[1.5px] border-black">
-                <div className="w-7 shrink-0 border-r-[1.5px] border-black flex items-center justify-center font-black text-[13px]">{r.no}</div>
-                <div className="flex-1 px-1.5 py-0.5 font-black text-[13px] text-center leading-tight">{r.hawker}</div>
-                <div className="shrink-0 border-l-[1.5px] border-black px-1.5 flex items-center font-black text-[12px] font-mono">{count(r.total) || 0}</div>
+                <div className="flex-1 px-1.5 font-black text-[15px] text-center leading-snug">{r.hawker}</div>
+                <div className="shrink-0 border-l-[1.5px] border-black px-1.5 flex items-center font-black text-[13px] font-mono">{count(r.total) || 0}</div>
               </div>
-              <div className="grid border-b border-black text-[8px] font-bold leading-tight" style={grid(papers.length)}>
-                {papers.map(c => <div key={c.key} className={`${cell} py-0.5 whitespace-nowrap`}>{c.label}</div>)}
+              <div className="grid border-b border-black text-[9px] font-bold leading-tight" style={grid(papers.length)}>
+                {papers.map(c => <div key={c.key} className={`${cell} py-px whitespace-nowrap`}>{c.label}</div>)}
               </div>
-              <div className="grid text-[12px] font-black font-mono" style={grid(papers.length)}>
-                {papers.map(c => <div key={c.key} className={`${cell} py-0.5 min-h-[20px]`}>{count(r[c.key])}</div>)}
+              <div className="grid border-b border-black text-[14px] font-black font-mono" style={grid(papers.length)}>
+                {papers.map(c => <div key={c.key} className={`${cell} min-h-[20px] flex items-center justify-center`}>{count(r[c.key])}</div>)}
               </div>
+              {/* Empty: for a note written by hand */}
+              <div className="flex-1 min-h-[12px]" />
             </div>
           ))}
         </div>
-        {data.totals && (
-          <div className="mt-2 border-[1.5px] border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
-            <div className="grid text-[8px] font-bold border-b border-black" style={grid(papers.length + 1)}>
-              {papers.map(c => <div key={c.key} className={`${cell} py-0.5`}>{c.label}</div>)}<div className="px-0.5 text-center py-0.5">कुल</div>
-            </div>
-            <div className="grid text-[12px] font-black font-mono" style={grid(papers.length + 1)}>
-              {papers.map(c => <div key={c.key} className={`${cell} py-0.5`}>{count(data.totals![c.key])}</div>)}<div className="px-0.5 text-center py-0.5">{count(data.totals.total)}</div>
-            </div>
-          </div>
-        )}
+        {data.totals && <div className="mt-1.5">{strip('कुल', data.totals)}</div>}
         {data.note && <p className="mt-1 text-[10px] text-slate-700">{data.note}</p>}
       </div>
     );
