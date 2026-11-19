@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
 
     const hawkers = await fetchAllRows('hawker', 'hawker_id');
 
-    let filtered = hawkers.filter((h: any) => h.name && h.name.trim().length > 0);
+    // Hawkers whose name starts with Z are old / closed: shown nowhere (?all=1 lists them too)
+    const showAll = searchParams.get('all') === '1';
+    let filtered = hawkers.filter((h: any) => h.name && h.name.trim().length > 0 && (showAll || !/^z/i.test(h.name.trim())));
 
     if (search) {
       filtered = filtered.filter((h: any) =>
