@@ -163,7 +163,10 @@ export default function CustomerForm({
       fetch(`/api/customers?search=${encodeURIComponent(asked)}&page=1&limit=50&order=desc`)
         .then(r => r.json())
         .then(data => {
-          setSearchResults(data.customers || []);
+          // A customer number typed exactly comes first, so Enter opens that customer
+          const list: Customer[] = data.customers || [];
+          const exact = list.filter(c => String(c.customer_id) === asked.trim());
+          setSearchResults([...exact, ...list.filter(c => String(c.customer_id) !== asked.trim())]);
           setResultsFor(asked);
           setFindIndex(0);
         })
