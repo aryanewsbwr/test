@@ -81,6 +81,8 @@ export default function CustomerForm({
 
   // Insert Item Dialog State
   const [isInsertOpen, setIsInsertOpen] = useState(false);
+  // Stopping a paper asks for the date it stopped (today unless changed: it may be entered days later)
+  const [stopRow, setStopRow] = useState<{ sno: number; date: string; error: string } | null>(null);
   const [isSavingSub, setIsSavingSub] = useState(false);
   const [insertError, setInsertError] = useState('');
   const [insertForm, setInsertForm] = useState({
@@ -208,7 +210,8 @@ export default function CustomerForm({
       // same search); from the Find list to the empty form; only then closes Customer Info
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (isInsertOpen) setIsInsertOpen(false);
+        if (stopRow) setStopRow(null);
+        else if (isInsertOpen) setIsInsertOpen(false);
         else if (isFindOpen) setIsFindOpen(false);
         else if (selectedCustId) {
           const search = searchQuery;
@@ -247,7 +250,7 @@ export default function CustomerForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isFindOpen, isInsertOpen, searchQuery, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
+  }, [isOpen, isFindOpen, isInsertOpen, stopRow, searchQuery, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
 
   if (!isOpen) return null;
 
@@ -492,11 +495,30 @@ export default function CustomerForm({
     }
   };
 
-  const handleDiscontinueSubscriptionRow = async (sno: number) => {
-    const today = new Date();
-    const d = String(today.getDate()).padStart(2, '0');
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const y = today.getFullYear();
+  // A start date as yyyy-mm-dd, whether it is kept as yyyy-mm-dd or dd/mm/yyyy
+  const isoDate = (v: any) => {
+    const t = String(v ?? '').trim().split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+    const x = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    return x ? `${x[3]}-${x[2].padStart(2, '0')}-${x[1].padStart(2, '0')}` : '';
+  };
+
+  // Stop button: ask for the date first
+  const askStopDate = (sno: number) => setStopRow({ sno, date: todayLocalIso(), error: '' });
+  const confirmStopDate = () => {
+    if (!stopRow) return;
+    const sub = subscriptions.find(x => x.sno === stopRow.sno);
+    const start = isoDate(sub?.s_date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(stopRow.date)) { setStopRow({ ...stopRow, error: 'तारीख डालें।' }); return; }
+    if (start && stopRow.date < start) { setStopRow({ ...stopRow, error: `बंद की तारीख शुरू की तारीख (${start.split('-').reverse().join('/')}) से पहले नहीं हो सकती।` }); return; }
+    if (stopRow.date > todayLocalIso()) { setStopRow({ ...stopRow, error: 'आगे की तारीख नहीं — अखबार बंद होने के दिन ही डालें।' }); return; }
+    const { sno, date } = stopRow;
+    setStopRow(null);
+    handleDiscontinueSubscriptionRow(sno, date);
+  };
+
+  const handleDiscontinueSubscriptionRow = async (sno: number, stopIso: string) => {
+    const [y, m, d] = stopIso.split('-');
     const formattedToday = `${d}/${m}/${y}`;
 
     // Post to API
@@ -947,7 +969,7 @@ export default function CustomerForm({
                               ) : (
                                 <button 
                                   type="button"
-                                  onClick={() => handleDiscontinueSubscriptionRow(sub.sno)}
+                                  onClick={() => askStopDate(sub.sno)}
                                   className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-400 rounded text-[10px] font-bold cursor-pointer"
                                   title="Stop Delivery / Discontinue Paper (अखबार बंद करें)"
                                 >
@@ -1208,6 +1230,31 @@ export default function CustomerForm({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Stop a paper: the date it stopped */}
+      {stopRow && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-[#ECE9D8] border-2 border-white shadow-2xl p-3 w-full max-w-sm space-y-2 text-xs">
+            <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+              <span>अखबार बंद करें — {subscriptions.find(x => x.sno === stopRow.sno)?.publication_name || ''}</span>
+              <button onClick={() => setStopRow(null)} className="text-white hover:text-red-300 font-bold">✕</button>
+            </div>
+            <label className="flex items-center gap-2 font-bold text-[#000080]">
+              किस तारीख से बंद
+              <input type="date" autoFocus value={stopRow.date} max={todayLocalIso()}
+                onChange={e => setStopRow({ ...stopRow, date: e.target.value, error: '' })}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmStopDate(); } }}
+                className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold" />
+            </label>
+            <p className="text-[11px] text-slate-600">जिस दिन अखबार बंद हुआ वह तारीख डालें (एंट्री बाद में कर रहे हों तब भी)। Enter = बंद करें, Esc = वापस।</p>
+            {stopRow.error && <div className="text-red-700 font-bold">{stopRow.error}</div>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={confirmStopDate} className="px-4 py-1 bg-amber-100 border border-amber-500 font-bold text-amber-900">बंद करें</button>
+              <button onClick={() => setStopRow(null)} className="px-4 py-1 bg-[#ECE9D8] border border-black font-bold">Cancel</button>
+            </div>
+          </div>
         </div>
       )}
 
