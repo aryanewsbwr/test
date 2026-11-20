@@ -127,7 +127,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
           // As tall as A4's printable height (less the heading on page 1); the 14 boxes share it equally
           return (
             <div key={pi} className="flex flex-col"
-              style={{ height: pi === 0 ? '263mm' : '271mm', gap: '1.6mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
+              style={{ height: pi === 0 ? '266mm' : '272mm', gap: '1.6mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
               {pi === 0 && <div className="shrink-0">{strip('आवक', null, '8mm')}</div>}
               {list.map((r, i) => box(r, pi * PER_PAGE + i))}
               {last && data.totals && <div className="shrink-0">{strip('कुल', data.totals, '6mm')}</div>}
