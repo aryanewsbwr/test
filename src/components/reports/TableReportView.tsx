@@ -97,7 +97,8 @@ export default function TableReportView({ data }: { data: TableReportData }) {
       </div>
     );
     const box = (r: Record<string, any> | null, i: number) => (
-      <div key={i} className="flex border-[1.5px] border-black overflow-hidden break-inside-avoid" style={{ height: '17.5mm', breakInside: 'avoid' }}>
+      // Every box gets an equal share of the page; what is left after the paper names and copies is the note line
+      <div key={i} className="flex border-[1.5px] border-black overflow-hidden break-inside-avoid" style={{ flex: '1 1 0', minHeight: '15mm', breakInside: 'avoid' }}>
         <div className="shrink-0 border-r-[1.5px] border-black flex flex-col items-center justify-center px-1 text-center" style={{ width: NAME }}>
           <div className="font-black text-[15px] leading-tight">{r?.hawker || ''}</div>
           {r && <div className="font-black text-[13px] font-mono leading-tight mt-0.5">{count(r.total) || 0}</div>}
@@ -106,7 +107,7 @@ export default function TableReportView({ data }: { data: TableReportData }) {
           <div className="grid border-b border-black text-[9.5px] font-bold items-center leading-none" style={{ ...grid, height: '3.8mm' }}>
             {papers.map(c => <div key={c.key} className={`${cell} whitespace-nowrap`}>{c.label}</div>)}
           </div>
-          <div className="grid border-b-[1.5px] border-black text-[15px] font-black font-mono" style={{ ...grid, height: '5.5mm' }}>
+          <div className="grid border-b-[1.5px] border-black text-[15px] font-black font-mono" style={{ ...grid, height: '5.2mm' }}>
             {papers.map(c => <div key={c.key} className={`${cell} flex items-center justify-center`}>{r ? count(r[c.key]) : ''}</div>)}
           </div>
           {/* Empty: for a note written by hand */}
@@ -123,13 +124,13 @@ export default function TableReportView({ data }: { data: TableReportData }) {
       <div className="font-sans">
         {pages.map((list, pi) => {
           const last = pi === pages.length - 1;
-          // As tall as A4's printable height (less the heading on page 1); the boxes spread evenly down it
+          // As tall as A4's printable height (less the heading on page 1); the 14 boxes share it equally
           return (
-            <div key={pi} className="flex flex-col justify-between"
-              style={{ height: pi === 0 ? '263mm' : '271mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
-              {pi === 0 && strip('आवक', null, '10mm')}
+            <div key={pi} className="flex flex-col"
+              style={{ height: pi === 0 ? '263mm' : '271mm', gap: '1.6mm', breakAfter: last ? 'auto' : 'page', pageBreakAfter: last ? 'auto' : 'always' }}>
+              {pi === 0 && <div className="shrink-0">{strip('आवक', null, '8mm')}</div>}
               {list.map((r, i) => box(r, pi * PER_PAGE + i))}
-              {last && data.totals && strip('कुल', data.totals, '6mm')}
+              {last && data.totals && <div className="shrink-0">{strip('कुल', data.totals, '6mm')}</div>}
               {last && data.note && <p className="text-[10px] text-slate-700">{data.note}</p>}
             </div>
           );
