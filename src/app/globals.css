@@ -160,7 +160,8 @@ body {
 .bill-bar-light .text-amber-400 { color: #B45309 !important; }
 
 /* Many windows at once (MdiWindow): the screen fills its window, which the user moves and sizes */
-.mdi-win > .d2-window { max-width: none !important; width: 100% !important; margin: 0 !important; }
+.mdi-win:not(.mdi-measuring) > .d2-window { max-width: none !important; width: 100% !important; margin: 0 !important; }
+.mdi-win.mdi-measuring { width: 2000px; }
 .mdi-win.mdi-sized > .d2-window { height: 100% !important; max-height: none !important; }
 .mdi-win:not(.mdi-focus) > .d2-window { box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
 .mdi-win:not(.mdi-focus) .d2-title { filter: saturate(0.25) brightness(1.05); }

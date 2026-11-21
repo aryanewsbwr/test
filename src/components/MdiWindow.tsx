@@ -22,7 +22,8 @@ export default function MdiWindow({ win, focused, onFocus, onChange, children }:
   active.current = focused;
   const [ready, setReady] = useState(!!win.w);
 
-  // First size: the screen's own width, kept inside the desk
+  // First size: the screen's own width (read while 'mdi-measuring' keeps the screen's own limit),
+  // kept inside the desk
   useLayoutEffect(() => {
     if (win.w || !box.current) { setReady(true); return; }
     const el = box.current;
@@ -75,7 +76,7 @@ export default function MdiWindow({ win, focused, onFocus, onChange, children }:
   return (
     <div
       ref={box}
-      className={`mdi-win absolute${win.h ? ' mdi-sized' : ''}${focused ? ' mdi-focus' : ''}`}
+      className={`mdi-win absolute${win.h ? ' mdi-sized' : ''}${focused ? ' mdi-focus' : ''}${ready ? '' : ' mdi-measuring'}`}
       style={{ left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z, visibility: ready ? 'visible' : 'hidden' }}
       onPointerDownCapture={() => { if (!focused) onFocus(); }}
       onPointerDown={startDrag}
