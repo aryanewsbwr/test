@@ -148,7 +148,43 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
     }
     working('बैलेंस फॉरवर्ड हो रहा है...');
     const done = await fetch('/api/balance-forward', { method: 'POST' }).then(readJson);
-    return `बैलेंस फॉरवर्ड पूरा हुआ: ${done.to_label} शुरू हो गया। ${Number(done.customers).toLocaleString('en-IN')} ग्राहकों का बकाया आगे गया, कुल ₹${Number(done.total).toLocaleString('en-IN')}।`;
+    const carried = `बैलेंस फॉरवर्ड पूरा हुआ: ${done.to_label} शुरू हो गया। ${Number(done.customers).toLocaleString('en-IN')} ग्राहकों का बकाया आगे गया, कुल ₹${Number(done.total).toLocaleString('en-IN')}।`;
+    // Then the year before the one just closed goes out of the database into files, so it never fills
+    try {
+      return `${carried}
+${await moveOldYear(Number(String(done.from_label).slice(0, 4)) - 1)}`;
+    } catch (err: any) {
+      return `${carried}
+पुराना साल फ़ाइल में नहीं गया (${err.message || err}) — नीचे "पुराना साल फ़ाइल में भेजें" दबाकर फिर करें।`;
+    }
+  });
+
+  // A closed year's bills and receipts: saved as files (backups still read them), checked, then
+  // removed from the database. Only years at least two years old.
+  const moveOldYear = async (start: number) => {
+    const fy = `${start}${start + 1}`;
+    const name = `${start}-${String(start + 1).slice(2)}`;
+    let total = 0;
+    for (const kind of ['bill', 'billno', 'billdel', 'receipt']) {
+      working(`${name} का ${kind} फ़ाइल में सेव हो रहा है...`);
+      const r = await fetch('/api/closed-years/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fy, table: `${kind}${fy}` }) }).then(readJson);
+      total += Number(r.rows || 0);
+    }
+    working(`${name} फ़ाइलें जाँच कर डेटाबेस से हटाया जा रहा है...`);
+    const removed = await fetch('/api/closed-years/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fy, remove: true }) }).then(readJson);
+    const n = (removed.dropped || []).length;
+    return n
+      ? `${name} के ${total.toLocaleString('en-IN')} रिकॉर्ड फ़ाइल में सुरक्षित, डेटाबेस से हटे (जगह खाली हुई)। बैकअप में वे अब भी आते हैं।`
+      : `${name} पहले ही फ़ाइल में है, डेटाबेस में कुछ हटाने को नहीं था।`;
+  };
+
+  // Button: move the year before last again (if it did not finish after Balance Forward)
+  const handleMoveOldYear = () => run(async () => {
+    const now = new Date();
+    const running = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const start = running - 2;
+    if (!confirm(`${start}-${String(start + 1).slice(2)} के बिल और रसीदें फ़ाइल में सेव होकर डेटाबेस से हट जाएँगी (बैकअप में फिर भी मिलेंगी)। आगे बढ़ें?`)) return 'कुछ नहीं बदला।';
+    return moveOldYear(start);
   });
 
   const tabButton = (tab: Tab, label: string, icon: React.ReactNode) => (
@@ -424,6 +460,16 @@ ${Number(ask.customers).toLocaleString('en-IN')} ग्राहकों का
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>{isProcessing ? 'Working...' : 'बैलेंस फॉरवर्ड करें'}</span>
+              </button>
+              <p className="pt-1">
+                बैलेंस फॉरवर्ड के बाद उससे पहले का साल अपने आप फ़ाइल में चला जाता है, ताकि फ्री डेटाबेस कभी न भरे। अगर वह बीच में रुक जाए तो यह दबाएँ:
+              </p>
+              <button
+                onClick={handleMoveOldYear}
+                disabled={isProcessing}
+                className="vb-btn bg-slate-100 hover:bg-slate-200 px-3 py-1 text-xs font-bold cursor-pointer"
+              >
+                पुराना साल फ़ाइल में भेजें
               </button>
             </div>
           )}
