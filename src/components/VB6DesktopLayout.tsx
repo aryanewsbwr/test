@@ -523,6 +523,21 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 </div>
               </div>
 
+              {/* 3. Publication Daily Report > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Publication Daily Report</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setSelectedReportType('cust_choose_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Hawker/Region Newspapers Report</button>
+                  <button onClick={() => { setSelectedReportType('region_pub_daily'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region Wise Publication Report</button>
+                  <button onClick={() => { setSelectedReportType('region_start_end'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region-Wise Start End Report</button>
+                  <button onClick={() => { setSelectedReportType('circ_type_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Circulation Type Publication Report</button>
+                  <button onClick={() => { setSelectedReportType('cust_pub_starting'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Publication Starting</button>
+                </div>
+              </div>
+
               {/* 6. Reciept > */}
               <div className="relative group/sub">
                 <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
@@ -531,6 +546,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 </button>
                 <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
                   <button onClick={() => { setSelectedReportType('receipt_nowise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Receipt Number Wise Report</button>
+                  <button onClick={() => { setSelectedReportType('collection_datewise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Collection Datewise</button>
                 </div>
               </div>
 
@@ -616,21 +632,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
                 </div>
               </div>
 
-              {/* 10. Publication Daily Report > */}
-              <div className="relative group/sub">
-                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
-                  <span>Publication Daily Report</span>
-                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
-                </button>
-                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
-                  <button onClick={() => { setSelectedReportType('region_pub_daily'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region Wise Publication Report</button>
-                  <button onClick={() => { setSelectedReportType('region_start_end'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region-Wise Start End Report</button>
-                  <button onClick={() => { setSelectedReportType('cust_choose_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Wise Choose Publication</button>
-                  <button onClick={() => { setSelectedReportType('circ_type_pub'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Circulation Type Publication Report</button>
-                  <button onClick={() => { setSelectedReportType('cust_pub_starting'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Publication Starting</button>
-                </div>
-              </div>
-
               {/* 12. Hawker's Customer Priority */}
               <button onClick={() => { setSelectedReportType('hawker_cust_priority'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Hawker&apos;s Customer Priority
@@ -639,21 +640,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               {/* 13. Sticker Printing */}
               <button onClick={() => { setSelectedReportType('sticker_printing'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Sticker Printing
-              </button>
-
-              {/* 14. Hawker Report Datewise */}
-              <button onClick={() => { setSelectedReportType('hawker_report_datewise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Hawker Report Datewise
-              </button>
-
-              {/* 15. Collection Hawker Datewise */}
-              <button onClick={() => { setSelectedReportType('collection_hawker_datewise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Collection Hawker Datewise
-              </button>
-
-              {/* 16. Collection Datewise */}
-              <button onClick={() => { setSelectedReportType('collection_datewise'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Collection Datewise
               </button>
 
               {/* 17. WhatsApp Replies */}

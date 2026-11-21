@@ -11,8 +11,8 @@ import { getReliableHindiName, storedHindiName, cleanOrTransliterateHindi, susha
 
 export interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 export interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
-export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' }
-export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all'; layout?: 'table' | 'boxes'; month?: string; circ?: string }
+export interface TableReport { title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' | 'pairs'; plainHeader?: boolean }
+export interface Filters { from: string; to: string; region: number; hawker: number; hawkers?: number[]; pub: number; publisher: number; collector: number; bookFrom?: number; bookTo?: number; customer?: number; kind?: 'newspaper' | 'magazine' | 'all'; layout?: 'table' | 'boxes' | 'simple'; month?: string; circ?: string }
 // One hawker name can have several hawker numbers; choosing the name means all of them
 const hawkerOk = (f: Filters, id: number) => !f.hawker || (f.hawkers?.length ? f.hawkers.includes(Number(id)) : Number(id) === f.hawker);
 
@@ -183,6 +183,19 @@ async function stops(m?: Masters) {
   })).filter(d => d.customer_id && d.from && (!m || m.customers.has(d.customer_id)));
 }
 const runsOn = (s: { s: string; c: string }, day: string) => (!s.s || s.s <= day) && (!s.c || day < s.c);
+
+// Papers closed for good on a day (Publication Discontinue with no end, i.e. to 2049 or later):
+// not listed in reports of today's customers. A short stop or holiday does not hide a paper.
+async function closedPapers(day: string): Promise<Set<number>> {
+  const dis = await all('publicationdis', '*').catch(() => [] as any[]);
+  const out = new Set<number>();
+  for (const d of dis) {
+    const from = iso(d.entry_date ?? d.from_date ?? d.FromDate);
+    const to = iso(d.oc_date ?? d.to_date ?? d.ToDate) || '2099-12-31';
+    if ((!from || from <= day) && to >= '2049-01-01' && to >= day) out.add(Number(d.publica_id ?? d.Publica_id ?? 0));
+  }
+  return out;
+}
 
 // Papers that do not come on a day: closed or stopped from Publication Discontinue, or a holiday.
 // A stop or holiday for all papers (paper 0) is for the daily papers only, as in billing.
@@ -714,21 +727,52 @@ export const REPORTS: Record<string, Builder> = {
     };
   },
 
-  // Customer Wise Choose Publication: everyone taking the chosen paper now, region by region
+  // Hawker/Region Newspapers Report: today's customers, hawker by hawker (the hawker's name as a
+  // heading, in hawker priority order; Z hawkers and hawkers without a priority are left out).
+  // Detail: paper, copies, customer, address, phone, priority. Simple (layout 'simple'): only the
+  // papers and the customer's name, two lists side by side, like the hawker's hand-written sheet.
+  // Ends with each paper's total copies.
   async cust_choose_pub(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region))
-      .sort((a, b) => custRegion(m, a.customer_id) - custRegion(m, b.customer_id) || Number(m.customers.get(a.customer_id)?.priority || 0) - Number(m.customers.get(b.customer_id)?.priority || 0));
-    const groups = groupBy(list, s => regionName(m, custRegion(m, s.customer_id))).map(([name, ss]) => ({
-      title: `${name} — ${ss.length}`,
-      rows: ss.map(s => ({ customer: `${custName(m, s.customer_id)} #${s.customer_id}`, address: custAddress(m, s.customer_id), phone: custPhone(m, s.customer_id), paper: pubName(m, s.publica_id), hawker: m.hawkers.get(s.hawker_id) || '-', qty: s.qty, since: dmy(s.s) })),
-      totals: totalsOf(ss, ['qty'], { customer: `${ss.length} ग्राहक` })
-    }));
+    const [closed, priorities] = await Promise.all([closedPapers(today), loadHawkerPriorities()]);
+    const hname = (hid: number) => String(m.hawkers.get(Number(hid)) || `#${hid}`).trim();
+    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && !closed.has(s.publica_id) && (!f.pub || s.publica_id === f.pub)
+      && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region)
+      && !/^z/i.test(hname(s.hawker_id)) && (!priorities || priorities.has(hawkerKey(hname(s.hawker_id)))));
+    const short = (pid: number) => m.pubs.get(pid)?.short || pubName(m, pid);
+    const prio = (cid: number) => Number(m.customers.get(Number(cid))?.priority || 0);
+    const rank = (n: string) => priorityRank(priorities?.get(hawkerKey(n))?.priority ?? null);
+    const simple = f.layout === 'simple';
+    const groups = groupBy(list, s => hname(s.hawker_id).toLowerCase())
+      .map(([, ss]) => [hname(ss[0].hawker_id), ss] as [string, typeof ss])
+      .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+      .map(([name, ss]) => {
+        const title = priorities?.get(hawkerKey(name))?.hindi_name || name;
+        const sorted = [...ss].sort((a, b) => prio(a.customer_id) - prio(b.customer_id) || a.customer_id - b.customer_id);
+        const rows = simple
+          // one line per customer, all his papers together (e.g. "NJ DB")
+          ? groupBy(sorted, s => String(s.customer_id)).map(([cid, xs]) => ({
+            paper: xs.map(x => `${short(x.publica_id)}${x.qty > 1 ? `×${x.qty}` : ''}`).join(' '), customer: custName(m, cid)
+          }))
+          : sorted.map(s => ({
+            paper: short(s.publica_id), qty: s.qty, customer: custName(m, s.customer_id), address: custAddress(m, s.customer_id),
+            phone: custPhone(m, s.customer_id), priority: prio(s.customer_id) || ''
+          }));
+        return { title: `${title} — ${sum(ss, 'qty')} कॉपी`, rows };
+      });
+    // A very short summary: each paper's copies, then the total
+    const byPaper = groupBy(list, s => String(s.publica_id))
+      .map(([pid, ss]) => ({ name: short(Number(pid)), qty: sum(ss, 'qty') }))
+      .sort((a, b) => b.qty - a.qty);
+    const summary = `कुल: ${byPaper.map(x => `${x.name} ${x.qty.toLocaleString('en-IN')}`).join(' · ')} · सब मिलाकर ${sum(list, 'qty').toLocaleString('en-IN')}`;
     return {
-      title: f.pub ? `CUSTOMERS TAKING: ${m.pubs.get(f.pub)?.english || f.pub}` : 'CUSTOMER WISE PUBLICATION', subtitle: `आज (${dmy(today)}) चालू`,
-      columns: [text('customer', 'ग्राहक'), text('address', 'पता'), text('phone', 'फ़ोन'), text('paper', 'अखबार'), text('hawker', 'हॉकर'), int('qty', 'कॉपी'), text('since', 'कब से')],
-      groups, totals: totalsOf(list, ['qty'], { customer: `कुल ${list.length}` })
+      layout: simple ? 'pairs' : 'table', plainHeader: true,
+      title: 'HAWKER/REGION NEWSPAPERS', subtitle: `${dmy(today)} ${dayName(today)}`,
+      columns: simple
+        ? [text('paper', 'अखबार'), text('customer', 'ग्राहक')]
+        : [text('paper', 'अखबार'), { ...int('qty', 'कॉपी'), align: 'center' as const }, text('customer', 'ग्राहक'), text('address', 'पता'), text('phone', 'फ़ोन'), int('priority', 'प्राथमिकता')],
+      groups, note: summary
     };
   },
 
@@ -736,7 +780,8 @@ export const REPORTS: Record<string, Builder> = {
   async circ_type_pub(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && (!f.pub || s.publica_id === f.pub) && (!f.region || custRegion(m, s.customer_id) === f.region));
+    const closed = await closedPapers(today);
+    const list = (await subscriptions(m)).filter(s => runsOn(s, today) && !closed.has(s.publica_id) && (!f.pub || s.publica_id === f.pub) && (!f.region || custRegion(m, s.customer_id) === f.region));
     const groups = groupBy(list, s => String(s.circulation || 'Morning').trim() || 'Morning').map(([name, ss]) => {
       const rows = groupBy(ss, s => String(s.publica_id)).map(([id, xs]) => ({ paper: pubName(m, id), customers: new Set(xs.map(x => x.customer_id)).size, qty: sum(xs, 'qty') }))
         .sort((a, b) => b.qty - a.qty);
@@ -757,7 +802,8 @@ export const REPORTS: Record<string, Builder> = {
     const today = new Date().toISOString().slice(0, 10);
     const priorities = await loadHawkerPriorities();
     const name = (hid: number) => String(m.hawkers.get(Number(hid)) || `#${hid}`).trim();
-    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && hawkerOk(f, s.hawker_id)
+    const closed = await closedPapers(today);
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && !closed.has(s.publica_id) && hawkerOk(f, s.hawker_id)
       && (!f.region || custRegion(m, s.customer_id) === f.region)
       && (!f.circ || String(s.circulation || 'Morning').toLowerCase() === f.circ.toLowerCase())
       && !/^z/i.test(name(s.hawker_id)) && (!priorities || priorities.has(hawkerKey(name(s.hawker_id)))));
@@ -816,7 +862,8 @@ export const REPORTS: Record<string, Builder> = {
   async sticker_printing(f) {
     const m = await masters();
     const today = new Date().toISOString().slice(0, 10);
-    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && hawkerOk(f, s.hawker_id) && (!f.pub || s.publica_id === f.pub));
+    const closed = await closedPapers(today);
+    const running = (await subscriptions(m)).filter(s => runsOn(s, today) && !closed.has(s.publica_id) && hawkerOk(f, s.hawker_id) && (!f.pub || s.publica_id === f.pub));
     const ids = Array.from(new Set(running.map(s => s.customer_id))).filter(id => !f.region || custRegion(m, id) === f.region)
       .sort((a, b) => custRegion(m, a) - custRegion(m, b) || Number(m.customers.get(a)?.priority || 0) - Number(m.customers.get(b)?.priority || 0));
     const rows = ids.map(id => ({

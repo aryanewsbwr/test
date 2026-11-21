@@ -34,6 +34,8 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
   });
   const [toDate, setToDate] = useState('');
+  // Closed for good: no end date. (A To date equal to From stops the paper for that one day only.)
+  const [forGood, setForGood] = useState(true);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
@@ -70,6 +72,10 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
       return;
     }
 
+    if (!forGood && !toDate.trim()) {
+      setMsg('कुछ दिन के लिए बंद: To तारीख डालें, या "हमेशा के लिए बंद" टिक करें।');
+      return;
+    }
     try {
       const res = await fetch('/api/publicationdis', {
         method: 'POST',
@@ -77,8 +83,8 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
         body: JSON.stringify({
           publica_id: matchedPub.publica_id,
           from_date: fromDate,
-          to_date: toDate,
-          dis_type: toDate ? 'T' : 'P'
+          to_date: forGood ? '' : toDate,
+          dis_type: forGood || !toDate ? 'P' : 'T'
         })
       });
       const data = await res.json();
@@ -174,10 +180,19 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
               </div>
 
               <div className="flex items-center gap-3">
+                <label className="w-32 font-bold text-[#800000] text-right"></label>
+                <label className="flex items-center gap-1.5 font-bold text-[#000080] cursor-pointer">
+                  <input type="checkbox" checked={forGood} onChange={e => setForGood(e.target.checked)} />
+                  हमेशा के लिए बंद (अखबार/मैगज़ीन बंद हो गई)
+                </label>
+              </div>
+
+              <div className={`flex items-center gap-3 ${forGood ? 'opacity-40' : ''}`}>
                 <label className="w-32 font-bold text-[#800000] text-right">To</label>
                 <input 
                   type="text" 
-                  value={toDate}
+                  value={forGood ? '' : toDate}
+                  disabled={forGood}
                   onChange={(e) => setToDate(e.target.value)}
                   placeholder="//"
                   className="w-36 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-mono font-bold text-black outline-none text-center"

@@ -7,7 +7,7 @@ import React from 'react';
 
 interface Column { key: string; label: string; align?: 'left' | 'right' | 'center'; type?: 'money' | 'int' | 'text'; light?: boolean }
 interface Group { title?: string; rows: Record<string, any>[]; totals?: Record<string, any> }
-export interface TableReportData { kind: 'table'; type: string; title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' }
+export interface TableReportData { kind: 'table'; type: string; title: string; subtitle?: string; columns: Column[]; groups: Group[]; totals?: Record<string, any>; note?: string; layout?: 'table' | 'labels' | 'boxes' | 'pairs'; plainHeader?: boolean }
 
 const fmt = (c: Column, v: any) => {
   if (v === null || v === undefined || v === '') return '';
@@ -61,6 +61,30 @@ export default function TableReportView({ data }: { data: TableReportData }) {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // Simple list (Hawker/Region Newspapers): under each hawker's highlighted name, the customers in two
+  // lists side by side (papers, then name), like the hawker's hand-written sheet. Hawkers follow
+  // one after another on the same page.
+  if (data.layout === 'pairs') {
+    return (
+      <div className="font-sans text-[12px]">
+        {data.groups.map((g, gi) => (
+          <div key={gi} className="mb-2">
+            <div className="bg-slate-800 text-white font-black text-[13px] px-2 py-0.5 break-after-avoid" style={{ breakAfter: 'avoid', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>{g.title}</div>
+            <div style={{ columnCount: 2, columnGap: '4mm', columnRule: '1px solid #000' }} className="border-x border-b border-black">
+              {g.rows.map((r, ri) => (
+                <div key={ri} className="flex border-b border-black break-inside-avoid" style={{ breakInside: 'avoid' }}>
+                  <div className="w-16 shrink-0 border-r border-black px-1 font-bold font-mono text-[11px]">{r.paper}</div>
+                  <div className="flex-1 px-1 font-bold truncate">{r.customer}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        {data.note && <p className="mt-1 text-[11px] font-bold">{data.note}</p>}
       </div>
     );
   }

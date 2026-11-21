@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
         .sort((a: any, b: any) => stopEnd(b).localeCompare(stopEnd(a)))[0];
       const toDate = disc ? stopEnd(disc) : null;
       const fromDate = disc ? (disc.entry_date || disc.from_date || disc.FromDate) : null;
-      const isPermanent = !!(disc && (disc.is_permanent || toDate! >= '2090-01-01'));
+      // Closed with no end (to 2049 or later, as Publication Discontinue saves it) counts as closed for good
+      const isPermanent = !!(disc && (disc.is_permanent || toDate! >= '2049-01-01'));
       const isClosed = !!disc;
 
       return {

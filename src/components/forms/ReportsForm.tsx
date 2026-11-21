@@ -69,7 +69,7 @@ const isHiddenBillRegion = (name: unknown) => /^\s*z/i.test(String(name || ''));
 const waRegionCache = new Map<string, WaRegionStatus>();
 
 // List reports drawn by TableReportView from /api/reports/table, with the filters each one asks for
-type TableFilter = 'dates' | 'day' | 'kind' | 'month' | 'circ' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
+type TableFilter = 'dates' | 'day' | 'kind' | 'month' | 'circ' | 'view' | 'region' | 'hawker' | 'pub' | 'publisher' | 'collector' | 'book' | 'customer';
 const TABLE_FILTERS: Record<string, TableFilter[]> = {
   hawker_daily_qty: ['day', 'kind', 'hawker', 'region'],
   region_pub_daily: ['day', 'kind', 'circ', 'region'],
@@ -92,7 +92,7 @@ const TABLE_FILTERS: Record<string, TableFilter[]> = {
   daily_sale: ['month', 'region', 'pub'],
   region_start_end: ['dates', 'region', 'pub'],
   cust_pub_starting: ['dates', 'pub', 'hawker', 'region'],
-  cust_choose_pub: ['pub', 'region', 'hawker'],
+  cust_choose_pub: ['view', 'hawker', 'region', 'pub'],
   circ_type_pub: ['region', 'pub'],
   hawker_cust_priority: ['hawker', 'circ', 'region'],
   hawker_report_datewise: ['dates', 'collector'],
@@ -114,7 +114,7 @@ const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?:
   cust_monthwise: { title: 'Customer MonthWise Detail', category: 'Customer', hasCustId: true, hasRegion: true },
   cust_pub_starting: { title: 'Customer Publication Starting', category: 'Publication Daily Report', hasPub: true, hasHawker: true },
   circ_type_pub: { title: 'Circulation Type Publication Report', category: 'Publication Daily Report' },
-  cust_choose_pub: { title: 'Customer Wise Choose Publication', category: 'Publication Daily Report', hasPub: true },
+  cust_choose_pub: { title: 'Hawker/Region Newspapers Report', category: 'Publication Daily Report', hasPub: true },
   discontinue_datewise: { title: 'Discontinue Date Wise', category: 'Discontinue', hasPeriod: true },
   discontinue_hawkerwise: { title: 'Discontinue Hawker Wise With Address', category: 'Discontinue', hasHawker: true },
   purchase_datewise: { title: 'Purchase Date Wise Report', category: 'Purchase', hasPeriod: true },
@@ -242,6 +242,8 @@ export default function ReportsForm({
   const [paperKind, setPaperKind] = useState<'newspaper' | 'magazine' | 'all'>('newspaper');
   // ... as a table, or one box per hawker like the office's paper sheet (fits A4)
   const [boxPrint, setBoxPrint] = useState(false);
+  // Hawker/Region Newspapers: full detail, or only papers and names (two lists side by side)
+  const [simpleView, setSimpleView] = useState(false);
   // Morning / Evening papers ('' = both), as in the old software's reports
   const [circ, setCirc] = useState<'' | 'Morning' | 'Evening'>('');
   const [dayDate, setDayDate] = useState<string>(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
@@ -469,6 +471,7 @@ export default function ReportsForm({
         if (f.includes('day')) { q.set('from', dayDate); q.set('to', dayDate); }
         if (f.includes('kind')) { q.set('kind', paperKind); if (boxPrint && activeReport === 'hawker_daily_qty') q.set('layout', 'boxes'); }
         if (f.includes('month')) q.set('month', selectedMonth);
+        if (f.includes('view') && simpleView) q.set('layout', 'simple');
         if (f.includes('circ') && circ) q.set('circ', circ);
         // One customer chosen -> that customer only, region is not used
         const oneCustomer = f.includes('customer') && /^\d+$/.test(targetCustId.trim());
@@ -514,7 +517,7 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind, boxPrint, circ]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit, fromDate, toDate, selectedCollector, selectedPublisher, selectedBook, dayDate, paperKind, boxPrint, circ, simpleView]);
 
   useEffect(() => {
     if (viewMode === 'preview') {
@@ -911,7 +914,7 @@ export default function ReportsForm({
                   className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
                   <option value="all">-- All Publications --</option>
-                  {[...publications]
+                  {[...publications].filter(p => !(p.is_closed && p.is_permanent))
                     .sort((a, b) => String(a.public_name || a.name || '').localeCompare(String(b.public_name || b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
                     .map(p => (
                       <option key={p.publica_id || p.id} value={p.publica_id || p.id}>
@@ -1031,6 +1034,15 @@ export default function ReportsForm({
                 <select value={boxPrint ? 'boxes' : 'table'} onChange={e => setBoxPrint(e.target.value === 'boxes')} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
                   <option value="table">तालिका (एक लाइन में एक हॉकर)</option>
                   <option value="boxes">बॉक्स — विस्तृत (हर हॉकर का अलग बॉक्स, A4)</option>
+                </select>
+              </div>
+            )}
+            {isTable && tableFilters.includes('view') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">रिपोर्ट</label>
+                <select value={simpleView ? 'simple' : 'detail'} onChange={e => setSimpleView(e.target.value === 'simple')} className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none">
+                  <option value="detail">विस्तृत (अखबार, कॉपी, ग्राहक, पता, फ़ोन, प्राथमिकता)</option>
+                  <option value="simple">सादा (सिर्फ़ अखबार और ग्राहक का नाम)</option>
                 </select>
               </div>
             )}
@@ -1316,7 +1328,7 @@ export default function ReportsForm({
             <optgroup label="10. Publication Daily Report">
               <option value="region_pub_daily">Region Wise Publication Report</option>
               <option value="region_start_end">Region-Wise Start End Report</option>
-              <option value="cust_choose_pub">Customer Wise Choose Publication</option>
+              <option value="cust_choose_pub">Hawker/Region Newspapers Report</option>
               <option value="circ_type_pub">Circulation Type Publication Report</option>
               <option value="cust_pub_starting">Customer Publication Starting</option>
             </optgroup>
@@ -1328,8 +1340,6 @@ export default function ReportsForm({
             <optgroup label="12-16. Operational Reports">
               <option value="hawker_cust_priority">Hawker&apos;s Customer Priority</option>
               <option value="sticker_printing">Sticker Printing</option>
-              <option value="hawker_report_datewise">Hawker Report Datewise</option>
-              <option value="collection_hawker_datewise">Collection Hawker Datewise</option>
               <option value="collection_datewise">Collection Datewise</option>
             </optgroup>
           </select>
@@ -1565,7 +1575,7 @@ export default function ReportsForm({
         >
           
           {/* Header (the box sheet has only the firm's name and the day, to leave the page for the boxes) */}
-          {isTable && reportData?.layout === 'boxes' ? (
+          {isTable && (reportData?.layout === 'boxes' || reportData?.plainHeader) ? (
             <div className="flex items-end justify-between pb-0.5 border-b-2 border-black leading-none">
               <h1 className="text-xl font-black tracking-wider uppercase leading-none">{firm.name}</h1>
               <span className="text-base font-black font-sans leading-none">{reportData?.subtitle || ''}</span>
@@ -1620,7 +1630,7 @@ export default function ReportsForm({
             </div>
           ) : isTable ? (
             reportData?.kind === 'table' && reportData.type === activeReport
-              ? <div className={reportData.layout === 'boxes' ? 'pt-1' : 'pt-3'}><TableReportView data={reportData} /></div>
+              ? <div className={reportData.layout === 'boxes' || reportData.plainHeader ? 'pt-1' : 'pt-3'}><TableReportView data={reportData} /></div>
               : <div className="p-16 text-center text-slate-500 font-sans">रिपोर्ट बन रही है…</div>
           ) : !reportData || ((activeReport === 'cust_detail' || activeReport === 'cust_monthwise')
             ? !Array.isArray(reportData.customers) || reportData.customers.length === 0
