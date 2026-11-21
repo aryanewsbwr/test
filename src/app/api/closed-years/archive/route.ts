@@ -56,6 +56,23 @@ export async function POST(req: NextRequest) {
   if (refused) return refused;
   const body = await req.json().catch(() => ({}));
   const fy = String(body.fy || '');
+  // { fy, table, check: true }: read and pack the table as it would be saved, save nothing (any closed year)
+  if (body.check && /^\d{8}$/.test(fy)) {
+    try {
+      const table = String(body.table || '');
+      const kind = KINDS.find(k => table === `${k}${fy}`);
+      if (!kind) return NextResponse.json({ error: 'Unknown table' }, { status: 400 });
+      const rows = await readAll(table, KEY[kind]);
+      if (rows === null) return NextResponse.json({ table, missing: true });
+      const { count } = await supabaseAdmin.from(table).select('*', { count: 'exact', head: true });
+      const packed = zlib.gzipSync(Buffer.from(JSON.stringify({ table, rows_count: rows.length, rows })));
+      const back = JSON.parse(zlib.gunzipSync(packed).toString('utf8'));
+      const ids = new Set(rows.map((r: any) => r[KEY[kind]]));
+      return NextResponse.json({ table, database: count, read: rows.length, distinct: ids.size, packed_rows: back.rows.length, file_kb: Math.round(packed.length / 1024) });
+    } catch (err: any) {
+      return NextResponse.json({ error: String(err.message || err) }, { status: 500 });
+    }
+  }
   if (!movable(fy)) return NextResponse.json({ error: `${fy} अभी फ़ाइल में नहीं भेजा जा सकता (चालू या पिछला साल)` }, { status: 400 });
 
   try {
