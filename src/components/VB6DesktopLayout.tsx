@@ -103,6 +103,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
     return [...ws, { key, z, x: 12 + n * 28, y: 8 + n * 24 }];
   }), []);
   const isOpen = (key: string) => wins.some(w => w.key === key);
+  const closeWin = useCallback((key: string) => setWins(ws => ws.filter(w => w.key !== key)), []);
   const win = (key: string, node: React.ReactNode) => {
     const w = wins.find(x => x.key === key);
     if (!w) return null;
@@ -202,7 +203,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
   const [isLoadingCusts, setIsLoadingCusts] = useState(false);
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
   const [subsTab, setSubsTab] = useState<'active' | 'all'>('active');
-  const [isSubsModalOpen, setIsSubsModalOpen] = useState(false);
+  const isSubsModalOpen = isOpen('subs');
+  const setIsSubsModalOpen = (open: boolean) => (open ? setActiveWindow('subs') : closeWin('subs'));
   const [selectedCustForModal, setSelectedCustForModal] = useState<Customer | null>(null);
   const [isCustFormOpen, setIsCustFormOpen] = useState(false);
 
@@ -219,12 +221,18 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
     const sY = mIdx < 3 ? today.getFullYear() - 1 : today.getFullYear();
     return { month: months[mIdx] || 'October', startYear: sY, endYear: sY + 1 };
   });
-  const [isRateMatrixOpen, setIsRateMatrixOpen] = useState(false);
-  const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
-  const [isUserPermOpen, setIsUserPermOpen] = useState(false);
-  const [isCounterSaleOpen, setIsCounterSaleOpen] = useState(false);
-  const [isRetailSalePermanentOpen, setIsRetailSalePermanentOpen] = useState(false);
-  const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const isRateMatrixOpen = isOpen('ratematrix');
+  const setIsRateMatrixOpen = (open: boolean) => (open ? setActiveWindow('ratematrix') : closeWin('ratematrix'));
+  const isCollectionAgentsOpen = isOpen('collectagents');
+  const setIsCollectionAgentsOpen = (open: boolean) => (open ? setActiveWindow('collectagents') : closeWin('collectagents'));
+  const isUserPermOpen = isOpen('userperm');
+  const setIsUserPermOpen = (open: boolean) => (open ? setActiveWindow('userperm') : closeWin('userperm'));
+  const isCounterSaleOpen = isOpen('countersale');
+  const setIsCounterSaleOpen = (open: boolean) => (open ? setActiveWindow('countersale') : closeWin('countersale'));
+  const isRetailSalePermanentOpen = isOpen('retailsale');
+  const setIsRetailSalePermanentOpen = (open: boolean) => (open ? setActiveWindow('retailsale') : closeWin('retailsale'));
+  const isMessageOpen = isOpen('message');
+  const setIsMessageOpen = (open: boolean) => (open ? setActiveWindow('message') : closeWin('message'));
   const [selectedReportType, setSelectedReportType] = useState<string>('hawker_daily_qty');
   const [backupModalMode, setBackupModalMode] = useState<'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward' | null>(null);
 
@@ -341,13 +349,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
     // Esc closes one thing only: the top-most menu, pop-up or window
     const closeOne = () => {
       if (activeMenu !== null) { setActiveMenu(null); return; }
-      if (isSubsModalOpen) { setIsSubsModalOpen(false); return; }
-      if (isRateMatrixOpen) { setIsRateMatrixOpen(false); return; }
-      if (isCollectionAgentsOpen) { setIsCollectionAgentsOpen(false); return; }
-      if (isUserPermOpen) { setIsUserPermOpen(false); return; }
-      if (isCounterSaleOpen) { setIsCounterSaleOpen(false); return; }
-      if (isRetailSalePermanentOpen) { setIsRetailSalePermanentOpen(false); return; }
-      if (isMessageOpen) { setIsMessageOpen(false); return; }
       if (backupModalMode !== null) { setBackupModalMode(null); return; }
       if (isPeriodOpen) { setIsPeriodOpen(false); return; }
       if (activeWindow !== null) setActiveWindow(null);
@@ -1005,24 +1006,24 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         ))}
 
         {/* 10b. Bill Message Master Form */}
-        {isMessageOpen && (
+        {win('message', (
           <MessageForm 
             onClose={() => setIsMessageOpen(false)} 
           />
-        )}
+        ))}
 
         {/* 11. Modal: Authentic Subscriptions Details (screenshot_06.jpg) */}
-        {isSubsModalOpen && selectedCustForModal && (
+        {selectedCustForModal && win('subs', (
           <SubscriptionsModal 
             customer={selectedCustForModal}
             onClose={() => setIsSubsModalOpen(false)}
             publications={publications}
             hawkers={hawkers}
           />
-        )}
+        ))}
 
         {/* 12. Modal: 7-Day Rates Matrix & Revisions */}
-        {isRateMatrixOpen && (
+        {win('ratematrix', (
           <RateMatrixForm 
             isOpen={true}
             onClose={() => setIsRateMatrixOpen(false)}
@@ -1030,26 +1031,26 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             rates={rates}
             ratechanges={ratechanges}
           />
-        )}
+        ))}
 
         {/* 13. Modal: Collection Agents */}
-        {isCollectionAgentsOpen && (
+        {win('collectagents', (
           <CollectionAgentForm 
             isOpen={isCollectionAgentsOpen}
             onClose={() => setIsCollectionAgentsOpen(false)}
           />
-        )}
+        ))}
 
         {/* 14. Modal: User Security & Menu Permissions */}
-        {isUserPermOpen && (
+        {win('userperm', (
           <UserPermissionsForm 
             isOpen={isUserPermOpen}
             onClose={() => setIsUserPermOpen(false)}
           />
-        )}
+        ))}
 
         {/* 15a. Modal: Counter & Walk-in Cash Sale Entry */}
-        {isCounterSaleOpen && (
+        {win('countersale', (
           <CounterSaleForm 
             isOpen={isCounterSaleOpen}
             onClose={() => setIsCounterSaleOpen(false)}
@@ -1057,10 +1058,10 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             rates={rates}
             ratechanges={ratechanges}
           />
-        )}
+        ))}
 
         {/* 15b. Modal: Retail Sale to Permanent Customer */}
-        {isRetailSalePermanentOpen && (
+        {win('retailsale', (
           <RetailSalePermanentForm 
             isOpen={isRetailSalePermanentOpen}
             onClose={() => setIsRetailSalePermanentOpen(false)}
@@ -1069,7 +1070,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             ratechanges={ratechanges}
             customers={customerList}
           />
-        )}
+        ))}
 
         {/* 16. Modal: Period Detail Entrance & Selection (screenshot_15.jpg) */}
         {isPeriodOpen && (

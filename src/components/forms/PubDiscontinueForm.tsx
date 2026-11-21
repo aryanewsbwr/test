@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Publication } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -27,6 +27,16 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
 
   const [pubList, setPubList] = useState<Publication[]>(() => cleanAndSortPubs(publications));
   const [selectedPub, setSelectedPub] = useState('');
+  // Typing letters on the publication list goes to the first paper starting with them (e.g. "ni" ->
+  // Nirantar); a pause of a second starts a new word
+  const typed = useRef({ text: '', at: 0 });
+  const jumpToTyped = (e: React.KeyboardEvent<HTMLSelectElement>) => {
+    if (e.key.length !== 1 || e.ctrlKey || e.altKey || e.metaKey) return;
+    const now = Date.now();
+    typed.current = { text: (now - typed.current.at < 1000 ? typed.current.text : '') + e.key.toLowerCase(), at: now };
+    const hit = pubList.find(p => p.public_name.toLowerCase().startsWith(typed.current.text));
+    if (hit) { e.preventDefault(); setSelectedPub(hit.public_name); }
+  };
   const [supplementName, setSupplementName] = useState('');
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
@@ -134,6 +144,8 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
             <select 
               value={selectedPub}
               onChange={(e) => setSelectedPub(e.target.value)}
+              onKeyDown={jumpToTyped}
+              autoFocus
               className="flex-1 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none"
             >
               <option value="">-- Select Publication --</option>

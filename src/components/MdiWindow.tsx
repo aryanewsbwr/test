@@ -28,7 +28,7 @@ export default function MdiWindow({ win, focused, onFocus, onChange, children }:
     if (win.w || !box.current) { setReady(true); return; }
     const el = box.current;
     const desk = el.parentElement;
-    const inner = el.firstElementChild as HTMLElement | null;
+    const inner = (el.querySelector('.d2-window') || el.firstElementChild) as HTMLElement | null;
     const max = inner ? parseFloat(getComputedStyle(inner).maxWidth) : NaN;
     const deskW = desk ? desk.clientWidth : window.innerWidth;
     const want = Number.isFinite(max) ? max : 900;
