@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { 
   Printer, RefreshCw, Search, Download, ZoomIn, ZoomOut, 
   ChevronLeft, ChevronRight, FileText, X, Filter, Calendar,
@@ -147,11 +148,13 @@ export default function ReportsForm({
   periodMonth,
   periodStartYear
 }: ReportsFormProps) {
+  const windowActive = useWindowActive();
   const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
   // Esc on a report goes back to its range screen; Esc there closes Reports
   useEffect(() => {
     if (viewMode !== 'preview') return;
     const back = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       e.preventDefault();
       setViewMode('criteria');

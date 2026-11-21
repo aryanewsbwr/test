@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Save, RefreshCw, Trash2, Search, X, LogOut, Check } from 'lucide-react';
 import { Publisher } from '@/lib/types';
 
@@ -11,6 +12,7 @@ interface PublisherFormProps {
 }
 
 export default function PublisherForm({ onClose, publishers = [], onSave }: PublisherFormProps) {
+  const windowActive = useWindowActive();
   const [selectedPub, setSelectedPub] = useState<Publisher>({
     publish_id: 0,
     name: '',
@@ -54,6 +56,7 @@ export default function PublisherForm({ onClose, publishers = [], onSave }: Publ
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isFindOpen) setIsFindOpen(false);

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { TrendingUp, Calendar, Search, RefreshCw, X, History, Trash2, Edit3, ArrowRight, BookOpen } from 'lucide-react';
 import { Publication, Rate, RateChange } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
@@ -31,6 +32,7 @@ export default function RateChangeForm({
   ratechanges = [],
   onSave
 }: RateChangeFormProps) {
+  const windowActive = useWindowActive();
   const pad = (n: number) => String(n).padStart(2, '0');
   const today = new Date();
   const todayDdmmyyyy = `${pad(today.getDate())}/${pad(today.getMonth() + 1)}/${today.getFullYear()}`;
@@ -149,6 +151,7 @@ export default function RateChangeForm({
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isHistoryOpen) setIsHistoryOpen(false);

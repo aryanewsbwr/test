@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { supabase } from '@/lib/supabaseClient';
 import { fySuffix, previousFySuffix } from '@/lib/financialYear';
 import { receiptBookWarning } from '@/lib/receiptBooks';
@@ -119,6 +120,7 @@ const getCurrentMonthName = () => {
 };
 
 export default function ReceiptForm({ onClose, initialCustomerId }: ReceiptFormProps) {
+  const windowActive = useWindowActive();
   const now = new Date();
   const defDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
@@ -1288,6 +1290,7 @@ export default function ReceiptForm({ onClose, initialCustomerId }: ReceiptFormP
   // Keyboard Shortcuts: F1=Cash, F2=Cheque, Alt+A / Alt+S -> Apply, Alt+U -> Update, Alt+E / Esc -> Exit
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (isUpdateModalOpen) {
         if (e.key === 'F1') {
           e.preventDefault();

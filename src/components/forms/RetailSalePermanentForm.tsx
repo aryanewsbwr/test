@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchRateTables } from '@/lib/rateTables';
+import { useWindowActive } from '@/components/MdiWindow';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Publication, Rate, RateChange, Customer } from '@/lib/types';
 import { getSingleEffectiveRate } from '@/lib/rateEngine';
@@ -57,6 +58,7 @@ export default function RetailSalePermanentForm({
   ratechanges = [],
   customers = []
 }: Props) {
+  const windowActive = useWindowActive();
   // Date in DD/MM/YYYY
   const now = new Date();
   const defDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -613,6 +615,7 @@ export default function RetailSalePermanentForm({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isFindOpen) setIsFindOpen(false);

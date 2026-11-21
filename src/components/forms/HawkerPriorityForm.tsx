@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { ArrowUp, ArrowDown, Save } from 'lucide-react';
 
 // Transaction > Hawker's Customer Priority: choose a hawker, see every customer he brings a running
@@ -13,6 +14,7 @@ interface HawkerPriorityFormProps {
 interface Row { customer_id: number; name: string; name_eng: string; priority: number; papers: string }
 
 export default function HawkerPriorityForm({ onClose }: HawkerPriorityFormProps) {
+  const windowActive = useWindowActive();
   const [hawkers, setHawkers] = useState<any[]>([]);
   const [selectedHawker, setSelectedHawker] = useState<string>('');
   const [rows, setRows] = useState<Row[]>([]);
@@ -58,6 +60,7 @@ export default function HawkerPriorityForm({ onClose }: HawkerPriorityFormProps)
   // Up / Down arrow keys move the picked customer
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (picked === null || (e.target as HTMLElement)?.tagName === 'INPUT') return;
       if (e.key === 'ArrowUp') { e.preventDefault(); move(picked, picked - 1); }
       if (e.key === 'ArrowDown') { e.preventDefault(); move(picked, picked + 1); }

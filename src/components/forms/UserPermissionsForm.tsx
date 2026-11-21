@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { AppUser, UserPermissions } from '@/lib/auth';
 import MobileStaffPanel from './MobileStaffPanel';
 import { Hawker } from '@/lib/types';
@@ -63,6 +64,7 @@ const PERMISSION_CONFIG: { key: keyof UserPermissions; label: string; hindi: str
 ];
 
 export default function UserPermissionsForm({ onClose, hawkers = [] }: Props) {
+  const windowActive = useWindowActive();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [hawkerList, setHawkerList] = useState<Hawker[]>(hawkers);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
@@ -279,6 +281,7 @@ export default function UserPermissionsForm({ onClose, hawkers = [] }: Props) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();

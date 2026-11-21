@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Plus, Save, Trash2, FileCheck2 } from 'lucide-react';
 import { Publication } from '@/lib/types';
 
@@ -38,6 +39,7 @@ const dmy = (iso: string) => String(iso || '').slice(0, 10).replace(/^(\d{4})-(\
 const money = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function KachaBillTab({ papers, pubName, isNewspaper, onMakePakka }: Props) {
+  const windowActive = useWindowActive();
   const [date, setDate] = useState(today());
   const [lines, setLines] = useState<Line[]>([]);
   const [monthRows, setMonthRows] = useState<any[]>([]);
@@ -85,6 +87,7 @@ export default function KachaBillTab({ papers, pubName, isNewspaper, onMakePakka
   // F1 adds a line, F2 removes the bottom line
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'F1') { e.preventDefault(); addLine(); }
       if (e.key === 'F2') { e.preventDefault(); removeLastLine(); }
     };

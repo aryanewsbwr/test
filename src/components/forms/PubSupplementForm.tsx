@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Publication, Rate } from '@/lib/types';
 import { getSingleEffectiveRate } from '@/lib/rateEngine';
 
@@ -40,6 +41,7 @@ export default function PubSupplementForm({
   rates = [],
   ratechanges = []
 }: PubSupplementFormProps) {
+  const windowActive = useWindowActive();
   // Clean & Sort publications
   const cleanAndSortPubs = (list: any[]) => {
     return (list || [])
@@ -359,6 +361,7 @@ export default function PubSupplementForm({
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isFindOpen) setIsFindOpen(false);

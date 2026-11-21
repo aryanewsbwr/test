@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Newspaper, Save, RefreshCw, X, Calendar, DollarSign } from 'lucide-react';
 import { Publication, Rate, RateChange } from '@/lib/types';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
@@ -25,6 +26,7 @@ const DAYS = [
 ];
 
 export default function RateMatrixForm({ isOpen, onClose, publications, rates, ratechanges, onSaveRate }: Props) {
+  const windowActive = useWindowActive();
   const [selectedPubId, setSelectedPubId] = useState<number>(0);
   const [dayRates, setDayRates] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
   const [status, setStatus] = useState('');
@@ -49,6 +51,7 @@ export default function RateMatrixForm({ isOpen, onClose, publications, rates, r
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();

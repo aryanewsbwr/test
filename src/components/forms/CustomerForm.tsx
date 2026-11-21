@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
 import { cleanOrTransliterateHindi, englishToHindiPhonetic, transliterateToHindiAsync } from '@/lib/transliteration';
@@ -53,6 +54,7 @@ export default function CustomerForm({
   onSelectCustomer,
   onSaveCustomer
 }: Props) {
+  const windowActive = useWindowActive();
   // Form State
   const [selectedCustId, setSelectedCustId] = useState<number>(0);
   const [nameEng, setNameEng] = useState('');
@@ -209,6 +211,7 @@ export default function CustomerForm({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       // Esc goes back one step: closes a pop-up; from a customer back to the Find list (with the
       // same search); from the Find list to the empty form; only then closes Customer Info
       if (e.key === 'Escape') {

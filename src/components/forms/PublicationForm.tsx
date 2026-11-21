@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchRateTables } from '@/lib/rateTables';
+import { useWindowActive } from '@/components/MdiWindow';
 import { fyLabel } from '@/lib/financialYear';
 import React, { useState, useEffect, useRef } from 'react';
 import { Publication, Rate, RateChange, Publisher } from '@/lib/types';
@@ -60,6 +61,7 @@ export default function PublicationForm({
   onSave,
   onDelete
 }: PublicationFormProps) {
+  const windowActive = useWindowActive();
   const [activeMainTab, setActiveMainTab] = useState<'master' | 'discontinue'>(initialTab || 'master');
 
   const [selectedPub, setSelectedPub] = useState<Publication>({
@@ -594,6 +596,7 @@ export default function PublicationForm({
   // Keyboard shortcut listener (F1 to copy Sunday rate, F10 to select Del Charges, F12 to unselect, Esc to close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isFindOpen) setIsFindOpen(false);

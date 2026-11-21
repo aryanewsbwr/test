@@ -2,7 +2,8 @@
 
 import { fetchRateTables } from '@/lib/rateTables';
 import { loadCompany } from '@/lib/companyInfo';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import MdiWindow, { WinState } from './MdiWindow';
 import { 
   Users, 
   Newspaper, 
@@ -86,7 +87,32 @@ interface VB6DesktopLayoutProps {
 
 export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutProps = {}) {
   // Active Form Window (starts null on clean MDI desktop)
-  const [activeWindow, setActiveWindow] = useState<string | null>(null);
+  // Open windows (several at once, like the old software). The one in front is the active window;
+  // setActiveWindow('x') opens or brings 'x' to the front, setActiveWindow(null) closes the front one.
+  const [wins, setWins] = useState<WinState[]>([]);
+  const activeWindow = wins.length ? wins.reduce((a, b) => (a.z > b.z ? a : b)).key : null;
+  const setActiveWindow = useCallback((key: string | null) => setWins(ws => {
+    if (key === null) {
+      if (!ws.length) return ws;
+      const top = ws.reduce((a, b) => (a.z > b.z ? a : b));
+      return ws.filter(w => w !== top);
+    }
+    const z = Math.max(10, ...ws.map(w => w.z)) + 1;
+    if (ws.some(w => w.key === key)) return ws.map(w => (w.key === key ? { ...w, z } : w));
+    const n = ws.length % 8;
+    return [...ws, { key, z, x: 12 + n * 28, y: 8 + n * 24 }];
+  }), []);
+  const isOpen = (key: string) => wins.some(w => w.key === key);
+  const win = (key: string, node: React.ReactNode) => {
+    const w = wins.find(x => x.key === key);
+    if (!w) return null;
+    return (
+      <MdiWindow key={key} win={w} focused={activeWindow === key} onFocus={() => setActiveWindow(key)}
+        onChange={c => setWins(ws => ws.map(x => (x.key === key ? { ...x, ...c } : x)))}>
+        {node}
+      </MdiWindow>
+    );
+  };
   // The firm's details and bill message (Master > Company / Message) for every print
   useEffect(() => { loadCompany(); }, []);
   // Desktop 2 is the modern white look; each computer remembers its own choice
@@ -112,6 +138,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
       const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d2-z')) || 1;
       document.querySelectorAll<HTMLElement>('.d2-window').forEach(win => {
         if (win.parentElement?.closest('.d2-window')) return;
+        // A window the user has sized keeps exactly that size
+        if (win.parentElement?.classList.contains('mdi-sized')) { win.style.zoom = ''; win.style.maxHeight = ''; return; }
         // A pop-up over the whole screen has the full height; a window on the desk has the desk's
         const overlay = win.parentElement?.closest<HTMLElement>('.fixed');
         const room = (overlay ? window.innerHeight - 32 : desk.clientHeight - 24);
@@ -741,7 +769,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         {/* ========================================================================= */}
         {/* 1. CUSTOMER MASTER (screenshot_05.jpg) - EXACT 2008 REPLICA */}
         {/* ========================================================================= */}
-        {activeWindow === 'customers' && (
+        {win('customers', (
           <CustomerForm 
             onClose={() => setActiveWindow(null)}
             customer={null}
@@ -755,18 +783,18 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               setStatusMessage(`Customer #${savedCust.customer_id} (${savedCust.name_eng}) saved.`);
             }}
           />
-        )}
+        ))}
 
         {/* 2. Publisher Master Form (screenshot_01.jpg) */}
-        {activeWindow === 'publishers' && (
+        {win('publishers', (
           <PublisherForm 
             onClose={() => setActiveWindow(null)} 
             publishers={publishers} 
           />
-        )}
+        ))}
 
         {/* 3. Publication Master & Weekday Rates (screenshot_02.jpg) */}
-        {activeWindow === 'publications' && (
+        {win('publications', (
           <PublicationForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
@@ -793,10 +821,10 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               setStatusMessage(`Publication #${pubId} deleted.`);
             }}
           />
-        )}
+        ))}
 
         {/* 3b. Dedicated Rate Change Master Form */}
-        {(activeWindow === 'ratechanges' || activeWindow === 'ratechange') && (
+        {win('ratechanges', (
           <RateChangeForm 
             onClose={() => setActiveWindow(null)} 
             publications={openPublications}
@@ -811,66 +839,66 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               setStatusMessage(`Rate change for publication #${pubId} saved.`);
             }}
           />
-        )}
+        ))}
 
         {/* 4. Region Master Form (screenshot_03.jpg) */}
-        {activeWindow === 'regions' && (
+        {win('regions', (
           <RegionForm 
             onClose={() => setActiveWindow(null)} 
             regions={regions} 
           />
-        )}
+        ))}
 
         {/* 5. Hawker Master Form (screenshot_04.jpg) */}
-        {activeWindow === 'hawkers' && (
+        {win('hawkers', (
           <HawkerForm 
             onClose={() => setActiveWindow(null)} 
             hawkers={hawkers}
             regions={regions}
           />
-        )}
+        ))}
 
-        {activeWindow === 'numbers' && (
+        {win('numbers', (
           <NumbersForm
             onClose={() => setActiveWindow(null)}
             regions={regions}
           />
-        )}
+        ))}
 
         {/* 5b. Collection Agent Form (media_1789799625957.png) */}
-        {activeWindow === 'collectionagent' && (
+        {win('collectionagent', (
           <CollectionAgentForm 
             onClose={() => setActiveWindow(null)} 
           />
-        )}
+        ))}
 
         {/* 6. Holiday Master Form (screenshot_07.jpg) */}
-        {activeWindow === 'holidays' && (
+        {win('holidays', (
           <HolidayForm 
             onClose={() => setActiveWindow(null)} 
             holidays={holidays}
             publications={openPublications}
           />
-        )}
+        ))}
 
         {/* 7. Daily Hawker Distribution Process (screenshot_08.jpg) */}
-        {activeWindow === 'dailyprocess' && (
+        {win('dailyprocess', (
           <DailyProcessForm 
             onClose={() => setActiveWindow(null)} 
             hawkers={hawkers}
             publications={publications}
           />
-        )}
+        ))}
 
         {/* 8. Payment Receipt Entry Form (screenshot_13.jpg) */}
-        {activeWindow === 'receipts' && (
+        {win('receipts', (
           <ReceiptForm 
             onClose={() => setActiveWindow(null)} 
           />
-        )}
+        ))}
 
         {/* 9. Monthly Billing Generation Engine (screenshot_13.jpg) */}
-        {activeWindow === 'billing' && (
+        {win('billing', (
           <BillingForm 
             onClose={() => setActiveWindow(null)} 
             customers={customerList}
@@ -881,35 +909,35 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             periodMonth={currentPeriod.month}
             periodStartYear={currentPeriod.startYear}
           />
-        )}
+        ))}
 
         {/* 9b. Customer Vacation Hold / Discontinue Form (screenshot_10.jpg) */}
-        {activeWindow === 'discontinue' && (
+        {win('discontinue', (
           <DiscontinueForm 
             onClose={() => setActiveWindow(null)} 
             publications={openPublications}
             hawkers={hawkers}
           />
-        )}
+        ))}
 
         {/* 9c. Company & Agency Profile Form (Companyback copy.jpg) */}
-        {activeWindow === 'company' && (
+        {win('company', (
           <CompanyForm 
             onClose={() => setActiveWindow(null)} 
           />
-        )}
+        ))}
 
         {/* 9d. Publisher Purchase Invoice Entry (Purchase.jpg) */}
-        {activeWindow === 'purchase' && (
+        {win('purchase', (
           <PurchaseForm 
             onClose={() => setActiveWindow(null)} 
             publishers={publishers}
             publications={openPublications}
           />
-        )}
+        ))}
 
         {/* 9e. Publication Discontinue (Dedicated tab inside Publication) */}
-        {activeWindow === 'pubdiscontinue' && (
+        {win('pubdiscontinue', (
           <PublicationForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
@@ -927,39 +955,39 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
             }}
           />
-        )}
-        {activeWindow === 'pubsupplement' && (
+        ))}
+        {win('pubsupplement', (
           <PubSupplementForm 
             onClose={() => setActiveWindow(null)} 
             publications={openPublications}
             rates={rates}
             ratechanges={ratechanges}
           />
-        )}
+        ))}
 
         {/* 9f. Receipt Allotment (screenshot_12.jpg) */}
-        {activeWindow === 'receiptallot' && (
+        {win('receiptallot', (
           <ReceiptAllotmentForm 
             onClose={() => setActiveWindow(null)} 
           />
-        )}
+        ))}
 
         {/* 9g. Hawker's Customer Priority */}
-        {activeWindow === 'hawkerpriority' && (
+        {win('hawkerpriority', (
           <HawkerPriorityForm 
             onClose={() => setActiveWindow(null)} 
           />
-        )}
+        ))}
 
         {/* 9h. Apply Customer Agent */}
-        {activeWindow === 'applyagent' && (
+        {win('applyagent', (
           <ApplyCustomerAgentForm 
             onClose={() => setActiveWindow(null)} 
           />
-        )}
+        ))}
 
         {/* 10. Crystal Reports Viewer */}
-        {activeWindow === 'reports' && (
+        {win('reports', (
           <ReportsForm 
             initialReport={selectedReportType}
             onClose={() => setActiveWindow(null)}
@@ -969,12 +997,12 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             periodMonth={currentPeriod.month}
             periodStartYear={currentPeriod.startYear}
           />
-        )}
+        ))}
 
         {/* 10a. WhatsApp Replies */}
-        {activeWindow === 'wareplies' && (
+        {win('wareplies', (
           <WhatsAppRepliesForm onClose={() => setActiveWindow(null)} />
-        )}
+        ))}
 
         {/* 10b. Bill Message Master Form */}
         {isMessageOpen && (

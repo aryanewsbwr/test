@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { 
   ShoppingCart, 
   Plus, 
@@ -49,6 +50,7 @@ export default function CounterSaleForm({
   rates = [],
   ratechanges = []
 }: Props) {
+  const windowActive = useWindowActive();
   const [activeTab, setActiveTab] = useState<'new_sale' | 'register'>('new_sale');
   const [saleDate, setSaleDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [customerName, setCustomerName] = useState('Walk-in Counter Customer (काउंटर ग्राहक)');
@@ -157,6 +159,7 @@ export default function CounterSaleForm({
   // Keyboard shortcut listener (Alt+S = Save, Alt+P = Print, Alt+C = Cancel, Esc = Close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (!isOpen) return;
       if (e.key === 'Escape') {
         e.preventDefault();

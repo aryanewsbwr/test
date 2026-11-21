@@ -1,6 +1,7 @@
 'use client';
 
 import { fyLabel } from '@/lib/financialYear';
+import { useWindowActive } from '@/components/MdiWindow';
 import React, { useState, useEffect, useRef } from 'react';
 import { Customer, Publication, Hawker } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
@@ -39,6 +40,7 @@ export default function DiscontinueForm({
   publications = [], 
   hawkers: initialHawkers = []
 }: DiscontinueFormProps) {
+  const windowActive = useWindowActive();
   // Today's formatted dates
   const today = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -138,6 +140,7 @@ export default function DiscontinueForm({
   // Global Keyboard shortcuts: F1 (Temporary), F2 (Permanent), Escape (Exit)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'F1') {
         e.preventDefault();
         setHoldType('Temporary');
@@ -417,6 +420,7 @@ export default function DiscontinueForm({
   // Keyboard shortcut listener (Esc to close, Alt+S to save, Alt+F to find, Alt+C to cancel, Alt+E to exit)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (showFindModal) {

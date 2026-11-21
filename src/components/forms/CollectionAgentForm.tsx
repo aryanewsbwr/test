@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { CollectionAgent } from '@/lib/types';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgent }: Props) {
+  const windowActive = useWindowActive();
   const [agents, setAgents] = useState<CollectionAgent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [name, setName] = useState('');
@@ -67,6 +69,7 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();

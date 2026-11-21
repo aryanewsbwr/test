@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Region } from '@/lib/types';
 
 interface RegionFormProps {
@@ -9,6 +10,7 @@ interface RegionFormProps {
 }
 
 export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
+  const windowActive = useWindowActive();
   const [selectedRegion, setSelectedRegion] = useState<Region>({
     region_id: 0,
     region_name: '',
@@ -32,6 +34,7 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isFindOpen) setIsFindOpen(false);

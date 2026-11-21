@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Holiday, Publication } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -11,6 +12,7 @@ interface HolidayFormProps {
 }
 
 export default function HolidayForm({ onClose, holidays = [], publications = [] }: HolidayFormProps) {
+  const windowActive = useWindowActive();
   const now = new Date();
   const defDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
   
@@ -119,6 +121,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
   // Keyboard shortcuts (F1 for Newspaper, F2 for Magzine)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'F1') {
         e.preventDefault();
         e.stopPropagation();

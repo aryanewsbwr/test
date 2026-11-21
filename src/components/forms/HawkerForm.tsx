@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Hawker, Region } from '@/lib/types';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regions = [], onSaveHawker }: Props) {
+  const windowActive = useWindowActive();
   const [hawkerList, setHawkerList] = useState<Hawker[]>(hawkers);
   const [regionList, setRegionList] = useState<Region[]>(regions);
   const [selectedHawkerId, setSelectedHawkerId] = useState<number | null>(null);
@@ -83,6 +85,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();

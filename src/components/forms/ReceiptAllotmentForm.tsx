@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { ChevronDown, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ReceiptAllotmentFormProps {
@@ -17,6 +18,7 @@ interface AllotmentRow {
 }
 
 export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormProps) {
+  const windowActive = useWindowActive();
   // Starts 100% empty - no default collector pre-selected
   const [collectorName, setCollectorName] = useState('');
   const [collectors, setCollectors] = useState<any[]>([]);
@@ -294,6 +296,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   // Keyboard shortcut listener: Alt+S -> Save, Alt+X / Esc -> Exit
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if ((e.altKey && (e.key === 's' || e.key === 'S')) || (e.ctrlKey && e.key === 's')) {
         e.preventDefault();
         handleSave();

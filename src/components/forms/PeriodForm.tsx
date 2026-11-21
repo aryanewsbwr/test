@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Calendar, Check, LogIn, X } from 'lucide-react';
 
 interface PeriodFormProps {
@@ -17,6 +18,7 @@ const MONTHS = [
 ];
 
 export default function PeriodForm({ isOpen, current, onLogin, onExit }: PeriodFormProps) {
+  const windowActive = useWindowActive();
   // Helper to get local date values
   const getTodayInfo = () => {
     const today = new Date();
@@ -56,6 +58,7 @@ export default function PeriodForm({ isOpen, current, onLogin, onExit }: PeriodF
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (e.key === 'Enter') {
         e.preventDefault();
         onLogin(selectedMonth, startYear, endYear);

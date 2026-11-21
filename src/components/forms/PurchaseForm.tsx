@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWindowActive } from '@/components/MdiWindow';
 import { Truck, Plus, Save, Trash2, Search, FilePlus2 } from 'lucide-react';
 import { Publisher, Publication } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
@@ -49,6 +50,7 @@ const money = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 
 const amountOf = (l: Line) => Math.round((Number(l.qty) || 0) * (Number(l.rate) || 0) * 100) / 100;
 
 export default function PurchaseForm({ onClose, publishers = [], publications = [] }: PurchaseFormProps) {
+  const windowActive = useWindowActive();
   const [billId, setBillId] = useState<number | null>(null);
   const [publishId, setPublishId] = useState<string>('');
   const [billNo, setBillNo] = useState('');
@@ -157,6 +159,7 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
   // F1 adds a line, F2 removes the bottom line
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!windowActive.current) return; // only the window in front
       if (findOpen || tab !== 'pakka') return;
       if (e.key === 'F1') { e.preventDefault(); addLine(); }
       if (e.key === 'F2') { e.preventDefault(); removeLastLine(); }
