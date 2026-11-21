@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import WaCustomerLink from './WaCustomerLink';
 
 // Online payments sent on WhatsApp, one card per number, coloured by what to do next:
 // green = screenshot came, cut the receipt; yellow = check; red = number not a customer's;
@@ -116,6 +117,7 @@ export default function WhatsAppPaymentsView() {
                           </div>
                         </div>
                       ))}
+                      <WaCustomerLink number={card.number} customers={card.customers} onSaved={load} />
                       {texts.map((m: any) => {
                         const long = String(m.body).length > 160 || String(m.body).split('\n').length > 3;
                         const full = open.has(`${card.number}|${m.id}`);

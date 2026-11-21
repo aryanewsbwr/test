@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import WhatsAppPaymentsView from './WhatsAppPaymentsView';
+import WaCustomerLink from './WaCustomerLink';
 
 interface WhatsAppRepliesFormProps {
   onClose: () => void;
@@ -162,7 +163,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
                       <div className="font-mono">{shown(r.from_number)}</div>
                       <div className="text-slate-500">{r.profile_name}</div>
                     </td>
-                    <td className="p-1 border-r"><Customers list={r.customers} /></td>
+                    <td className="p-1 border-r"><Customers list={r.customers} /><WaCustomerLink number={r.from_number} customers={r.customers} onSaved={load} /></td>
                     <td className="p-1 border-r">
                       <span className={`px-1.5 py-0.5 rounded font-bold ${CATEGORY_COLOUR[r.shreni] || ''}`}>{r.shreni}</span>
                     </td>

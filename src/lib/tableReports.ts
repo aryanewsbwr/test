@@ -414,11 +414,24 @@ export const REPORTS: Record<string, Builder> = {
     const list = (await receipts(m)).filter(receiptFilter(m, f))
       .filter(r => !f.bookFrom || (Number(r.manual) >= f.bookFrom && Number(r.manual) <= (f.bookTo || 0)))
       .sort((a, b) => (Number(a.manual) || 9e12) - (Number(b.manual) || 9e12) || a.recp_no - b.recp_no);
-    const rows = list.map(r => ({
-      date: dmy(r.date), manual: r.manual || '-', amount: r.amount, customer: custName(m, r.customer_id),
-      region: regionName(m, custRegion(m, r.customer_id)), less: r.less, bill_amt: r.bill_amt, diff: round(r.bill_amt - r.amount - r.less),
-      book: r.bookFrom ? `${r.bookFrom}-${r.bookTo}` : '-', collector: m.collectors.get(r.collector) || r.agent || '-', id: r.customer_id
-    }));
+    // One section per collector (hawker): his name and receipt book range(s) as the heading, his
+    // receipts, his total; a grand total at the end. Columns: R Amt, RP Amt, L Amt, receipt no.,
+    // customer, region, payment mode.
+    const row = (r: Receipt) => ({
+      ramt: r.ramt, amount: r.amount, less: r.less, manual: r.manual || '-', customer: custName(m, r.customer_id),
+      region: regionName(m, custRegion(m, r.customer_id)), mode: receiptRow(m, r).mode
+    });
+    const books = (rs: Receipt[]) => Array.from(new Set(rs.filter(r => r.bookFrom).map(r => `${r.bookFrom}–${r.bookTo}`)));
+    const groups = groupBy(list, r => String(r.collector || 0))
+      .map(([cid, rs]) => {
+        const name = m.collectors.get(Number(cid)) || rs.find(r => r.agent)?.agent || 'बिना बुक / ऑफिस';
+        const range = f.bookFrom ? [`${f.bookFrom}–${f.bookTo}`] : books(rs);
+        const rows = rs.map(row);
+        return { title: `${name}${range.length ? ` · बुक ${range.join(', ')}` : ''} — ${rows.length} रसीद`, name, rows, totals: totalsOf(rows, ['ramt', 'amount', 'less'], { manual: `${name} का कुल` }) };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(({ name, ...g }) => g);
+    const all_ = list.map(row);
     const nums = list.map(r => Number(r.manual)).filter(n => n > 0);
     // Receipt numbers skipped inside a run (cancelled or not entered), written as 101, 105-107
     const missing: string[] = [];
@@ -430,21 +443,20 @@ export const REPORTS: Record<string, Builder> = {
         missing.push(jump === 2 ? String(nums[i - 1] + 1) : `${nums[i - 1] + 1}-${nums[i] - 1}`);
       }
     }
-    const light = (c: Column): Column => ({ ...c, light: true });
-    const heading = [period(f)];
-    if (f.collector) heading.push(`कलेक्टर: ${m.collectors.get(f.collector) || `#${f.collector}`}`);
-    if (f.bookFrom) heading.push(`रसीद बुक: ${f.bookFrom}-${f.bookTo}`);
+    // Heading: the hawker (collector) and his book range first, then the dates
+    const heading: string[] = [];
+    if (f.collector) heading.push(`${m.collectors.get(f.collector) || `#${f.collector}`}`);
+    const range = f.bookFrom ? [`${f.bookFrom}–${f.bookTo}`] : (f.collector ? books(list) : []);
+    if (range.length) heading.push(`बुक ${range.join(', ')}`);
+    heading.push(period(f));
     return {
       title: 'RECEIPT REPORT', subtitle: heading.join(' · '),
       columns: [
-        text('date', 'तारीख'), text('manual', 'रसीद नं.'), money('amount', 'प्राप्त'), text('customer', 'नाम'),
-        light(text('region', 'क्षेत्र')), light(money('less', 'कटौती')), light(money('bill_amt', 'बिल राशि')), light(money('diff', 'बाकी')),
-        ...(f.bookFrom ? [] : [light(text('book', 'बुक'))]),
-        ...(f.collector ? [] : [light(text('collector', 'कलेक्टर'))]),
-        light(text('id', 'ग्राहक नं.', 'right'))
+        money('ramt', 'R Amt.'), money('amount', 'Rp Amt.'), money('less', 'L Amt.'), text('manual', 'रसीद नं.'),
+        text('customer', 'ग्राहक'), text('region', 'क्षेत्र'), text('mode', 'तरीका')
       ],
-      groups: [{ rows }], totals: totalsOf(rows, ['amount', 'less', 'bill_amt', 'diff'], { customer: `कुल ${rows.length} रसीद` }),
-      note: [gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी): ${missing.slice(0, 200).join(', ')}${missing.length > 200 ? ' …' : ''}` : '', 'बाकी = बिल राशि − प्राप्त − कटौती (माइनस = बिल से ज़्यादा जमा)'].filter(Boolean).join(' · ')
+      groups, totals: totalsOf(all_, ['ramt', 'amount', 'less'], { manual: `कुल ${all_.length} रसीद` }),
+      note: gaps ? `बीच में ${gaps} रसीद नंबर नहीं मिले (रद्द या बाकी): ${missing.slice(0, 200).join(', ')}${missing.length > 200 ? ' …' : ''}` : undefined
     };
   },
   // The old "Actual Amount Receipt" menu item opens the same report
@@ -739,7 +751,9 @@ export const REPORTS: Record<string, Builder> = {
     const hname = (hid: number) => String(m.hawkers.get(Number(hid)) || `#${hid}`).trim();
     const list = (await subscriptions(m)).filter(s => runsOn(s, today) && !closed.has(s.publica_id) && (!f.pub || s.publica_id === f.pub)
       && hawkerOk(f, s.hawker_id) && (!f.region || custRegion(m, s.customer_id) === f.region)
-      && !/^z/i.test(hname(s.hawker_id)) && (!priorities || priorities.has(hawkerKey(hname(s.hawker_id)))));
+      && !/^z/i.test(hname(s.hawker_id)) && (!priorities || priorities.has(hawkerKey(hname(s.hawker_id))))
+      // a delivery charge is kept as a 'paper' for billing, not a paper to hand out
+      && !/del\w*very\s*charge/i.test(`${m.pubs.get(s.publica_id)?.english || ''} ${pubName(m, s.publica_id)}`));
     const short = (pid: number) => m.pubs.get(pid)?.short || pubName(m, pid);
     const prio = (cid: number) => Number(m.customers.get(Number(cid))?.priority || 0);
     const rank = (n: string) => priorityRank(priorities?.get(hawkerKey(n))?.priority ?? null);

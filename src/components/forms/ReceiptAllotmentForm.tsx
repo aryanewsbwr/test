@@ -47,6 +47,12 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   const toInputRef = useRef<HTMLInputElement>(null);
   const allotDateInputRef = useRef<HTMLInputElement>(null);
   const recDateInputRef = useRef<HTMLInputElement>(null);
+  // The book list opens at its last row (the newest), and stays there when a book is added
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [allotments]);
 
   // Default date format DD/MM/YYYY
   const getTodayStr = () => {
@@ -420,27 +426,6 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
             </div>
           </div>
 
-          {/* Right Action Buttons (Matching slanted VB6 style) */}
-          <div className="flex flex-col gap-2 shrink-0">
-            <button 
-              onClick={handleSave}
-              disabled={isLoading}
-              className="px-5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black disabled:opacity-50 min-w-[85px]"
-            >
-              <span className="transform skew-x-12 flex items-center gap-1">
-                💾 <u>S</u>ave
-              </span>
-            </button>
-            <button 
-              onClick={onClose}
-              className="px-5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black min-w-[85px]"
-            >
-              <span className="transform skew-x-12 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-600 inline-block mr-0.5"></span>
-                E<u>x</u>it
-              </span>
-            </button>
-          </div>
 
         </div>
 
@@ -457,7 +442,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
           </div>
 
           {/* Grid Rows with Dark Slate-Grey Backdrop */}
-          <div className="bg-[#607080] min-h-[160px] max-h-[220px] overflow-y-auto text-xs font-mono text-white">
+          <div ref={listRef} className="bg-[#607080] min-h-[160px] max-h-[220px] overflow-y-auto text-xs font-mono text-white">
             {allotments.length > 0 ? (
               allotments.map((a, idx) => {
                 const isSelected = selectedRowIndex === idx;
@@ -604,6 +589,28 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
           </div>
 
         </div>
+
+        {/* Save / Exit at the bottom */}
+          <div className="flex justify-center gap-3 shrink-0 pt-1">
+            <button 
+              onClick={handleSave}
+              disabled={isLoading}
+              className="px-5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black disabled:opacity-50 min-w-[85px]"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                💾 <u>S</u>ave
+              </span>
+            </button>
+            <button 
+              onClick={onClose}
+              className="px-5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black min-w-[85px]"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-600 inline-block mr-0.5"></span>
+                E<u>x</u>it
+              </span>
+            </button>
+          </div>
 
         {/* Status Message Notification */}
         {statusMsg && (
