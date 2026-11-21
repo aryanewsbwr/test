@@ -112,7 +112,7 @@ export default function DiscontinueForm({
     if (publications && publications.length > 0) {
       setPubList(normalizeAndSortPubs(publications));
     }
-    fetch('/api/publications?with_rates=false')
+    fetch('/api/publications?with_rates=false&open=1')
       .then(r => r.json())
       .then(data => {
         const list = data.publications || (Array.isArray(data) ? data : []);

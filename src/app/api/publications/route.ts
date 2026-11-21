@@ -65,6 +65,8 @@ export async function GET(request: NextRequest) {
     });
 
     let filtered = enriched;
+    // ?open=1: leave out papers closed for good (for every screen except the publication masters)
+    if (searchParams.get('open') === '1') filtered = filtered.filter((p: any) => !(p.is_closed && p.is_permanent));
     if (statusFilter === 'active') {
       filtered = filtered.filter((p: any) => !p.is_closed);
     } else if (statusFilter === 'closed') {

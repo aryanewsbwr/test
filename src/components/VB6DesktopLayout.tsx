@@ -2,7 +2,7 @@
 
 import { fetchRateTables } from '@/lib/rateTables';
 import { loadCompany } from '@/lib/companyInfo';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   Newspaper, 
@@ -152,6 +152,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
 
   // Core Static Lists
   const [publications, setPublications] = useState<Publication[]>([]);
+  // Papers closed for good are not offered anywhere (only Publication master and Publication Discontinue list them)
+  const openPublications = useMemo(() => publications.filter((p: any) => !(p.is_closed && p.is_permanent)), [publications]);
   const [hawkers, setHawkers] = useState<Hawker[]>([]);
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
@@ -743,7 +745,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
           <CustomerForm 
             onClose={() => setActiveWindow(null)}
             customer={null}
-            publications={publications}
+            publications={openPublications}
             hawkers={hawkers}
             regions={regions}
             onSelectCustomer={(c) => setSelectedCust(c)}
@@ -797,7 +799,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         {(activeWindow === 'ratechanges' || activeWindow === 'ratechange') && (
           <RateChangeForm 
             onClose={() => setActiveWindow(null)} 
-            publications={publications}
+            publications={openPublications}
             rates={rates}
             ratechanges={ratechanges}
             onSave={(pubId, newRates, effDateIso) => {
@@ -847,7 +849,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
           <HolidayForm 
             onClose={() => setActiveWindow(null)} 
             holidays={holidays}
-            publications={publications}
+            publications={openPublications}
           />
         )}
 
@@ -885,7 +887,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         {activeWindow === 'discontinue' && (
           <DiscontinueForm 
             onClose={() => setActiveWindow(null)} 
-            publications={publications}
+            publications={openPublications}
             hawkers={hawkers}
           />
         )}
@@ -902,7 +904,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
           <PurchaseForm 
             onClose={() => setActiveWindow(null)} 
             publishers={publishers}
-            publications={publications}
+            publications={openPublications}
           />
         )}
 
@@ -929,7 +931,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         {activeWindow === 'pubsupplement' && (
           <PubSupplementForm 
             onClose={() => setActiveWindow(null)} 
-            publications={publications}
+            publications={openPublications}
             rates={rates}
             ratechanges={ratechanges}
           />
@@ -963,7 +965,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             onClose={() => setActiveWindow(null)}
             regions={regions}
             hawkers={hawkers}
-            publications={publications}
+            publications={openPublications}
             periodMonth={currentPeriod.month}
             periodStartYear={currentPeriod.startYear}
           />
@@ -1023,7 +1025,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
           <CounterSaleForm 
             isOpen={isCounterSaleOpen}
             onClose={() => setIsCounterSaleOpen(false)}
-            publications={publications}
+            publications={openPublications}
             rates={rates}
             ratechanges={ratechanges}
           />
@@ -1034,7 +1036,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
           <RetailSalePermanentForm 
             isOpen={isRetailSalePermanentOpen}
             onClose={() => setIsRetailSalePermanentOpen(false)}
-            publications={publications}
+            publications={openPublications}
             rates={rates}
             ratechanges={ratechanges}
             customers={customerList}

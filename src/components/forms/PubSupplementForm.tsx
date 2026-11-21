@@ -92,7 +92,7 @@ export default function PubSupplementForm({
     if (publications && publications.length > 0) {
       setPubList(cleanAndSortPubs(publications));
     } else {
-      fetch('/api/publications?with_rates=false')
+      fetch('/api/publications?with_rates=false&open=1')
         .then(r => r.json())
         .then(d => {
           const list = d.publications || (Array.isArray(d) ? d : []);

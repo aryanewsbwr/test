@@ -399,7 +399,7 @@ export default function ReportsForm({
     if (propsPubs && propsPubs.length > 0) {
       setPublications(propsPubs);
     } else {
-      fetch('/api/publications?with_rates=true')
+      fetch('/api/publications?with_rates=true&open=1')
         .then(r => r.json())
         .then(d => {
           if (d.publications && d.publications.length > 0) setPublications(d.publications);

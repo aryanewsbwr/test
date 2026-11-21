@@ -31,7 +31,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
       const sorted = [...publications].sort((a, b) => a.public_name.localeCompare(b.public_name));
       setPubList(sorted);
     } else {
-      fetch('/api/publications?with_rates=false')
+      fetch('/api/publications?with_rates=false&open=1')
         .then(r => r.json())
         .then(d => {
           const sorted = (d.publications || []).sort((a: any, b: any) => a.public_name.localeCompare(b.public_name));
