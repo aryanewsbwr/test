@@ -25,8 +25,12 @@ const movable = (fy: string) => /^\d{8}$/.test(fy) && Number(fy.slice(4)) === Nu
   && Number(fy.slice(0, 4)) <= fyStartYear(new Date()) - 2;
 
 async function readAll(table: string, key: string): Promise<any[] | null> {
-  const { count, error } = await supabaseAdmin.from(table).select('*', { count: 'exact', head: true });
-  if (error) return error.code === 'PGRST205' || /does not exist/i.test(error.message) ? null : Promise.reject(new Error(error.message));
+  // A real read (not a head request: that one does not report a missing table)
+  const { count, error, status } = await supabaseAdmin.from(table).select('*', { count: 'exact' }).limit(1);
+  if (error || status === 404) {
+    if (status === 404 || error?.code === 'PGRST205' || /does not exist|schema cache/i.test(error?.message || '')) return null;
+    throw new Error(`${table}: ${error?.message}`);
+  }
   const pages = Math.ceil((count || 0) / 1000);
   const out: any[][] = new Array(pages);
   for (let p = 0; p < pages; p += 8) {
@@ -65,6 +69,12 @@ export async function POST(req: NextRequest) {
         const kept = await readFile(table);
         return kept ? NextResponse.json({ table, rows: kept.rows_count, already: true }) : NextResponse.json({ table, rows: 0, none: true });
       }
+      // Never replace a kept file with a smaller one (e.g. an empty table)
+      const before = await readFile(table);
+      if (before && before.rows.length > rows.length) {
+        throw new Error(`${table}: database has ${rows.length} rows but the kept file has ${before.rows.length}; the file was not touched`);
+      }
+      if (!rows.length) return NextResponse.json({ table, rows: 0, none: true });
       const file = zlib.gzipSync(Buffer.from(JSON.stringify({ table, rows_count: rows.length, rows })));
       const { error } = await supabaseAdmin.storage.from(BUCKET).upload(`${FOLDER}/${table}.json.gz`, file, { contentType: 'application/gzip', upsert: true });
       if (error) throw new Error(`${table}: file not saved (${error.message})`);
