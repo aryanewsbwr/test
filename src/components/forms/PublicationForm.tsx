@@ -1619,9 +1619,10 @@ export default function PublicationForm({
                       className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
                     >
                       <option value="">-- कृपया पत्रिका/अखबार चुनें (Select Publication) --</option>
-                      {pubList.map((p) => (
+                      {/* Name first and A to Z, so typing a letter goes to the paper starting with it */}
+                      {[...pubList].sort((a, b) => String(a.public_name).trim().localeCompare(String(b.public_name).trim(), undefined, { sensitivity: 'base' })).map((p) => (
                         <option key={p.publica_id} value={p.publica_id}>
-                          #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                          {String(p.public_name).trim()} {p.pub_hindi ? `(${p.pub_hindi})` : ''} — #{p.publica_id}
                         </option>
                       ))}
                     </select>
