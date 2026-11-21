@@ -14,12 +14,13 @@ export interface WinState { key: string; z: number; x: number; y: number; w?: nu
 
 const INTERACTIVE = 'button, input, select, textarea, a, label, [role="button"]';
 
-export default function MdiWindow({ win, focused, onFocus, onChange, children }: {
-  win: WinState; focused: boolean; onFocus: () => void; onChange: (w: Partial<WinState>) => void; children: React.ReactNode;
+export default function MdiWindow({ win, focused, keys = true, onFocus, onChange, children }: {
+  win: WinState; focused: boolean; keys?: boolean; onFocus: () => void; onChange: (w: Partial<WinState>) => void; children: React.ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const active = useRef(focused);
-  active.current = focused;
+  // keys go to the window in front, and to none while a box over all windows (Period, Backup) is open
+  active.current = focused && keys;
   const [ready, setReady] = useState(!!win.w);
 
   // First size: the screen's own width (read while 'mdi-measuring' keeps the screen's own limit),
@@ -29,9 +30,10 @@ export default function MdiWindow({ win, focused, onFocus, onChange, children }:
     const el = box.current;
     const desk = el.parentElement;
     const inner = (el.querySelector('.d2-window') || el.firstElementChild) as HTMLElement | null;
-    const max = inner ? parseFloat(getComputedStyle(inner).maxWidth) : NaN;
+    // its width laid out with room to spare (so a fixed width or a maximum width both show)
+    const natural = inner ? inner.getBoundingClientRect().width : 0;
     const deskW = desk ? desk.clientWidth : window.innerWidth;
-    const want = Number.isFinite(max) ? max : 900;
+    const want = natural > 0 ? natural : 900;
     const w = Math.max(320, Math.min(want, deskW - win.x - 8));
     onChange({ w });
     setReady(true);

@@ -108,7 +108,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
     const w = wins.find(x => x.key === key);
     if (!w) return null;
     return (
-      <MdiWindow key={key} win={w} focused={activeWindow === key} onFocus={() => setActiveWindow(key)}
+      <MdiWindow key={key} win={w} focused={activeWindow === key} keys={!isPeriodOpen && backupModalMode === null} onFocus={() => setActiveWindow(key)}
         onChange={c => setWins(ws => ws.map(x => (x.key === key ? { ...x, ...c } : x)))}>
         {node}
       </MdiWindow>
