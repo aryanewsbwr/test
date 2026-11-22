@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import WaCustomerLink from './WaCustomerLink';
+import { allCustomers } from '@/lib/customerCache';
 
 // Online payments sent on WhatsApp, one card per number, coloured by what to do next:
 // green = screenshot came, cut the receipt; yellow = check; red = number not a customer's;
@@ -26,6 +27,8 @@ export default function WhatsAppPaymentsView() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [big, setBig] = useState<string | null>(null);
+  // Load the customer list in the background now, so choosing a customer on a card is instant
+  useEffect(() => { allCustomers().catch(() => {}); }, []);
   // Esc closes the enlarged screenshot first (not the window)
   useEffect(() => {
     if (!big) return;
