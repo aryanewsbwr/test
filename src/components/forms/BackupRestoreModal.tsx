@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download, Upload, Database, RefreshCw, FileText } from 'lucide-react';
 import { applyRestore, downloadBackup, downloadOldSoftwareFile, oldHistoryInfo, OldHistoryInfo, planRestore, readJson, RestorePlan, saveOldHistory } from '@/lib/backupClient';
 import { validDatabaseName } from '@/lib/oldSoftwareExport';
@@ -50,6 +50,10 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<{ text: string; kind: 'working' | 'done' | 'error' } | null>(null);
+  // The message (working / done / error) is brought into view inside the box, which scrolls
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (status) statusRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [status]);
 
   const working = (text: string) => setStatus({ text, kind: 'working' });
 
@@ -211,8 +215,8 @@ ${await moveOldYear(Number(String(done.from_label).slice(0, 4)) - 1)}`;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="d2-window w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-2.5 flex flex-col font-tahoma text-black">
-        <div className="d2-title vb-titlebar-xp select-none mb-2">
+      <div className="d2-window w-full max-w-2xl max-h-[calc(100vh-2rem)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-2.5 flex flex-col font-tahoma text-black">
+        <div className="d2-title vb-titlebar-xp select-none mb-2 shrink-0">
           <div className="flex items-center gap-1.5 font-bold">
             <Database className="w-4 h-4 text-white" />
             <span>Backup & Restore (डाटा बैकअप एवं रिस्टोर)</span>
@@ -220,13 +224,13 @@ ${await moveOldYear(Number(String(done.from_label).slice(0, 4)) - 1)}`;
           <button onClick={onClose} disabled={isProcessing} className="vb-win-btn vb-win-btn-close">✕</button>
         </div>
 
-        <div className="flex gap-1 border-b border-slate-400 pb-0.5 mb-2 px-1">
+        <div className="flex gap-1 border-b border-slate-400 pb-0.5 mb-2 px-1 shrink-0">
           {tabButton('backup', 'बैकअप (VB6 में भेजें)', <Download className="w-3.5 h-3.5 text-emerald-700" />)}
           {tabButton('restore', 'रिस्टोर (VB6 से लाएँ)', <Upload className="w-3.5 h-3.5 text-blue-700" />)}
           {tabButton('balance_forward', 'Balance Forward', <RefreshCw className="w-3.5 h-3.5 text-amber-700" />)}
         </div>
 
-        <div className="bg-white p-4 vb-box-inset text-xs space-y-3 min-h-[260px]">
+        <div ref={bodyRef} className="bg-white p-4 vb-box-inset text-xs space-y-3 min-h-[260px] flex-1 min-h-0 overflow-y-auto">
           {activeTab === 'backup' && (
             <div className="space-y-3">
               {/* The everyday job: the website's work into the old software */}
@@ -475,7 +479,7 @@ ${await moveOldYear(Number(String(done.from_label).slice(0, 4)) - 1)}`;
           )}
 
           {status && (
-            <div className={`p-2 border font-bold text-[11px] rounded whitespace-pre-line ${
+            <div ref={statusRef} className={`p-2 border font-bold text-[11px] rounded whitespace-pre-line break-words ${
               status.kind === 'done' ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
                 : status.kind === 'error' ? 'bg-red-100 text-red-900 border-red-400'
                 : 'bg-blue-100 text-blue-900 border-blue-400 animate-pulse'
@@ -485,7 +489,7 @@ ${await moveOldYear(Number(String(done.from_label).slice(0, 4)) - 1)}`;
           )}
         </div>
 
-        <div className="flex justify-between items-center pt-2.5 px-1">
+        <div className="flex justify-between items-center pt-2.5 px-1 shrink-0">
           <div className="text-[10px] text-slate-500">Aryan News Agency • Database Management Utility</div>
           <button onClick={onClose} disabled={isProcessing} className="vb-btn bg-white hover:bg-slate-100 px-5 py-1 text-xs font-bold cursor-pointer">
             Close (बंद करें)
