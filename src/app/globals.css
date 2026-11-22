@@ -168,3 +168,10 @@ body {
 .mdi-win:not(.mdi-focus) .d2-window { box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
 .mdi-win:not(.mdi-focus) .d2-title { filter: saturate(0.25) brightness(1.05); }
 .mdi-win .d2-title { cursor: move; }
+
+/* Classic look: a quiet deep blue with a faint dot texture instead of the bright flat blue */
+html:not(.desktop2) .d2-desk {
+  background-color: #33557A;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(180deg, #3A5F86 0%, #2C4A6B 100%);
+  background-size: 22px 22px, 100% 100%;
+}

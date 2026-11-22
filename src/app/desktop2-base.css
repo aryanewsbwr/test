@@ -85,20 +85,27 @@ html.desktop2 .d2-menubar .ml-auto > div {
   box-shadow: none !important;
 }
 
-/* The shop photo behind everything; darker while a window is open so the window stands out */
+/* A calm background: soft grey-blue with a very faint dot texture, easy on the eyes all day.
+   A little deeper while windows are open, so they stand out without a dark cover. */
 html.desktop2 .d2-desk {
-  background: linear-gradient(rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.25)),
-              url('/shop-bg.jpg') center 35% / cover no-repeat fixed #CBD5E1;
+  background-color: #E6ECF2;
+  background-image:
+    radial-gradient(rgba(71, 85, 105, 0.09) 1px, transparent 1px),
+    linear-gradient(180deg, #EEF2F6 0%, #E2E8F0 100%);
+  background-size: 22px 22px, 100% 100%;
+  background-attachment: fixed;
 }
 html.desktop2 .d2-desk:is(.d2-busy, :has(.d2-window)) {
-  background: linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)),
-              url('/shop-bg.jpg') center 35% / cover no-repeat fixed #CBD5E1;
+  background-color: #D9E1EA;
+  background-image:
+    radial-gradient(rgba(71, 85, 105, 0.10) 1px, transparent 1px),
+    linear-gradient(180deg, #DFE6EE 0%, #D3DCE6 100%);
 }
 
-/* Home screen when no window is open: a frosted card low down, so the shop sign stays in view */
+/* Home screen when no window is open: a soft card in the middle */
 html.desktop2 .d2-splash {
   opacity: 1 !important;
-  margin: auto auto 28px !important;
+  margin: auto !important;
   padding: 20px 36px !important;
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px);
@@ -256,8 +263,7 @@ html.desktop2 .d2-window .d2-window { zoom: 1; max-height: calc((100dvh - 180px)
 
 /* Loading screen */
 html.desktop2 .d2-loading {
-  background: linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)),
-              url('/shop-bg.jpg') center 35% / cover no-repeat #CBD5E1 !important;
+  background: linear-gradient(180deg, #EEF2F6 0%, #E2E8F0 100%) !important;
   font-family: var(--d2-font) !important;
 }
 html.desktop2 .d2-loading > div {
