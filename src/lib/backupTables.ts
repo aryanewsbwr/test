@@ -18,15 +18,17 @@ export interface BackupTable {
   databaseNumbers?: boolean;
   // Columns that differ between the two softwares without meaning a real change
   oldIgnore?: string[];
+  // Values the two softwares write differently for the same thing (blank and '1-7' are every day)
+  oldSame?: Record<string, string[]>;
 }
 
 const MASTER_TABLES: BackupTable[] = [
   // Cbal is the old software's own figure (the last bill's balance) and comes in as it has it
   { name: 'customer', key: ['customer_id'], oldIgnore: ['paid', 'delivery', 'discount'] },
   // A paper is the same subscription by its start date; a hawker or circulation changed there is a change to it
-  { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'publica_id', 's_date'] },
+  { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'publica_id', 's_date'], oldSame: { from_day: ['', '1-7'] } },
   { name: 'hawker', key: ['hawker_id'] },
-  { name: 'publication', key: ['publica_id'] },
+  { name: 'publication', key: ['publica_id'], oldSame: { circulation: ['', 'morning'] } },
   { name: 'publisher', key: ['publish_id'] },
   { name: 'regiond', key: ['region_id'] },
   { name: 'collect', key: ['Collect_id'] },
@@ -52,7 +54,8 @@ function yearlyTables(suffix: string): BackupTable[] {
   return [
     { name: `billno${suffix}`, key: ['bill_id'], money: true },
     { name: `bill${suffix}`, key: ['id'], oldKey: ['bill_id', 'publica_id', 'sno'], money: true },
-    { name: `billdel${suffix}`, key: ['id'], oldKey: ['customer_id', 'publica_id', 'month', 'sno'], money: true },
+    // The line number (sno) is each software's own count of the customer's papers, so it is not compared
+    { name: `billdel${suffix}`, key: ['id'], oldKey: ['customer_id', 'publica_id', 'month'], money: true, oldIgnore: ['id', 'sno'] },
     {
       name: `receipt${suffix}`,
       key: ['id'],
@@ -141,6 +144,10 @@ function keysOf(rows: any[], key: string[]): string[] {
 export interface CompareOptions {
   // An old software file leaves many columns empty, which says nothing about the live value
   fileBlankIsSame?: boolean;
+  // The file is the master copy: a blank in it clears the live value. Only an empty value and a 0 count
+  // as the same, as the two softwares write "nothing" differently.
+  mirror?: boolean;
+  same?: Record<string, string[]>;
   ignore?: string[];
 }
 
@@ -152,8 +159,15 @@ export function compareRows(fileRows: any[], liveRows: any[], key: string[], opt
   const result: RowDifference = { add: [], change: [], remove: [], same: 0 };
   const seen = new Set<string>();
 
-  const unchanged = (value: any, current: any) =>
-    sameValue(value, current) || (!!options.fileBlankIsSame && (blank(value) || Number(value) === 0) && (blank(current) || Number(current) === 0 || blank(value)));
+  const empty = (value: any) => blank(value) || Number(value) === 0;
+  const alike = (column: string, value: any, current: any) => {
+    if (column === 'month') return monthCode(value) === monthCode(current);
+    const values = options.same?.[column];
+    const lower = (v: any) => String(v ?? '').trim().toLowerCase();
+    return !!values && values.includes(lower(value)) && values.includes(lower(current));
+  };
+  const unchanged = (value: any, current: any, column = '') =>
+    sameValue(value, current) || alike(column, value, current) || (!!options.mirror && empty(value) && empty(current)) || (!!options.fileBlankIsSame && (blank(value) || Number(value) === 0) && (blank(current) || Number(current) === 0 || blank(value)));
 
   keysOf(fileRows, key).forEach((id, i) => {
     const row = fileRows[i];
@@ -165,7 +179,7 @@ export function compareRows(fileRows: any[], liveRows: any[], key: string[], opt
       return;
     }
     // Only the columns that really differ are written, so a blank in an old file never wipes a live value
-    const changed = Object.keys(row).filter(column => !ignore.includes(column) && !unchanged(row[column], current[column]));
+    const changed = Object.keys(row).filter(column => !ignore.includes(column) && !unchanged(row[column], current[column], column));
     if (changed.length === 0) {
       result.same++;
     } else {

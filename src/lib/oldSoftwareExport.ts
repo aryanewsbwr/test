@@ -610,9 +610,16 @@ function perPaperStops(stops: any[], subscriptions: any[]) {
 const tenDigitMobiles = (phone: any) =>
   Array.from(new Set(Array.from(String(phone ?? '').matchAll(/(?:\+?91|0)?[\s-]*([6-9]\d{9})(?!\d)/g), x => x[1])));
 
-function customerMobiles(customers: any[], old?: OldRows) {
+function customerMobiles(customers: any[], old?: OldRows, oldCustomers?: OldRows) {
   const theirs = new Map<number, { id: number; mobile: string }[]>();
   let next = 0;
+  // Numbers the old software keeps in the customer's own phone field are its own too: they are not
+  // new numbers for its mobile table
+  const phoneThere = new Map<number, string[]>();
+  if (oldCustomers) {
+    const [c, ph] = ['customer_id', 'phone'].map(n => oldCustomers.columns.findIndex(col => col.toLowerCase() === n));
+    if (c >= 0 && ph >= 0) for (const raw of oldCustomers.rows) phoneThere.set(Number(tokenValue(raw[c])), tenDigitMobiles(tokenValue(raw[ph])));
+  }
   if (old) {
     const [i, c, m] = ['id', 'customer_id', 'mobile'].map(n => old.columns.indexOf(n));
     for (const raw of old.rows) {
@@ -629,7 +636,7 @@ function customerMobiles(customers: any[], old?: OldRows) {
     const id = Number(pick(customer, 'customer_id'));
     const mine = tenDigitMobiles(pick(customer, 'phone'));
     const had = theirs.get(id) || [];
-    const hadTen = new Set(had.map(h => ten(h.mobile)));
+    const hadTen = new Set([...had.map(h => ten(h.mobile)), ...(phoneThere.get(id) || [])]);
     done.add(id);
     if (!mine.length || mine.every(n => hadTen.has(n))) {
       had.forEach(h => rows.push({ id: h.id, customer_id: id, mobile: h.mobile }));
@@ -737,7 +744,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       mode: 'replace',
       create: "`id` int(11) NOT NULL auto_increment,\n  `customer_id` int(11) default NULL,\n  `mobile` varchar(15) default NULL,\n  PRIMARY KEY  (`id`),\n  UNIQUE KEY `uk_cust_mobile` (`customer_id`,`mobile`),\n  KEY `customer_id` (`customer_id`),\n  KEY `idx_custid` (`customer_id`)",
       columns: [col('id'), col('customer_id'), col('mobile', 's')],
-      rows: customerMobiles(get('customer'), old?.get('customer_mobile'))
+      rows: customerMobiles(get('customer'), old?.get('customer_mobile'), old?.get('customer'))
     },
     {
       name: 'hawker',

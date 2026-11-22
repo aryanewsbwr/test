@@ -447,7 +447,9 @@ const billsByMonth = (headers: any[], lines: any[]) => {
 
 // The bills whose charge differs from the old software. Only months the file has bills for count,
 // so bills made here for a month the file has not reached yet are left alone.
-export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[], receipts: any[] = []) {
+// With mirror (a restore from the old software) a bill made here for a month the file has no bills for
+// goes too, so the website's bills are exactly the old software's.
+export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[], receipts: any[] = [], mirror = false) {
   const fromFile = billsByMonth(fileHeaders, fileLines);
   const live = billsByMonth(liveHeaders, liveLines);
   const fileMonths = new Set(fileHeaders.map(header => monthCode(header.month)));
@@ -487,7 +489,7 @@ export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeader
     const file = fromFile.get(key);
     const here = live.get(key);
     const [customer, code] = key.split('|');
-    if (!fileMonths.has(code)) continue;
+    if (!fileMonths.has(code) && !mirror) continue;
     if (here && Math.abs((file?.amount || 0) - here.amount) < 1) continue;
 
     const customer_id = Number(customer);
@@ -507,11 +509,6 @@ export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeader
   return fixes;
 }
 
-// Bills are corrected one by one through billCorrections instead
-const CAREFUL_ADDS = /^(billno|bill2)/;
-// The old software is the master copy: a row it has comes in as it has it. Bills are corrected one by
-// one through billCorrections instead.
-const FOLLOW_FILE = /^(customer|customer_detail|publication|rate|receiptissue\d+|receipt\d+|retailsale\d+)$/;
 
 // The name can't be trusted, as a file may come with no extension, so the first bytes decide
 async function fileKind(file: Blob): Promise<'backup' | 'zip' | 'old'> {
@@ -519,6 +516,50 @@ async function fileKind(file: Blob): Promise<'backup' | 'zip' | 'old'> {
   if (first === 0x1f && second === 0x8b) return 'backup';
   if (first === 0x50 && second === 0x4b) return 'zip';
   return 'old';
+}
+
+// The old software keeps mobile numbers in their own table and often leaves the phone blank. A blank
+// phone there is the customer's mobile numbers: the phone here stays when its numbers are all among
+// them, otherwise it becomes the first of them. With no number there at all the phone is blank.
+const tenDigits = (text: any) => Array.from(String(text ?? '').matchAll(/(?:\+?91|0)?[\s-]*([6-9]\d{9})(?!\d)/g), m => m[1]);
+export function phonesFromMobiles(customers: any[], mobiles: any[], liveCustomers: any[]) {
+  const numbers = new Map<number, string[]>();
+  for (const m of mobiles) {
+    const ten = tenDigits(m.mobile)[0];
+    if (ten) numbers.set(Number(m.customer_id), [...(numbers.get(Number(m.customer_id)) || []), ten]);
+  }
+  const livePhone = new Map(liveCustomers.map(c => [Number(c.customer_id), c.phone]));
+  return customers.map(c => {
+    if (/\d/.test(String(c.phone ?? ''))) return c;
+    const theirs = numbers.get(Number(c.customer_id));
+    if (!theirs?.length) return c;
+    const here = livePhone.get(Number(c.customer_id));
+    const hereNumbers = tenDigits(here);
+    return { ...c, phone: hereNumbers.length && hereNumbers.every(n => theirs.includes(n)) ? here : theirs[0] };
+  });
+}
+
+// Some start dates in the old software can't be read ('03/07/201 '): the file brings them blank, and
+// the website keeps its own reading of them. Such a line is the same line, so it is left as it is.
+function unreadableStarts(difference: RowDifference) {
+  const line = (r: any) => `${r.customer_id}|${r.publica_id}|${String(r.c_date ?? '').slice(0, 10)}`;
+  const readable = (d: any) => /^\d{4}-\d{2}-\d{2}/.test(String(d ?? ''));
+  const blankStarts = new Map<string, number>();
+  for (const r of difference.add) if (!r.s_date) blankStarts.set(line(r), (blankStarts.get(line(r)) || 0) + 1);
+  const kept = new Map<string, number>();
+  difference.remove = difference.remove.filter(r => {
+    const k = line(r);
+    if (readable(r.s_date) || !(blankStarts.get(k) || 0)) return true;
+    blankStarts.set(k, blankStarts.get(k)! - 1);
+    kept.set(k, (kept.get(k) || 0) + 1);
+    return false;
+  });
+  difference.add = difference.add.filter(r => {
+    const k = line(r);
+    if (r.s_date || !(kept.get(k) || 0)) return true;
+    kept.set(k, kept.get(k)! - 1);
+    return false;
+  });
 }
 
 export async function planRestore(file: File, onProgress: Progress): Promise<RestorePlan> {
@@ -532,7 +573,6 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
     if (!tables.customer) throw new Error('यह सही बैकअप फाइल नहीं है: इसमें ग्राहकों का डाटा नहीं मिला');
 
     const items: RestoreItem[] = [];
-    const billHeaders = new Map<string, any[]>();
     for (const definition of definitions) {
       if (!tables[definition.source]) continue;
       const table = findBackupTable(definition.target)!;
@@ -541,49 +581,49 @@ export async function planRestore(file: File, onProgress: Progress): Promise<Res
       let mapped = rowsOf(tables[definition.source], definition.map);
       // 'As Per Norm' and 'AsPerNorm' are one circulation; the spelling here is kept
       if (table.name === 'customer_detail') mapped = mapped.map(r => (/^as\s*per\s*norm$/i.test(String(r.circulation ?? '').trim()) ? { ...r, circulation: 'AsPerNorm' } : r));
+      // The old software is the master copy (Rahul, 22 Nov 2026): a restore makes every table the file
+      // has exactly as the file has it. A row changed here goes back to the file's, a blank in the file
+      // clears the value here, and a row only this website has is removed. The safety copy saved before
+      // writing keeps what was here.
       const fileRows = table.name === 'customer' && tables[MOBILE_TABLE]
-        ? withMobileNumbers(mapped, rowsOf(tables[MOBILE_TABLE], row => row), live)
+        ? phonesFromMobiles(mapped, rowsOf(tables[MOBILE_TABLE], row => row), live)
         : mapped;
-      if (table.name.startsWith('billno')) billHeaders.set(table.name.slice(6), live);
 
       const difference = compareRows(fileRows, live, table.oldKey || table.key, {
-        fileBlankIsSame: true,
+        mirror: true,
+        same: table.oldSame,
         ignore: table.oldIgnore
       });
       if (table.name === 'customer') difference.change = withoutOutdatedHindi(difference.change, live);
       if (/^receipt\d/.test(table.name)) difference.change = receiptDetailChanges(fileRows, live, table.oldKey || table.key, difference.change);
-
-      let add = difference.add;
-      const headers = table.name.startsWith('billno') ? live : table.name.startsWith('bill2') ? billHeaders.get(table.name.slice(4)) : null;
-      if (headers) add = withoutBilledMonths(add, headers);
-      if (table.name === 'customer_detail') add = withoutHeldPapers(add, live, fileRows);
-      if (table.name.startsWith('billdel')) add = withoutBilledMonths(add, live);
-      // A payment in both softwares: the file's receipt comes in, the website's copy of it goes
-      const remove = /^receipt\d/.test(table.name) ? repeatedReceipts(add, live, fileRows, table.oldKey || table.key) : [];
+      if (table.name === 'customer_detail') unreadableStarts(difference);
+      // A bill has its own number in each software, so bills are matched by customer and month below
+      const byBill = /^(billno|bill2)/.test(table.name);
 
       items.push({
         ...difference,
-        add,
-        remove,
         table,
         fileCount: fileRows.length,
         live,
-        useAdd: add.length > 0 && !CAREFUL_ADDS.test(table.name),
-        useChange: FOLLOW_FILE.test(table.name) && difference.change.length > 0,
-        useRemove: remove.length > 0,
-        skipped: difference.add.length - add.length
+        useAdd: !byBill && difference.add.length > 0,
+        useChange: !byBill && difference.change.length > 0,
+        useRemove: !byBill && difference.remove.length > 0,
+        skipped: 0
       });
     }
     const billnoItem = items.find(i => i.table.name.startsWith('billno'));
     const billItem = items.find(i => i.table.name.startsWith('bill2'));
     const receiptItem = items.find(i => /^receipt\d/.test(i.table.name));
+    // Receipts as they will be once the file's are in, for the balance a new bill shows
+    const receiptsAfter = receiptItem ? [...receiptItem.live.filter(r => !receiptItem.remove.includes(r)), ...receiptItem.add] : [];
     const billFixes = billnoItem && billItem
       ? billCorrections(
           rowsOf(tables[billnoItem.table.name], row => row),
           rowsOf(tables[billItem.table.name], definitions.find(d => d.source === billItem.table.name)!.map),
           billnoItem.live,
           billItem.live,
-          [...(receiptItem?.live || []), ...(receiptItem?.add || [])]
+          receiptsAfter,
+          true
         )
       : [];
     return { kind: 'old', items, billFixes, file };
@@ -683,6 +723,13 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
   );
 
   const refused = new Map<string, { row: string; error: string }[]>();
+  // From an old software file the website's own rows go first: a row added from the file can carry the
+  // same number (a paper line's sno, a bill's number) as one removed, and a removal after it would take
+  // both. The safety copy above keeps everything if it stops halfway.
+  const removeFirst = plan.kind === 'old';
+  if (removeFirst) {
+    for (const item of chosen) if (item.useRemove) await writeBatches(item.table.name, 'remove', item.remove, tick);
+  }
   for (const item of chosen) {
     const note = (failed: { row: string; error: string }[]) => {
       if (failed.length > 0) refused.set(item.table.name, [...(refused.get(item.table.name) || []), ...failed]);
@@ -690,12 +737,13 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
     if (item.useAdd) await writeBatches(item.table.name, 'add', numbered(item, plan.kind), tick, note);
     if (item.useChange) await writeBatches(item.table.name, 'update', item.change, tick);
   }
-  for (const item of chosen) {
-    if (item.useRemove) await writeBatches(item.table.name, 'remove', item.remove, tick);
+  if (!removeFirst) {
+    for (const item of chosen) if (item.useRemove) await writeBatches(item.table.name, 'remove', item.remove, tick);
   }
 
-  // A permanent stop from the old file closes its subscriptions, as the Discontinue screen does
-  const stops = permanentStops(plan);
+  // A permanent stop from the old file closes its subscriptions, as the Discontinue screen does. Not for
+  // an old software file: its subscriptions come in exactly as it has them.
+  const stops = plan.kind === 'old' ? [] : permanentStops(plan);
   if (stops.length > 0) await writeBatches('discontinue', 'closeStops', stops, () => {});
 
   const billFixes = plan.billFixes || [];
