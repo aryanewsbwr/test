@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import RetailSalePermanentForm from './RetailSalePermanentForm';
 import { useWindowActive } from '@/components/MdiWindow';
 import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
@@ -15,6 +16,8 @@ interface Props {
   regions?: Region[];
   onSelectCustomer?: (customer: Customer) => void;
   onSaveCustomer?: (customer: Partial<Customer>, subs: Partial<CustomerDetail>[]) => void;
+  rates?: any[];
+  ratechanges?: any[];
 }
 
 const CIRCULATION_OPTIONS = ['Morning', 'Evening', 'As Per Norm'];
@@ -45,6 +48,8 @@ function formatLegacyDate(dateStr: string | null | undefined): string {
 }
 
 export default function CustomerForm({
+  rates = [],
+  ratechanges = [],
   isOpen = true,
   onClose,
   customer,
@@ -79,6 +84,8 @@ export default function CustomerForm({
   // Subscriptions Table
   const [subscriptions, setSubscriptions] = useState<CustomerDetail[]>([]);
   const [subFilter, setSubFilter] = useState<'active' | 'all'>('active');
+  // Second tab: Retail Sale to Permanent Customer, for the customer open here
+  const [subTab, setSubTab] = useState<'subs' | 'retail'>('subs');
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
   // Insert Item Dialog State
@@ -212,6 +219,7 @@ export default function CustomerForm({
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!windowActive.current) return; // only the window in front
+      if (subTab === 'retail') return; // the Retail Sale tab handles its own keys
       // Esc goes back one step: closes a pop-up; from a customer back to the Find list (with the
       // same search); from the Find list to the empty form; only then closes Customer Info
       if (e.key === 'Escape') {
@@ -256,7 +264,7 @@ export default function CustomerForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isFindOpen, isInsertOpen, stopRow, searchQuery, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
+  }, [isOpen, subTab, isFindOpen, isInsertOpen, stopRow, searchQuery, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
 
   if (!isOpen) return null;
 
@@ -638,7 +646,7 @@ export default function CustomerForm({
 
   return (
     <div className="d2-window w-full max-w-4xl max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none overflow-hidden my-auto shrink-0">
-      
+
       {/* Titlebar */}
       <div className="d2-title bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
@@ -652,7 +660,7 @@ export default function CustomerForm({
 
       {/* Main Body matching screenshot_05.jpg */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs min-h-0">
-        
+
         {/* Header Title */}
         <h2 className="text-center font-black text-[#000080] text-base tracking-wider">
           Customer Info
@@ -660,13 +668,13 @@ export default function CustomerForm({
 
         {/* 2-Column Form Fields */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start bg-pink-50/20 p-2.5 border border-pink-100 rounded-xs">
-          
+
           {/* Left Column (2 Cols) */}
           <div className="md:col-span-2 space-y-2">
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Name (Eng)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={nameEng}
                 onChange={(e) => handleNameEngChange(e.target.value)}
                 placeholder="Type customer name in English..."
@@ -677,8 +685,8 @@ export default function CustomerForm({
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Name (Hindi)</label>
               <div className="flex-1 flex gap-1">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={nameHindi}
                   onChange={(e) => {
                     setNameHindi(e.target.value);
@@ -688,8 +696,8 @@ export default function CustomerForm({
                   placeholder="हिंदी नाम (ऑटो-ट्रांसलेट)..."
                   className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-indigo-900 shadow-inner"
                 />
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={async () => {
                     const converted = await transliterateToHindiAsync(nameEng);
                     setNameHindi(converted);
@@ -705,8 +713,8 @@ export default function CustomerForm({
 
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Address</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={add1}
                 onChange={(e) => handleAdd1Change(e.target.value)}
                 placeholder="Type address in English..."
@@ -717,8 +725,8 @@ export default function CustomerForm({
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Add. (Hindi)</label>
               <div className="flex-1 flex gap-1">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={hindiAdd}
                   onChange={(e) => {
                     setHindiAdd(e.target.value);
@@ -728,8 +736,8 @@ export default function CustomerForm({
                   placeholder="हिंदी पता..."
                   className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
                 />
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={async () => {
                     const converted = await transliterateToHindiAsync(add1);
                     setHindiAdd(converted);
@@ -745,7 +753,7 @@ export default function CustomerForm({
 
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Region</label>
-              <select 
+              <select
                 value={regionId || ''}
                 onChange={(e) => setRegionId(Number(e.target.value) || 0)}
                 className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800"
@@ -760,8 +768,8 @@ export default function CustomerForm({
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <label className="font-bold text-slate-800 text-[11px]">Security Deposit</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={securityDeposit}
                   onChange={(e) => setSecurityDeposit(Number(e.target.value))}
                   className="w-20 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold"
@@ -770,8 +778,8 @@ export default function CustomerForm({
 
               <div className="flex items-center gap-1">
                 <label className="font-bold text-slate-800 text-[11px]">Due Amt.</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={dueAmount}
                   onChange={(e) => setDueAmount(Number(e.target.value))}
                   className="w-20 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold text-red-700"
@@ -802,8 +810,8 @@ export default function CustomerForm({
 
             <div className="flex items-center gap-2">
               <label className="w-14 font-bold text-slate-800">Phone</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="flex-1 px-1.5 py-0.5 border border-[#808080] bg-white font-mono"
@@ -812,8 +820,8 @@ export default function CustomerForm({
 
             <div className="flex items-center gap-2">
               <label className="w-14 font-bold text-slate-800">Priority</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={priority}
                 onChange={(e) => setPriority(Number(e.target.value))}
                 className="w-20 px-1.5 py-0.5 border border-[#808080] bg-white font-mono font-bold text-center"
@@ -843,16 +851,16 @@ export default function CustomerForm({
 
         {/* Subscriptions Grid matching screenshot_05.jpg */}
         <div className="space-y-1">
-          
+
           {/* Subscriptions Header with Active vs All Filter Tabs */}
           <div className="flex items-center justify-between pb-0.5">
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setSubFilter('active')}
+                onClick={() => { setSubFilter('active'); setSubTab('subs'); }}
                 className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
-                  subFilter === 'active' 
-                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs' 
+                  subFilter === 'active' && subTab === 'subs'
+                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
                     : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
                 }`}
               >
@@ -860,14 +868,25 @@ export default function CustomerForm({
               </button>
               <button
                 type="button"
-                onClick={() => setSubFilter('all')}
+                onClick={() => { setSubFilter('all'); setSubTab('subs'); }}
                 className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
-                  subFilter === 'all' 
-                    ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs' 
+                  subFilter === 'all' && subTab === 'subs'
+                    ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs'
                     : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
                 }`}
               >
                 All Subscription History (सभी इतिहास: {subscriptions.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab(t => (t === 'retail' ? 'subs' : 'retail'))}
+                className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
+                  subTab === 'retail'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                    : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
+                }`}
+              >
+                🛒 Retail Sale (रिटेल सेल)
               </button>
             </div>
 
@@ -882,7 +901,23 @@ export default function CustomerForm({
             </div>
           </div>
 
-          <div className="border border-[#808080] bg-white shadow-inner overflow-auto max-h-52">
+          {subTab === 'retail' ? (
+            selectedCustId ? (
+              <RetailSalePermanentForm
+                embedded
+                isOpen={subTab === 'retail'}
+                onClose={() => setSubTab('subs')}
+                publications={publications}
+                rates={rates}
+                ratechanges={ratechanges}
+                customers={[]}
+                initialCustomer={{ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, add1, hindi_add: hindiAdd, phone, region_id: regionId } as any}
+              />
+            ) : (
+              <div className="p-4 text-center font-bold text-[#800000] bg-white border border-[#808080]">पहले ग्राहक खोलें (Find Customer), फिर रिटेल सेल डालें।</div>
+            )
+          ) : (<>
+          <div className="border border-[#808080] bg-white shadow-inner overflow-auto max-h-[45vh]">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-[#ECE9D8] text-slate-900 font-bold border-b sticky top-0 text-[11px]">
                 <tr>
@@ -906,7 +941,7 @@ export default function CustomerForm({
                   </tr>
                 ) : subscriptions.length > 0 ? (
                   (() => {
-                    const displayed = subFilter === 'active' 
+                    const displayed = subFilter === 'active'
                       ? subscriptions.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '' || s.c_date === '-'))
                       : subscriptions;
 
@@ -924,11 +959,11 @@ export default function CustomerForm({
                       const isDiscontinued = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
 
                       return (
-                        <tr 
-                          key={sub.sno || idx} 
+                        <tr
+                          key={sub.sno || idx}
                           className={`border-b text-[11px] ${
-                            isDiscontinued 
-                              ? 'bg-red-50/70 hover:bg-red-100/60 text-slate-600' 
+                            isDiscontinued
+                              ? 'bg-red-50/70 hover:bg-red-100/60 text-slate-600'
                               : 'hover:bg-emerald-50/50 text-slate-900'
                           }`}
                         >
@@ -964,7 +999,7 @@ export default function CustomerForm({
                           <td className="p-1 text-center">
                             <div className="flex items-center justify-center gap-1">
                               {isDiscontinued ? (
-                                <button 
+                                <button
                                   type="button"
                                   onClick={() => handleReactivateSubscriptionRow(sub.sno)}
                                   className="px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-400 rounded text-[10px] font-bold cursor-pointer"
@@ -973,7 +1008,7 @@ export default function CustomerForm({
                                   पुनः चालू
                                 </button>
                               ) : (
-                                <button 
+                                <button
                                   type="button"
                                   onClick={() => askStopDate(sub.sno)}
                                   className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-400 rounded text-[10px] font-bold cursor-pointer"
@@ -982,7 +1017,7 @@ export default function CustomerForm({
                                   बंद करें
                                 </button>
                               )}
-                              <button 
+                              <button
                                 type="button"
                                 onClick={() => handleDeleteSubscriptionRow(sub.sno)}
                                 className="text-red-600 hover:text-red-800 font-bold px-1"
@@ -1010,7 +1045,7 @@ export default function CustomerForm({
             <span className="font-bold text-[#800000]">
               Note :- Press F1 to Insert Items - Press F2 to Delete Selected Items - Press F10 to Delete Empty Grid
             </span>
-            <button 
+            <button
               type="button"
               onClick={handleOpenInsertDialog}
               className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs flex items-center gap-1 cursor-pointer"
@@ -1018,6 +1053,7 @@ export default function CustomerForm({
               <Plus className="w-3 h-3" /> + Insert Item
             </button>
           </div>
+          </>)}
         </div>
 
         {status && (
@@ -1027,39 +1063,39 @@ export default function CustomerForm({
         )}
 
         {/* Bottom Buttons matching screenshot_05.jpg */}
-        <div className="shrink-0 flex flex-wrap items-center justify-center gap-1.5 pt-2 border-t border-[#808080] bg-[#ECE9D8] pb-1">
-          <button 
+        <div className="sticky bottom-0 z-10 shrink-0 flex flex-wrap items-center justify-center gap-1.5 pt-2 border-t border-[#808080] bg-[#ECE9D8] pb-1">
+          <button
             onClick={handleSave}
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             💾 <u>S</u>ave
           </button>
-          <button 
+          <button
             onClick={handleSave}
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             ↪ <u>U</u>pdate
           </button>
-          <button 
+          <button
             onClick={handleDeleteCustomer}
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             🗑 <u>D</u>elete
           </button>
-          <button 
+          <button
             onClick={() => setIsFindOpen(true)}
             className="px-5 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer ring-2 ring-blue-400"
           >
             🔍 <u>F</u>ind Customer
           </button>
-          <button 
+          <button
             onClick={handleCancel}
             title="Alt+C: Cancel and clear all customer fields to blank"
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             ✖ <u>C</u>ancel
           </button>
-          <button 
+          <button
             onClick={onClose}
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
@@ -1272,9 +1308,9 @@ export default function CustomerForm({
               <span>Find Customer (ग्राहक खोजें - 24,581 Records)</span>
               <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold">✕</button>
             </div>
-            
+
             <div className="flex gap-2">
-              <input 
+              <input
                 type="text"
                 placeholder="Type Name, Hindi Name, Customer ID, or Phone..."
                 value={searchQuery}
@@ -1303,7 +1339,7 @@ export default function CustomerForm({
                     {searchResults.map((c, ci) => {
                       const regName = regions.find(r => r.region_id === c.region_id)?.region_name || (c as any).region_name || '-';
                       return (
-                        <tr 
+                        <tr
                           key={c.customer_id}
                           onClick={() => handleSelectFoundCustomer(c)}
                           onMouseEnter={() => setFindIndex(ci)}

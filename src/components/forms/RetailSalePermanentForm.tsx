@@ -14,6 +14,10 @@ interface Props {
   rates?: Rate[];
   ratechanges?: RateChange[];
   customers?: Customer[];
+  // Inside Customer Master (its Retail Sale tab): no title bar or dark cover, and the customer is
+  // the one open in Customer Master
+  embedded?: boolean;
+  initialCustomer?: Customer | null;
 }
 
 interface SaleRow {
@@ -24,7 +28,7 @@ interface SaleRow {
 }
 
 const MONTH_LIST = [
-  'April', 'May', 'June', 'July', 'August', 'September', 
+  'April', 'May', 'June', 'July', 'August', 'September',
   'October', 'November', 'December', 'January', 'February', 'March'
 ];
 
@@ -50,13 +54,15 @@ const normalizeAndSortPubs = (list: any[]) => {
   return cleaned;
 };
 
-export default function RetailSalePermanentForm({ 
-  isOpen, 
-  onClose, 
+export default function RetailSalePermanentForm({
+  isOpen,
+  onClose,
   publications = [],
   rates = [],
   ratechanges = [],
-  customers = []
+  customers = [],
+  embedded = false,
+  initialCustomer = null
 }: Props) {
   const windowActive = useWindowActive();
   // Date in DD/MM/YYYY
@@ -94,7 +100,7 @@ export default function RetailSalePermanentForm({
 
   // Narration
   const [narration, setNarration] = useState<string>('');
-  
+
   // Proces Y/N Modal State
   const [isProcessModalOpen, setIsProcessModalOpen] = useState<boolean>(false);
   const [processMonth, setProcessMonth] = useState<string>('April');
@@ -201,7 +207,7 @@ export default function RetailSalePermanentForm({
     const saleDateDdMm = parseIsoToDdMmYyyy(saleDateIso);
     setVrDateStr(saleDateDdMm);
     setNarration(primarySale.Narr || primarySale.narr || '');
-    
+
     // Find all items on this date for this customer
     const sameDaySales = allSalesForCust.filter(s => (s.Vr_Date || s.vr_date) === saleDateIso);
     const loadedRows: SaleRow[] = sameDaySales.map(s => {
@@ -215,9 +221,9 @@ export default function RetailSalePermanentForm({
       };
     });
     setRows(loadedRows.length > 0 ? loadedRows : [{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
-    setStatusMsg({ 
-      text: `Loaded existing retail sale voucher for ${saleDateDdMm} (${loadedRows.length} item(s)).`, 
-      isError: false 
+    setStatusMsg({
+      text: `Loaded existing retail sale voucher for ${saleDateDdMm} (${loadedRows.length} item(s)).`,
+      isError: false
     });
   };
 
@@ -322,7 +328,7 @@ export default function RetailSalePermanentForm({
       setIsFindLoading(true);
 
       const q = findSearch.trim();
-      const url = q 
+      const url = q
         ? `/api/customers?search=${encodeURIComponent(q)}&limit=100&order=asc`
         : `/api/customers?limit=100&order=asc`;
 
@@ -367,7 +373,7 @@ export default function RetailSalePermanentForm({
   const filteredSales = useMemo(() => {
     if (!findSearch.trim()) return allRecentSales.slice(0, 50);
     const q = findSearch.toLowerCase().trim();
-    return allRecentSales.filter(s => 
+    return allRecentSales.filter(s =>
       String(s.Customer_id || s.customer_id || '').includes(q) ||
       (s.Customer_Name || s.customer_name || '').toLowerCase().includes(q) ||
       (s.Publica_Name || s.publica_name || '').toLowerCase().includes(q) ||
@@ -655,27 +661,35 @@ export default function RetailSalePermanentForm({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isFindOpen, isProcessModalOpen, showCautionClosed, showSuggestions, selectedCust, rows, vrDateStr, narration]);
 
+  // Inside Customer Master: take the customer open there
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (embedded && isOpen && initialCustomer?.customer_id && selectedCust?.customer_id !== initialCustomer.customer_id) handleSelectCustomer(initialCustomer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, isOpen, initialCustomer?.customer_id]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 select-none">
-      
+    <div className={embedded ? 'select-none' : 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 select-none'}>
+
       {/* 3D Classic Windows Dialog Window matching screenshot_09.jpg */}
-      <div className="d2-window w-[560px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col">
-        
+      <div className={`${embedded ? 'w-full border border-[#808080] ' : 'd2-window w-[560px] '}bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col`}>
+
+        {!embedded && (<>
         {/* Title Bar matching screenshot_09.jpg */}
         <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex justify-between items-center select-none font-bold">
           <div className="flex items-center gap-1.5 text-xs">
-            <img 
-              src="/legacy_images/paper.ico" 
-              alt="ico" 
-              className="w-4 h-4" 
-              onError={(e) => (e.currentTarget.style.display = 'none')} 
+            <img
+              src="/legacy_images/paper.ico"
+              alt="ico"
+              className="w-4 h-4"
+              onError={(e) => (e.currentTarget.style.display = 'none')}
             />
             <span className="tracking-wide">Retail Sale to Permanent Customer</span>
           </div>
           <div className="flex items-center gap-1">
-            <button 
+            <button
               onClick={onClose}
               className="w-5 h-4 bg-[#ECE9D8] hover:bg-red-600 hover:text-white border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center cursor-pointer"
             >
@@ -683,27 +697,30 @@ export default function RetailSalePermanentForm({
             </button>
           </div>
         </div>
+        </>)}
 
         {/* Main Content matching screenshot_09.jpg */}
         <div className="p-3.5 space-y-2 bg-[#ECE9D8]">
-          
+
+          {!embedded && (<>
           {/* Header Title matching screenshot_09.jpg */}
           <div className="text-center pt-0.5 pb-1">
-            <h1 
-              className="text-2xl font-black text-[#800000] tracking-wider uppercase" 
+            <h1
+              className="text-2xl font-black text-[#800000] tracking-wider uppercase"
               style={{ fontFamily: 'Georgia, serif' }}
             >
               RETAIL SALE TO<br />PERMANENT CUSTOMER
             </h1>
           </div>
+          </>)}
 
           {/* Row 1: Date & Period */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <label className="font-bold text-[#800000] text-xs w-12">Date</label>
               <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={vrDateStr}
                   onChange={(e) => setVrDateStr(e.target.value)}
                   onBlur={handleDateBlur}
@@ -722,8 +739,8 @@ export default function RetailSalePermanentForm({
           <div className="flex items-center gap-2 px-1 relative">
             <label className="font-bold text-[#800000] text-xs w-12 shrink-0">Name</label>
             <div className="flex-1 relative border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white shadow-inner">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={custInput}
                 onChange={(e) => handleNameInputChange(e.target.value)}
                 onKeyDown={handleNameInputKeyDown}
@@ -743,7 +760,7 @@ export default function RetailSalePermanentForm({
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 w-full mt-0.5 bg-white border border-[#808080] shadow-xl z-50 max-h-44 overflow-y-auto divide-y divide-slate-100 text-xs">
                   {suggestions.map((c) => (
-                    <div 
+                    <div
                       key={c.customer_id}
                       onMouseDown={() => handleSelectCustomer(c)}
                       className="d2-title p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center text-left"
@@ -793,12 +810,12 @@ export default function RetailSalePermanentForm({
           </div>
 
           {/* Row 4: The Main Grid Table matching screenshot_09.jpg */}
-          <div 
+          <div
             onDoubleClick={handleAddRow}
             className="mx-1 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-[#808080] shadow-inner select-none cursor-pointer"
             title="Double Click / Double Tap or Press [F1] to Add Publication"
           >
-            
+
             {/* Grid Header matching screenshot_09.jpg */}
             <table className="w-full text-xs border-collapse">
               <thead>
@@ -829,8 +846,8 @@ export default function RetailSalePermanentForm({
 
                     {/* Copies */}
                     <td className="p-0.5 border-r border-slate-300 text-center">
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         min="1"
                         value={row.copies}
                         onChange={(e) => handleUpdateRow(idx, 'copies', e.target.value)}
@@ -840,8 +857,8 @@ export default function RetailSalePermanentForm({
 
                     {/* Rate */}
                     <td className="p-0.5 border-r border-slate-300 text-right">
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.25"
                         value={row.rate}
                         onChange={(e) => handleUpdateRow(idx, 'rate', e.target.value)}
@@ -852,8 +869,8 @@ export default function RetailSalePermanentForm({
                     {/* Rec.Amt */}
                     <td className="p-0.5 text-right">
                       <div className="flex items-center justify-end">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           step="0.25"
                           value={row.amt}
                           onChange={(e) => handleUpdateRow(idx, 'amt', e.target.value)}
@@ -878,7 +895,7 @@ export default function RetailSalePermanentForm({
             </table>
 
             {/* Empty gray grid canvas area matching screenshot_09.jpg */}
-            <div 
+            <div
               onClick={handleAddRow}
               className={`bg-[#808080] ${rows.length === 0 ? 'h-24' : 'h-10'} flex flex-col items-center justify-center text-slate-200 text-xs font-bold cursor-pointer hover:bg-[#737373] transition-colors p-2 text-center select-none`}
               title="Click or Double Tap or Press [F1] to add publication"
@@ -899,7 +916,7 @@ export default function RetailSalePermanentForm({
           <div className="flex items-start gap-2 px-1 text-xs">
             <label className="font-bold text-[#000080] w-14 pt-1 shrink-0">Narration</label>
             <div className="flex-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white shadow-inner">
-              <textarea 
+              <textarea
                 rows={2}
                 value={narration}
                 onChange={(e) => setNarration(e.target.value)}
@@ -918,9 +935,9 @@ export default function RetailSalePermanentForm({
 
           {/* Row 6: Action Buttons matching screenshot_09.jpg exactly */}
           <div className="flex items-end justify-between px-1 pt-1 pb-1 select-none">
-            
+
             {/* Bottom-Left: Proces Y/N Button matching screenshot_09.jpg */}
-            <button 
+            <button
               type="button"
               onClick={() => setIsProcessModalOpen(true)}
               className="px-3 py-1 bg-[#ECE9D8] hover:bg-white active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white shadow-xs text-xs font-bold text-[#006666] cursor-pointer"
@@ -931,10 +948,10 @@ export default function RetailSalePermanentForm({
 
             {/* Bottom-Right: 2 Rows of Parallelogram Cyan Gradient Buttons matching screenshot_09.jpg */}
             <div className="flex flex-col items-end gap-1.5">
-              
+
               {/* Row 1: Save, Update, Del */}
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
@@ -945,7 +962,7 @@ export default function RetailSalePermanentForm({
                   </span>
                 </button>
 
-                <button 
+                <button
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
@@ -956,7 +973,7 @@ export default function RetailSalePermanentForm({
                   </span>
                 </button>
 
-                <button 
+                <button
                   type="button"
                   onClick={handleDelete}
                   className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
@@ -969,7 +986,7 @@ export default function RetailSalePermanentForm({
 
               {/* Row 2: Find, Cancel, Exit */}
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   type="button"
                   onClick={handleOpenFind}
                   className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
@@ -979,7 +996,7 @@ export default function RetailSalePermanentForm({
                   </span>
                 </button>
 
-                <button 
+                <button
                   type="button"
                   onClick={handleCancel}
                   className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
@@ -989,7 +1006,7 @@ export default function RetailSalePermanentForm({
                   </span>
                 </button>
 
-                <button 
+                <button
                   type="button"
                   onClick={onClose}
                   className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-red-800"
@@ -1072,7 +1089,7 @@ export default function RetailSalePermanentForm({
           <div className="d2-window bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[380px] p-1 font-tahoma">
             <div className="d2-title bg-[#0A246A] text-white px-2 py-0.5 flex justify-between items-center font-bold text-xs select-none">
               <span>Caution</span>
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowCautionClosed(false)}
                 className="text-white hover:bg-red-600 px-1 py-0 text-xs font-bold leading-none cursor-pointer"
@@ -1110,9 +1127,9 @@ export default function RetailSalePermanentForm({
           <div className="d2-window w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 space-y-2 text-xs font-tahoma">
             <div className="d2-title bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Find Retail Sale / Permanent Customer</span>
-              <button 
-                type="button" 
-                onClick={() => setIsFindOpen(false)} 
+              <button
+                type="button"
+                onClick={() => setIsFindOpen(false)}
                 className="text-white font-bold cursor-pointer"
               >
                 ✕
@@ -1157,14 +1174,14 @@ export default function RetailSalePermanentForm({
                 👤 Search Customer
               </button>
             </div>
-            
-            <input 
-              type="text" 
+
+            <input
+              type="text"
               placeholder={
-                findTab === 'history' 
-                  ? `Filter #${selectedCust?.customer_id} ${selectedCust?.name_eng} sales by date, publication...` 
-                  : findTab === 'customer' 
-                  ? "Search all 24,626 customers by ID, Name, Phone..." 
+                findTab === 'history'
+                  ? `Filter #${selectedCust?.customer_id} ${selectedCust?.name_eng} sales by date, publication...`
+                  : findTab === 'customer'
+                  ? "Search all 24,626 customers by ID, Name, Phone..."
                   : "Search voucher by Customer, Date, Publication..."
               }
               value={findSearch}
@@ -1201,7 +1218,7 @@ export default function RetailSalePermanentForm({
                     const narrText = s.Narr || s.narr;
 
                     return (
-                      <div 
+                      <div
                         key={s.Retail_id || s.retail_id || idx}
                         className="p-2 hover:bg-[#F0F4FF] flex justify-between items-center gap-2 transition-colors"
                       >
@@ -1249,7 +1266,7 @@ export default function RetailSalePermanentForm({
                   <div className="p-3 text-center text-slate-400 italic">No customers found.</div>
                 )}
                 {!isFindLoading && filteredCusts.map(c => (
-                  <div 
+                  <div
                     key={c.customer_id}
                     onClick={() => {
                       handleSelectCustomer(c);
@@ -1271,11 +1288,11 @@ export default function RetailSalePermanentForm({
                   const sCustId = Number(s.Customer_id || s.customer_id);
                   const sDate = parseIsoToDdMmYyyy(s.Vr_Date || s.vr_date);
                   return (
-                    <div 
+                    <div
                       key={s.Retail_id || s.retail_id || idx}
                       className="p-1.5 hover:bg-[#F0F4FF] flex justify-between items-center"
                     >
-                      <div 
+                      <div
                         onClick={async () => {
                           setIsFindOpen(false);
                           // The customer's own saved record (address, balance), not a made-up one
@@ -1328,7 +1345,7 @@ export default function RetailSalePermanentForm({
             )}
 
             <div className="flex justify-end pt-1">
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsFindOpen(false)}
                 className="px-4 py-1 bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] font-bold cursor-pointer hover:bg-white"

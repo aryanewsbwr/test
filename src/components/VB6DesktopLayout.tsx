@@ -775,6 +775,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             onClose={() => setActiveWindow(null)}
             customer={null}
             publications={openPublications}
+            rates={rates}
+            ratechanges={ratechanges}
             hawkers={hawkers}
             regions={regions}
             onSelectCustomer={(c) => setSelectedCust(c)}
