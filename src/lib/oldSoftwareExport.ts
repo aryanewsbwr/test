@@ -213,6 +213,10 @@ const SAME_ENTRY: Record<string, string[][]> = {
 };
 // A month the old software has billed is its bill as it stands: no website line or header is added to it
 const BILLED_MONTH: Record<string, string[]> = { bill: ['customer_id', 'month'], billno: ['customer_id', 'month'], billdel: ['customer_id', 'month'] };
+// The old software numbers these itself from MAX(id)+1 of its own table, and nothing else points to
+// them: a row new on the website takes the next number after the old software's highest, never the
+// website's own (Himanshu, 22 Nov 2026), so the numbers can't clash on the next round trip
+const NEXT_AFTER_OLD = new Set(['receipt', 'retailsale']);
 
 /**
  * Finds, for each website row, the same row in the old software's table: by its number when the rest
@@ -290,11 +294,12 @@ function matchOldRows(name: string, body: string, columns: Column[], rows: any[]
   if (pk) {
     const p = names.indexOf(pk);
     const taken = new Set(list.filter(x => x.match !== undefined).map(x => meaning(decoded[x.match!], pk)));
-    const all = [...decoded.map(r => Number(r[at.get(pk)!]) || 0), ...list.map(x => Number(tokenValue(x.tokens[p])) || 0)];
-    let next = Math.max(0, ...all);
+    const afterOld = NEXT_AFTER_OLD.has(base);
+    const all = [...decoded.map(r => Number(r[at.get(pk)!]) || 0), ...(afterOld ? [] : list.map(x => Number(tokenValue(x.tokens[p])) || 0))];
+    let next = all.reduce((a, b) => Math.max(a, b), 0);
     list.forEach((x, i) => {
       if (x.match !== undefined) numbers.set(i, old.rows[x.match][at.get(pk)!]);
-      else if (x.mine(pk) === '' || taken.has(x.mine(pk))) numbers.set(i, String(++next));
+      else if (afterOld || x.mine(pk) === '' || taken.has(x.mine(pk))) numbers.set(i, String(++next));
       else taken.add(x.mine(pk));
     });
   }
@@ -333,6 +338,10 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
 
   let added = 0, kept = 0, left = 0;
   const newIds: string[] = [];
+  // A new receipt or retail sale continues from the old software's highest number (MAX+1)
+  let nextOld = NEXT_AFTER_OLD.has(m.base) && m.pk
+    ? m.decoded.reduce((highest, r) => Math.max(highest, Number(r[m.at.get(m.pk!)!]) || 0), 0)
+    : -1;
   let changed = 0;
   const lines: { order: number | undefined; line: string }[] = [];
   m.list.forEach((x, r) => {
@@ -358,6 +367,8 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
     if (o && m.names.some((n, i) => m.at.has(n) && tokens[i] !== old.rows[x.match!][m.at.get(n)!])) changed++;
     if (!o) {
       added++;
+      // Numbered only now, once every row the old software has is found, so no number is skipped
+      if (nextOld >= 0) tokens[m.names.indexOf(m.pk!)] = String(++nextOld);
       if (m.pk) newIds.push(tokens[m.names.indexOf(m.pk)]);
       m.names.forEach((n, i) => {
         if (orElse[n] && sameMeaning(tokenValue(tokens[i])) === '') tokens[i] = tokens[m.names.indexOf(orElse[n])];
@@ -735,7 +746,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       columns: [
         ['sno', 'n', r => r.sno], ...['Customer_id', 'Publica_id', 'Hawker_id', 'Qty'].map(n => [n, 'n', (r: any) => pick(r.row, n)] as Column),
         ['Circulation', 's', r => pick(r.row, 'circulation')], ['S_Date', 'dmy', r => pick(r.row, 's_date')], ['C_Date', 'dmy', r => pick(r.row, 'c_date')],
-        ['From_Day', 's', r => pick(r.row, 'from_day')], ['Hawk_Sub', 'n', r => pick(r.row, 'hawk_sub')], ['Dis', 's', r => pick(r.row, 'dis') ?? ''], ['Dely', 'n', r => pick(r.row, 'dely')]
+        ['From_Day', 's', r => pick(r.row, 'from_day')], ['Hawk_Sub', 'n', r => Number(pick(r.row, 'hawk_sub')) || -1], ['Dis', 's', r => pick(r.row, 'dis') ?? ''], ['Dely', 'n', r => pick(r.row, 'dely')]
       ],
       rows: details.numbered
     },
@@ -759,7 +770,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       create: "`Publica_id` int(11) NOT NULL auto_increment,\n  `Public_name` varchar(50) default NULL,\n  `TypeP` varchar(15) default NULL,\n  `Publish_id` int(11) default NULL,\n  `Abrv` varchar(5) default NULL,\n  `Circulation` varchar(15) default NULL,\n  `Duration` tinytext,\n  `MagzineDay` tinytext,\n  `MagzineMonth` tinytext,\n  `ChrDel` tinyint(1) default NULL,\n  `Pub_Hindi` text,\n  PRIMARY KEY  (`Publica_id`)",
       columns: [
         col('Publica_id'), col('Public_name', 's'), col('TypeP', 's', 'type_p'), col('Publish_id'), col('Abrv', 's'), col('Circulation', 's'),
-        col('Duration', 's'), col('MagzineDay', 's', 'magzine_day'), col('MagzineMonth', 's', 'magzine_month'), col('ChrDel', 'n', 'chr_del'), col('Pub_Hindi', 'hindi')
+        ['Duration', 's', () => null], col('MagzineDay', 's', 'magzine_day'), col('MagzineMonth', 's', 'magzine_month'), col('ChrDel', 'n', 'chr_del'), col('Pub_Hindi', 'hindi')
       ],
       rows: get('publication')
     },
@@ -880,7 +891,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['MalRecpAmt', 'n', r => first(r.mal_recp_amt, pick(r, 'MalRecpAmt'))],
         ['Balance', 'n', r => first(remarksOf(r).balance, pick(r, 'Balance'), 0)], ['LessAmt', 'n', r => first(pick(r, 'less_amt'), 0)],
         ['RAmt', 'n', r => first(savedDetail(r, 'r_amt'), pick(r, 'RAmt')) ?? null],
-        ['ChequeNo', 's', r => first(remarksOf(r).cheque_no, pick(r, 'ChequeNo'), '')],
+        ['ChequeNo', 's', r => first(remarksOf(r).cheque_no, pick(r, 'ChequeNo')) ?? ''],
         ['ChequeDate', 's', r => (isoDate(remarksOf(r).cheque_date) ? dmy(remarksOf(r).cheque_date) : first(pick(r, 'ChequeDate'), '__/__/____'))],
         ['Debit', 'n', r => first(pick(r, 'Debit'), r.bill_amt)], ['Credit', 'n', r => first(pick(r, 'Credit'), r.mal_recp_amt)],
         ['Cash_Chq', 's', r => first(remarksOf(r).cash_chq, pick(r, 'Cash_Chq'), 'Cash')],

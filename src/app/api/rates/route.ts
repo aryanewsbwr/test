@@ -133,9 +133,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. Update Supabase rate table with explicit IDs (always update base rates)
-      // 3. Base rates
-      await replaceBaseRates(pubId, targetRates);
+      // 3. Base rates: only when the rates themselves are set. A rate change is only its ratechange rows,
+      // as in the old software: the rate table keeps the original base rate and billing takes the
+      // current one from ratechange (Himanshu, 22 Nov 2026)
+      if (!is_rate_change) await replaceBaseRates(pubId, targetRates);
 
       return NextResponse.json({
         success: true,
