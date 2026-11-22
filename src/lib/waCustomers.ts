@@ -40,5 +40,12 @@ export async function customersFor(numbers: string[]) {
       }
     }
   }
+  // Each customer's region name, so staff can see where the customer is
+  const regionIds = Array.from(new Set(Array.from(found.values()).flat().map(c => Number(c.region_id)).filter(Boolean)));
+  if (regionIds.length) {
+    const { data } = await supabaseAdmin.from('regiond').select('region_id, region_name').in('region_id', regionIds);
+    const names = new Map((data || []).map((r: any) => [Number(r.region_id), String(r.region_name || '').trim()]));
+    for (const list of Array.from(found.values())) for (const c of list) c.region_name = names.get(Number(c.region_id)) || '';
+  }
   return (number: string) => found.get(tenOf(number)) || [];
 }

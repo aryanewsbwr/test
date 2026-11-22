@@ -37,8 +37,10 @@ export default function WhatsAppPaymentsView() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [big]);
 
-  const load = useCallback(async () => {
-    setLoading(true); setMsg('');
+  // quiet: refresh the cards in place (after a save), without the loading screen that jumps to the top
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    setMsg('');
     try {
       const res = await fetch(`/api/whatsapp/payments?days=${days}`, { cache: 'no-store' });
       const data = await res.json();
@@ -55,8 +57,8 @@ export default function WhatsAppPaymentsView() {
   const tick = async (card: any, handled: boolean) => {
     setCards(list => list.map(c => (c.number === card.number ? { ...c, colour: handled ? 'grey' : c.colour, why: handled ? 'हो गया (टिक किया)' : c.why } : c)));
     const res = await fetch('/api/whatsapp/payments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: card.ids, handled }) });
-    if (!res.ok) { setMsg((await res.json().catch(() => ({}))).error || 'सेव नहीं हुआ'); load(); }
-    else if (!handled) load();
+    if (!res.ok) { setMsg((await res.json().catch(() => ({}))).error || 'सेव नहीं हुआ'); load(true); }
+    else if (!handled) load(true);
   };
 
   // Office / staff number: its messages are not customer payments
@@ -79,7 +81,7 @@ export default function WhatsAppPaymentsView() {
         <select value={days} onChange={e => setDays(Number(e.target.value))} className="px-1 py-1 border border-[#808080] font-bold">
           {[1, 3, 7, 15, 30].map(d => <option key={d} value={d}>{d === 1 ? 'आज' : `${d} दिन`}</option>)}
         </select>
-        <button onClick={load} className="px-3 py-1 bg-[#ECE9D8] border border-[#808080] font-bold cursor-pointer hover:bg-white">↻ Refresh</button>
+        <button onClick={() => load()} className="px-3 py-1 bg-[#ECE9D8] border border-[#808080] font-bold cursor-pointer hover:bg-white">↻ Refresh</button>
         <div className="ml-auto flex gap-1 flex-wrap">
           {(['all', 'green', 'yellow', 'red', 'grey'] as const).map(c => (
             <button key={c} onClick={() => setShow(c)}
@@ -122,13 +124,14 @@ export default function WhatsAppPaymentsView() {
                       ) : card.customers.map((c: any) => (
                         <div key={c.customer_id} className="leading-tight">
                           <b className="font-mono text-blue-900">#{c.customer_id}</b> <b>{c.name}</b>
+                          {c.region_name && <span className="text-[11px] text-slate-600"> · क्षेत्र <b>{c.region_name}</b></span>}
                           <div className="text-[11px] text-slate-700">
                             बकाया <b className={c.due > 1 ? 'text-red-700' : 'text-emerald-700'}>{rupees(c.due)}</b>
                             {c.last_receipt && <> · आखिरी रसीद {dmy(c.last_receipt.date)} ({rupees(c.last_receipt.amount)})</>}
                           </div>
                         </div>
                       ))}
-                      <WaCustomerLink number={card.number} customers={card.customers} onSaved={load} />
+                      <WaCustomerLink number={card.number} customers={card.customers} onSaved={() => load(true)} />
                       {texts.map((m: any) => {
                         const long = String(m.body).length > 160 || String(m.body).split('\n').length > 3;
                         const full = open.has(`${card.number}|${m.id}`);

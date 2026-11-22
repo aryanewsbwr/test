@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import WhatsAppPaymentsView from './WhatsAppPaymentsView';
+import { useWindowActive } from '@/components/MdiWindow';
 import WaCustomerLink from './WaCustomerLink';
 
 interface WhatsAppRepliesFormProps {
@@ -27,7 +28,7 @@ const CATEGORY_COLOUR: Record<string, string> = {
 
 function Customers({ list }: { list: Match[] }) {
   if (list.length === 0) return <span className="text-slate-400">नहीं मिला</span>;
-  return <>{list.map(c => <div key={c.customer_id}><b className="font-mono text-blue-900">#{c.customer_id}</b> {c.name}</div>)}</>;
+  return <>{list.map(c => <div key={c.customer_id}><b className="font-mono text-blue-900">#{c.customer_id}</b> {c.name}{(c as any).region_name && <span className="text-slate-600"> · {(c as any).region_name}</span>}</div>)}</>;
 }
 
 export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProps) {
@@ -39,8 +40,9 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // quiet: refresh in place (after a save), so the list does not jump to the top
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     setMsg('');
     try {
       const res = await fetch(`/api/whatsapp/replies?${pendingOnly ? 'pending=1' : `date=${date}`}`);
@@ -58,6 +60,15 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
   }, [date, pendingOnly]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Esc does not close WhatsApp Replies (it is easy to press while working on the cards); the
+  // search box and the enlarged picture close themselves first. Close with the ✕ or Close button.
+  const windowActive = useWindowActive();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && windowActive.current) e.preventDefault(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [windowActive]);
 
   const change = async (id: number, fields: { handled?: boolean; note?: string }) => {
     setReplies(rows => rows.map(r => (r.id === id ? { ...r, ...fields } : r)));
@@ -106,7 +117,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
             <input type="checkbox" checked={pendingOnly} onChange={e => { setPendingOnly(e.target.checked); setTab('replies'); }} />
             सभी बाकी जवाब (हर तारीख के)
           </label>
-          <button onClick={load} className="px-3 py-1 bg-[#ECE9D8] border border-[#808080] font-bold cursor-pointer hover:bg-white">↻ Refresh</button>
+          <button onClick={() => load()} className="px-3 py-1 bg-[#ECE9D8] border border-[#808080] font-bold cursor-pointer hover:bg-white">↻ Refresh</button>
           </>}
           <div className="ml-auto flex gap-1">
             <button onClick={() => setTab('payments')}
@@ -163,7 +174,7 @@ export default function WhatsAppRepliesForm({ onClose }: WhatsAppRepliesFormProp
                       <div className="font-mono">{shown(r.from_number)}</div>
                       <div className="text-slate-500">{r.profile_name}</div>
                     </td>
-                    <td className="p-1 border-r"><Customers list={r.customers} /><WaCustomerLink number={r.from_number} customers={r.customers} onSaved={load} /></td>
+                    <td className="p-1 border-r"><Customers list={r.customers} /><WaCustomerLink number={r.from_number} customers={r.customers} onSaved={() => load(true)} /></td>
                     <td className="p-1 border-r">
                       <span className={`px-1.5 py-0.5 rounded font-bold ${CATEGORY_COLOUR[r.shreni] || ''}`}>{r.shreni}</span>
                     </td>

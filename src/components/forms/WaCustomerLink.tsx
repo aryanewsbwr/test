@@ -19,6 +19,13 @@ export default function WaCustomerLink({ number, customers, onSaved }: { number:
     allCustomers().then(setAll).catch(() => setErr('ग्राहक लिस्ट नहीं आई, फिर कोशिश करें'));
   }, [open, all]);
   const found = useMemo(() => (all ? searchCustomers(all, q) : []), [all, q]);
+  // Esc closes this search box (wherever the cursor is), not the WhatsApp Replies window
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setOpen(false); setQ(''); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
   useEffect(() => { setPick(0); }, [q]);
 
   const link = async (customerId: number) => {
@@ -52,7 +59,6 @@ export default function WaCustomerLink({ number, customers, onSaved }: { number:
               if (e.key === 'ArrowDown') { e.preventDefault(); setPick(i => Math.min(i + 1, Math.max(found.length - 1, 0))); }
               else if (e.key === 'ArrowUp') { e.preventDefault(); setPick(i => Math.max(i - 1, 0)); }
               else if (e.key === 'Enter' && found[pick]) { e.preventDefault(); link(found[pick].customer_id); }
-              else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setOpen(false); }
             }}
             className="w-full px-1.5 py-0.5 border border-slate-400 font-bold" />
           {!all && <div className="text-slate-500 px-1">ग्राहक लिस्ट लोड हो रही है (पहली बार 2-3 सेकंड)...</div>}
@@ -62,6 +68,7 @@ export default function WaCustomerLink({ number, customers, onSaved }: { number:
               className={`w-full text-left px-1 py-0.5 cursor-pointer ${i === pick ? 'bg-[#0A246A] text-white' : 'hover:bg-blue-100'}`}>
               <b className={`font-mono ${i === pick ? 'text-yellow-200' : 'text-blue-900'}`}>#{c.customer_id}</b> {c.name_hindi || c.name_eng}
               {c.name_hindi && c.name_eng && <span className={i === pick ? 'text-slate-200' : 'text-slate-500'}> · {c.name_eng}</span>}
+              {c.region && <span className={i === pick ? 'text-yellow-100' : 'text-emerald-800'}> · {c.region}</span>}
             </button>
           ))}
         </div>

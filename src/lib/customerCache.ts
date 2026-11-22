@@ -2,17 +2,23 @@
 
 // Every customer (number, names, phone), loaded once per browser session, so a customer search can
 // filter instantly as you type instead of asking the server on every letter.
-export interface CachedCustomer { customer_id: number; name_eng: string; name_hindi: string; phone: string }
+export interface CachedCustomer { customer_id: number; name_eng: string; name_hindi: string; phone: string; region: string }
 
 let loading: Promise<CachedCustomer[]> | null = null;
 
 export function allCustomers(): Promise<CachedCustomer[]> {
   if (!loading) {
-    loading = fetch('/api/customers?all=true')
-      .then(r => r.json())
-      .then(d => (d.customers || []).map((c: any) => ({
-        customer_id: Number(c.customer_id), name_eng: String(c.name_eng || ''), name_hindi: String(c.name_hindi || ''), phone: String(c.phone || '')
-      })))
+    loading = Promise.all([
+      fetch('/api/customers?all=true').then(r => r.json()),
+      fetch('/api/regions?all=1').then(r => r.json()).catch(() => ({ regions: [] }))
+    ])
+      .then(([d, rg]) => {
+        const regions = new Map<number, string>((rg.regions || []).map((r: any) => [Number(r.region_id), String(r.region_name || '').trim()]));
+        return (d.customers || []).map((c: any) => ({
+          customer_id: Number(c.customer_id), name_eng: String(c.name_eng || ''), name_hindi: String(c.name_hindi || ''), phone: String(c.phone || ''),
+          region: regions.get(Number(c.region_id)) || ''
+        }));
+      })
       .catch(err => { loading = null; throw err; });
   }
   return loading;
