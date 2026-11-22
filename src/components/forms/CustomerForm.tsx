@@ -91,7 +91,7 @@ export default function CustomerForm({
   // Insert Item Dialog State
   const [isInsertOpen, setIsInsertOpen] = useState(false);
   // Stopping a paper asks for the date it stopped (today unless changed: it may be entered days later)
-  const [stopRow, setStopRow] = useState<{ sno: number; date: string; error: string } | null>(null);
+  const [stopRow, setStopRow] = useState<{ sno: number; date: string; error: string; kind: 'temp' | 'perm'; to: string } | null>(null);
   const [isSavingSub, setIsSavingSub] = useState(false);
   const [insertError, setInsertError] = useState('');
   const [insertForm, setInsertForm] = useState({
@@ -518,17 +518,49 @@ export default function CustomerForm({
   };
 
   // Stop button: ask for the date first
-  const askStopDate = (sno: number) => setStopRow({ sno, date: todayLocalIso(), error: '' });
+  const askStopDate = (sno: number) => {
+    const t = new Date(); t.setDate(t.getDate() + 2);
+    const to = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    setStopRow({ sno, date: todayLocalIso(), error: '', kind: 'temp', to });
+  };
   const confirmStopDate = () => {
     if (!stopRow) return;
     const sub = subscriptions.find(x => x.sno === stopRow.sno);
     const start = isoDate(sub?.s_date);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(stopRow.date)) { setStopRow({ ...stopRow, error: 'तारीख डालें।' }); return; }
     if (start && stopRow.date < start) { setStopRow({ ...stopRow, error: `बंद की तारीख शुरू की तारीख (${start.split('-').reverse().join('/')}) से पहले नहीं हो सकती।` }); return; }
+    // Temporary: the paper stops from - to and starts again by itself (like Transaction > Discontinue)
+    if (stopRow.kind === 'temp') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(stopRow.to)) { setStopRow({ ...stopRow, error: 'कब तक बंद — तारीख डालें।' }); return; }
+      if (stopRow.to < stopRow.date) { setStopRow({ ...stopRow, error: '"तक" की तारीख "से" से पहले नहीं हो सकती।' }); return; }
+      const { sno, date, to } = stopRow;
+      setStopRow(null);
+      saveTemporaryStop(sno, date, to);
+      return;
+    }
     if (stopRow.date > todayLocalIso()) { setStopRow({ ...stopRow, error: 'आगे की तारीख नहीं — अखबार बंद होने के दिन ही डालें।' }); return; }
     const { sno, date } = stopRow;
     setStopRow(null);
     handleDiscontinueSubscriptionRow(sno, date);
+  };
+
+  const saveTemporaryStop = async (sno: number, fromIso: string, toIso: string) => {
+    const sub = subscriptions.find(x => x.sno === sno);
+    if (!sub) return;
+    const show = (d: string) => d.split('-').reverse().join('/');
+    try {
+      const res = await fetch('/api/discontinue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: selectedCustId, publica_id: sub.publica_id || (sub as any).publication_id, temp_perma: 'Temporary', temp_from: fromIso, temp_to: toIso })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || 'सेव नहीं हुआ');
+      setStatus(`✓ ${sub.publication_name || 'अखबार'} ${show(fromIso)} से ${show(toIso)} तक बंद (अस्थाई) — उसके बाद अपने आप चालू।`);
+    } catch (err: any) {
+      setStatus(`Error: अस्थाई बंद सेव नहीं हुआ — ${err.message || err}`);
+    }
+    setTimeout(() => setStatus(''), 6000);
   };
 
   const handleDiscontinueSubscriptionRow = async (sno: number, stopIso: string) => {
@@ -660,6 +692,35 @@ export default function CustomerForm({
 
       {/* Main Body matching screenshot_05.jpg */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs min-h-0">
+        {/* Tabs: 1 Customer, 2 Retail Sale to Permanent Customer (for the customer open here) */}
+        <div className="flex items-end gap-1 border-b-2 border-[#0A246A] -mx-1 px-1">
+          {([['subs', '👤 Customer (ग्राहक)'], ['retail', '🛒 Retail Sale (रिटेल सेल)']] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setSubTab(key)}
+              className={`px-4 py-1 text-xs font-bold border border-b-0 rounded-t cursor-pointer ${subTab === key ? 'bg-[#0A246A] text-white border-[#0A246A]' : 'bg-[#ECE9D8] text-slate-700 border-slate-400 hover:bg-white'}`}>
+              {label}
+            </button>
+          ))}
+          {subTab === 'retail' && selectedCustId ? <span className="ml-auto pb-1 font-bold text-[#0A246A]">#{selectedCustId} {nameHindi || nameEng}</span> : null}
+        </div>
+
+        {subTab === 'retail' && (
+            selectedCustId ? (
+              <RetailSalePermanentForm
+                embedded
+                isOpen={subTab === 'retail'}
+                onClose={() => setSubTab('subs')}
+                publications={publications}
+                rates={rates}
+                ratechanges={ratechanges}
+                customers={[]}
+                initialCustomer={{ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, add1, hindi_add: hindiAdd, phone, region_id: regionId } as any}
+              />
+            ) : (
+              <div className="p-4 text-center font-bold text-[#800000] bg-white border border-[#808080]">पहले ग्राहक खोलें (Find Customer), फिर रिटेल सेल डालें।</div>
+            )
+        )}
+
+        <div className={subTab === 'retail' ? 'hidden' : 'space-y-2'}>
 
         {/* Header Title */}
         <h2 className="text-center font-black text-[#000080] text-base tracking-wider">
@@ -857,9 +918,9 @@ export default function CustomerForm({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => { setSubFilter('active'); setSubTab('subs'); }}
+                onClick={() => setSubFilter('active')}
                 className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
-                  subFilter === 'active' && subTab === 'subs'
+                  subFilter === 'active'
                     ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
                     : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
                 }`}
@@ -868,25 +929,14 @@ export default function CustomerForm({
               </button>
               <button
                 type="button"
-                onClick={() => { setSubFilter('all'); setSubTab('subs'); }}
+                onClick={() => setSubFilter('all')}
                 className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
-                  subFilter === 'all' && subTab === 'subs'
+                  subFilter === 'all'
                     ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs'
                     : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
                 }`}
               >
                 All Subscription History (सभी इतिहास: {subscriptions.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubTab(t => (t === 'retail' ? 'subs' : 'retail'))}
-                className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
-                  subTab === 'retail'
-                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                    : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
-                }`}
-              >
-                🛒 Retail Sale (रिटेल सेल)
               </button>
             </div>
 
@@ -901,22 +951,6 @@ export default function CustomerForm({
             </div>
           </div>
 
-          {subTab === 'retail' ? (
-            selectedCustId ? (
-              <RetailSalePermanentForm
-                embedded
-                isOpen={subTab === 'retail'}
-                onClose={() => setSubTab('subs')}
-                publications={publications}
-                rates={rates}
-                ratechanges={ratechanges}
-                customers={[]}
-                initialCustomer={{ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, add1, hindi_add: hindiAdd, phone, region_id: regionId } as any}
-              />
-            ) : (
-              <div className="p-4 text-center font-bold text-[#800000] bg-white border border-[#808080]">पहले ग्राहक खोलें (Find Customer), फिर रिटेल सेल डालें।</div>
-            )
-          ) : (<>
           <div className="border border-[#808080] bg-white shadow-inner overflow-auto max-h-[45vh]">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-[#ECE9D8] text-slate-900 font-bold border-b sticky top-0 text-[11px]">
@@ -1053,7 +1087,6 @@ export default function CustomerForm({
               <Plus className="w-3 h-3" /> + Insert Item
             </button>
           </div>
-          </>)}
         </div>
 
         {status && (
@@ -1103,6 +1136,7 @@ export default function CustomerForm({
           </button>
         </div>
 
+        </div>
       </div>
 
       {/* Insert Item Popup Dialog */}
@@ -1283,17 +1317,32 @@ export default function CustomerForm({
               <span>अखबार बंद करें — {subscriptions.find(x => x.sno === stopRow.sno)?.publication_name || ''}</span>
               <button onClick={() => setStopRow(null)} className="text-white hover:text-red-300 font-bold">✕</button>
             </div>
+            <div className="flex items-center gap-4 font-bold">
+              <label className="flex items-center gap-1 cursor-pointer"><input type="radio" checked={stopRow.kind === 'temp'} onChange={() => setStopRow({ ...stopRow, kind: 'temp', error: '' })} /> अस्थाई (कुछ दिन, Temporary)</label>
+              <label className="flex items-center gap-1 cursor-pointer"><input type="radio" checked={stopRow.kind === 'perm'} onChange={() => setStopRow({ ...stopRow, kind: 'perm', error: '' })} /> स्थाई बंद (Permanent)</label>
+            </div>
             <label className="flex items-center gap-2 font-bold text-[#000080]">
-              किस तारीख से बंद
-              <input type="date" autoFocus value={stopRow.date} max={todayLocalIso()}
+              {stopRow.kind === 'temp' ? 'से (From)' : 'किस तारीख से बंद'}
+              <input type="date" autoFocus value={stopRow.date} max={stopRow.kind === 'perm' ? todayLocalIso() : undefined}
                 onChange={e => setStopRow({ ...stopRow, date: e.target.value, error: '' })}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmStopDate(); } }}
                 className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold" />
             </label>
-            <p className="text-[11px] text-slate-600">जिस दिन अखबार बंद हुआ वह तारीख डालें (एंट्री बाद में कर रहे हों तब भी)। Enter = बंद करें, Esc = वापस।</p>
+            {stopRow.kind === 'temp' && (
+              <label className="flex items-center gap-2 font-bold text-[#000080]">
+                तक (To)
+                <input type="date" value={stopRow.to} min={stopRow.date}
+                  onChange={e => setStopRow({ ...stopRow, to: e.target.value, error: '' })}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmStopDate(); } }}
+                  className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold" />
+              </label>
+            )}
+            <p className="text-[11px] text-slate-600">{stopRow.kind === 'temp'
+              ? 'इन दिनों का अखबार नहीं जाएगा और बिल में नहीं जुड़ेगा; "तक" के अगले दिन से अपने आप चालू।'
+              : 'जिस दिन अखबार बंद हुआ वह तारीख डालें (एंट्री बाद में कर रहे हों तब भी)।'} Enter = सेव, Esc = वापस।</p>
             {stopRow.error && <div className="text-red-700 font-bold">{stopRow.error}</div>}
             <div className="flex justify-end gap-2 pt-1">
-              <button onClick={confirmStopDate} className="px-4 py-1 bg-amber-100 border border-amber-500 font-bold text-amber-900">बंद करें</button>
+              <button onClick={confirmStopDate} className="px-4 py-1 bg-amber-100 border border-amber-500 font-bold text-amber-900">{stopRow.kind === 'temp' ? 'अस्थाई बंद करें' : 'बंद करें'}</button>
               <button onClick={() => setStopRow(null)} className="px-4 py-1 bg-[#ECE9D8] border border-black font-bold">Cancel</button>
             </div>
           </div>

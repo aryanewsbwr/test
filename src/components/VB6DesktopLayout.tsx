@@ -150,7 +150,9 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         win.style.maxHeight = '';
         const current = parseFloat(getComputedStyle(win).zoom) || 1;
         const natural = win.getBoundingClientRect().height / current;
-        let zoom = Math.max(0.85, Math.min(base, room / natural));
+        // The text never shrinks for a tall window (many papers): the window keeps its size and
+        // its contents scroll inside it instead
+        let zoom = base;
         if (Math.abs(zoom - current) < 0.02) zoom = current;
         win.style.zoom = String(zoom);
         win.style.maxHeight = natural * zoom > room ? `${room / zoom}px` : '';
