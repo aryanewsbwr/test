@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import WaCustomerLink from './WaCustomerLink';
 
 // Online payments sent on WhatsApp, one card per number, coloured by what to do next:
@@ -25,6 +26,13 @@ export default function WhatsAppPaymentsView() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [big, setBig] = useState<string | null>(null);
+  // Esc closes the enlarged screenshot first (not the window)
+  useEffect(() => {
+    if (!big) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setBig(null); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [big]);
 
   const load = useCallback(async () => {
     setLoading(true); setMsg('');
@@ -161,11 +169,14 @@ export default function WhatsAppPaymentsView() {
         हरा: स्क्रीनशॉट आया, रसीद काटें · पीला: खुद देखें · लाल: नंबर किसी ग्राहक का नहीं · ग्रे: रसीद बन गई या टिक किया (रसीद काटने के बाद Refresh करें)।
       </div>
 
-      {big && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setBig(null)}>
+      {/* The enlarged screenshot is drawn over the whole page (not inside the window, where the
+          menu bar would cover its top); click anywhere or press Esc to close */}
+      {big && createPortal(
+        <div className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setBig(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={big} alt="screenshot" className="max-h-full max-w-full rounded shadow-2xl" />
-        </div>
+          <img src={big} alt="screenshot" className="max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] object-contain rounded shadow-2xl" />
+        </div>,
+        document.body
       )}
     </div>
   );

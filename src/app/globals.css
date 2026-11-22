@@ -175,3 +175,7 @@ html:not(.desktop2) .d2-desk {
   background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(180deg, #3A5F86 0%, #2C4A6B 100%);
   background-size: 22px 22px, 100% 100%;
 }
+
+/* A window showing a pop-up over the whole screen (inside the screen) comes above the menu bar,
+   so the pop-up is not cut off at the top */
+.mdi-win:has(.d2-window .fixed.inset-0) { z-index: 1000 !important; }
