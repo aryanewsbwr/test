@@ -718,34 +718,28 @@ export default function CustomerForm({
           {subTab !== 'subs' && selectedCustId ? <span className="ml-auto pb-1 font-bold text-[#0A246A]">#{selectedCustId} {nameHindi || nameEng}</span> : null}
         </div>
 
+        {/* Their own customer search: the customer open here is only where they start, and choosing
+            another customer there leaves the Customer tab as it is */}
         {subTab === 'disc' && (
-            selectedCustId ? (
-              <DiscontinueForm
-                embedded
-                onClose={() => setSubTab('subs')}
-                publications={publications}
-                initialCustomer={{ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, region_id: regionId } as any}
-              />
-            ) : (
-              <div className="p-4 text-center font-bold text-[#800000] bg-white border border-[#808080]">पहले ग्राहक खोलें (Find Customer), फिर पेपर बंद करें।</div>
-            )
+          <DiscontinueForm
+            embedded
+            onClose={() => setSubTab('subs')}
+            publications={publications}
+            initialCustomer={selectedCustId ? ({ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, region_id: regionId } as any) : null}
+          />
         )}
 
         {subTab === 'retail' && (
-            selectedCustId ? (
-              <RetailSalePermanentForm
-                embedded
-                isOpen={subTab === 'retail'}
-                onClose={() => setSubTab('subs')}
-                publications={publications}
-                rates={rates}
-                ratechanges={ratechanges}
-                customers={[]}
-                initialCustomer={{ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, add1, hindi_add: hindiAdd, phone, region_id: regionId } as any}
-              />
-            ) : (
-              <div className="p-4 text-center font-bold text-[#800000] bg-white border border-[#808080]">पहले ग्राहक खोलें (Find Customer), फिर रिटेल सेल डालें।</div>
-            )
+          <RetailSalePermanentForm
+            embedded
+            isOpen={subTab === 'retail'}
+            onClose={() => setSubTab('subs')}
+            publications={publications}
+            rates={rates}
+            ratechanges={ratechanges}
+            customers={[]}
+            initialCustomer={selectedCustId ? ({ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, add1, hindi_add: hindiAdd, phone, region_id: regionId } as any) : null}
+          />
         )}
 
         <div className={subTab !== 'subs' ? 'hidden' : 'space-y-2'}>
