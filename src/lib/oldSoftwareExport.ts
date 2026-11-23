@@ -408,6 +408,18 @@ function billNumbers(specs: Map<string, OldTableSpec>, year: string, old: OldRow
     return (row: any) => (c ? c[2](row) : undefined);
   };
   const id = value(headers, 'bill_id'), customer = value(headers, 'customer_id'), month = value(headers, 'month');
+  // A bill new on the website takes the next number after the old software's highest (MAX+1), as the old
+  // software numbers its own (Himanshu, 23 Nov 2026). A bill for a month the old software has billed is
+  // left out of the file, so it takes no number.
+  const [cAt, mAt, pAt] = ['customer_id', 'month', m.pk || ''].map(n => m.at.get(n));
+  if (cAt !== undefined && mAt !== undefined && pAt !== undefined) {
+    const billedThere = new Set(m.decoded.map(r => `${sameMeaning(r[cAt])}|${sameMeaning(r[mAt])}`));
+    let next = m.decoded.reduce((highest, r) => Math.max(highest, Number(r[pAt]) || 0), 0);
+    headers.rows.forEach((row, i) => {
+      if (m.list[i].match !== undefined || billedThere.has(`${sameMeaning(customer(row))}|${sameMeaning(month(row))}`)) return;
+      m.numbers.set(i, String(++next));
+    });
+  }
   const website = new Map<number, { to: number; customer: number }>();
   const written = new Map<number, number>();
   const byMonth = new Map<string, number>();
@@ -717,9 +729,46 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
     }
   }
   const phoneHere = (r: any) => {
+    if (newNumbers(r).length) return phoneThere.get(Number(pick(r, 'customer_id'))) ?? '';
     const numbers = tenDigitMobiles(pick(r, 'phone'));
     const there = mobilesThere.get(Number(pick(r, 'customer_id')));
     return numbers.length && there && numbers.every(n => there.has(n)) ? '' : pick(r, 'phone');
+  };
+  // The subscription a stop is for: by its start date, or else the one running on the stop's first day.
+  // The old software fills a stop's S_Date and Hawker_id from it.
+  const stoppedSubscription = (r: any) => {
+    const list = details.lookup.get(`${Number(pick(r, 'customer_id'))}|${pick(r, 'publica_id')}`) || [];
+    const start = isoDate(pick(r, 's_date'));
+    if (start) return list.find(s => s.start === start);
+    const from = isoDate(pick(r, 'temp_from')) || '';
+    const running = list.filter(s => s.start <= from && (!s.end || s.end >= from));
+    return running.reduce<(typeof list)[number] | undefined>((best, s) => (!best || s.start > best.start ? s : best), undefined);
+  };
+  // The old software's billing number is the first in Hindi_Add, and customer_mobile follows it. A number
+  // new on the website (one the old software has nowhere for the customer) goes there, 10 digits, in
+  // place of the first number; the phone stays as the old software has it (Himanshu, 23 Nov 2026).
+  const numbersThere = new Map<number, Set<string>>();
+  const phoneThere = new Map<number, any>();
+  const oldCustomers = old?.get('customer');
+  if (oldCustomers) {
+    const [c, ph, ha] = ['customer_id', 'phone', 'hindi_add'].map(n => oldCustomers.columns.indexOf(n));
+    for (const raw of oldCustomers.rows) {
+      const id = Number(tokenValue(raw[c]));
+      phoneThere.set(id, tokenValue(raw[ph]));
+      numbersThere.set(id, new Set([...tenDigitMobiles(tokenValue(raw[ph])), ...(ha >= 0 ? tenDigitMobiles(tokenValue(raw[ha])) : [])]));
+    }
+  }
+  const newNumbers = (r: any) => {
+    const id = Number(pick(r, 'customer_id'));
+    const known = new Set([...Array.from(numbersThere.get(id) || []), ...Array.from(mobilesThere.get(id) || []), ...tenDigitMobiles(pick(r, 'hindi_add'))]);
+    return tenDigitMobiles(pick(r, 'phone')).filter(n => !known.has(n));
+  };
+  const hindiAddHere = (r: any) => {
+    const text = String(pick(r, 'hindi_add') ?? '');
+    const fresh = newNumbers(r);
+    if (!fresh.length) return pick(r, 'hindi_add');
+    const firstNumber = /(?<!\d)[6-9]\d{9}(?!\d)/;
+    return firstNumber.test(text) ? text.replace(firstNumber, fresh.join(' ')) : [fresh.join(' '), text.trim()].filter(Boolean).join(' ');
   };
   const openSubscriptions = new Set(get('customer_detail').filter(d => !isoDate(pick(d, 'c_date'))).map(d => Number(pick(d, 'customer_id'))));
 
@@ -733,7 +782,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         ['name_hindi', 'hindi', r => (pick(r, 'name_hindi') || pick(r, 'name_hindi_unicode') || null)],
         col('add1', 's'), col('add2', 's'), ['phone', 's', phoneHere], col('Security_Deposit'), col('Type', 's'), col('Priority'),
         col('Self_Agent'), col('FontType', 'n', 'font_type'), col('dueamount'), col('Region_id'), col('Paid', 's'), col('Delivery'),
-        col('Discount'), col('GovtSupply', 'n', 'govt_supply'), col('Hindi_Add', 'hindi', 'hindi_add'), col('Cbal'), col('pmonth', 's'), col('pyear', 's'),
+        col('Discount'), col('GovtSupply', 'n', 'govt_supply'), ['Hindi_Add', 'hindi', hindiAddHere], col('Cbal'), col('pmonth', 's'), col('pyear', 's'),
         // Kept by the website once old_software_marks.sql has run; until then a customer with no running paper counts as inactive
         ['is_inactive', 'n', r => pick(r, 'is_inactive') ?? (openSubscriptions.has(Number(pick(r, 'customer_id'))) ? 0 : 1)]
       ],
@@ -828,7 +877,7 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
       name: 'publicationsup',
       mode: 'replace',
       create: "`Publica_id` int(11) default NULL,\n  `PublicaSup_id` int(11) default NULL,\n  `Month` text,\n  `Year` text,\n  `Region_id` int(11) default NULL",
-      columns: [col('Publica_id'), col('PublicaSup_id'), col('Month', 's'), col('Year', 's'), col('Region_id')],
+      columns: [col('Publica_id'), col('PublicaSup_id'), ['Month', 's', r => oldMonth(pick(r, 'month'))], col('Year', 's'), col('Region_id')],
       rows: get('publicationsup')
     },
     {
@@ -839,9 +888,10 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
         col('Discontinue_id'), col('SNo', 'n', 'sno'), ['EntryDate', 'dmy', r => pick(r, 'entry_date')], col('Customer_id'), col('Publica_id'),
         ['Temp_Perma', 's', r => (/^p/i.test(String(pick(r, 'temp_perma') || '')) ? 'P' : 'T')],
         ['Temp_From', 'date', r => pick(r, 'temp_from')], ['Temp_To', 'date', r => pick(r, 'temp_to')],
-        ['S_Date', 'dmy', r => pick(r, 's_date')], ['C_Date', 'dmy', r => pick(r, 'c_date')],
-        ['Hawker_id', 'n', r => pick(r, 'hawker_id') ?? (details.lookup.get(`${Number(pick(r, 'customer_id'))}|${pick(r, 'publica_id')}`) || [])
-          .find(s => s.start === isoDate(pick(r, 's_date')))?.hawker ?? null]
+        ['S_Date', 'dmy', r => pick(r, 's_date') || stoppedSubscription(r)?.start || null],
+        // A temporary stop closes nothing: the old software leaves its C_Date NULL
+        ['C_Date', 's', r => (isoDate(pick(r, 'c_date')) ? dmy(pick(r, 'c_date')) : null)],
+        ['Hawker_id', 'n', r => pick(r, 'hawker_id') ?? stoppedSubscription(r)?.hawker ?? null]
       ],
       rows: perPaperStops(get('discontinue').filter(r => r.financial_year === label || (!r.financial_year && suffix === fySuffix())), get('customer_detail'))
     },

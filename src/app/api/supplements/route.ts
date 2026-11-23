@@ -9,6 +9,8 @@ export const dynamic = 'force-dynamic';
 // The publicationsup table holds one row per region, the same as the old software. The screen
 // shows one entry per supplement, so rows saved together are grouped back into one, named by
 // the lowest row id. Region 0 means every region.
+// The old software's own month names (Nov, Sept, July...): billing there matches on them
+const VB6_MONTHS = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
 const groupKey = (r: any) => [r.publicasup_id, r.publica_id, r.month, r.year, r.rate ?? '', r.supplement_name ?? '', r.sup_date ?? ''].join('|');
 
 async function loadSupplements(): Promise<any[]> {
@@ -90,9 +92,37 @@ export async function POST(request: NextRequest) {
 
     const dateIso = parseLegacyDateToIso(date) || new Date().toISOString().split('T')[0];
     const dateObj = new Date(dateIso + 'T12:00:00');
-    const monthName = MONTH_NAMES[dateObj.getMonth()];
+    const monthName = VB6_MONTHS[dateObj.getMonth()];
     const yearStr = String(dateObj.getFullYear());
     const regions: number[] = all_regions || !Array.isArray(region_ids) || region_ids.length === 0 ? [0] : region_ids.map(Number);
+
+    // An edit that only adds or removes regions leaves the rows already there as they are (the old
+    // software's own rows): only the new regions are added and the dropped ones removed
+    const before = id ? (await loadSupplements()).find(s => s.id === Number(id)) : null;
+    const sameEntry = before && Number(before.publicasup_id) === parentPubId && Number(before.publica_id) === suppPubId &&
+      String(before.month || '').toLowerCase().slice(0, 3) === monthName.toLowerCase().slice(0, 3) && String(before.year) === yearStr &&
+      Number(before.rate || 0) === Number(rate || 0);
+    if (before && sameEntry) {
+      const existing = (await fetchAllRows('publicationsup', 'id')).filter((r: any) => before.row_ids.includes(Number(r.id)));
+      const have = new Set(existing.map((r: any) => Number(r.region_id || 0)));
+      const template = existing[0] || {};
+      let nextRow = await nextId('publicationsup');
+      const added = regions.filter(regionId => !have.has(regionId)).map(regionId => ({
+        id: nextRow++, publicasup_id: parentPubId, publica_id: suppPubId, month: template.month ?? monthName, year: template.year ?? yearStr,
+        region_id: regionId, rate: template.rate ?? null, supplement_name: template.supplement_name ?? null, sup_date: template.sup_date ?? null
+      }));
+      if (added.length) {
+        const { error } = await supabaseAdmin.from('publicationsup').insert(added);
+        if (error) throw new Error(`Could not save supplement: ${error.message}`);
+      }
+      const dropped = existing.filter((r: any) => !regions.includes(Number(r.region_id || 0))).map((r: any) => Number(r.id));
+      if (dropped.length) {
+        const { error } = await supabaseAdmin.from('publicationsup').delete().in('id', dropped);
+        if (error) throw new Error(`Regions added, but the removed ones were not deleted: ${error.message}`);
+      }
+      const record = (await loadSupplements()).find(s => s.row_ids.some((r: number) => before.row_ids.includes(r) || added.some(a => a.id === r)));
+      return NextResponse.json({ success: true, message: `Publication supplement saved successfully!`, supplement: record });
+    }
 
     let rowId = await nextId('publicationsup');
     const rows = regions.map(regionId => ({
@@ -107,8 +137,7 @@ export async function POST(request: NextRequest) {
       sup_date: dateIso
     }));
 
-    // An edit replaces the entry's rows. The new rows go in first, so a failure keeps the old entry.
-    const before = id ? (await loadSupplements()).find(s => s.id === Number(id)) : null;
+    // Any other edit replaces the entry's rows. The new rows go in first, so a failure keeps the old entry.
     const { data: saved, error } = await supabaseAdmin.from('publicationsup').insert(rows).select();
     if (error) throw new Error(`Could not save supplement: ${error.message}`);
     if (before) {
