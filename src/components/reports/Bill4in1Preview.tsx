@@ -174,6 +174,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                   qtyOrDays: number | string;
                   rate: number | null;
                   amount: number;
+                  delivery?: number;
                 }> = [];
 
                 if (printMode === 'simple') {
@@ -229,7 +230,8 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       pub_name: it.pub_name,
                       qtyOrDays,
                       rate: it.rate,
-                      amount: roundToFoxProRule(it.amount)
+                      amount: roundToFoxProRule(it.amount),
+                      delivery: it.delivery_amount || 0
                     };
                   });
                 }
@@ -310,9 +312,10 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       <table className="w-full border-collapse text-[9px]">
                         <thead>
                           <tr className="border-y-2 border-black font-extrabold">
-                            <th className="py-0.5 px-1 text-left w-[50%] border-r border-black font-black">PARTICULARS</th>
-                            <th className="py-0.5 px-0.5 text-center w-[13%] border-r border-black font-black">QTY.</th>
-                            <th className="py-0.5 px-1 text-right w-[16%] border-r border-black font-black">RATE</th>
+                            <th className={`py-0.5 px-1 text-left ${printMode === 'detail' ? 'w-[38%]' : 'w-[50%]'} border-r border-black font-black`}>PARTICULARS</th>
+                            <th className={`py-0.5 px-0.5 text-center ${printMode === 'detail' ? 'w-[11%]' : 'w-[13%]'} border-r border-black font-black`}>QTY.</th>
+                            <th className={`py-0.5 px-1 text-right ${printMode === 'detail' ? 'w-[14%]' : 'w-[16%]'} border-r border-black font-black`}>RATE</th>
+                            {printMode === 'detail' && <th className="py-0.5 px-1 text-right w-[16%] border-r border-black font-black">DEL.</th>}
                             <th className="py-0.5 px-1 text-right w-[21%] font-black">AMOUNT</th>
                           </tr>
                         </thead>
@@ -325,6 +328,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                                   <td className="py-0.5 px-1 border-r border-black truncate font-medium">{it.pub_name}</td>
                                   <td className="py-0.5 px-0.5 border-r border-black text-center font-mono">{it.qtyOrDays}</td>
                                   <td className="py-0.5 px-1 border-r border-black text-right font-mono">{it.rate !== null && it.rate !== undefined ? formatMoney(it.rate) : ''}</td>
+                                  {printMode === 'detail' && <td className="py-0.5 px-1 border-r border-black text-right font-mono">{it.delivery ? formatMoney(it.delivery) : ''}</td>}
                                   <td className="py-0.5 px-1 text-right font-mono font-bold">{formatMoney(it.amount)}</td>
                                 </tr>
                               );
@@ -334,6 +338,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                                 <td className="py-0.5 px-1 border-r border-black">&nbsp;</td>
                                 <td className="py-0.5 px-0.5 border-r border-black">&nbsp;</td>
                                 <td className="py-0.5 px-1 border-r border-black">&nbsp;</td>
+                                {printMode === 'detail' && <td className="py-0.5 px-1 border-r border-black">&nbsp;</td>}
                                 <td className="py-0.5 px-1">&nbsp;</td>
                               </tr>
                             );

@@ -913,6 +913,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             discontinues={discontinues}
             periodMonth={currentPeriod.month}
             periodStartYear={currentPeriod.startYear}
+            onPrintBills={() => { setSelectedReportType('bill_print_region'); setActiveWindow('reports'); }}
           />
         ))}
 

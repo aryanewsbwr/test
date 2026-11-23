@@ -359,7 +359,7 @@ export default function RateChangeForm({
             >
               {pubList.map(p => (
                 <option key={p.publica_id} value={p.publica_id}>
-                  #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                  {p.public_name} (#{p.publica_id}) {p.pub_hindi ? `- ${p.pub_hindi}` : ''}
                 </option>
               ))}
             </select>

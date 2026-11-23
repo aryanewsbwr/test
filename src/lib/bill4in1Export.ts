@@ -19,6 +19,8 @@ export interface BillItem {
   amount: number;
   net_amount?: number;
   delivery_amount?: number;
+  // A publication supplement (PS) line
+  supplement?: boolean;
 }
 
 export interface BillRecord {
@@ -70,6 +72,7 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
     qtyOrDays: number | string;
     rate: number | null;
     amount: number;
+    delivery?: number;
   }> = [];
 
   if (printMode === 'simple') {
@@ -125,10 +128,13 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
         pub_name: it.pub_name,
         qtyOrDays,
         rate: it.rate,
-        amount: roundToFoxProRule(it.amount)
+        amount: roundToFoxProRule(it.amount),
+        delivery: it.delivery_amount || 0
       };
     });
   }
+  // Detail print has its own delivery column
+  const delCol = printMode === 'detail';
 
   for (let i = 0; i < Math.max(displayItems.length, minRows); i++) {
     if (i < displayItems.length) {
@@ -138,6 +144,7 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
           <td class="col-part">${it.pub_name}</td>
           <td class="col-qty">${it.qtyOrDays}</td>
           <td class="col-rate">${it.rate !== null && it.rate !== undefined ? formatMoney(it.rate) : '&nbsp;'}</td>
+          ${delCol ? `<td class="col-del">${it.delivery ? formatMoney(it.delivery) : '&nbsp;'}</td>` : ''}
           <td class="col-amt">${formatMoney(it.amount)}</td>
         </tr>
       `);
@@ -148,6 +155,7 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
           <td class="col-part">&nbsp;</td>
           <td class="col-qty">&nbsp;</td>
           <td class="col-rate">&nbsp;</td>
+          ${delCol ? '<td class="col-del">&nbsp;</td>' : ''}
           <td class="col-amt">&nbsp;</td>
         </tr>
       `);
@@ -220,12 +228,13 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
 
       <!-- PARTICULARS TABLE -->
       <div class="table-wrap">
-        <table class="bill-table">
+        <table class="bill-table${delCol ? ' with-del' : ''}">
           <thead>
             <tr>
               <th class="col-part">PARTICULARS</th>
               <th class="col-qty">QTY.</th>
               <th class="col-rate">RATE</th>
+              ${delCol ? '<th class="col-del">DEL.</th>' : ''}
               <th class="col-amt">AMOUNT</th>
             </tr>
           </thead>
@@ -574,6 +583,15 @@ export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Arya
       border-right: 1px solid #000;
     }
     .col-rate {
+      width: 16%;
+      text-align: right;
+      padding-right: 3px;
+      border-right: 1px solid #000;
+    }
+    .with-del .col-part { width: 38%; }
+    .with-del .col-qty { width: 11%; }
+    .with-del .col-rate { width: 14%; }
+    .col-del {
       width: 16%;
       text-align: right;
       padding-right: 3px;

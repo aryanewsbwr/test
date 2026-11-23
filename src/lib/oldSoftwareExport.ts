@@ -729,7 +729,11 @@ export function oldSoftwareSpecs(tables: Record<string, any[]>, suffix = fySuffi
     }
   }
   const phoneHere = (r: any) => {
-    if (newNumbers(r).length) return phoneThere.get(Number(pick(r, 'customer_id'))) ?? '';
+    // A customer the old software has keeps its own phone: the website keeps the billing number in
+    // Hindi_Add too (Customer Master syncs them), and that is where the old software reads it
+    const id = Number(pick(r, 'customer_id'));
+    if (phoneThere.has(id)) return phoneThere.get(id) ?? '';
+    if (newNumbers(r).length) return '';
     const numbers = tenDigitMobiles(pick(r, 'phone'));
     const there = mobilesThere.get(Number(pick(r, 'customer_id')));
     return numbers.length && there && numbers.every(n => there.has(n)) ? '' : pick(r, 'phone');

@@ -1,7 +1,8 @@
 'use client';
 
 import { fyStartYear } from '@/lib/financialYear';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { printSheet } from '@/lib/printSheet';
 import { Printer, RefreshCw, X, Search, FileText, Eye, CheckCircle2, ChevronLeft, ChevronRight, Play, Database, Check } from 'lucide-react';
 import { Customer, Publication, Rate, Holiday, Discontinue } from '@/lib/types';
 import { BillingLineItem, billRoundOff, formatRoundOff } from '@/lib/billingEngine';
@@ -15,6 +16,8 @@ interface BillingFormProps {
   discontinues?: Discontinue[];
   periodMonth: string;
   periodStartYear: number;
+  // Opens Bill Printing (Region Wise), which prints the bills properly on A4
+  onPrintBills?: () => void;
 }
 
 const MONTHS = [
@@ -28,7 +31,9 @@ const FINANCIAL_YEARS = [0, 1, 2].map(back => {
   return { label: `${year}-${year + 1}`, value: `${year}${year + 1}`, year };
 });
 
-export default function BillingForm({ onClose, periodMonth, periodStartYear }: BillingFormProps) {
+export default function BillingForm({ onClose, periodMonth, periodStartYear, onPrintBills }: BillingFormProps) {
+  // The bill slip alone goes to the printer, not the whole screen behind it
+  const slipRef = useRef<HTMLDivElement>(null);
   const periodFinancialYear = `${periodStartYear}${periodStartYear + 1}`;
   const [month, setMonth] = useState(periodMonth);
   const [selectedYear, setSelectedYear] = useState(periodFinancialYear);
@@ -460,8 +465,9 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
                 <span>{showGrid ? 'Hide Bills List' : 'View Generated Bills & Breakup'}</span>
               </button>
 
-              <button 
-                onClick={() => window.print()}
+              <button
+                onClick={() => (onPrintBills ? onPrintBills() : window.print())}
+                title="Bill Printing खुलेगा: वहाँ से 4-in-1 A4 बिल छापें"
                 className="px-3 py-1 bg-[#0A246A] hover:bg-[#000080] text-white font-bold text-xs cursor-pointer flex items-center gap-1"
               >
                 <Printer className="w-3.5 h-3.5" />
@@ -681,7 +687,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
       {/* Bill Slip Print Modal (2-Part Invoice: Customer Slip + Office Counterfoil) */}
       {selectedBillForPrint && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 font-mono">
-          <div className="w-full max-w-md bg-white border-2 border-black p-4 text-xs shadow-2xl space-y-3">
+          <div ref={slipRef} className="w-full max-w-md bg-white border-2 border-black p-4 text-xs shadow-2xl space-y-3">
             
             {/* Format Selector on top of Slip */}
             <div className="flex items-center justify-between bg-slate-100 p-1.5 border border-slate-300 print:hidden text-[11px]">
@@ -786,8 +792,8 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear }: B
             </div>
 
             <div className="flex justify-end gap-2 pt-2 print:hidden border-t">
-              <button 
-                onClick={() => window.print()}
+              <button
+                onClick={() => printSheet(slipRef.current, `Bill ${selectedBillForPrint.bill_no} - ${selectedBillForPrint.name_eng || ''}`)}
                 className="px-4 py-1 bg-[#0A246A] text-white font-bold text-xs cursor-pointer"
               >
                 Print Slip

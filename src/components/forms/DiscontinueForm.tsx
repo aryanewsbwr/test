@@ -10,6 +10,9 @@ interface DiscontinueFormProps {
   onClose: () => void;
   publications?: Publication[];
   hawkers?: Hawker[];
+  // Shown as a tab inside Customer Master: no window frame, opened on that customer
+  embedded?: boolean;
+  initialCustomer?: Customer | null;
 }
 
 // Helper to normalize publication objects and sort alphabetically (A to Z)
@@ -37,8 +40,10 @@ const normalizeAndSortPubs = (list: any[]) => {
 
 export default function DiscontinueForm({ 
   onClose, 
-  publications = [], 
-  hawkers: initialHawkers = []
+  publications = [],
+  hawkers: initialHawkers = [],
+  embedded = false,
+  initialCustomer = null
 }: DiscontinueFormProps) {
   const windowActive = useWindowActive();
   // Today's formatted dates
@@ -189,6 +194,12 @@ export default function DiscontinueForm({
       }
     }, 200);
   };
+
+  // Opened as Customer Master's tab: that customer is chosen straight away
+  useEffect(() => {
+    if (embedded && initialCustomer?.customer_id) handleSelectCustomer(initialCustomer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, initialCustomer?.customer_id]);
 
   // Select customer from suggestion list
   const handleSelectCustomer = async (c: Customer) => {
@@ -457,10 +468,12 @@ export default function DiscontinueForm({
   }, [showFindModal, showCustSuggestions, selectedCust, selectedPubId, fromDate, toDate, holdType]);
 
   return (
-    <div className="d2-window relative w-full max-w-[590px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs my-auto shrink-0">
-      
-      {/* Title Bar matching screenshot_10.jpg */}
-      <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
+    <div className={embedded
+      ? 'relative w-full bg-[#ECE9D8] flex flex-col font-tahoma select-none text-xs'
+      : 'd2-window relative w-full max-w-[590px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs my-auto shrink-0'}>
+
+      {/* Title Bar matching screenshot_10.jpg (Customer Master's tab has its own heading) */}
+      <div className={`d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0${embedded ? ' hidden' : ''}`}>
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 

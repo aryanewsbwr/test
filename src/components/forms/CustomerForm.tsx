@@ -2,9 +2,24 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import RetailSalePermanentForm from './RetailSalePermanentForm';
+import DiscontinueForm from './DiscontinueForm';
 import { useWindowActive } from '@/components/MdiWindow';
 import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
+
+// The customer's billing number is the first 10-digit mobile number in the Hindi address (the old
+// software keeps it there). The phone box and the address keep that number the same both ways.
+const FIRST_MOBILE = /(?<!\d)(?:\+?91[\s-]?|0)?([6-9]\d{9})(?!\d)/;
+const firstMobile = (text: any) => String(text ?? '').match(FIRST_MOBILE)?.[1] || '';
+const withFirstMobile = (text: any, mobile: string) => {
+  const t = String(text ?? '');
+  return FIRST_MOBILE.test(t) ? t.replace(FIRST_MOBILE, mobile) : [mobile, t.trim()].filter(Boolean).join(' ');
+};
+// On opening a customer: the address's number is the one shown in the phone box
+const phoneFromAddress = (phone: any, hindiAdd: any) => {
+  const fromAdd = firstMobile(hindiAdd);
+  return fromAdd && fromAdd !== firstMobile(phone) ? withFirstMobile(phone, fromAdd) : String(phone ?? '');
+};
 import { cleanOrTransliterateHindi, englishToHindiPhonetic, transliterateToHindiAsync } from '@/lib/transliteration';
 
 interface Props {
@@ -85,7 +100,7 @@ export default function CustomerForm({
   const [subscriptions, setSubscriptions] = useState<CustomerDetail[]>([]);
   const [subFilter, setSubFilter] = useState<'active' | 'all'>('active');
   // Second tab: Retail Sale to Permanent Customer, for the customer open here
-  const [subTab, setSubTab] = useState<'subs' | 'retail'>('subs');
+  const [subTab, setSubTab] = useState<'subs' | 'disc' | 'retail'>('subs');
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
   // Insert Item Dialog State
@@ -143,7 +158,7 @@ export default function CustomerForm({
     setNameHindi(cleanOrTransliterateHindi(customer.name_hindi || '', customer.name_eng));
     setAdd1(customer.add1 || '');
     setHindiAdd(cleanOrTransliterateHindi(customer.hindi_add || '', customer.add1 || ''));
-    setPhone(customer.phone || '');
+    setPhone(phoneFromAddress(customer.phone, customer.hindi_add));
     setRegionId(customer.region_id || regions[0]?.region_id || 1);
     setSecurityDeposit(customer.security_deposit || 0);
     setDueAmount(customer.dueamount || 0);
@@ -219,7 +234,7 @@ export default function CustomerForm({
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!windowActive.current) return; // only the window in front
-      if (subTab === 'retail') return; // the Retail Sale tab handles its own keys
+      if (subTab !== 'subs') return; // the Discontinue and Retail Sale tabs handle their own keys
       // Esc goes back one step: closes a pop-up; from a customer back to the Find list (with the
       // same search); from the Find list to the empty form; only then closes Customer Info
       if (e.key === 'Escape') {
@@ -274,7 +289,7 @@ export default function CustomerForm({
     setNameHindi(cleanOrTransliterateHindi(cust.name_hindi || '', cust.name_eng));
     setAdd1(cust.add1 || '');
     setHindiAdd(cleanOrTransliterateHindi(cust.hindi_add || '', cust.add1 || ''));
-    setPhone(cust.phone || '');
+    setPhone(phoneFromAddress(cust.phone, cust.hindi_add));
     setRegionId(cust.region_id || 1);
     setSecurityDeposit(cust.security_deposit || 0);
     setDueAmount(cust.dueamount || 0);
@@ -692,16 +707,29 @@ export default function CustomerForm({
 
       {/* Main Body matching screenshot_05.jpg */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs min-h-0">
-        {/* Tabs: 1 Customer, 2 Retail Sale to Permanent Customer (for the customer open here) */}
+        {/* Tabs: 1 Customer, 2 Customer Discontinue, 3 Retail Sale to Permanent Customer (for the customer open here) */}
         <div className="flex items-end gap-1 border-b-2 border-[#0A246A] -mx-1 px-1">
-          {([['subs', '👤 Customer (ग्राहक)'], ['retail', '🛒 Retail Sale (रिटेल सेल)']] as const).map(([key, label]) => (
+          {([['subs', '👤 Customer (ग्राहक)'], ['disc', '⏸ Customer Discontinue (बंद)'], ['retail', '🛒 Retail Sale (रिटेल सेल)']] as const).map(([key, label]) => (
             <button key={key} type="button" onClick={() => setSubTab(key)}
               className={`px-4 py-1 text-xs font-bold border border-b-0 rounded-t cursor-pointer ${subTab === key ? 'bg-[#0A246A] text-white border-[#0A246A]' : 'bg-[#ECE9D8] text-slate-700 border-slate-400 hover:bg-white'}`}>
               {label}
             </button>
           ))}
-          {subTab === 'retail' && selectedCustId ? <span className="ml-auto pb-1 font-bold text-[#0A246A]">#{selectedCustId} {nameHindi || nameEng}</span> : null}
+          {subTab !== 'subs' && selectedCustId ? <span className="ml-auto pb-1 font-bold text-[#0A246A]">#{selectedCustId} {nameHindi || nameEng}</span> : null}
         </div>
+
+        {subTab === 'disc' && (
+            selectedCustId ? (
+              <DiscontinueForm
+                embedded
+                onClose={() => setSubTab('subs')}
+                publications={publications}
+                initialCustomer={{ customer_id: selectedCustId, name_eng: nameEng, name_hindi: nameHindi, region_id: regionId } as any}
+              />
+            ) : (
+              <div className="p-4 text-center font-bold text-[#800000] bg-white border border-[#808080]">पहले ग्राहक खोलें (Find Customer), फिर पेपर बंद करें।</div>
+            )
+        )}
 
         {subTab === 'retail' && (
             selectedCustId ? (
@@ -720,7 +748,7 @@ export default function CustomerForm({
             )
         )}
 
-        <div className={subTab === 'retail' ? 'hidden' : 'space-y-2'}>
+        <div className={subTab !== 'subs' ? 'hidden' : 'space-y-2'}>
 
         {/* Header Title */}
         <h2 className="text-center font-black text-[#000080] text-base tracking-wider">
@@ -790,8 +818,12 @@ export default function CustomerForm({
                   type="text"
                   value={hindiAdd}
                   onChange={(e) => {
-                    setHindiAdd(e.target.value);
+                    const value = e.target.value;
+                    setHindiAdd(value);
                     setIsAddHindiManual(true);
+                    // A number changed in the address changes the phone too
+                    const mobile = firstMobile(value);
+                    if (mobile && mobile !== firstMobile(phone)) setPhone(withFirstMobile(phone, mobile));
                   }}
                   onKeyDown={(e) => handleHindiFieldKeyDown(e, 'add')}
                   placeholder="हिंदी पता..."
@@ -874,7 +906,13 @@ export default function CustomerForm({
               <input
                 type="text"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPhone(value);
+                  // A number changed in the phone changes the address's first number too
+                  const mobile = firstMobile(value);
+                  if (mobile && mobile !== firstMobile(hindiAdd)) setHindiAdd(withFirstMobile(hindiAdd, mobile));
+                }}
                 className="flex-1 px-1.5 py-0.5 border border-[#808080] bg-white font-mono"
               />
             </div>

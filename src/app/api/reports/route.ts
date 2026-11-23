@@ -1060,6 +1060,24 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Publication supplement entries (by month, year, paper and region; region 0 is every region), so a
+      // bill line from one is marked (PS)
+      const supplementKeys = new Set<string>();
+      const supplementYears = Array.from(new Set(billnoRows.map(h => String(h.year || '')).filter(Boolean)));
+      if (supplementYears.length) {
+        const { data: sups } = await supabase.from('publicationsup').select('publica_id, publicasup_id, month, year, region_id').in('year', supplementYears);
+        (sups || []).forEach((s: any) => {
+          for (const pid of [s.publica_id, s.publicasup_id]) {
+            supplementKeys.add(`${String(s.month || '').trim().toLowerCase().slice(0, 3)}|${s.year}|${Number(pid)}|${Number(s.region_id || 0)}`);
+          }
+        });
+      }
+      const isSupplementLine = (h: any, it: any) => {
+        if (it.sno !== null && it.sno !== undefined && it.sno !== '') return false; // a subscription line
+        const base = `${String(h.month || '').trim().toLowerCase().slice(0, 3)}|${h.year}|${Number(it.publica_id)}|`;
+        return supplementKeys.has(base + Number(h.region_id || 0)) || supplementKeys.has(base + '0');
+      };
+
       // Construct final BillRecord objects directly from committed database records
       const bills = billnoRows.map(h => {
         const bid = Number(h.bill_id);
@@ -1098,9 +1116,11 @@ export async function GET(request: NextRequest) {
             seenPubDelivery.add(it.publica_id);
           }
 
+          const supplement = isSupplementLine(h, it);
           return {
             sno: idx + 1,
-            pub_name: pubName,
+            pub_name: supplement ? `${pubName} (PS)` : pubName,
+            supplement,
             circulation: pub?.circulation || 'Morning',
             qty: Number(it.qty || 1),
             days: Number(it.qty || daysInMonth),
