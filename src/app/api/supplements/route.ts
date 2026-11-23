@@ -3,6 +3,7 @@ import { refuseWithout } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { fetchAllRows, fetchPublications, nextId } from '@/lib/publicationsData';
 import { parseLegacyDateToIso, MONTH_NAMES } from '@/lib/billingEngine';
+import { getSingleEffectiveRate } from '@/lib/rateEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,9 @@ const VB6_MONTHS = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'Aug'
 const groupKey = (r: any) => [r.publicasup_id, r.publica_id, r.month, r.year, r.rate ?? '', r.supplement_name ?? '', r.sup_date ?? ''].join('|');
 
 async function loadSupplements(): Promise<any[]> {
-  const [rows, pubs] = await Promise.all([fetchAllRows('publicationsup', 'id'), fetchPublications()]);
+  const [rows, pubs, rates, ratechanges] = await Promise.all([
+    fetchAllRows('publicationsup', 'id'), fetchPublications(), fetchAllRows('rate', 'id'), fetchAllRows('ratechange', 'id')
+  ]);
   const pubName = new Map(pubs.map((p: any) => [Number(p.publica_id), p.public_name]));
   const groups = new Map<string, any[]>();
   for (const r of rows) {
@@ -38,7 +41,8 @@ async function loadSupplements(): Promise<any[]> {
       date_iso: dateIso,
       month: first.month,
       year: first.year,
-      rate: Number(first.rate || 0),
+      // The old software saves no rate: the paper's own rate on that date is shown, as billing charges it
+      rate: Number(first.rate || 0) || (dateIso ? getSingleEffectiveRate(Number(first.publica_id || first.publicasup_id), 1, dateIso, rates, ratechanges) : 0),
       region_ids: regionIds,
       all_regions: list.some(r => !Number(r.region_id))
     };
