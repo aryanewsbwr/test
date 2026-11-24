@@ -17,7 +17,7 @@ interface BillingFormProps {
   periodMonth: string;
   periodStartYear: number;
   // Opens Bill Printing (Region Wise), which prints the bills properly on A4
-  onPrintBills?: () => void;
+  onPrintBills?: (p: { report: 'bill_print_region' | 'bill_print_single'; region?: string; customerId?: number; customerName?: string; month: string; startYear: number }) => void;
 }
 
 const MONTHS = [
@@ -466,7 +466,12 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
               </button>
 
               <button
-                onClick={() => (onPrintBills ? onPrintBills() : window.print())}
+                onClick={() => (onPrintBills
+                  // Bill Printing opens on what was just billed: the same region, or the same customer, and month
+                  ? onPrintBills(singleMode && selectedCust
+                    ? { report: 'bill_print_single', customerId: Number(selectedCust.customer_id), customerName: String(selectedCust.name_eng || selectedCust.name || ''), month, startYear: Number(String(selectedYear).slice(0, 4)) }
+                    : { report: 'bill_print_region', region: selectedRegion, month, startYear: Number(String(selectedYear).slice(0, 4)) })
+                  : window.print())}
                 title="Bill Printing खुलेगा: वहाँ से 4-in-1 A4 बिल छापें"
                 className="px-3 py-1 bg-[#0A246A] hover:bg-[#000080] text-white font-bold text-xs cursor-pointer flex items-center gap-1"
               >

@@ -59,6 +59,8 @@ interface ReportsFormProps {
   publications?: any[];
   periodMonth: string;
   periodStartYear: number;
+  // Opened from Bill Generation's Print: the same report, region or customer, month and year (n changes each time)
+  preset?: { n: number; report: string; region?: string; customerId?: number; customerName?: string; month: string; startYear: number } | null;
 }
 
 type WaRegionStatus = Record<string, { total: number; sent: number; manual: number }>;
@@ -146,7 +148,8 @@ export default function ReportsForm({
   hawkers: propsHawkers = [],
   publications: propsPubs = [],
   periodMonth,
-  periodStartYear
+  periodStartYear,
+  preset = null
 }: ReportsFormProps) {
   const windowActive = useWindowActive();
   const [viewMode, setViewMode] = useState<'criteria' | 'preview'>('criteria');
@@ -362,6 +365,26 @@ export default function ReportsForm({
     setSelectedMonth(periodMonth);
     setSelectedYear(String(periodStartYear));
   }, [periodMonth, periodStartYear]);
+
+  // Bill Generation's Print: open Bill Printing on exactly what was billed
+  useEffect(() => {
+    if (!preset) return;
+    setActiveReport(preset.report);
+    setSelectedMonth(preset.month);
+    setSelectedYear(String(preset.startYear));
+    if (preset.report === 'bill_print_single' && preset.customerId) {
+      setTargetCustId(String(preset.customerId));
+      setSelectedCustName(preset.customerName || '');
+    } else {
+      setSelectedRegion(preset.region || 'all');
+      setTargetCustId('');
+      setSelectedCustName('');
+    }
+    setCurrentPage(1);
+    setViewMode('criteria');
+    setErrorMessage(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset?.n]);
 
   // Sync initialReport when prop changes
   useEffect(() => {

@@ -237,6 +237,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
   const isMessageOpen = isOpen('message');
   const setIsMessageOpen = (open: boolean) => (open ? setActiveWindow('message') : closeWin('message'));
   const [selectedReportType, setSelectedReportType] = useState<string>('hawker_daily_qty');
+  // Bill Generation -> Bill Printing on the same region / customer and month
+  const [reportPreset, setReportPreset] = useState<any>(null);
   const [backupModalMode, setBackupModalMode] = useState<'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward' | null>(null);
 
   // New Vacation Hold Form State
@@ -919,7 +921,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
             discontinues={discontinues}
             periodMonth={currentPeriod.month}
             periodStartYear={currentPeriod.startYear}
-            onPrintBills={() => { setSelectedReportType('bill_print_region'); setActiveWindow('reports'); }}
+            onPrintBills={p => { setSelectedReportType(p.report); setReportPreset({ ...p, n: Date.now() }); setActiveWindow('reports'); }}
           />
         ))}
 
@@ -1002,6 +1004,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         {win('reports', (
           <ReportsForm 
             initialReport={selectedReportType}
+            preset={reportPreset}
             onClose={() => setActiveWindow(null)}
             regions={regions}
             hawkers={hawkers}

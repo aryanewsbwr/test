@@ -165,6 +165,17 @@ export default function CustomerForm({
     setPriority(customer.priority || 1);
   }, [customer, regions]);
 
+  // This customer's temporary stops (from - to), shown in All Subscription History
+  const [tempStops, setTempStops] = useState<any[]>([]);
+  const [stopsVersion, setStopsVersion] = useState(0);
+  useEffect(() => {
+    if (!selectedCustId) { setTempStops([]); return; }
+    fetch(`/api/discontinue?customer_id=${selectedCustId}&quick=1`)
+      .then(r => r.json())
+      .then(d => setTempStops((d.discontinues || []).filter((x: any) => /^t/i.test(String(x.temp_perma || '')))))
+      .catch(() => setTempStops([]));
+  }, [selectedCustId, stopsVersion]);
+
   // Load Subscriptions for current customer
   useEffect(() => {
     if (!selectedCustId) return;
@@ -572,6 +583,7 @@ export default function CustomerForm({
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error) throw new Error(data.error || 'सेव नहीं हुआ');
       setStatus(`✓ ${sub.publication_name || 'अखबार'} ${show(fromIso)} से ${show(toIso)} तक बंद (अस्थाई) — उसके बाद अपने आप चालू।`);
+      setStopsVersion(v => v + 1);
     } catch (err: any) {
       setStatus(`Error: अस्थाई बंद सेव नहीं हुआ — ${err.message || err}`);
     }
@@ -968,7 +980,7 @@ export default function CustomerForm({
                     : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
                 }`}
               >
-                All Subscription History (सभी इतिहास: {subscriptions.length})
+                All Subscription History (सभी इतिहास: {subscriptions.length}{tempStops.length ? ` + ${tempStops.length} अस्थाई बंद` : ''})
               </button>
             </div>
 
@@ -1021,7 +1033,7 @@ export default function CustomerForm({
                       );
                     }
 
-                    return displayed.map((sub, idx) => {
+                    const subRows = displayed.map((sub, idx) => {
                       const isDiscontinued = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
 
                       return (
@@ -1096,6 +1108,22 @@ export default function CustomerForm({
                         </tr>
                       );
                     });
+                    // Temporary stops (from - to) in the history, newest first
+                    const fmt = (d: any) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '');
+                    const stopRows = subFilter === 'all' ? tempStops.map(t => (
+                      <tr key={`temp-${t.discontinue_id}`} className="border-b text-[11px] bg-amber-50 text-amber-950">
+                        <td className="p-1 border-r text-center">⏸</td>
+                        <td className="p-1 border-r font-bold" colSpan={2}>
+                          {t.publication_name}
+                          <span className="ml-1 px-1 bg-amber-100 text-amber-900 border border-amber-400 rounded text-[9px] font-bold">अस्थाई बंद / Temporary</span>
+                        </td>
+                        <td className="p-1 border-r text-center" colSpan={3}>{fmt(t.temp_from)} से {fmt(t.temp_to)} तक</td>
+                        <td className="p-1 border-r font-mono text-center">{fmt(t.temp_from)}</td>
+                        <td className="p-1 border-r font-mono text-center">{fmt(t.temp_to)}</td>
+                        <td className="p-1 text-slate-500 text-center" colSpan={3}>दर्ज: {fmt(t.entry_date)}</td>
+                      </tr>
+                    )) : [];
+                    return [...subRows, ...stopRows];
                   })()
                 ) : (
                   <tr>

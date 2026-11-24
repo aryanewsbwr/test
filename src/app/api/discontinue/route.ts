@@ -14,6 +14,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const customerIdStr = searchParams.get('customer_id');
 
+    // One customer's stops only (Customer Master's history): just that customer's rows, not every stop
+    // and every customer, which the free plan's monthly data limit cannot spare on each customer opened
+    if (customerIdStr && searchParams.get('quick') === '1') {
+      const cid = parseInt(customerIdStr, 10);
+      const [{ data, error }, pubs] = await Promise.all([
+        supabase.from('discontinue').select('*').eq('customer_id', cid).order('discontinue_id', { ascending: false }),
+        fetchPublications()
+      ]);
+      if (error) throw new Error(error.message);
+      const pubName = new Map<number, string>(pubs.map((p: any) => [Number(p.publica_id), p.public_name || p.name || '']));
+      const rows = (data || []).map((d: any) => ({
+        ...d,
+        publication_name: Number(d.publica_id) ? (pubName.get(Number(d.publica_id)) || `Paper #${d.publica_id}`) : 'All Papers (सभी अखबार/पत्रिका)'
+      }));
+      return NextResponse.json({ total: rows.length, discontinues: rows });
+    }
+
     const discs: any[] = await fetchAllRows('discontinue', 'discontinue_id', false);
 
     // Sort newest first
