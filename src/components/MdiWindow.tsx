@@ -10,6 +10,12 @@ import React, { createContext, useContext, useLayoutEffect, useRef, useState } f
 const ActiveContext = createContext<{ current: boolean }>({ current: true });
 export const useWindowActive = () => useContext(ActiveContext);
 
+// A screen can ask its window for a size: a width (kept inside the desk) and 'full' height (down to
+// the desk's bottom) or 'auto' (the screen's own height). Outside a window it does nothing.
+type FitWindow = (size: { width?: number; height?: 'full' | 'auto' }) => void;
+const FitContext = createContext<FitWindow>(() => {});
+export const useFitWindow = () => useContext(FitContext);
+
 export interface WinState { key: string; z: number; x: number; y: number; w?: number; h?: number }
 
 const INTERACTIVE = 'button, input, select, textarea, a, label, [role="button"]';
@@ -39,6 +45,22 @@ export default function MdiWindow({ win, focused, keys = true, onFocus, onChange
     setReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fit: FitWindow = ({ width, height }) => {
+    const desk = box.current?.parentElement;
+    const deskW = desk ? desk.clientWidth : window.innerWidth;
+    const deskH = desk ? desk.clientHeight : window.innerHeight;
+    const next: Partial<WinState> = {};
+    if (width) {
+      const w = Math.max(320, Math.min(width, deskW - 16));
+      next.w = w;
+      // moved left if it would run off the desk
+      if (win.x + w > deskW - 8) next.x = Math.max(8, deskW - 8 - w);
+    }
+    if (height === 'full') { next.y = Math.min(win.y, 8); next.h = Math.max(160, deskH - Math.min(win.y, 8) - 8); }
+    if (height === 'auto') next.h = undefined;
+    onChange(next);
+  };
 
   // Drag by the title bar (not by its buttons)
   const startDrag = (e: React.PointerEvent) => {
@@ -83,7 +105,9 @@ export default function MdiWindow({ win, focused, keys = true, onFocus, onChange
       onPointerDownCapture={() => { if (!focused) onFocus(); }}
       onPointerDown={startDrag}
     >
-      <ActiveContext.Provider value={active}>{children}</ActiveContext.Provider>
+      <FitContext.Provider value={fit}>
+        <ActiveContext.Provider value={active}>{children}</ActiveContext.Provider>
+      </FitContext.Provider>
       <div onPointerDown={startResize('r')} className="absolute top-0 right-0 w-2 h-full cursor-ew-resize" style={{ touchAction: 'none' }} />
       <div onPointerDown={startResize('b')} className="absolute bottom-0 left-0 h-2 w-full cursor-ns-resize" style={{ touchAction: 'none' }} />
       <div onPointerDown={startResize('rb')} className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize" style={{ touchAction: 'none' }}

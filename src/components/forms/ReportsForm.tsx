@@ -10,6 +10,7 @@ import {
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { Bill4in1Preview } from '@/components/reports/Bill4in1Preview';
 import { BillThermalPreview } from '@/components/reports/BillThermalPreview';
+import { useFitWindow } from '@/components/MdiWindow';
 import { printBills4in1 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
@@ -365,6 +366,15 @@ export default function ReportsForm({
     setSelectedMonth(periodMonth);
     setSelectedYear(String(periodStartYear));
   }, [periodMonth, periodStartYear]);
+
+  // The report or bill preview gets a big window (wide, down to the desk's bottom); the Parameters
+  // screen goes back to its own small size
+  const fitWindow = useFitWindow();
+  useEffect(() => {
+    if (viewMode === 'preview') fitWindow({ width: 1040, height: 'full' });
+    else fitWindow({ width: 560, height: 'auto' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
 
   // Bill Generation's Print: open Bill Printing on exactly what was billed
   useEffect(() => {
