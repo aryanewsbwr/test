@@ -226,6 +226,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, rows: rows.length, links: linkRows.length });
     }
 
+    // Switched off on 24 Nov 2026: Himanshu keeps making UPI receipts in the old software himself for
+    // now. Turn on (true) only after he stops, or the same payment gets two receipts.
+    if (body.action === 'make_receipts' && !UPI_RECEIPTS_ON) {
+      return NextResponse.json({ error: 'UPI रसीद अभी वेबसाइट से नहीं बनती — हिमांशु पुराने सॉफ्टवेयर में बनाते हैं' }, { status: 403 });
+    }
     if (body.action === 'make_receipts') {
       const keys: string[] = (Array.isArray(body.keys) ? body.keys : []).map(String).slice(0, 60);
       if (!keys.length) return NextResponse.json({ error: 'कोई जमा नहीं चुनी' }, { status: 400 });
@@ -247,6 +252,7 @@ export async function POST(req: NextRequest) {
 // 'Cash', a narration starting "UPI", Ml. date = the day the money came, and the customer's balance
 // after it. The receipt goes to the old software with the next backup.
 // ---------------------------------------------------------------------------------------------
+const UPI_RECEIPTS_ON = false;
 const UPI_BOOK_FROM = 60001;
 const UPI_BOOK_TO = 60600;
 const OFFICE_COLLECT_ID = 7;

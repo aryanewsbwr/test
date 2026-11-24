@@ -11,6 +11,8 @@ import { printSheet } from '@/lib/printSheet';
 // customer from the payer's UPI ID, mobile number, a receipt of the same amount and the PhonePe name.
 // Staff confirm (✓), mark "not a customer" (बाहर), and fill in the receipt number and hawker.
 
+// UPI receipts from this screen are off while Himanshu makes them in the old software (24 Nov 2026)
+const UPI_RECEIPTS_ON = false;
 const pad = (n: number) => String(n).padStart(2, '0');
 const isoDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const dmy = (iso: string) => (iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '');
@@ -232,7 +234,7 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
             <option value="pending">बाकी (ग्राहक पक्का नहीं)</option>
             <option value="all">सभी जमा</option>
             <option value="ok">पक्के</option>
-            <option value="norec">पक्के, रसीद बाकी</option>
+            {UPI_RECEIPTS_ON && <option value="norec">पक्के, रसीद बाकी</option>}
             <option value="out">डेटाबेस से बाहर</option>
           </select>
           <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="नाम, UPI ID, राशि, रसीद खोजें..." className="flex-1 min-w-[160px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white" />
@@ -341,7 +343,7 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
                           <button onClick={() => { const note = prompt('यह जमा किसकी है? (जैसे BR, नकद बिक्री, दूसरा काम)'); if (note !== null) save(r.key, { status: 'out', customer_id: null, note: note.trim() || null }); }}
                             title="ग्राहक की नहीं — डेटाबेस से बाहर" className="px-1.5 mr-1 border border-slate-500 text-slate-700 cursor-pointer">बाहर</button>
                         )}
-                        {done && !r.receipt_no && (
+                        {UPI_RECEIPTS_ON && done && !r.receipt_no && (
                           <label title="इस जमा की UPI रसीद बनाने के लिए चुनें" className="mr-1 px-1 border border-emerald-600 text-emerald-800 font-bold cursor-pointer">
                             <input type="checkbox" className="mr-0.5 align-middle" checked={ticked.has(r.key)}
                               onChange={e => setTicked(t => { const n = new Set(t); if (e.target.checked) n.add(r.key); else n.delete(r.key); return n; })} />
