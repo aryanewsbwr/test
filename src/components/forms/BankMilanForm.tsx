@@ -87,8 +87,7 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
       if (text.includes('भेजने वाला') && text.includes('ग्राहक ID')) throw new Error('यह हिमांशु की पुरानी फाइल (Bank_Milaan_Master.csv) है — इसे दाईं ओर के "पुरानी फाइल" बटन से डालें।');
       const credits = parsePnbStatement(text);
       if (!credits.length) {
-        const first = text.split(/?
-/).map(l => l.trim()).filter(l => l.replace(/,/g, '')).slice(0, 3).map(l => l.slice(0, 90)).join('  ⏎  ');
+        const first = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.replace(/,/g, '')).slice(0, 3).map(l => l.slice(0, 90)).join('  ⏎  ');
         throw new Error(`इस फाइल (${file.name}) में कोई जमा (Cr) लाइन नहीं पहचानी गई। फाइल की शुरुआत: ${first || '(खाली)'} — यह स्क्रीनशॉट Claude को भेजें।`);
       }
       const res = await fetch('/api/bank-milan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'upload', credits }) });
