@@ -731,9 +731,6 @@ export function calculateBilling({
 
           const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
           if (rate > 0) {
-            // Standard weekly magazines in monthly cycle (e.g. India Today) cap at 4 issues per month
-            const currentTotalCopies = Array.from(rateDaysMap.values()).reduce((a, b) => a + b, 0);
-            if (is513 && currentTotalCopies >= 4) continue;
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
         }

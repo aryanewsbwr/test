@@ -26,6 +26,32 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
   const [msg, setMsg] = useState('');
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [existingHolidays, setExistingHolidays] = useState<any[]>([]);
+  const [allPubTypes, setAllPubTypes] = useState<Map<number, string>>(new Map());
+  useEffect(() => {
+    fetch('/api/publications?with_rates=false').then(r => r.json())
+      .then(d => setAllPubTypes(new Map((d.publications || []).map((p: any) => [Number(p.publica_id), String(p.type_p || p.TypeP || '')]))))
+      .catch(() => {});
+  }, []);
+  // One line per holiday (date + occasion), not one per paper: its type is Newspaper, Magazine or Both
+  const holidayGroups = React.useMemo(() => {
+    const isMagazine = (pid: number) => /mag|period|weekly|monthly|fortnight/i.test(allPubTypes.get(pid) || '');
+    const groups = new Map<string, { date: string; occasion: string; pubs: number[]; all: boolean }>();
+    for (const h of existingHolidays) {
+      const date = String(h.oc_date || h.dated || h.holiday_date || h.H_Date || h.h_date || '');
+      const occasion = String(h.remark || h.occasion || h.Occasion || 'Press Holiday');
+      const pid = Number(h.publica_id || h.Publica_id || 0);
+      const k = `${date}|${occasion}`;
+      const g = groups.get(k) || { date, occasion, pubs: [], all: false };
+      if (pid === 0) g.all = true; else g.pubs.push(pid);
+      groups.set(k, g);
+    }
+    const sortKey = (d: string) => { const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}${m[2]}${m[1]}` : d; };
+    return Array.from(groups.values()).map(g => {
+      const mags = g.pubs.filter(isMagazine).length;
+      const type = g.all ? 'Both (सभी)' : mags === 0 ? 'Newspaper' : mags === g.pubs.length ? 'Magazine' : 'Both';
+      return { ...g, type, count: g.pubs.length };
+    }).sort((a, b) => sortKey(b.date).localeCompare(sortKey(a.date)));
+  }, [existingHolidays, allPubTypes]);
 
   // Load and sort publications alphabetically
   useEffect(() => {
@@ -422,7 +448,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
           <div className="d2-window w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[80vh]">
             
             <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold text-xs mb-2">
-              <span>Saved Holiday List ({existingHolidays.length} Records)</span>
+              <span>Saved Holiday List ({holidayGroups.length} छुट्टियाँ)</span>
               <button onClick={() => setIsFindOpen(false)} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center">✕</button>
             </div>
 
@@ -432,30 +458,27 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
                   <tr>
                     <th className="p-1 border text-left">Date</th>
                     <th className="p-1 border text-left">Occasion</th>
-                    <th className="p-1 border text-left">Publication ID</th>
+                    <th className="p-1 border text-left">Type</th>
+                    <th className="p-1 border text-right">Papers</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {existingHolidays.map((h, idx) => {
-                    const dStr = h.oc_date || h.dated || h.holiday_date || h.H_Date || h.h_date || '';
-                    const occStr = h.remark || h.occasion || h.Occasion || 'Press Holiday';
-                    const pubIdVal = Number(h.publica_id || h.Publica_id || 0);
-                    return (
-                      <tr 
-                        key={idx} 
-                        onClick={() => {
-                          setHolidayDate(dStr);
-                          setOccasion(occStr);
-                          setIsFindOpen(false);
-                        }}
-                        className="border-b hover:bg-blue-50 cursor-pointer text-[11px]"
-                      >
-                        <td className="p-1 border-r font-mono font-bold">{dStr}</td>
-                        <td className="p-1 border-r font-bold text-blue-900">{occStr}</td>
-                        <td className="p-1 font-mono">{pubIdVal === 0 ? 'All (Global)' : `Pub #${pubIdVal}`}</td>
-                      </tr>
-                    );
-                  })}
+                  {holidayGroups.map(g => (
+                    <tr
+                      key={`${g.date}|${g.occasion}`}
+                      onClick={() => {
+                        setHolidayDate(g.date);
+                        setOccasion(g.occasion);
+                        setIsFindOpen(false);
+                      }}
+                      className="border-b hover:bg-blue-50 cursor-pointer text-[11px]"
+                    >
+                      <td className="p-1 border-r font-mono font-bold">{g.date}</td>
+                      <td className="p-1 border-r font-bold text-blue-900">{g.occasion}</td>
+                      <td className="p-1 border-r font-bold">{g.type}</td>
+                      <td className="p-1 text-right font-mono">{g.all ? 'सभी' : g.count}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
