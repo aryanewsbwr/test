@@ -157,7 +157,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
             <div class="line-item-row">
               <span class="col-part">${pubDisplayName}</span>
               <span class="col-days">${qtyOrDays}</span>
-              <span class="col-del">${it.delivery_amount ? formatMoney(it.delivery_amount) : ''}</span>
+              <span class="col-del">${it.rate ? formatMoney(it.rate) : ''}</span>
               <span class="col-amt">${formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
           `;
@@ -234,7 +234,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <div class="items-header-row">
         <span class="col-part">विवरण / Particular</span>
         <span class="col-days">Days</span>
-        ${printMode === 'detail' ? '<span class="col-del">Del.</span>' : ''}
+        ${printMode === 'detail' ? '<span class="col-del">Rate</span>' : ''}
         <span class="col-amt">Amount ₹</span>
       </div>
 
@@ -636,7 +636,7 @@ export const THERMAL_58MM_CSS = `
       font-weight: 700;
     }
 
-    /* Delivery charge of each paper (detail bill) */
+    /* Rate of each line (detail bill); delivery is in the summary below */
     .col-del {
       flex: 0.8;
       text-align: right;
