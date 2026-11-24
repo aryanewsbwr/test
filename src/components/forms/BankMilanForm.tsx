@@ -32,19 +32,23 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
   // the row whose customer box is open, and what is typed there
   const [picking, setPicking] = useState<{ key: string; text: string } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // Only the latest request's list is shown: an earlier one that answers late is dropped
+  const requestNo = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
+    const mine = ++requestNo.current;
     try {
       const res = await fetch(`/api/bank-milan?from=${from}&to=${to}&show=${show}`, { cache: 'no-store' });
       const data = await res.json();
+      if (mine !== requestNo.current) return;
       if (!res.ok) throw new Error(data.error || 'लोड नहीं हुआ');
       setRows(data.rows || []);
       setPending(data.pending || 0);
     } catch (err: any) {
       setMsg({ text: err.message, error: true });
     } finally {
-      setLoading(false);
+      if (mine === requestNo.current) setLoading(false);
     }
   }, [from, to, show]);
 
@@ -143,8 +147,9 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
       setMsg({ text: `पुरानी फाइल से ${out.rows} जमा और ${out.links} पक्की UPI ID आ गईं।` });
-      setFrom(rows.reduce((m, r) => (r.credit_date! < m ? r.credit_date! : m), from));
-      load(true);
+      const earliest = rows.reduce((m, r) => (r.credit_date! < m ? r.credit_date! : m), from);
+      // A new start date reloads the list by itself
+      if (earliest !== from) setFrom(earliest); else load(true);
     } catch (err: any) { setMsg({ text: err.message, error: true }); }
   };
 
