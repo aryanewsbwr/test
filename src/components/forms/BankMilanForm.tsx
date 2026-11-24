@@ -21,7 +21,11 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
   const today = new Date();
   const [from, setFrom] = useState(isoDay(new Date(today.getTime() - 7 * 86400000)));
   const [to, setTo] = useState(isoDay(today));
-  const [show, setShow] = useState<'pending' | 'all' | 'ok' | 'out'>('pending');
+  const [show, setShow] = useState<'pending' | 'all' | 'ok' | 'norec' | 'out'>('pending');
+  // Confirmed credits ticked for a UPI receipt, and the ones held back as maybe already receipted
+  const [ticked, setTicked] = useState<Set<string>>(new Set());
+  const [held, setHeld] = useState<string[]>([]);
+  const [making, setMaking] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
   const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -153,6 +157,40 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
     } catch (err: any) { setMsg({ text: err.message, error: true }); }
   };
 
+  // Part 2: UPI receipts for the ticked confirmed credits (book 60001-60600, office)
+  const makeReceipts = async (keys: string[], force = false) => {
+    if (!keys.length) return;
+    const sum = rows.filter(r => keys.includes(r.key)).reduce((t, r) => t + r.amount, 0);
+    if (!confirm(`${keys.length} जमा (${rupees(sum)}) की UPI रसीद बनेगी — UPI बुक 60001-60600 से, दुकान के नाम, और ग्राहक का बकाया घटेगा।${force ? '\n\nये वो जमा हैं जिनकी शायद पहले से रसीद है — फिर भी बनाएँ?' : ''}\n\nबनाएँ?`)) return;
+    setMaking(true);
+    setMsg({ text: 'रसीद बन रही हैं...' });
+    try {
+      const res = await fetch('/api/bank-milan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'make_receipts', keys, force }) });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || 'नहीं बनीं');
+      const results: any[] = out.results || [];
+      const made = results.filter(r => r.ok);
+      const maybe = results.filter(r => r.maybe);
+      const failed = results.filter(r => !r.ok && !r.maybe);
+      setHeld(maybe.map(r => r.key));
+      setTicked(new Set());
+      const who = (k: string) => rows.find(r => r.key === k);
+      setMsg({
+        error: failed.length > 0,
+        text: [
+          made.length ? `✓ ${made.length} रसीद बनीं: ${made.map(r => `#${who(r.key)?.customer_id} → ${r.receipt_no}`).join(', ')}` : '',
+          maybe.length ? `⚠ ${maybe.length} रोकी गईं (शायद हॉकर की रसीद पहले से है): ${maybe.map(r => `#${who(r.key)?.customer_id} ${r.error.replace('शायद पहले से रसीद है: ', '')}`).join('; ')} — रसीद नं. खाने में वही नंबर भरें, या नीचे "फिर भी बनाएँ"` : '',
+          failed.length ? `✗ ${failed.length} नहीं बनीं: ${failed.map(r => `#${who(r.key)?.customer_id || r.key}: ${r.error}`).join('; ')}` : ''
+        ].filter(Boolean).join('  |  ')
+      });
+      load(true);
+    } catch (err: any) {
+      setMsg({ text: err.message, error: true });
+    } finally {
+      setMaking(false);
+    }
+  };
+
   const hawkerOptions = useMemo(() => {
     const list = agents.map(a => ({ value: a.name, label: a.name }));
     for (const [code, name] of Object.entries(HAWKER_CODES)) if (!list.some(o => o.value === code)) list.push({ value: code, label: `${name} (${code})` });
@@ -194,6 +232,7 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
             <option value="pending">बाकी (ग्राहक पक्का नहीं)</option>
             <option value="all">सभी जमा</option>
             <option value="ok">पक्के</option>
+            <option value="norec">पक्के, रसीद बाकी</option>
             <option value="out">डेटाबेस से बाहर</option>
           </select>
           <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="नाम, UPI ID, राशि, रसीद खोजें..." className="flex-1 min-w-[160px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white" />
@@ -202,7 +241,23 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
           {fileButton('पुरानी फाइल', importMaster, 'एक बार: हिमांशु की Bank_Milaan_Master.csv से अब तक के मिलान लाएँ')}
         </div>
 
-        {msg && <div className={`px-2 py-1 border font-bold shrink-0 break-words ${msg.error ? 'bg-red-50 border-red-400 text-red-800' : 'bg-emerald-50 border-emerald-400 text-emerald-900'}`}>{msg.text}</div>}
+        {msg && <div className={`px-2 py-1 border font-bold shrink-0 break-words max-h-28 overflow-auto ${msg.error ? 'bg-red-50 border-red-400 text-red-800' : 'bg-emerald-50 border-emerald-400 text-emerald-900'}`}>{msg.text}</div>}
+        {(ticked.size > 0 || held.length > 0) && (
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {ticked.size > 0 && (
+              <button disabled={making} onClick={() => makeReceipts(Array.from(ticked))}
+                className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer disabled:opacity-50">
+                🧾 चुनी {ticked.size} जमा की UPI रसीद बनाएँ ({rupees(rows.filter(r => ticked.has(r.key)).reduce((t, r) => t + r.amount, 0))})
+              </button>
+            )}
+            {held.length > 0 && (
+              <button disabled={making} onClick={() => makeReceipts(held, true)} className="px-3 py-1 border border-amber-600 bg-amber-50 text-amber-900 font-bold cursor-pointer disabled:opacity-50">
+                ⚠ रोकी गई {held.length} की फिर भी बनाएँ
+              </button>
+            )}
+            {ticked.size > 0 && <button onClick={() => setTicked(new Set())} className="px-2 py-1 border border-slate-400 cursor-pointer">चुनाव हटाएँ</button>}
+          </div>
+        )}
 
         <div className="flex-1 min-h-0 overflow-auto bg-white border border-[#808080]">
           <div ref={sheetRef} className="font-serif bg-white">
@@ -285,6 +340,13 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
                         {!out && !done && (
                           <button onClick={() => { const note = prompt('यह जमा किसकी है? (जैसे BR, नकद बिक्री, दूसरा काम)'); if (note !== null) save(r.key, { status: 'out', customer_id: null, note: note.trim() || null }); }}
                             title="ग्राहक की नहीं — डेटाबेस से बाहर" className="px-1.5 mr-1 border border-slate-500 text-slate-700 cursor-pointer">बाहर</button>
+                        )}
+                        {done && !r.receipt_no && (
+                          <label title="इस जमा की UPI रसीद बनाने के लिए चुनें" className="mr-1 px-1 border border-emerald-600 text-emerald-800 font-bold cursor-pointer">
+                            <input type="checkbox" className="mr-0.5 align-middle" checked={ticked.has(r.key)}
+                              onChange={e => setTicked(t => { const n = new Set(t); if (e.target.checked) n.add(r.key); else n.delete(r.key); return n; })} />
+                            रसीद
+                          </label>
                         )}
                         {(done || out) && (
                           <button onClick={() => save(r.key, { status: '' })} title="फिर से खोलें" className="px-1.5 border border-slate-400 text-slate-600 cursor-pointer">↺</button>

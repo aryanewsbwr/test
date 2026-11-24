@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { currentUser, refuseWithout } from '@/lib/auth';
 import { fySuffix } from '@/lib/financialYear';
 import { nameFit } from '@/lib/bankMilan';
+import { balancesFor, latestBill, collectorName, todayIndia } from '@/lib/mobile';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -71,6 +72,7 @@ export async function GET(req: NextRequest) {
     let q = db.from('bank_credits').select('*').gte('credit_date', from).lte('credit_date', to).order('credit_date', { ascending: false }).order('key');
     if (show === 'pending') q = q.eq('status', '');
     else if (show === 'ok' || show === 'out') q = q.eq('status', show);
+    else if (show === 'norec') q = q.eq('status', 'ok').is('receipt_no', null);
     const { data: credits, error } = await q.limit(3000);
     if (error) {
       if (error.code === '42P01' || error.code === 'PGRST205') return NextResponse.json({ error: 'पहले supabase/bank_milan.sql एक बार चलाएँ', missing: true }, { status: 400 });
@@ -224,8 +226,130 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, rows: rows.length, links: linkRows.length });
     }
 
+    if (body.action === 'make_receipts') {
+      const keys: string[] = (Array.isArray(body.keys) ? body.keys : []).map(String).slice(0, 60);
+      if (!keys.length) return NextResponse.json({ error: 'कोई जमा नहीं चुनी' }, { status: 400 });
+      const results = [];
+      for (const key of keys) results.push(await makeUpiReceipt(key, !!body.force, user));
+      return NextResponse.json({ ok: true, results });
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// UPI receipts (Part 2). A confirmed credit with no receipt number gets a receipt the way the
+// Receipt screen saves one, as Himanshu made them in the old software: the next system receipt
+// no., a paper number from the UPI receipt book 60001-60600 (issued to the office, दुकान), Cash_Chq
+// 'Cash', a narration starting "UPI", Ml. date = the day the money came, and the customer's balance
+// after it. The receipt goes to the old software with the next backup.
+// ---------------------------------------------------------------------------------------------
+const UPI_BOOK_FROM = 60001;
+const UPI_BOOK_TO = 60600;
+const OFFICE_COLLECT_ID = 7;
+const CAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const dmySlash = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+
+// The highest UPI book number used so far: in receipts (typed here, or brought from the old
+// software) and in the bank register (Himanshu's numbers)
+async function nextUpiNumber(table: string): Promise<number> {
+  let top = UPI_BOOK_FROM - 1;
+  const take = (v: any) => { const n = Number(v); if (n >= UPI_BOOK_FROM && n <= UPI_BOOK_TO && n > top) top = n; };
+  for (const pattern of ['%"manual_rep_no":"60___"%', '%"manual_rep_no":60___%', '%"mal_rep_no":"60___"%', '%"mal_rep_no":60___%']) {
+    const { data, error } = await db.from(table).select('remarks').ilike('remarks', pattern).limit(1000);
+    if (error) throw new Error(error.message);
+    for (const r of data || []) {
+      try { const x = JSON.parse(r.remarks || '{}'); take(x.manual_rep_no); take(x.mal_rep_no); } catch { /* not JSON */ }
+    }
+  }
+  const { data: register } = await db.from('bank_credits').select('receipt_no').gte('receipt_no', String(UPI_BOOK_FROM)).lte('receipt_no', String(UPI_BOOK_TO));
+  for (const r of register || []) take(r.receipt_no);
+  return top + 1;
+}
+
+async function makeUpiReceipt(key: string, force: boolean, user: string) {
+  const { data: c, error } = await db.from('bank_credits').select('*').eq('key', key).maybeSingle();
+  if (error) return { key, error: error.message };
+  if (!c) return { key, error: 'जमा नहीं मिली' };
+  if (c.status !== 'ok' || !c.customer_id) return { key, error: 'पहले ग्राहक पक्का करें (✓)' };
+  if (c.receipt_no) return { key, error: `रसीद पहले से है (${c.receipt_no})` };
+  const customerId = Number(c.customer_id);
+  const amount = round2(Number(c.amount));
+  const table = `receipt${fySuffix()}`;
+
+  // One receipt per credit, even when the button is pressed twice
+  const { data: made } = await db.from(table).select('recp_no, remarks').ilike('remarks', `%"bank_key":"${key}"%`).limit(1);
+  if (made?.length) {
+    let x: any = {}; try { x = JSON.parse(made[0].remarks || '{}'); } catch { /* */ }
+    await db.from('bank_credits').update({ receipt_no: String(x.manual_rep_no || made[0].recp_no), updated_at: new Date().toISOString() }).eq('key', key);
+    return { key, ok: true, repeated: true, recp_no: made[0].recp_no, receipt_no: x.manual_rep_no };
+  }
+
+  // The hawker may already have given a paper receipt for this payment: same amount within 3 days
+  if (!force) {
+    const { data: theirs } = await db.from(table).select('recp_no, mal_recp_amt, recp_date, remarks').eq('customer_id', customerId).order('id', { ascending: false }).limit(30);
+    const near = (theirs || []).find((r: any) => {
+      if (Math.abs(Number(r.mal_recp_amt) - amount) >= 1) return false;
+      let x: any = {}; try { x = JSON.parse(r.remarks || '{}'); } catch { /* */ }
+      const m = String(x.mal_recp_dt || r.recp_date || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      return !!m && Math.abs(Date.parse(`${m[3]}-${m[2]}-${m[1]}`) - Date.parse(c.credit_date)) <= 3 * 86400000;
+    });
+    if (near) {
+      let x: any = {}; try { x = JSON.parse(near.remarks || '{}'); } catch { /* */ }
+      return { key, maybe: true, error: `शायद पहले से रसीद है: ₹${near.mal_recp_amt} (रसीद ${x.manual_rep_no || near.recp_no})` };
+    }
+  }
+
+  const upiNo = await nextUpiNumber(table);
+  if (upiNo > UPI_BOOK_TO) return { key, error: `UPI रसीद बुक (${UPI_BOOK_FROM}-${UPI_BOOK_TO}) भर गई — नई बुक चाहिए` };
+
+  const today = todayIndia();
+  const [balances, bill, agent] = await Promise.all([balancesFor([customerId]), latestBill(customerId), collectorName(OFFICE_COLLECT_ID)]);
+  const before = balances.get(customerId) || 0;
+  const after = round2(before - amount);
+  const remarks = {
+    bill_no: bill?.bill_id ?? null,
+    manual_rep_no: String(upiNo),
+    mal_recp_dt: dmySlash(c.credit_date),
+    balance: after,
+    cash_chq: 'Cash',
+    cheque_no: null,
+    cheque_date: null,
+    narr: `UPI ${key}`,
+    agent,
+    entered_by_name: user,
+    entered_at: new Date().toISOString(),
+    source: 'bank_milan',
+    bank_key: key
+  };
+
+  let saved: any = null;
+  for (let attempt = 0; attempt < 3 && !saved; attempt++) {
+    const { data: topRow, error: topError } = await db.from(table).select('recp_no').order('recp_no', { ascending: false }).limit(1);
+    if (topError) return { key, error: topError.message };
+    const recpNo = (Number(topRow?.[0]?.recp_no) || 0) + 1;
+    const { data, error: insError } = await db.from(table).insert([{
+      recp_no: recpNo,
+      recp_date: today.ddmmyyyy,
+      customer_id: customerId,
+      bill_amt: bill ? bill.amount : before,
+      less_amt: 0,
+      mal_recp_amt: amount,
+      month: bill?.month || CAL_MONTHS[today.monthIndex],
+      year: bill?.year || String(today.year),
+      remarks: JSON.stringify(remarks)
+    }]).select('id, recp_no');
+    if (!insError) saved = data?.[0];
+    else if (!/duplicate|unique/i.test(insError.message)) return { key, error: `रसीद सेव नहीं हुई: ${insError.message}` };
+  }
+  if (!saved) return { key, error: 'रसीद सेव नहीं हुई, फिर कोशिश करें' };
+
+  // The customer's balance, as the Receipt screen keeps it, and the register gets the receipt number
+  await db.from('customer').update({ due_amount: after, cbal: -after }).eq('customer_id', customerId);
+  await db.from('bank_credits').update({ receipt_no: String(upiNo), hawker: c.hawker || 'duka', updated_at: new Date().toISOString(), updated_by: user }).eq('key', key);
+  return { key, ok: true, recp_no: saved.recp_no, receipt_no: String(upiNo), balance: after };
 }
