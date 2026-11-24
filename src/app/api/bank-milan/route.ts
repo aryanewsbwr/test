@@ -36,8 +36,16 @@ async function customers() {
   return customerCache;
 }
 
-// Recent receipts (the last 8,000), by amount: a receipt for the same amount within 3 days of a credit
+// Recent receipts (the last 8,000), by amount: a receipt for the same amount within 3 days of a credit.
+// Kept for 5 minutes, so each look at the screen does not read them again (the free plan's data limit)
+let receiptCache: { at: number; rows: any[] } | null = null;
 async function recentReceipts() {
+  if (receiptCache && Date.now() - receiptCache.at < 5 * 60 * 1000) return receiptCache.rows;
+  const rows = await readRecentReceipts();
+  receiptCache = { at: Date.now(), rows };
+  return rows;
+}
+async function readRecentReceipts() {
   const { data, error } = await db.from(`receipt${fySuffix()}`).select('customer_id, recp_no, mal_recp_amt, recp_date, remarks')
     .order('id', { ascending: false }).range(0, 7999);
   if (error) return [];
