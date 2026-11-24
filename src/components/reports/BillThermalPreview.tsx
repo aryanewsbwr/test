@@ -573,6 +573,22 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Summary Breakdown */}
         <div className="flex flex-col gap-1 text-[10.5px] mb-2">
+          {printMode === 'detail' && (<>
+            <div className="flex justify-between items-center font-semibold text-zinc-900">
+              <span className="text-left">अखबार / Papers</span>
+              <span className="font-bold whitespace-nowrap ml-1">₹ {formatMoney(paperAmount)}</span>
+            </div>
+            <div className="flex justify-between items-center font-semibold text-zinc-900">
+              <span className="text-left">Delivery / डिलीवरी</span>
+              <span className="font-bold whitespace-nowrap ml-1">₹ {formatMoney(deliveryCharge)}</span>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between items-center font-semibold text-zinc-900">
+                <span className="text-left">Discount / छूट</span>
+                <span className="font-bold whitespace-nowrap ml-1">- ₹ {formatMoney(discountAmount)}</span>
+              </div>
+            )}
+          </>)}
           <div className="flex justify-between items-center font-semibold text-zinc-900">
             <span className="text-left">Current / इस माह</span>
             <span className="font-bold whitespace-nowrap ml-1">₹ {formatMoney(monthBillAmount)}</span>

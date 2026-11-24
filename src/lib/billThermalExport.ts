@@ -249,6 +249,19 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
       <!-- Summary Breakdown (Current Month / Previous Due) -->
       <div class="summary-section">
+        ${printMode === 'detail' ? `
+        <div class="summary-row">
+          <span class="summary-label">अखबार / Papers</span>
+          <span class="summary-value">₹ ${formatMoney(paperAmount)}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Delivery / डिलीवरी</span>
+          <span class="summary-value">₹ ${formatMoney(deliveryCharge)}</span>
+        </div>${discountAmount ? `
+        <div class="summary-row">
+          <span class="summary-label">Discount / छूट</span>
+          <span class="summary-value">- ₹ ${formatMoney(discountAmount)}</span>
+        </div>` : ''}` : ''}
         <div class="summary-row">
           <span class="summary-label">Current / इस माह</span>
           <span class="summary-value">₹ ${formatMoney(monthBillAmount)}</span>
