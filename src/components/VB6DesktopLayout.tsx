@@ -58,6 +58,7 @@ import RetailSalePermanentForm from './forms/RetailSalePermanentForm';
 import PeriodForm from './forms/PeriodForm';
 import ReportsForm from './forms/ReportsForm';
 import WhatsAppRepliesForm from './forms/WhatsAppRepliesForm';
+import BankMilanForm from './forms/BankMilanForm';
 import BackupRestoreModal from './forms/BackupRestoreModal';
 import DiscontinueForm from './forms/DiscontinueForm';
 import CompanyForm from './forms/CompanyForm';
@@ -679,6 +680,11 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               <button onClick={() => { setActiveWindow('wareplies'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer border-t border-[#808080] mt-1 pt-1.5">
                 WhatsApp Replies (ग्राहकों के जवाब)
               </button>
+
+              {/* 18. Bank Milan: which customer each UPI credit came from */}
+              <button onClick={() => { setActiveWindow('bankmilan'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Bank Milan (बैंक जमा मिलान)
+              </button>
             </div>
           )}
         </div>
@@ -1006,6 +1012,10 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
         ))}
 
         {/* 10a. WhatsApp Replies */}
+        {win('bankmilan', (
+          <BankMilanForm onClose={() => setActiveWindow(null)} />
+        ))}
+
         {win('wareplies', (
           <WhatsAppRepliesForm onClose={() => setActiveWindow(null)} />
         ))}
