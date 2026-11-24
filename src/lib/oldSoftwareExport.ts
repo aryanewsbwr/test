@@ -216,7 +216,7 @@ const BILLED_MONTH: Record<string, string[]> = { bill: ['customer_id', 'month'],
 // The old software numbers these itself from MAX(id)+1 of its own table, and nothing else points to
 // them: a row new on the website takes the next number after the old software's highest, never the
 // website's own (Himanshu, 22 Nov 2026), so the numbers can't clash on the next round trip
-const NEXT_AFTER_OLD = new Set(['receipt', 'retailsale']);
+const NEXT_AFTER_OLD = new Set(['receipt', 'retailsale', 'discontinue', 'customer_mobile']);
 
 /**
  * Finds, for each website row, the same row in the old software's table: by its number when the rest
@@ -343,6 +343,8 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
     ? m.decoded.reduce((highest, r) => Math.max(highest, Number(r[m.at.get(m.pk!)!]) || 0), 0)
     : -1;
   let changed = 0;
+  // New and changed rows as written, for the rule check
+  const checked: { tokens: string[]; isNew: boolean; was?: string[] }[] = [];
   const lines: { order: number | undefined; line: string }[] = [];
   m.list.forEach((x, r) => {
     const o = x.match === undefined ? null : m.decoded[x.match];
@@ -364,7 +366,7 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
       return x.tokens[i];
     });
     // Only for a row the old software does not have; its own value (even 0) stands
-    if (o && m.names.some((n, i) => m.at.has(n) && tokens[i] !== old.rows[x.match!][m.at.get(n)!])) changed++;
+    if (o && m.names.some((n, i) => m.at.has(n) && tokens[i] !== old.rows[x.match!][m.at.get(n)!])) { changed++; checked.push({ tokens, isNew: false, was: m.names.map(n => (m.at.has(n) ? old.rows[x.match!][m.at.get(n)!] : '')) }); }
     if (!o) {
       added++;
       // Numbered only now, once every row the old software has is found, so no number is skipped
@@ -373,6 +375,7 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
       m.names.forEach((n, i) => {
         if (orElse[n] && sameMeaning(tokenValue(tokens[i])) === '') tokens[i] = tokens[m.names.indexOf(orElse[n])];
       });
+      checked.push({ tokens, isNew: true });
     }
     lines.push({ order: x.match, line: ' (' + tokens.join(',') + ')' });
   });
@@ -391,7 +394,7 @@ function withOldValues(name: string, body: string, columns: Column[], rows: any[
     return { line: l.line, order: l.order ?? previous + 0.5, i };
   });
   const out = placed.sort((a, b) => a.order - b.order || a.i - b.i).map(l => l.line);
-  return { out, fromOld: m.list.filter(x => x.match !== undefined).length, added, kept, left, changed, newIds };
+  return { out, fromOld: m.list.filter(x => x.match !== undefined).length, added, kept, left, changed, newIds, names: m.names, checked };
 }
 
 /**
@@ -1024,6 +1027,8 @@ export interface OldFileCount {
   empty: string[];
   // Things in the website's data the file had to work around, for staff to look at
   notes?: string[];
+  // The old software's rules, checked on every row this file adds or changes
+  rules?: RuleResult[];
 }
 
 // Where each table's part of an old software dump begins and ends, so it can be copied byte for byte
@@ -1119,6 +1124,7 @@ export function* oldSoftwarePart(
       const history = old.get(name.toLowerCase());
       const made = history ? withOldValues(name, table.body, columns, spec.rows, history) : null;
       // What this export adds to or changes in the old software's data, table by table
+      if (made) (count.rules = count.rules || []).push(...vb6RuleCheck(name, made.names, made.checked, history));
       if (made && (made.added || made.changed || made.left)) {
         notes.push(`${name}: ${made.added} नई लाइन${made.newIds.length ? ` (${made.newIds.slice(0, 15).join(', ')}${made.newIds.length > 15 ? ' …' : ''})` : ''}, ${made.changed} बदली`
           + (made.left ? `, ${made.left} वेबसाइट लाइन छोड़ी (वह महीना पुराने सॉफ्टवेयर में बना है)` : ''));
@@ -1137,4 +1143,75 @@ export function* oldSoftwarePart(
   }
   // Known only once the rows are written
   if (lost.size) notes.push(`${lost.size} रसीद/बिल लाइन का बिल उसी ग्राहक का नहीं मिला: ${Array.from(lost).slice(0, 5).join('; ')}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Rule check: every row this export adds to, or changes in, the old software's data is checked
+// against how the old software itself writes that table (Himanshu's reviews, Nov 2026). Rows the
+// old software has and that are written as it has them are not checked: they are its own.
+// ---------------------------------------------------------------------------------------------
+export interface RuleResult { rule: string; ok: boolean; detail?: string }
+const VB6_MONTH_NAMES = new Set(['April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'March', 'Dues']);
+const DMY = /^\d{2}\/\d{2}\/\d{4}$/;
+// Tables whose new rows take the old software's next number (MAX+1)
+const NEXT_NUMBER: Record<string, string> = { receipt: 'receipt_id', retailsale: 'retail_id', billno: 'bill_id', customer_mobile: 'id', discontinue: 'discontinue_id' };
+
+export function vb6RuleCheck(table: string, names: string[], rows: { tokens: string[]; isNew: boolean; was?: string[] }[], old: OldRows | undefined): RuleResult[] {
+  const base = table.toLowerCase().replace(/\d{8}$/, '');
+  const at = (n: string) => names.indexOf(n);
+  const raw = (r: { tokens: string[] }, n: string) => (at(n) >= 0 ? r.tokens[at(n)] : undefined);
+  const val = (r: { tokens: string[] }, n: string) => { const t = raw(r, n); return t === undefined ? undefined : tokenValue(t); };
+  const fresh = rows.filter(r => r.isNew);
+  const results: RuleResult[] = [];
+  const rule = (name: string, list: typeof rows, bad: (r: (typeof rows)[number]) => boolean, show: (r: (typeof rows)[number]) => string) => {
+    if (!list.length) return;
+    const wrong = list.filter(bad);
+    results.push({ rule: `${table}: ${name}`, ok: !wrong.length, detail: wrong.length ? `${wrong.length} गलत: ${wrong.slice(0, 5).map(show).join(', ')}` : undefined });
+  };
+  const who = (r: { tokens: string[] }) => String(val(r, 'customer_id') ?? val(r, names[0]) ?? '?');
+
+  // New numbers continue from the old software's highest, one after another, never used twice
+  const pk = NEXT_NUMBER[base];
+  if (pk && at(pk) >= 0 && fresh.length && old) {
+    const oi = old.columns.indexOf(pk);
+    const highest = oi >= 0 ? old.rows.reduce((h, r) => Math.max(h, Number(tokenValue(r[oi])) || 0), 0) : 0;
+    const ids = fresh.map(r => Number(val(r, pk))).sort((a, b) => a - b);
+    const expected = ids.map((_, i) => highest + 1 + i);
+    const okIds = ids.every((id, i) => id === expected[i]);
+    results.push({ rule: `${table}: नया ${pk} = MAX+1 (${highest + 1} से)`, ok: okIds, detail: okIds ? undefined : `मिले: ${ids.slice(0, 5).join(', ')}` });
+  }
+  // Month names the old software's way (Nov, Sept, July...)
+  if (['bill', 'billno', 'billdel', 'receipt', 'publicationsup'].includes(base) && at('month') >= 0) {
+    rule('महीने का नाम VB6 जैसा (Nov, Sept...)', rows, r => !VB6_MONTH_NAMES.has(String(val(r, 'month') ?? '')), r => `${who(r)} "${val(r, 'month')}"`);
+  }
+  if (base === 'customer_detail') {
+    rule('Hawk_Sub = -1', fresh, r => Number(val(r, 'hawk_sub')) !== -1, who);
+    rule('S_Date भरी (dd/mm/yyyy)', fresh, r => !DMY.test(String(val(r, 's_date') ?? '')), who);
+  }
+  if (base === 'discontinue') {
+    rule('S_Date भरी (उस दिन चालू पेपर से)', fresh, r => !DMY.test(String(val(r, 's_date') ?? '')), r => `ग्राहक ${who(r)} पेपर ${val(r, 'publica_id')}`);
+    rule('Hawker_id भरा', fresh, r => !Number(val(r, 'hawker_id')), who);
+    rule('Temp_Perma T या P', fresh, r => !['T', 'P'].includes(String(val(r, 'temp_perma'))), who);
+    rule('अस्थायी बंद में C_Date NULL', fresh.filter(r => val(r, 'temp_perma') === 'T'), r => raw(r, 'c_date') !== 'NULL', who);
+  }
+  if (base === 'receipt') {
+    rule("ChequeNo खाली '' (NULL नहीं)", fresh, r => raw(r, 'chequeno') === 'NULL', who);
+    rule('Cash_Chq भरा', fresh, r => !val(r, 'cash_chq'), who);
+    rule('ReceiptNo भरा', fresh, r => !Number(val(r, 'receiptno')), who);
+  }
+  if (base === 'publication') rule('Duration NULL', rows, r => raw(r, 'duration') !== 'NULL', r => String(val(r, 'publica_id')));
+  // Existing supplement rows are never rewritten
+  if (base === 'publicationsup') rule('पुरानी लाइनें नहीं बदलीं', rows.filter(r => !r.isNew), () => true, r => `${val(r, 'publica_id')} ${val(r, 'month')} ${val(r, 'region_id')}`);
+  if (base === 'customer_mobile') rule('मोबाइल = 91 + 10 अंक', fresh, r => !/^91[6-9]\d{9}$/.test(String(val(r, 'mobile') ?? '')), r => `${val(r, 'customer_id')} ${val(r, 'mobile')}`);
+  if (base === 'customer') {
+    // The billing number is the first in Hindi_Add: 10 digits, no 91, never 11 digits
+    // Only numbers this file brings: a wrong number the old software already had is its own
+    const digitRuns = (text: any) => Array.from(String(text ?? '').matchAll(/\d{7,}/g), m => m[0]);
+    const added = (r: (typeof rows)[number]) => {
+      const before = new Set(r.was && at('hindi_add') >= 0 ? digitRuns(tokenValue(r.was[at('hindi_add')])) : []);
+      return digitRuns(val(r, 'hindi_add')).filter(d => !before.has(d));
+    };
+    rule('Hindi_Add में नया मोबाइल 10 अंक', rows, r => added(r).some(d => d.length !== 10), r => `${val(r, 'customer_id')} ${added(r).find(d => d.length !== 10)}`);
+  }
+  return results;
 }

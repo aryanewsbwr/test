@@ -73,6 +73,15 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     return `Backup downloaded: ${rows.toLocaleString()} rows, checked against the database. Keep the file safe.`;
   });
 
+  // The old software's rules, checked on every new or changed row in the file
+  const ruleSummary = (rules: { rule: string; ok: boolean; detail?: string }[]) => {
+    if (!rules.length) return 'नियम जाँच: इस फाइल में कोई नई या बदली लाइन नहीं।';
+    const bad = rules.filter(r => !r.ok);
+    return bad.length
+      ? `❌ नियम जाँच: ${bad.length} नियम टूटे — यह फाइल अभी पुराने सॉफ्टवेयर में न डालें:\n${bad.map(r => `❌ ${r.rule} — ${r.detail}`).join('\n')}\n✓ बाकी ${rules.length - bad.length} नियम ठीक`
+      : `✓ नियम जाँच: सभी ${rules.length} नियम ठीक (MAX+1 नंबर, महीनों के नाम, Hawk_Sub, बंद की तारीखें, मोबाइल...)`;
+  };
+
   const handleOldSoftwareFile = () => run(async () => {
     const database = forCheck ? checkName.trim() : 'test';
     if (!validDatabaseName(database)) throw new Error('डाटाबेस के नाम में सिर्फ अंग्रेज़ी अक्षर, अंक और _ हो सकते हैं');
@@ -80,7 +89,9 @@ export default function BackupRestoreModal({ mode, onClose }: BackupRestoreModal
     const done = await downloadOldSoftwareFile(working, database);
     return `पुराने सॉफ्टवेयर की पूरी बैकअप फाइल बन गई: वेबसाइट से ${done.filled.length} टेबल (${done.rows.toLocaleString()} रिकॉर्ड), पुराने इतिहास से ${done.copied.length} टेबल, खाली ${done.empty.length} टेबल।${done.history ? '' : ' पुराना इतिहास वेबसाइट पर नहीं है, इसलिए पुराने साल खाली हैं।'}${database === 'test' ? ' पहले किसी दूसरे कंप्यूटर पर आज़माएँ।' : ` यह फाइल "${database}" डाटाबेस में जाएगी, असली "test" नहीं बदलेगा।`}${done.notes?.length ? `
 
-जाँच (वेबसाइट के डाटा में देखें): ${done.notes.join(' | ')}` : ' डाटा की जाँच: सब ठीक।'}`;
+जाँच (वेबसाइट के डाटा में देखें): ${done.notes.join(' | ')}` : ' डाटा की जाँच: सब ठीक।'}
+
+${ruleSummary(done.rules || [])}`;
   });
 
   const handleSaveHistory = (file: File) => run(async () => {
