@@ -9,12 +9,29 @@ export const UPI_PAYEE_NAME = 'ARYAN NEWS AGENCY';
  * or allows customer to enter amount freely (some apps lock amount if 'am' is present).
  * If omitAmount is true or amount <= 0, no 'am' param is included so user enters any amount.
  */
-export function buildUpiPaymentUri(amount?: number | null, billNoOrCustId?: string | number, month?: string): string {
-  const cleanAmt = Math.max(0, Number(amount || 0)).toFixed(2);
-  const pn = encodeURIComponent(UPI_PAYEE_NAME);
-  const billRef = billNoOrCustId ? encodeURIComponent(`Bill ${billNoOrCustId}`) : '';
+// The merchant settings from the agency's own PNB QR: some UPI apps need them to accept a set amount
+const UPI_MERCHANT = '&mc=5111&mode=02';
 
-  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR${billRef ? `&tn=${billRef}` : ''}`;
+// "Nov-2026" from "November 2026", "Nov 2026" or ("Nov", 2026)
+function upiMonth(month?: string): string {
+  const text = String(month || '').trim();
+  const word = text.match(/[A-Za-z]{3,}/)?.[0];
+  const year = text.match(/\b(20\d{2})\b/)?.[1];
+  if (!word) return '';
+  const mon = word.charAt(0).toUpperCase() + word.slice(1, 3).toLowerCase();
+  return year ? `${mon}-${year}` : mon;
+}
+
+/**
+ * The UPI payment link in every QR (WhatsApp bill, dues reminder, printed bills), as Himanshu set it
+ * out (24 Nov 2026): the amount is the rounded amount printed on the bill (ROUND(x + 0.001)), and the
+ * note "AC<customer number> <Mon-YYYY>" shows in the bank statement which customer paid.
+ */
+export function buildUpiPaymentUri(amount?: number | null, customerId?: string | number, month?: string): string {
+  const rounded = Math.max(0, Math.round(Number(amount || 0) + 0.001));
+  const pn = encodeURIComponent(UPI_PAYEE_NAME);
+  const note = customerId ? [`AC${customerId}`, upiMonth(month)].filter(Boolean).join(' ') : '';
+  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${rounded.toFixed(2)}&cu=INR${note ? `&tn=${encodeURIComponent(note)}` : ''}${UPI_MERCHANT}`;
 }
 
 /**

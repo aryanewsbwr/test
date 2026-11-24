@@ -185,7 +185,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   const monthYearDisplay = formatShortMonthYear(b.month, b.year);
   const formattedPhone = cleanPhone(b.phone);
 
-  const rawQrSvg = generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 120, 0);
+  const rawQrSvg = generateDynamicUpiQrSvg(netPayable, b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 120, 0);
 
   return `
     <div class="bill-card">
@@ -946,7 +946,7 @@ export function renderThermalReminderHtml(r: ReminderSlip): string {
   const restLine = Math.abs(rest) < 0.005 ? '' : rest > 0
     ? `<div class="summary-row"><span class="summary-label">${papers.length ? 'पिछला बकाया' : 'बकाया'}</span><span class="summary-value">₹ ${formatMoney(rest)}</span></div>`
     : `<div class="summary-row"><span class="summary-label">जमा राशि (Paid)</span><span class="summary-value">- ₹ ${formatMoney(-rest)}</span></div>`;
-  const qr = r.balance > 0 ? generateDynamicUpiQrSvg(r.balance, r.customerId, '', 120, 0) : '';
+  const qr = r.balance > 0 ? generateDynamicUpiQrSvg(r.balance, r.customerId, r.lastBillMonth || '', 120, 0) : '';
 
   return `
     <div class="bill-card">

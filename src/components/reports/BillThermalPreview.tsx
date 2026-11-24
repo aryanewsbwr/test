@@ -613,7 +613,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
               dangerouslySetInnerHTML={{
                 __html: generateDynamicUpiQrSvg(
                   netPayable,
-                  b.bill_no || b.customer_id,
+                  b.customer_id,
                   `${b.month || ''} ${b.year || ''}`.trim(),
                   110,
                   0

@@ -67,7 +67,7 @@ export async function reminderBillPng(s: ReminderStatement): Promise<Buffer> {
   const boxY = y + 2;
   const qrY = boxY + 60;
   // The code is drawn in its own small units (one per square), so it is scaled up to 132 px
-  const raw = generateDynamicUpiQrSvg(s.balance, s.customerId, '', 140, 0).trim();
+  const raw = generateDynamicUpiQrSvg(s.balance, s.customerId, s.lastBillMonth || '', 140, 0).trim();
   const units = Number(raw.match(/viewBox="0 0 (\d+(?:\.\d+)?)/)?.[1]) || 132;
   const qr = `<g transform="translate(4,4) scale(${132 / units})">${raw.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '')}</g>`;
   const footY = qrY + 160;
