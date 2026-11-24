@@ -243,7 +243,8 @@ export function oldSoftwareTables(): OldTable[] {
     {
       source: 'holiday',
       target: 'holiday',
-      map: r => ({ oc_date: r.oc_date, dated: r.oc_date, publica_id: r.publica_id, remark: 'Press Holiday' })
+      // The occasion typed in the old software (Diwali, Holi...), not a fixed word
+      map: r => ({ oc_date: r.oc_date, dated: r.oc_date, publica_id: r.publica_id, remark: String(r.occasion ?? '').trim() || 'Press Holiday' })
     },
     {
       source: 'publicationdis',

@@ -34,7 +34,7 @@ const MASTER_TABLES: BackupTable[] = [
   { name: 'collect', key: ['Collect_id'] },
   { name: 'rate', key: ['id'], oldKey: ['publica_id', 'dayofweek'], assignId: true },
   { name: 'ratechange', key: ['id'], oldKey: ['publica_id', 'dayofweek', 'effective_date'], assignId: true },
-  { name: 'holiday', key: ['id'], oldKey: ['oc_date', 'publica_id'], assignId: true, oldIgnore: ['remark', 'holiday_id'] },
+  { name: 'holiday', key: ['id'], oldKey: ['oc_date', 'publica_id'], assignId: true, oldIgnore: ['holiday_id'] },
   { name: 'publicationdis', key: ['id'], oldKey: ['publica_id', 'entry_date'], assignId: true, oldIgnore: ['dis_type', 'remark'] },
   { name: 'publicationsup', key: ['id'], oldKey: ['publica_id', 'publicasup_id', 'month', 'year', 'region_id'], assignId: true },
   {

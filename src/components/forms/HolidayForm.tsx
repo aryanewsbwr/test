@@ -445,7 +445,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
       {/* Find Modal Dialog */}
       {isFindOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 font-tahoma">
-          <div className="d2-window w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[80vh]">
+          <div className="d2-window w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[80vh]">
             
             <div className="d2-title bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold text-xs mb-2">
               <span>Saved Holiday List ({holidayGroups.length} छुट्टियाँ)</span>
