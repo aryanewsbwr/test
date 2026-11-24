@@ -456,6 +456,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             <div key={pIdx} className="flex justify-between items-center text-[12px] font-semibold text-black">
               <span className="flex-[2] text-left">{pubDisplayName}</span>
               <span className="flex-1 text-center font-bold">{qtyOrDays}</span>
+              <span className="flex-[0.8] text-right pr-0.5">{it.delivery_amount ? formatMoney(it.delivery_amount) : ''}</span>
               <span className="flex-1 text-right font-bold">{formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
           );
@@ -558,6 +559,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         <div className="flex justify-between items-center text-[11.5px] font-extrabold text-black">
           <span className="flex-[2] text-left">विवरण / Particular</span>
           <span className="flex-1 text-center">Days</span>
+          {printMode === 'detail' && <span className="flex-[0.8] text-right pr-0.5">Del.</span>}
           <span className="flex-1 text-right">Amount ₹</span>
         </div>
 

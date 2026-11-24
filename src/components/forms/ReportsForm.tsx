@@ -209,7 +209,7 @@ export default function ReportsForm({
   const [highlightedCustIndex, setHighlightedCustIndex] = useState<number>(0);
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
-  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('4in1_a4');
+  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('thermal_58mm');
   // WhatsApp sent counts per region for the selected month
   const [waRegionStatus, setWaRegionStatus] = useState<WaRegionStatus>({});
   const [waRegionError, setWaRegionError] = useState('');
