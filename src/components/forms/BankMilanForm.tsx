@@ -82,8 +82,15 @@ export default function BankMilanForm({ onClose }: { onClose: () => void }) {
   const uploadPnb = async (file: File) => {
     setMsg({ text: 'PNB स्टेटमेंट पढ़ा जा रहा है...' });
     try {
-      const credits = parsePnbStatement(await readFile(file));
-      if (!credits.length) throw new Error('इस फाइल में कोई जमा (Cr) लाइन नहीं मिली — PNB का CSV स्टेटमेंट चुनें');
+      if (/\.xlsx?$/i.test(file.name)) throw new Error('यह Excel फाइल है। PNB से स्टेटमेंट "CSV" में डाउनलोड करें, या Excel में खोलकर "Save As → CSV" करें, फिर डालें।');
+      const text = await readFile(file);
+      if (text.includes('भेजने वाला') && text.includes('ग्राहक ID')) throw new Error('यह हिमांशु की पुरानी फाइल (Bank_Milaan_Master.csv) है — इसे दाईं ओर के "पुरानी फाइल" बटन से डालें।');
+      const credits = parsePnbStatement(text);
+      if (!credits.length) {
+        const first = text.split(/?
+/).map(l => l.trim()).filter(l => l.replace(/,/g, '')).slice(0, 3).map(l => l.slice(0, 90)).join('  ⏎  ');
+        throw new Error(`इस फाइल (${file.name}) में कोई जमा (Cr) लाइन नहीं पहचानी गई। फाइल की शुरुआत: ${first || '(खाली)'} — यह स्क्रीनशॉट Claude को भेजें।`);
+      }
       const res = await fetch('/api/bank-milan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'upload', credits }) });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);

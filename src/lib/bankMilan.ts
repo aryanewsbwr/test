@@ -55,11 +55,28 @@ function readNarration(text: string) {
   return { utr: '', name, bank: '', vpa: '', mobile: '' };
 }
 
+const MONTHS: Record<string, string> = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+// 24/11/2026, 24-11-2026, 24.11.2026, 24-Nov-2026, 24 Nov 2026, 2026-11-24 (a time after it is fine)
 const isoFromDmy = (d: string) => {
-  const m = d.trim().match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+  const t = String(d || '').trim();
+  let m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  m = t.match(/^(\d{1,2})[\s/-]([A-Za-z]{3})[A-Za-z]*[\s/-](\d{4})/);
+  if (m && MONTHS[m[2].toLowerCase()]) return `${m[3]}-${MONTHS[m[2].toLowerCase()]}-${m[1].padStart(2, '0')}`;
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
 };
-const money = (s: string) => Number(String(s || '').replace(/,/g, '').trim()) || 0;
+const money = (s: string) => Number(String(s || '').replace(/,|cr\.?|₹|inr/gi, '').trim()) || 0;
+
+// The columns of a statement with a heading row (Txn Date, Description, Cr Amount...), whatever their order
+function headingColumns(row: string[]) {
+  const at = (re: RegExp) => row.findIndex(c => re.test(String(c || '').trim()));
+  const date = at(/^(txn|transaction|tran|value)?\.?\s*date$/i);
+  const desc = at(/description|narration|particulars|remarks/i);
+  const cr = at(/^(cr\.?\s*amount|credit(\s*amount)?|deposit(\s*amount)?|cr)$/i);
+  const txn = at(/^(txn|transaction|tran)\.?\s*(no|id|number)\.?$/i);
+  return date >= 0 && desc >= 0 && cr >= 0 ? { date, desc, cr, txn } : null;
+}
 
 /**
  * A PNB statement CSV: the new ONE BIZ layout (Txn No, Txn Date dd/mm/yyyy, Description, Branch,
@@ -67,9 +84,14 @@ const money = (s: string) => Number(String(s || '').replace(/,/g, '').trim()) ||
  */
 export function parsePnbStatement(text: string): BankCredit[] {
   const out: BankCredit[] = [];
+  let cols: ReturnType<typeof headingColumns> = null;
   for (const r of parseCsv(text.replace(/^﻿/, ''))) {
     let txn = '', date = '', desc = '', cr = 0;
-    if (r.length >= 8 && /^\d{2}\/\d{2}\/\d{4}$/.test((r[1] || '').trim())) {
+    const heading = headingColumns(r);
+    if (heading) { cols = heading; continue; }
+    if (cols && isoFromDmy(r[cols.date] || '')) {
+      txn = cols.txn >= 0 ? r[cols.txn] || '' : ''; date = isoFromDmy(r[cols.date]); desc = r[cols.desc] || ''; cr = money(r[cols.cr]);
+    } else if (r.length >= 8 && /^\d{2}\/\d{2}\/\d{4}$/.test((r[1] || '').trim())) {
       txn = r[0]; date = isoFromDmy(r[1]); desc = r[2]; cr = money(r[6]);
     } else if (r.length >= 14 && /^\d{2}-\d{2}-\d{4}$/.test((r[3] || '').trim())) {
       txn = r[1]; date = isoFromDmy(r[3]); desc = r[5]; cr = money(r[12]);
