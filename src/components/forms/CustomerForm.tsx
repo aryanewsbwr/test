@@ -7,18 +7,22 @@ import { useWindowActive } from '@/components/MdiWindow';
 import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
 
-// The customer's billing number is the first 10-digit mobile number in the Hindi address (the old
-// software keeps it there). The phone box and the address keep that number the same both ways.
-const FIRST_MOBILE = /(?<!\d)(?:\+?91[\s-]?|0)?([6-9]\d{9})(?!\d)/;
-const firstMobile = (text: any) => String(text ?? '').match(FIRST_MOBILE)?.[1] || '';
-const withFirstMobile = (text: any, mobile: string) => {
+// The customer's billing number is the FIRST number in the Hindi address (the old software keeps it
+// there), and the phone box always shows it. A mobile number is 10 digits starting with 6, 7, 8 or 9;
+// when the address's first number is not one, the phone stays empty until the number is corrected.
+const FIRST_NUMBER = /(?<!\d)\d{6,}(?!\d)/;
+const firstNumber = (text: any) => String(text ?? '').match(FIRST_NUMBER)?.[0] || '';
+const isMobile = (n: string) => /^[6-9]\d{9}$/.test(n);
+const withFirstNumber = (text: any, mobile: string) => {
   const t = String(text ?? '');
-  return FIRST_MOBILE.test(t) ? t.replace(FIRST_MOBILE, mobile) : [mobile, t.trim()].filter(Boolean).join(' ');
+  return FIRST_NUMBER.test(t) ? t.replace(FIRST_NUMBER, mobile) : [mobile, t.trim()].filter(Boolean).join(' ');
 };
-// On opening a customer: the address's number is the one shown in the phone box
+// The phone box from the address: its first number when that is a mobile number, empty when it is
+// wrong, and the phone as it was when the address has no number at all
 const phoneFromAddress = (phone: any, hindiAdd: any) => {
-  const fromAdd = firstMobile(hindiAdd);
-  return fromAdd && fromAdd !== firstMobile(phone) ? withFirstMobile(phone, fromAdd) : String(phone ?? '');
+  const n = firstNumber(hindiAdd);
+  if (!n) return String(phone ?? '');
+  return isMobile(n) ? n : '';
 };
 import { cleanOrTransliterateHindi, englishToHindiPhonetic, transliterateToHindiAsync } from '@/lib/transliteration';
 
@@ -828,8 +832,7 @@ export default function CustomerForm({
                     setHindiAdd(value);
                     setIsAddHindiManual(true);
                     // A number changed in the address changes the phone too
-                    const mobile = firstMobile(value);
-                    if (mobile && mobile !== firstMobile(phone)) setPhone(withFirstMobile(phone, mobile));
+                    setPhone(phoneFromAddress(phone, value));
                   }}
                   onKeyDown={(e) => handleHindiFieldKeyDown(e, 'add')}
                   placeholder="हिंदी पता..."
@@ -916,12 +919,22 @@ export default function CustomerForm({
                   const value = e.target.value;
                   setPhone(value);
                   // A number changed in the phone changes the address's first number too
-                  const mobile = firstMobile(value);
-                  if (mobile && mobile !== firstMobile(hindiAdd)) setHindiAdd(withFirstMobile(hindiAdd, mobile));
+                  const mobile = firstNumber(value);
+                  if (isMobile(mobile) && mobile !== firstNumber(hindiAdd)) setHindiAdd(withFirstNumber(hindiAdd, mobile));
                 }}
                 className="flex-1 px-1.5 py-0.5 border border-[#808080] bg-white font-mono"
               />
             </div>
+            {(() => {
+              const addNum = firstNumber(hindiAdd);
+              const phoneNum = firstNumber(phone);
+              const msg = addNum && !isMobile(addNum)
+                ? `पते का पहला नंबर गलत है: ${addNum} (${addNum.length} अंक) — मोबाइल 10 अंक का, 6/7/8/9 से शुरू। ठीक करने तक फ़ोन खाली रहेगा।`
+                : phone.trim() && !isMobile(phoneNum)
+                  ? `फ़ोन नंबर गलत है: ${phoneNum || phone} — 10 अंक, 6/7/8/9 से शुरू होना चाहिए।`
+                  : '';
+              return msg ? <div className="text-[10px] font-bold text-red-700 leading-tight">{msg}</div> : null;
+            })()}
 
             <div className="flex items-center gap-2">
               <label className="w-14 font-bold text-slate-800">Priority</label>
