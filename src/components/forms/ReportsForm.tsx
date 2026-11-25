@@ -12,6 +12,7 @@ import { Bill4in1Preview } from '@/components/reports/Bill4in1Preview';
 import { BillThermalPreview } from '@/components/reports/BillThermalPreview';
 import { useFitWindow } from '@/components/MdiWindow';
 import { printBills4in1 } from '@/lib/bill4in1Export';
+import { printBillsPreprinted } from '@/lib/billPreprintedExport';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import ReceiptForm from '@/components/forms/ReceiptForm';
 import { printDueList } from '@/lib/dueListPrint';
@@ -210,7 +211,7 @@ export default function ReportsForm({
   const [highlightedCustIndex, setHighlightedCustIndex] = useState<number>(0);
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
-  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('thermal_58mm');
+  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'preprinted_a4' | 'thermal_58mm'>('thermal_58mm');
   // WhatsApp sent counts per region for the selected month
   const [waRegionStatus, setWaRegionStatus] = useState<WaRegionStatus>({});
   const [waRegionError, setWaRegionError] = useState('');
@@ -766,6 +767,8 @@ export default function ReportsForm({
     if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
       if (billPrinterType === 'thermal_58mm') {
         printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
+      } else if (billPrinterType === 'preprinted_a4') {
+        printBillsPreprinted(reportData?.rows || [], currentMeta.title, billPrintMode);
       } else {
         printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
       }
@@ -1192,6 +1195,10 @@ export default function ReportsForm({
                     <span>📄 4-in-1 (A4 Sheet)</span>
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                    <input type="radio" name="billPrinterTypeCriteria" checked={billPrinterType === 'preprinted_a4'} onChange={() => setBillPrinterType('preprinted_a4')} />
+                    <span>🗒️ Pre-printed Sheet (A4)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                     <input 
                       type="radio" 
                       name="billPrinterTypeCriteria" 
@@ -1254,7 +1261,9 @@ export default function ReportsForm({
                   if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
                     if (billPrinterType === 'thermal_58mm') {
                       printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
-                    } else {
+                    } else if (billPrinterType === 'preprinted_a4') {
+        printBillsPreprinted(reportData?.rows || [], currentMeta.title, billPrintMode);
+      } else {
                       printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
                     }
                   } else {
@@ -1401,6 +1410,14 @@ export default function ReportsForm({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setBillPrinterType('preprinted_a4')}
+                  className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${billPrinterType === 'preprinted_a4' ? 'bg-amber-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
+                  title="Values only, for the shop's pre-printed 4-in-1 sheets"
+                >
+                  🗒️ Pre-printed
+                </button>
+                <button
+                  type="button"
                   onClick={() => setBillPrinterType('thermal_58mm')}
                   className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
                     billPrinterType === 'thermal_58mm'
@@ -1467,7 +1484,7 @@ export default function ReportsForm({
               {activeReport.includes('bill_print') 
                 ? billPrinterType === 'thermal_58mm'
                   ? 'Print 58mm Thermal'
-                  : `Print 4 in 1 A4 (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` 
+                  : `Print ${billPrinterType === 'preprinted_a4' ? 'Pre-printed' : '4 in 1'} A4 (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` 
                 : 'Print'}
             </span>
           </button>
