@@ -2,6 +2,7 @@ import { getReliableHindiName } from '@/lib/transliteration';
 import { company, billMessage, esc } from './companyInfo';
 import { billRoundOff, formatRoundOff, roundToFoxProRule } from '@/lib/billingEngine';
 import { BOY_LOGO_B64 } from './logoBase64';
+import { preprintedBillsHtml } from './billPreprintedExport';
 
 export { BOY_LOGO_B64 };
 
@@ -838,7 +839,8 @@ export function printBills4in1(bills: BillRecord[], title: string = 'Aryan News 
     return;
   }
 
-  const html = generateFullPrintHtml(bills, title, printMode);
+  // Plain A4 paper gets the same sheet as the shop's pre-printed bills, drawn with the values
+  const html = preprintedBillsHtml(bills, title, printMode, { sheet: true });
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.open();
