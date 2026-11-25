@@ -490,10 +490,15 @@ export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeader
     const here = live.get(key);
     const [customer, code] = key.split('|');
     if (!fileMonths.has(code) && !mirror) continue;
-    if (here && Math.abs((file?.amount || 0) - here.amount) < 1) continue;
-
     const customer_id = Number(customer);
     const month = here?.header.month ?? monthNames.get(code) ?? file?.header.month;
+    // A bill the file does not have goes, even a ₹0 one (free papers), which the amount check below would keep
+    if (here && !file) {
+      fixes.push({ customer_id, month, bill_id: here.header.bill_id, remove: true, lines: [] });
+      continue;
+    }
+    if (here && Math.abs((file?.amount || 0) - here.amount) < 1) continue;
+
     if (here && (!file || file.lines.length === 0)) {
       fixes.push({ customer_id, month, bill_id: here.header.bill_id, remove: true, lines: [] });
       continue;
