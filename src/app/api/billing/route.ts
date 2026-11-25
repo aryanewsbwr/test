@@ -7,6 +7,8 @@ import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billi
 import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
+// All Regions bills every customer in one run, which needs more than the default time
+export const maxDuration = 300;
 
 // Every input below is read from the database for each run. A failed read stops the run
 // instead of billing from an old copy.
@@ -503,7 +505,8 @@ export async function GET(request: NextRequest) {
       bills: lightweightBills
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Bill route failed:', error);
+    return NextResponse.json({ error: error?.message || 'Bill generation failed.' }, { status: 500 });
   }
 }
 
@@ -697,6 +700,7 @@ export async function POST(request: NextRequest) {
       ...(balanceWarning ? { warning: balanceWarning } : {})
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Bill route failed:', error);
+    return NextResponse.json({ error: error?.message || 'Bill generation failed.' }, { status: 500 });
   }
 }

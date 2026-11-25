@@ -31,6 +31,29 @@ const FINANCIAL_YEARS = [0, 1, 2].map(back => {
   return { label: `${year}-${year + 1}`, value: `${year}${year + 1}`, year };
 });
 
+// The server can answer with a page instead of JSON (time limit, crash), which must still read clearly
+async function readBillReply(res: Response) {
+  const text = await res.text();
+  let data: any = null;
+  try { data = JSON.parse(text); } catch {}
+  if (res.ok && data && !data.error) return data;
+  if (data?.error) throw new Error(data.error);
+  if (res.status === 504 || /TIMEOUT|timed out/i.test(text)) throw new Error('TIMEOUT');
+  if (res.status === 401 || res.status === 403) throw new Error('You are logged out or do not have billing permission. Log in again and run it again.');
+  throw new Error(`The server had a problem (code ${res.status}).`);
+}
+
+function billErrorText(err: any, month: string): string {
+  const msg = String(err?.message || err || '');
+  if (msg === 'TIMEOUT') {
+    return `The bill run took too long and the server stopped it before it finished. Some ${month} bills may be missing. Run it again (it remakes every bill, nothing is charged twice), or run region by region.`;
+  }
+  if (/failed to fetch|network|load failed/i.test(msg)) {
+    return `The internet connection broke during the bill run. Check the internet and run it again; it remakes every bill, nothing is charged twice.`;
+  }
+  return msg || 'Bill generation failed.';
+}
+
 export default function BillingForm({ onClose, periodMonth, periodStartYear, onPrintBills }: BillingFormProps) {
   // The bill slip alone goes to the printer, not the whole screen behind it
   const slipRef = useRef<HTMLDivElement>(null);
@@ -132,6 +155,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
 
   // Execute Bill Processing (Matching VB6 BillProcessing screenshot_14.jpg)
   const handleProcess = async () => {
+    const startedAt = Date.now();
     setIsProcessing(true);
     setProcessDone(false);
     setProcessError('');
@@ -155,8 +179,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
           commitToDb: commitToDatabase
         })
       });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Bill generation failed');
+      const data = await readBillReply(res);
       setProcessWarning(data.warning || '');
 
       if (singleId) {
@@ -185,7 +208,22 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
       setProcessStatus(`Bill Processing Complete! ${data.total_bills_generated || gridData.total_customers} bills calculated successfully.`);
       setProcessDone(true);
     } catch (err: any) {
-      setProcessError(err.message);
+      const seconds = Math.round((Date.now() - startedAt) / 1000);
+      const where = singleId ? `customer #${singleId}` : selectedRegion === 'all' ? 'All Regions' : `region ${selectedRegion}`;
+      let message = billErrorText(err, month);
+      // After a failed save, tell staff how many bills of this month are really saved now
+      if (commitToDatabase && !singleId) {
+        try {
+          const check = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=1`);
+          const saved = await check.json();
+          if (check.ok && saved.total_customers !== undefined) message += ` Saved ${month} bills right now: ${saved.total_customers}.`;
+        } catch {}
+      }
+      const stamp = new Date().toLocaleString('en-IN');
+      console.error('Bill run failed', { where, month, year: selectedYear, seconds, error: err?.message });
+      setProcessError(`${message} [${where}, ${month} ${selectedYear}, after ${seconds}s, ${stamp}]`);
+      setProcessStatus('Bill run did not finish.');
+      setProgress(0);
     } finally {
       setIsProcessing(false);
     }
