@@ -211,7 +211,7 @@ export default function ReportsForm({
   const [highlightedCustIndex, setHighlightedCustIndex] = useState<number>(0);
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
-  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'preprinted_a4' | 'thermal_58mm'>('thermal_58mm');
+  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'preprinted_a4' | 'thermal_58mm'>('preprinted_a4');
   // WhatsApp sent counts per region for the selected month
   const [waRegionStatus, setWaRegionStatus] = useState<WaRegionStatus>({});
   const [waRegionError, setWaRegionError] = useState('');
@@ -1187,20 +1187,11 @@ export default function ReportsForm({
                   <span className="font-bold text-[#000080]">Printer (प्रिंटर):</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
-                    <input 
-                      type="radio" 
-                      name="billPrinterTypeCriteria" 
-                      checked={billPrinterType === '4in1_a4'} 
-                      onChange={() => setBillPrinterType('4in1_a4')} 
-                    />
-                    <span>📄 4-in-1 A4</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800 whitespace-nowrap">
                     <input type="radio" name="billPrinterTypeCriteria" checked={billPrinterType === 'preprinted_a4'} onChange={() => setBillPrinterType('preprinted_a4')} />
                     <span>🗒️ Pre-printed</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800 whitespace-nowrap">
                     <input 
                       type="radio" 
                       name="billPrinterTypeCriteria" 
@@ -1208,6 +1199,15 @@ export default function ReportsForm({
                       onChange={() => setBillPrinterType('thermal_58mm')} 
                     />
                     <span>🧾 58mm Thermal</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800 whitespace-nowrap">
+                    <input 
+                      type="radio" 
+                      name="billPrinterTypeCriteria" 
+                      checked={billPrinterType === '4in1_a4'} 
+                      onChange={() => setBillPrinterType('4in1_a4')} 
+                    />
+                    <span>📄 4-in-1 A4</span>
                   </label>
                 </div>
               </div>
@@ -1400,18 +1400,6 @@ export default function ReportsForm({
               <div className="flex items-center bg-white p-0.5 border border-[#808080] rounded-xs text-[11px]">
                 <button
                   type="button"
-                  onClick={() => setBillPrinterType('4in1_a4')}
-                  className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
-                    billPrinterType === '4in1_a4'
-                      ? 'bg-blue-700 text-white'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                  title="4-in-1 A4 Sheet Layout"
-                >
-                  📄 4-in-1 (A4)
-                </button>
-                <button
-                  type="button"
                   onClick={() => setBillPrinterType('preprinted_a4')}
                   className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${billPrinterType === 'preprinted_a4' ? 'bg-amber-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
                   title="Values only, for the shop's pre-printed 4-in-1 sheets"
@@ -1429,6 +1417,18 @@ export default function ReportsForm({
                   title="58mm (203 DPI) Thermal Receipt Roll"
                 >
                   🧾 58mm Thermal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillPrinterType('4in1_a4')}
+                  className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                    billPrinterType === '4in1_a4'
+                      ? 'bg-blue-700 text-white'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title="4-in-1 A4 Sheet Layout"
+                >
+                  📄 4-in-1 (A4)
                 </button>
               </div>
 
