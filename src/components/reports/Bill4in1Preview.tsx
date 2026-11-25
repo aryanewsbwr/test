@@ -1,3 +1,4 @@
+import { printBillsPreprinted } from '@/lib/billPreprintedExport';
 import React, { useState, useEffect } from 'react';
 import { company } from '@/lib/companyInfo';
 import { createPortal } from 'react-dom';
@@ -19,6 +20,8 @@ interface Bill4in1PreviewProps {
   initialPrintMode?: BillPrintMode;
   // When given, the page and print buttons sit in the report's own toolbar instead of above the pages
   toolbarSlot?: HTMLElement | null;
+  // Print only the values onto the shop's own pre-printed sheets
+  preprinted?: boolean;
 }
 
 function formatMoney(n: number | undefined | null): string {
@@ -31,7 +34,8 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
   title = 'Region Wise Bill Printing (4 in 1 A4)',
   zoomLevel = 100,
   initialPrintMode = 'simple',
-  toolbarSlot
+  toolbarSlot,
+  preprinted = false
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'single_sheet' | 'all_sheets'>('single_sheet');
@@ -56,7 +60,8 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
     : a4Pages;
 
   const handlePrint = () => {
-    printBills4in1(bills, title, printMode);
+    if (preprinted) printBillsPreprinted(bills, title, printMode);
+    else printBills4in1(bills, title, printMode);
   };
 
   const inToolbar = (bar: React.ReactElement) => (toolbarSlot ? createPortal(<div className="bill-bar-light contents">{bar}</div>, toolbarSlot) : bar);
@@ -142,7 +147,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
             title="Open Dedicated 4-in-1 Print & PDF Export Window"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print 4-in-1 / Save PDF ({printMode === 'simple' ? 'Simple' : 'Detail'})</span>
+            <span>{preprinted ? 'Print Pre-printed' : 'Print 4-in-1 / Save PDF'} ({printMode === 'simple' ? 'Simple' : 'Detail'})</span>
           </button>
         </div>
       </div>

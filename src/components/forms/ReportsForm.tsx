@@ -257,6 +257,8 @@ export default function ReportsForm({
   const [dayDate, setDayDate] = useState<string>(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const tableFilters = TABLE_FILTERS[activeReport];
   const isTable = !!tableFilters;
+  // Bills show only the bills: no report heading and no page bar above them
+  const isBillView = activeReport === 'bill_print_region' || activeReport === 'bill_print_single';
   useEffect(() => {
     fetch('/api/collection-agents').then(r => r.json()).then(d => setCollectors((d.agents || []).filter((a: any) => a.name))).catch(() => {});
     fetch('/api/receipt-allotment').then(r => r.json()).then(d => setBooks((d.all_allotments || [])
@@ -846,7 +848,7 @@ export default function ReportsForm({
         </div>
 
         {/* Form Body */}
-        <div className="p-6 bg-[#ECE9D8] space-y-4">
+        <div className="p-4 bg-[#ECE9D8] space-y-3">
           
           {/* Header Banner */}
           <div className="text-center pb-2 border-b border-[#808080]">
@@ -1192,11 +1194,11 @@ export default function ReportsForm({
                       checked={billPrinterType === '4in1_a4'} 
                       onChange={() => setBillPrinterType('4in1_a4')} 
                     />
-                    <span>📄 4-in-1 (A4 Sheet)</span>
+                    <span>📄 4-in-1 A4</span>
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                     <input type="radio" name="billPrinterTypeCriteria" checked={billPrinterType === 'preprinted_a4'} onChange={() => setBillPrinterType('preprinted_a4')} />
-                    <span>🗒️ Pre-printed Sheet (A4)</span>
+                    <span>🗒️ Pre-printed</span>
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                     <input 
@@ -1205,7 +1207,7 @@ export default function ReportsForm({
                       checked={billPrinterType === 'thermal_58mm'} 
                       onChange={() => setBillPrinterType('thermal_58mm')} 
                     />
-                    <span>🧾 58mm Thermal (203 DPI)</span>
+                    <span>🧾 58mm Thermal</span>
                   </label>
                 </div>
               </div>
@@ -1225,7 +1227,7 @@ export default function ReportsForm({
                       checked={billPrintMode === 'simple'} 
                       onChange={() => setBillPrintMode('simple')} 
                     />
-                    <span>📄 Simple (सरल - Delivery Merged)</span>
+                    <span>📄 Simple (सरल)</span>
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
                     <input 
@@ -1234,7 +1236,7 @@ export default function ReportsForm({
                       checked={billPrintMode === 'detail'} 
                       onChange={() => setBillPrintMode('detail')} 
                     />
-                    <span>📑 Detail (विस्तृत - Delivery Separate)</span>
+                    <span>📑 Detail (विस्तृत)</span>
                   </label>
                 </div>
               </div>
@@ -1529,7 +1531,7 @@ export default function ReportsForm({
         </div>
 
         {/* Page Nav */}
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${isBillView ? 'hidden' : ''}`}>
           <button 
             disabled={currentPage <= 1}
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -1615,7 +1617,7 @@ export default function ReportsForm({
           className={`bg-white shadow-[0_4px_25px_rgba(0,0,0,0.6)] font-serif text-black border border-slate-300 transition-all duration-150 ${
             activeReport.includes('bill_print') && billPrinterType === 'thermal_58mm'
               ? 'p-3 min-h-0 w-auto'
-              : 'p-8 min-h-[900px]'
+              : isBillView ? 'p-2 min-h-0' : 'p-8 min-h-[900px]'
           }`}
           style={{ 
             width: activeReport.includes('bill_print') && billPrinterType === 'thermal_58mm'
@@ -1628,7 +1630,7 @@ export default function ReportsForm({
         >
           
           {/* Header (the box sheet has only the firm's name and the day, to leave the page for the boxes) */}
-          {isTable && (reportData?.layout === 'boxes' || reportData?.plainHeader) ? (
+          {isBillView ? null : isTable && (reportData?.layout === 'boxes' || reportData?.plainHeader) ? (
             <div className="flex items-end justify-between pb-0.5 border-b-2 border-black leading-none">
               <h1 className="text-xl font-black tracking-wider uppercase leading-none">{firm.name}</h1>
               <span className="text-base font-black font-sans leading-none">{reportData?.subtitle || ''}</span>
@@ -1714,6 +1716,7 @@ export default function ReportsForm({
                     zoomLevel={zoomLevel} 
                     initialPrintMode={billPrintMode}
                     toolbarSlot={billBarSlot}
+                    preprinted={billPrinterType === 'preprinted_a4'}
                   />
                 )
               )}
