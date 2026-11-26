@@ -184,7 +184,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .rate { text-align: center; font-size: 7.5pt; }
   .amt { text-align: right; }
   .grand { font-size: 8.6pt; }
-  .dev { position: absolute; font-size: 6.5pt; line-height: 1.2; font-weight: bold; text-decoration: underline; white-space: nowrap; }
+  .dev { position: absolute; font-size: 6.5pt; line-height: 1.2; font-weight: bold; white-space: nowrap; background: #000; color: #fff; padding: 0.3mm 1.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .with-sheet .bill { margin: 0; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
   .cut-h { position: absolute; top: 148.5mm; left: 0; width: 210mm; border-top: 1px dashed #999; }
