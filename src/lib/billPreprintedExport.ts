@@ -57,7 +57,7 @@ const SHEET = `
     <div class="s-prop">प्रो. मेहुल अग्रवाल<br><span>E.&amp;O.E.</span></div>`;
 
 const OFFSET_KEY = 'preprintedBillOffset3';
-const DEVELOPER = 'Software Developer - Rahul Agarwal';
+const DEVELOPER = 'Software Developer - Rahul Agarwal (9461203345)';
 
 const esc = (v: any) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 const money = (n: any) => (Number.isFinite(Number(n)) ? Number(n).toFixed(2) : '0.00');
@@ -184,7 +184,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .rate { text-align: center; font-size: 7.5pt; }
   .amt { text-align: right; }
   .grand { font-size: 8.6pt; }
-  .dev { position: absolute; font-size: 6.5pt; line-height: 1.2; }
+  .dev { position: absolute; font-size: 6.5pt; line-height: 1.2; font-weight: bold; text-decoration: underline; white-space: nowrap; }
   .with-sheet .bill { margin: 0; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
   .cut-h { position: absolute; top: 148.5mm; left: 0; width: 210mm; border-top: 1px dashed #999; }
