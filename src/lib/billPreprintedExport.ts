@@ -139,14 +139,14 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
   const mm = (v: number) => `${v.toFixed(1)}mm`;
   const amtRight = mm(105 - (X(g.e) - 2));
   const rowY = (i: number) => Y(g.yh + 3.2 + i * 3.9);
-  const sumY = (k: number, half = 2.12) => Y(g.yt + k * g.pitch, half);
+  const sumY = (k: number, half = 2.12) => Y(g.yt - 0.8 + k * g.pitch, half);
 
   return `
   <div class="bill" style="left:${left}mm;top:${top}mm">${sheet ? SHEET : ''}
-    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.ys)}">${esc(b.priority || serial)}</div>
-    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.yr)}">${esc(b.region_name || b.region_id)}</div>
-    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.ys)}">${esc(b.bill_no || '')}</div>
-    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.yr)}">${esc(monthText(b))}</div>
+    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.ys - 0.9)}">${esc(b.priority || serial)}</div>
+    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.yr - 0.9)}">${esc(b.region_name || b.region_id)}</div>
+    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.ys - 1.7)}">${esc(b.bill_no || '')}</div>
+    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.yr - 1.3)}">${esc(monthText(b))}</div>
     <div class="name-h" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 5.5, 3.15)}">${esc(hindi)}</div>
     <div class="name-e" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 10, 1.85)}">${esc(b.customer_name)}</div>
     ${shown.map((l, i) => `
@@ -158,7 +158,7 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt" style="right:${amtRight};top:${sumY(1)}">${delivery ? money(delivery) : ''}</div>
     <div class="v amt" style="right:${amtRight};top:${sumY(2)}">${previous ? money(previous) : ''}</div>
     <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
-    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + 34.5, 1.38)}">${DEVELOPER}</div>
+    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (slot < 2 || sheet ? 34.5 : 38.5), 1.38)}">${DEVELOPER}</div>
   </div>`;
 }
 
