@@ -131,15 +131,15 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
   const hindi = getReliableHindiName(b.customer_hindi || '', b.customer_name);
   const left = slot % 2 === 0 ? 0 : 105;
   const top = slot < 2 ? 0 : 148.5;
-  const shown = lines.slice(0, 12);
+  const shown = lines.slice(0, 11);
   // Plain A4 draws all four bills the same way; the shop's sheet has each bill at its own place
   const g = sheet ? PLACES[0] : PLACES[slot];
-  const Y = (v: number, half = 1.27) => `${(v - (sheet ? 0 : top) - g.dy - half).toFixed(1)}mm`;
+  const Y = (v: number, half = 2.12) => `${(v - (sheet ? 0 : top) - g.dy - half).toFixed(1)}mm`;
   const X = (v: number) => (v - (sheet ? 0 : left) - g.dx);
   const mm = (v: number) => `${v.toFixed(1)}mm`;
   const amtRight = mm(105 - (X(g.e) - 2));
-  const rowY = (i: number) => Y(g.yh + 3 + i * 3.4);
-  const sumY = (k: number, half = 1.27) => Y(g.yt + k * g.pitch, half);
+  const rowY = (i: number) => Y(g.yh + 3.2 + i * 3.9);
+  const sumY = (k: number, half = 2.12) => Y(g.yt + k * g.pitch, half);
 
   return `
   <div class="bill" style="left:${left}mm;top:${top}mm">${sheet ? SHEET : ''}
@@ -147,8 +147,8 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.yr)}">${esc(b.region_name || b.region_id)}</div>
     <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.ys)}">${esc(b.bill_no || '')}</div>
     <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.yr)}">${esc(monthText(b))}</div>
-    <div class="name-h" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 5.5, 1.8)}">${esc(hindi)}</div>
-    <div class="name-e" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 9.5, 1.17)}">${esc(b.customer_name)}</div>
+    <div class="name-h" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 5.5, 3.15)}">${esc(hindi)}</div>
+    <div class="name-e" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 10, 1.85)}">${esc(b.customer_name)}</div>
     ${shown.map((l, i) => `
     <div class="v paper" style="left:${mm(X(g.l) + 2)};width:${mm(g.q - g.l - 3)};top:${rowY(i)}">${esc(l.name)}</div>
     <div class="v qty" style="left:${mm(X(g.q))};width:${mm(g.r - g.q)};top:${rowY(i)}">${esc(l.qty)}</div>
@@ -157,8 +157,8 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt" style="right:${amtRight};top:${sumY(0)}">${money(total)}</div>
     <div class="v amt" style="right:${amtRight};top:${sumY(1)}">${delivery ? money(delivery) : ''}</div>
     <div class="v amt" style="right:${amtRight};top:${sumY(2)}">${previous ? money(previous) : ''}</div>
-    <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 1.4)}">${money(grand)}</div>
-    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + 34.5, 0.95)}">${DEVELOPER}</div>
+    <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
+    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + 34.5, 1.38)}">${DEVELOPER}</div>
   </div>`;
 }
 
@@ -176,15 +176,15 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .page { position: relative; width: 210mm; height: 296.5mm; overflow: hidden; page-break-after: always; break-after: page; }
   .page:last-child { page-break-after: auto; break-after: auto; }
   .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); }
-  .v { position: absolute; font-size: 6pt; font-weight: bold; white-space: nowrap; line-height: 1.2; }
-  .name-h { position: absolute; text-align: center; font-size: 8.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.2; }
-  .name-e { position: absolute; text-align: center; font-size: 5.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.2; }
-  .paper { overflow: hidden; font-size: 6pt; }
+  .v { position: absolute; font-size: 8pt; font-weight: bold; white-space: nowrap; line-height: 1.5; }
+  .name-h { position: absolute; text-align: center; font-size: 10.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.7; }
+  .name-e { position: absolute; text-align: center; font-size: 7.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.4; }
+  .paper { overflow: hidden; font-size: 8pt; }
   .qty { text-align: center; }
-  .rate { text-align: center; font-size: 5.5pt; }
+  .rate { text-align: center; font-size: 7.5pt; }
   .amt { text-align: right; }
-  .grand { font-size: 6.6pt; }
-  .dev { position: absolute; font-size: 4.5pt; line-height: 1.2; }
+  .grand { font-size: 8.6pt; }
+  .dev { position: absolute; font-size: 6.5pt; line-height: 1.2; }
   .with-sheet .bill { margin: 0; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
   .cut-h { position: absolute; top: 148.5mm; left: 0; width: 210mm; border-top: 1px dashed #999; }
