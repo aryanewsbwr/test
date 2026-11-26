@@ -23,28 +23,28 @@ const SHEET = `
     <div class="s-firm">ARYAN NEWS AGENCY<sup>&reg;</sup></div>
     <div class="s-addr">Netaji Subhash Marg, BEAWAR (Raj.)</div>
     <div class="s-ph">Ph.: (01462) 258949</div>
-    <div class="s-lbl" style="left:19mm;top:26mm">S. No.</div>
-    <div class="s-lbl" style="left:19mm;top:32mm">Region</div>
-    <div class="s-lbl" style="left:69mm;top:26.5mm">Bill No.</div>
-    <div class="s-lbl" style="left:69mm;top:32mm">Month</div>
-    <div class="s-h" style="left:5mm;top:48mm;width:92mm"></div>
-    <div class="s-h" style="left:5mm;top:54mm;width:92mm"></div>
+    <div class="s-lbl" style="left:19mm;top:24mm">S. No.</div>
+    <div class="s-lbl" style="left:19mm;top:29mm">Region</div>
+    <div class="s-lbl" style="left:69mm;top:24mm">Bill No.</div>
+    <div class="s-lbl" style="left:69mm;top:29mm">Month</div>
+    <div class="s-h" style="left:5mm;top:44.3mm;width:92mm"></div>
+    <div class="s-h" style="left:5mm;top:50.2mm;width:92mm"></div>
     <div class="s-head" style="left:5mm;width:46mm">PARTICULARS</div>
     <div class="s-head" style="left:51mm;width:12mm">QTY.</div>
     <div class="s-head" style="left:63mm;width:13mm">RATE</div>
     <div class="s-head" style="left:76mm;width:21mm">AMOUNT</div>
-    <div class="s-v" style="left:51mm;top:48mm;height:78.5mm"></div>
-    <div class="s-v" style="left:63mm;top:48mm;height:53mm"></div>
-    <div class="s-v" style="left:76mm;top:48mm;height:78.5mm"></div>
-    <div class="s-h" style="left:51mm;top:101mm;width:46mm"></div>
-    <div class="s-h" style="left:51mm;top:107.5mm;width:25mm"></div>
-    <div class="s-h" style="left:51mm;top:113.8mm;width:25mm"></div>
-    <div class="s-h" style="left:51mm;top:120.1mm;width:25mm"></div>
-    <div class="s-h" style="left:5mm;top:126.5mm;width:92mm"></div>
-    <div class="s-sum" style="top:101mm">Total</div>
-    <div class="s-sum" style="top:107.5mm">Delivery Charge</div>
-    <div class="s-sum" style="top:113.8mm">Previous Balance</div>
-    <div class="s-sum" style="top:120.1mm">Grand Total</div>
+    <div class="s-v" style="left:51mm;top:44.3mm;height:77.5mm"></div>
+    <div class="s-v" style="left:63mm;top:44.3mm;height:52.4mm"></div>
+    <div class="s-v" style="left:76mm;top:44.3mm;height:77.5mm"></div>
+    <div class="s-h" style="left:51mm;top:96.7mm;width:46mm"></div>
+    <div class="s-h" style="left:51mm;top:103.1mm;width:25mm"></div>
+    <div class="s-h" style="left:51mm;top:109.3mm;width:25mm"></div>
+    <div class="s-h" style="left:51mm;top:115.5mm;width:25mm"></div>
+    <div class="s-h" style="left:5mm;top:121.8mm;width:92mm"></div>
+    <div class="s-sum" style="top:96.7mm">Total</div>
+    <div class="s-sum" style="top:103.1mm">Delivery Charge</div>
+    <div class="s-sum" style="top:109.3mm">Previous Balance</div>
+    <div class="s-sum" style="top:115.5mm">Grand Total</div>
     <div class="s-upi">
       <div class="u1">UPI</div>
       <div class="u2">Google Pay | PhonePe</div>
@@ -56,7 +56,7 @@ const SHEET = `
     <img class="s-sign" src="${SIGNATURE_GLYPH_B64}" alt="">
     <div class="s-prop">प्रो. मेहुल अग्रवाल<br><span>E.&amp;O.E.</span></div>`;
 
-const OFFSET_KEY = 'preprintedBillOffset';
+const OFFSET_KEY = 'preprintedBillOffset2';
 const DEVELOPER = 'Software Developer - Rahul Agarwal';
 
 const esc = (v: any) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -120,25 +120,25 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
   const hindi = getReliableHindiName(b.customer_hindi || '', b.customer_name);
   const left = slot % 2 === 0 ? 0 : 105;
   const top = slot < 2 ? 0 : 148.5;
-  const shown = lines.slice(0, 9);
+  const shown = lines.slice(0, 12);
 
   return `
   <div class="bill" style="left:${left}mm;top:${top}mm">${sheet ? SHEET : ''}
-    <div class="v" style="left:31mm;top:25.5mm">${esc(b.priority || serial)}</div>
-    <div class="v" style="left:31mm;top:31.5mm">${esc(b.region_name || b.region_id)}</div>
-    <div class="v" style="left:81mm;top:25.5mm">${esc(b.bill_no || '')}</div>
-    <div class="v" style="left:81mm;top:31.5mm">${esc(monthText(b))}</div>
+    <div class="v" style="left:31mm;top:24.3mm">${esc(b.priority || serial)}</div>
+    <div class="v" style="left:31mm;top:29.3mm">${esc(b.region_name || b.region_id)}</div>
+    <div class="v" style="left:81mm;top:24.3mm">${esc(b.bill_no || '')}</div>
+    <div class="v" style="left:81mm;top:29.3mm">${esc(monthText(b))}</div>
     <div class="name-h">${esc(hindi)}</div>
     <div class="name-e">${esc(b.customer_name)}</div>
     ${shown.map((l, i) => `
-    <div class="v paper" style="top:${57 + i * 4.6}mm">${esc(l.name)}</div>
-    <div class="v qty" style="top:${57 + i * 4.6}mm">${esc(l.qty)}</div>
-    <div class="v rate" style="top:${57 + i * 4.6}mm">${esc(l.rate)}</div>
-    <div class="v amt" style="top:${57 + i * 4.6}mm">${money(l.amount)}</div>`).join('')}
-    <div class="v amt" style="top:102.6mm">${money(total)}</div>
-    <div class="v amt" style="top:109mm">${delivery ? money(delivery) : ''}</div>
-    <div class="v amt" style="top:115.4mm">${previous ? money(previous) : ''}</div>
-    <div class="v amt grand" style="top:121.6mm">${money(grand)}</div>
+    <div class="v paper" style="top:${52 + i * 3.4}mm">${esc(l.name)}</div>
+    <div class="v qty" style="top:${52 + i * 3.4}mm">${esc(l.qty)}</div>
+    <div class="v rate" style="top:${52 + i * 3.4}mm">${esc(l.rate)}</div>
+    <div class="v amt" style="top:${52 + i * 3.4}mm">${money(l.amount)}</div>`).join('')}
+    <div class="v amt" style="top:98.7mm">${money(total)}</div>
+    <div class="v amt" style="top:104.9mm">${delivery ? money(delivery) : ''}</div>
+    <div class="v amt" style="top:111.1mm">${previous ? money(previous) : ''}</div>
+    <div class="v amt grand" style="top:117.3mm">${money(grand)}</div>
     <div class="dev">${DEVELOPER}</div>
   </div>`;
 }
@@ -157,37 +157,37 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .page { position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; break-after: page; }
   .page:last-child { page-break-after: auto; break-after: auto; }
   .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); }
-  .v { position: absolute; font-size: 10pt; font-weight: bold; white-space: nowrap; line-height: 1.2; }
-  .name-h { position: absolute; left: 5mm; width: 92mm; top: 36mm; text-align: center; font-size: 14pt; font-weight: bold; white-space: nowrap; overflow: hidden; }
-  .name-e { position: absolute; left: 5mm; width: 92mm; top: 42.5mm; text-align: center; font-size: 8.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; }
-  .paper { left: 7mm; width: 43mm; overflow: hidden; font-size: 10pt; }
+  .v { position: absolute; font-size: 6pt; font-weight: bold; white-space: nowrap; line-height: 1.2; }
+  .name-h { position: absolute; left: 5mm; width: 92mm; top: 34.6mm; text-align: center; font-size: 8.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; }
+  .name-e { position: absolute; left: 5mm; width: 92mm; top: 39.6mm; text-align: center; font-size: 5.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; }
+  .paper { left: 7mm; width: 43mm; overflow: hidden; font-size: 6pt; }
   .qty { left: 51mm; width: 12mm; text-align: center; }
-  .rate { left: 63mm; width: 13mm; text-align: center; font-size: 9pt; }
+  .rate { left: 63mm; width: 13mm; text-align: center; font-size: 5.5pt; }
   .amt { right: 9mm; text-align: right; }
-  .grand { font-size: 11pt; }
-  .dev { position: absolute; left: 5mm; top: 142.5mm; font-size: 6pt; }
+  .grand { font-size: 6.6pt; }
+  .dev { position: absolute; left: 5mm; top: 135mm; font-size: 4.5pt; }
   .with-sheet .bill { margin: 0; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
   .cut-h { position: absolute; top: 148.5mm; left: 0; width: 210mm; border-top: 1px dashed #999; }
-  .s-logo { position: absolute; left: 6mm; top: 7mm; width: 10mm; height: 17mm; object-fit: contain; }
-  .s-firm { position: absolute; left: 17mm; top: 9.5mm; font: 900 17pt 'Arial Narrow', Arial, sans-serif; color: #1d3f8f; white-space: nowrap; }
+  .s-logo { position: absolute; left: 6mm; top: 5mm; width: 10mm; height: 17mm; object-fit: contain; }
+  .s-firm { position: absolute; left: 17mm; top: 8.5mm; font: 900 17pt 'Arial Narrow', Arial, sans-serif; color: #1d3f8f; white-space: nowrap; }
   .s-firm sup { font-size: 8pt; }
-  .s-addr { position: absolute; left: 28mm; top: 18.5mm; font: bold 8pt Arial, sans-serif; color: #1d3f8f; }
-  .s-ph { position: absolute; left: 41mm; top: 22.3mm; font: bold 8pt Arial, sans-serif; color: #1d3f8f; }
+  .s-addr { position: absolute; left: 28mm; top: 17.3mm; font: bold 8pt Arial, sans-serif; color: #1d3f8f; }
+  .s-ph { position: absolute; left: 41mm; top: 20.7mm; font: bold 8pt Arial, sans-serif; color: #1d3f8f; }
   .s-lbl { position: absolute; font: bold 8pt Arial, sans-serif; color: #1d3f8f; }
   .s-h { position: absolute; border-top: 1.3px solid #1d3f8f; }
   .s-v { position: absolute; border-left: 1.3px solid #1d3f8f; }
-  .s-head { position: absolute; top: 49.4mm; text-align: center; font: bold 9pt Arial, sans-serif; color: #1d3f8f; }
-  .s-sum { position: absolute; left: 51mm; width: 25mm; height: 6.3mm; line-height: 6.3mm; text-align: center; font: 8pt Arial, sans-serif; color: #1d3f8f; }
-  .s-upi { position: absolute; left: 5mm; top: 98mm; width: 45mm; text-align: center; color: #1d3f8f; font-family: Arial, sans-serif; line-height: 1.15; }
+  .s-head { position: absolute; top: 45.6mm; text-align: center; font: bold 9pt Arial, sans-serif; color: #1d3f8f; }
+  .s-sum { position: absolute; left: 51mm; width: 25mm; height: 6.3mm; text-align: center; font: 8pt/6.3mm Arial, sans-serif; color: #1d3f8f; }
+  .s-upi { position: absolute; left: 5mm; top: 94mm; width: 45mm; text-align: center; color: #1d3f8f; font-family: Arial, sans-serif; line-height: 1.15; }
   .s-upi .u1 { font: italic 900 14pt Arial, sans-serif; }
   .s-upi .u2 { font-size: 6.5pt; font-weight: bold; }
   .s-upi .u3 { font: 900 9.5pt Arial, sans-serif; }
   .s-upi .u4 { font-size: 10pt; font-weight: 900; }
   .s-upi .u5 { font-size: 6.8pt; font-weight: bold; }
-  .s-note { position: absolute; left: 5mm; top: 127.5mm; font: bold 6.3pt 'Nirmala UI', Mangal, Arial, sans-serif; color: #1d3f8f; line-height: 1.35; }
-  .s-sign { position: absolute; left: 82mm; top: 127.5mm; width: 7mm; }
-  .s-prop { position: absolute; left: 74mm; top: 132mm; width: 23mm; text-align: center; font: bold 7pt 'Nirmala UI', Mangal, Arial, sans-serif; color: #1d3f8f; line-height: 1.3; }
+  .s-note { position: absolute; left: 5mm; top: 123mm; font: bold 6.3pt 'Nirmala UI', Mangal, Arial, sans-serif; color: #1d3f8f; line-height: 1.35; }
+  .s-sign { position: absolute; left: 82mm; top: 123mm; width: 7mm; }
+  .s-prop { position: absolute; left: 74mm; top: 127.5mm; width: 23mm; text-align: center; font: bold 7pt 'Nirmala UI', Mangal, Arial, sans-serif; color: #1d3f8f; line-height: 1.3; }
   .s-prop span { font: 6pt Arial, sans-serif; }
   .preview .tools { display: none; }
   .tools { position: fixed; top: 8px; right: 8px; background: #fffbe6; border: 1px solid #c9a400; padding: 8px 10px; font: 12px Arial, sans-serif; z-index: 9; box-shadow: 0 2px 6px rgba(0,0,0,.2); max-width: 270px; }
