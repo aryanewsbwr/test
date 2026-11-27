@@ -158,11 +158,9 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt" style="right:${amtRight};top:${sumY(1)}">${delivery ? money(delivery) : ''}</div>
     <div class="v amt" style="right:${amtRight};top:${sumY(2)}">${previous ? money(previous) : ''}</div>
     <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
-    ${sheet
-      ? `<div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + 34.5, 1.38)}">${DEVELOPER}</div>`
-      // On the shop's sheet the line goes in the empty top-right corner above the firm's name: near the
-      // bottom edge printers cut it off, and a small feed shift put it on the notes
-      : `<div class="dev" style="right:${amtRight};top:${Y(g.ys - 21, 0)}">${DEVELOPER}</div>`}
+    <!-- Bottom-left corner, under the notes. The lower two bills sit a little higher than before, so the
+         printer's bottom edge does not cut the line off -->
+    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (slot < 2 || sheet ? 34.5 : 36.5), 1.38)}">${DEVELOPER}</div>
   </div>`;
 }
 
@@ -188,7 +186,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .rate { text-align: center; font-size: 7.5pt; }
   .amt { text-align: right; }
   .grand { font-size: 8.6pt; }
-  .dev { position: absolute; font-size: 7.5pt; line-height: 1.2; font-weight: 900; letter-spacing: 0.15px; white-space: nowrap; background: #000; color: #fff; padding: 0.3mm 1.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .dev { position: absolute; font-size: 7.5pt; line-height: 1.2; font-weight: 900; letter-spacing: 0.15px; white-space: nowrap; background: #000; color: #fff; padding: 0.15mm 1.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .with-sheet .bill { margin: 0; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
   .cut-h { position: absolute; top: 148.5mm; left: 0; width: 210mm; border-top: 1px dashed #999; }
