@@ -107,6 +107,46 @@ export default function CustomerForm({
   const [subTab, setSubTab] = useState<'subs' | 'disc' | 'retail'>('subs');
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
+  // Update Paper dialog: change a running paper's qty, discount, delivery, circulation or days
+  const [editSub, setEditSub] = useState<{ sno: number; qty: number; dis: number; dely: number; circulation: string; fromDay: string } | null>(null);
+  const [editError, setEditError] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const runningSubs = subscriptions.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '' || s.c_date === '-'));
+  const pickEditSub = (sno: number) => {
+    const sub = subscriptions.find(s => s.sno === sno);
+    if (!sub) return;
+    setEditError('');
+    setEditSub({ sno: sub.sno, qty: Number(sub.qty) || 1, dis: Number(sub.dis) || 0, dely: Number(sub.dely) || 0, circulation: sub.circulation || 'Morning', fromDay: sub.from_day || '1-7' });
+  };
+  const openUpdatePaper = () => {
+    if (!selectedCustId) { handleSave(); return; }
+    if (runningSubs.length === 0) { alert('This customer has no running paper to update. Use + Insert Item to add one.'); return; }
+    pickEditSub(runningSubs[0].sno);
+  };
+  const saveEditSub = async () => {
+    if (!editSub) return;
+    if (!(editSub.qty >= 1)) { setEditError('Qty must be at least 1.'); return; }
+    if (editSub.dis < 0 || editSub.dis > 100) { setEditError('Discount must be between 0 and 100.'); return; }
+    if (editSub.dely < 0) { setEditError('Delivery charge cannot be negative.'); return; }
+    setIsSavingEdit(true);
+    setEditError('');
+    try {
+      const res = await fetch('/api/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', customer_id: selectedCustId, sno: editSub.sno, qty: editSub.qty, dis: editSub.dis, dely: editSub.dely, circulation: editSub.circulation, from_day: editSub.fromDay })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Could not save the change');
+      setSubscriptions(subs => subs.map(s => s.sno === editSub.sno ? { ...s, qty: editSub.qty, dis: editSub.dis, dely: editSub.dely, circulation: editSub.circulation, from_day: editSub.fromDay } : s));
+      setEditSub(null);
+    } catch (err: any) {
+      setEditError(err.message || String(err));
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   // Insert Item Dialog State
   const [isInsertOpen, setIsInsertOpen] = useState(false);
   // Stopping a paper asks for the date it stopped (today unless changed: it may be entered days later)
@@ -1177,7 +1217,7 @@ export default function CustomerForm({
             💾 <u>S</u>ave
           </button>
           <button
-            onClick={handleSave}
+            onClick={openUpdatePaper}
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             ↪ <u>U</u>pdate
@@ -1211,6 +1251,59 @@ export default function CustomerForm({
 
         </div>
       </div>
+
+      {/* Update Paper Dialog */}
+      {editSub && (
+        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#ECE9D8] border-2 border-white shadow-2xl p-3 w-full max-w-md space-y-2 text-xs">
+            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+              <span>Update Paper (अखबार बदलें)</span>
+              <button type="button" onClick={() => setEditSub(null)} className="px-1 cursor-pointer">✕</button>
+            </div>
+            <label className="flex items-center gap-2 font-bold">
+              <span className="w-28">Paper</span>
+              <select value={editSub.sno} onChange={e => pickEditSub(Number(e.target.value))} className="flex-1 border border-[#808080] bg-white px-1 py-1">
+                {runningSubs.map(s => (
+                  <option key={s.sno} value={s.sno}>{s.publication_name || `Pub #${s.publica_id}`} — Qty {s.qty}, {s.hawker_name || ''}</option>
+                ))}
+              </select>
+            </label>
+            {([
+              ['Qty', 'qty', 1],
+              ['Discount %', 'dis', 0.01],
+              ['Delivery ₹', 'dely', 0.01]
+            ] as const).map(([label, key, step]) => (
+              <label key={key} className="flex items-center gap-2 font-bold">
+                <span className="w-28">{label}</span>
+                <input type="number" step={step} min={0} value={editSub[key]}
+                  onChange={e => setEditSub({ ...editSub, [key]: Number(e.target.value) })}
+                  className="w-28 border border-[#808080] bg-white px-1 py-1 text-right" />
+              </label>
+            ))}
+            <label className="flex items-center gap-2 font-bold">
+              <span className="w-28">Circulation</span>
+              <select value={editSub.circulation} onChange={e => setEditSub({ ...editSub, circulation: e.target.value })} className="w-28 border border-[#808080] bg-white px-1 py-1">
+                <option>Morning</option>
+                <option>Evening</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 font-bold">
+              <span className="w-28">Days (1-7)</span>
+              <input value={editSub.fromDay} onChange={e => setEditSub({ ...editSub, fromDay: e.target.value })} className="w-28 border border-[#808080] bg-white px-1 py-1" />
+            </label>
+            <p className="text-[11px] text-[#8B0000] font-bold">The change counts from the paper's start date. Generate the bill again to see it.</p>
+            {editError && <div className="text-red-700 font-bold">{editError}</div>}
+            <div className="flex justify-between gap-2 pt-1">
+              <button type="button" onClick={() => { const sno = editSub.sno; setEditSub(null); handleDeleteSubscriptionRow(sno); }}
+                className="px-3 py-1 bg-white border border-red-400 text-red-700 font-bold cursor-pointer">🗑 Delete Paper</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setEditSub(null)} className="px-3 py-1 bg-white border border-[#808080] font-bold cursor-pointer">Cancel</button>
+                <button type="button" onClick={saveEditSub} disabled={isSavingEdit} className="px-3 py-1 bg-[#0A246A] text-white font-bold cursor-pointer disabled:opacity-50">{isSavingEdit ? 'Saving...' : '💾 Save Change'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Insert Item Popup Dialog */}
       {isInsertOpen && (

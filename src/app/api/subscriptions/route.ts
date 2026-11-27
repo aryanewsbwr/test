@@ -189,6 +189,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Change a running paper in place (qty, discount, delivery, circulation, days), as the old
+    // software's grid edit does. Its start date and history stay as they are.
+    if (action === 'update' && Number(customer_id) && Number(sno)) {
+      const changes: Record<string, any> = {};
+      if (body.qty !== undefined) {
+        const qty = Number(body.qty);
+        if (!(qty >= 1)) return NextResponse.json({ error: 'Qty must be at least 1.' }, { status: 400 });
+        changes.qty = qty;
+      }
+      if (body.dis !== undefined) {
+        const dis = Number(body.dis);
+        if (!(dis >= 0 && dis <= 100)) return NextResponse.json({ error: 'Discount must be between 0 and 100.' }, { status: 400 });
+        changes.dis = dis;
+      }
+      if (body.dely !== undefined) {
+        const dely = Number(body.dely);
+        if (!(dely >= 0)) return NextResponse.json({ error: 'Delivery charge cannot be negative.' }, { status: 400 });
+        changes.dely = dely;
+      }
+      if (body.circulation) changes.circulation = String(body.circulation);
+      if (body.from_day) changes.from_day = String(body.from_day).trim();
+      if (Object.keys(changes).length === 0) return NextResponse.json({ error: 'Nothing to change.' }, { status: 400 });
+
+      const { data, error } = await supabase
+        .from('customer_detail')
+        .update(changes)
+        .match({ customer_id: Number(customer_id), sno: Number(sno) })
+        .select();
+      if (error) throw error;
+      if (!data?.length) return NextResponse.json({ error: 'This paper was not found for the customer.' }, { status: 404 });
+      return NextResponse.json({ success: true, subscription: data[0] });
+    }
+
     // Default Insert
     if (!Number(customer_id) || !Number(publica_id) || !Number(body.hawker_id) || !body.s_date) {
       return NextResponse.json({ error: 'customer_id, publica_id, hawker_id and s_date are required' }, { status: 400 });
