@@ -56,7 +56,10 @@ const SHEET = `
     <img class="s-sign" src="${SIGNATURE_GLYPH_B64}" alt="">
     <div class="s-prop">प्रो. मेहुल अग्रवाल<br><span>E.&amp;O.E.</span></div>`;
 
-const OFFSET_KEY = 'preprintedBillOffset3';
+const OFFSET_KEY = 'preprintedBillOffset4';
+// The shop's printer over its USB cable prints the page about 1.4% large; 98.6 is measured from two
+// scans (100 and 97.2) and is where every computer starts, so staff never have to set it
+const DEFAULT_SIZE = 98.6;
 const DEVELOPER = 'Software Developer - Rahul Agarwal (9461203345)';
 
 const esc = (v: any) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -255,17 +258,17 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
 </div>
 <div class="sheet" id="sheet">${pages.join('')}</div>
 <script>
-  var key = ${JSON.stringify(OFFSET_KEY)}, off = { x: 0, y: 0, r: 0, s: 100 };
+  var key = ${JSON.stringify(OFFSET_KEY)}, off = { x: 0, y: 0, r: 0, s: ${DEFAULT_SIZE} };
   try { off = Object.assign(off, JSON.parse(localStorage.getItem(key) || '{}')); } catch (e) {}
   var ox = document.getElementById('ox'), oy = document.getElementById('oy'), orr = document.getElementById('or'), os = document.getElementById('os'), sheet = document.documentElement;
   function apply() {
     sheet.style.setProperty('--x', (Number(off.x) || 0) + 'mm');
     sheet.style.setProperty('--y', (Number(off.y) || 0) + 'mm');
     sheet.style.setProperty('--r', (Number(off.r) || 0) + 'deg');
-    sheet.style.setProperty('--s', String((Number(off.s) || 100) / 100));
+    sheet.style.setProperty('--s', String((Number(off.s) || ${DEFAULT_SIZE}) / 100));
   }
-  ox.value = off.x; oy.value = off.y; orr.value = off.r || 0; os.value = off.s || 100; if (!document.querySelector('.with-sheet')) apply();
-  function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0, r: Number(orr.value) || 0, s: Number(os.value) || 100 }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
+  ox.value = off.x; oy.value = off.y; orr.value = off.r || 0; os.value = off.s || ${DEFAULT_SIZE}; if (!document.querySelector('.with-sheet')) apply();
+  function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0, r: Number(orr.value) || 0, s: Number(os.value) || ${DEFAULT_SIZE} }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
   ox.oninput = save; oy.oninput = save; orr.oninput = save; os.oninput = save;
   var tl = document.getElementById('tl');
   if (tl) tl.onchange = function () { document.body.classList.toggle('guides', tl.checked); };
