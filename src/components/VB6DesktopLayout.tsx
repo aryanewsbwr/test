@@ -131,7 +131,7 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
     let frame = 0;
     const fit = () => {
       // On a phone a window keeps its natural size and the screen scrolls
-      if (window.innerWidth < 768 || (window.innerWidth < 1200 && window.matchMedia('(pointer: coarse)').matches)) {
+      if (window.innerWidth < 768) {
         document.querySelectorAll<HTMLElement>('.d2-window').forEach(w => { w.style.zoom = ''; w.style.maxHeight = ''; });
         return;
       }

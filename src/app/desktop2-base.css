@@ -308,8 +308,8 @@ html.desktop2 .d2-window div:has(> input:only-child:not([type='checkbox']):not([
 }
 html.desktop2 .d2-window div:has(> input:only-child) > input:not([type='checkbox']):not([type='radio']) { padding: 3px 8px; }
 
-/* ---------- Phones (narrower than 768px) and touch tablets (narrower than 1200px) ---------- */
-@media (max-width: 767px), (max-width: 1199px) and (pointer: coarse) {
+/* ---------- Phones (narrower than 768px) ---------- */
+@media (max-width: 767px) {
   /* The top bar wraps: menus on the first row, user and Logout on the next */
   html.desktop2 .d2-menubar { flex-wrap: wrap; row-gap: 4px; padding-left: 6px; padding-right: 6px; }
   html.desktop2 .d2-menubar > div.relative > button { padding: 6px 8px; font-size: 14px; }
