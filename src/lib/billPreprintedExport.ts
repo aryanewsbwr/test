@@ -236,7 +236,8 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .s-prop span { font: 6pt Arial, sans-serif; }
   .preview .tools { display: none; }
   .tools { position: fixed; top: 8px; right: 8px; background: #fffbe6; border: 1px solid #c9a400; padding: 8px 10px; font: 12px Arial, sans-serif; z-index: 9; box-shadow: 0 2px 6px rgba(0,0,0,.2); max-width: 270px; }
-  .tools b { display: block; margin-bottom: 4px; }
+  .tools > b { display: block; margin-bottom: 4px; }
+  .tools label { display: inline-flex; align-items: center; gap: 4px; }
   .tools input { width: 52px; }
   .tools button { margin-top: 6px; padding: 4px 10px; font-weight: bold; cursor: pointer; }
   @media print { .tools { display: none; } }
