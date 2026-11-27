@@ -713,7 +713,7 @@ function Pay({ c, payment, setPayment, back, next }: { c: Customer; payment: Pay
         </div>
         <div className="rounded-2xl bg-white border-2 px-5 py-3 flex items-center gap-3" style={{ borderColor: C.green }}>
           <span className="text-[18px]" style={{ color: C.grey }}>{T('राशि')}</span>
-          <span className="flex-1 text-center text-[44px] font-extrabold" style={{ color: C.green }}>₹{payment.amount || '0'}</span>
+          <span className="flex-1 flex items-baseline justify-center text-[44px] font-extrabold" style={{ color: C.green }}><span className="inline-block mr-2 text-[36px]" style={{ fontFamily: 'Arial, sans-serif' }}>₹</span><span>{payment.amount || '0'}</span></span>
           <button onClick={speak} aria-label={T('बोलकर राशि')} className="w-[60px] h-[60px] rounded-full flex items-center justify-center" style={{ background: listening ? C.red : C.orange }}><Icon name="mic" color="#fff" /></button>
         </div>
         <div className="grid grid-cols-2 gap-3">
