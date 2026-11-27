@@ -748,7 +748,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             title="Print Current Bill Only"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print</span>
+            <span>Print This Bill (1)</span>
           </button>
 
           <button
@@ -795,7 +795,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             title="Print / Save All Bills"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print All ({bills.length})</span>
+            <span>Print All Bills ({bills.length})</span>
           </button>
         </div>
       </div>
