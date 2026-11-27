@@ -278,6 +278,15 @@ export default function ReportsForm({
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
+  // A saved bill PDF is named by its region (or customer) and month, e.g. Bills_SCL_November_2026
+  const billFileTitle = (() => {
+    const rows: any[] = reportData?.rows || [];
+    const regions = Array.from(new Set(rows.map(r => String(r.region_name || '').trim()).filter(Boolean)));
+    const who = activeReport === 'bill_print_single' && rows[0]
+      ? `${rows[0].customer_id}_${rows[0].customer_name || ''}`
+      : regions.length === 1 ? regions[0] : 'All_Regions';
+    return `Bills_${who}_${selectedMonth}_${selectedYear}`.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_');
+  })();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -768,11 +777,11 @@ export default function ReportsForm({
     if (isDueCustomerList) { printDueListNow(); return; }
     if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
       if (billPrinterType === 'thermal_58mm') {
-        printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
+        printBillsThermal58mm(reportData?.rows || [], billFileTitle, billPrintMode);
       } else if (billPrinterType === 'preprinted_a4') {
-        printBillsPreprinted(reportData?.rows || [], currentMeta.title, billPrintMode);
+        printBillsPreprinted(reportData?.rows || [], billFileTitle, billPrintMode);
       } else {
-        printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+        printBills4in1(reportData?.rows || [], billFileTitle, billPrintMode);
       }
     } else {
       printSheet(sheetRef.current, reportData?.report_title || currentMeta.title);
@@ -1262,11 +1271,11 @@ export default function ReportsForm({
                 setTimeout(() => {
                   if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
                     if (billPrinterType === 'thermal_58mm') {
-                      printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
+                      printBillsThermal58mm(reportData?.rows || [], billFileTitle, billPrintMode);
                     } else if (billPrinterType === 'preprinted_a4') {
-        printBillsPreprinted(reportData?.rows || [], currentMeta.title, billPrintMode);
+        printBillsPreprinted(reportData?.rows || [], billFileTitle, billPrintMode);
       } else {
-                      printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+                      printBills4in1(reportData?.rows || [], billFileTitle, billPrintMode);
                     }
                   } else {
                     window.print();
@@ -1703,7 +1712,7 @@ export default function ReportsForm({
                 billPrinterType === 'thermal_58mm' ? (
                   <BillThermalPreview 
                     bills={reportData.rows || []} 
-                    title={currentMeta.title}
+                    title={billFileTitle}
                     zoomLevel={zoomLevel}
                     initialPrintMode={billPrintMode}
                     onBillsSent={handleBillsSent}
@@ -1712,7 +1721,7 @@ export default function ReportsForm({
                 ) : (
                   <Bill4in1Preview
                     bills={reportData.rows || []} 
-                    title={currentMeta.title} 
+                    title={billFileTitle} 
                     zoomLevel={zoomLevel} 
                     initialPrintMode={billPrintMode}
                     toolbarSlot={billBarSlot}
