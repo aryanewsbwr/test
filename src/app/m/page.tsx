@@ -293,7 +293,7 @@ function Keypad({ onKey, extra }: { onKey: (k: string) => void; extra: string })
 function BottomNav({ view, go }: { view: View; go: (v: View) => void }) {
   const items: [View, string, string][] = [['home', 'home', T('होम')], ['search', 'search', T('खोजें')], ['voice', 'mic', T('बोलें')], ['dues', 'list', T('बकाया')]];
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t grid grid-cols-4 h-[72px] z-20 [.tablet_&]:top-0 [.tablet_&]:right-auto [.tablet_&]:w-[112px] [.tablet_&]:h-auto [.tablet_&]:grid-cols-1 [.tablet_&]:auto-rows-[104px] [.tablet_&]:content-center [.tablet_&]:border-t-0 [.tablet_&]:border-r [.tablet_&]:shadow-sm" style={{ borderColor: C.line }}>
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t grid grid-cols-4 h-[72px] z-20 [.tablet_&]:top-0 [.tablet_&]:right-auto [.tablet_&]:w-[112px] [.tablet_&]:h-auto [.tablet_&]:grid-cols-1 [.tablet_&]:auto-rows-[104px] [.tablet_&]:content-center [.tablet_&]:border-t-0 [.tablet_&]:border-r [.tablet_&]:shadow-sm" style={{ borderColor: C.line }}>
       {items.map(([v, icon, label]) => (
         <button key={v} onClick={() => go(v)} className="flex flex-col items-center justify-center gap-0.5" style={{ color: view === v ? C.navy : C.grey }}>
           <Icon name={icon} size={26} />
@@ -365,10 +365,10 @@ export default function MobileApp() {
   };
 
   const shell = (body: React.ReactNode, nav = false) => (
-    <div className="fixed inset-0 overflow-y-auto" style={{ background: C.cream, color: C.ink, fontFamily: "'Mukta', 'Noto Sans Devanagari', sans-serif", userSelect: 'text' }}>
+    <div className="fixed top-0 right-0 bottom-0 left-0 overflow-y-auto" style={{ background: C.cream, color: C.ink, fontFamily: "'Mukta', 'Noto Sans Devanagari', sans-serif", userSelect: 'text' }}>
       <div className={`max-w-[520px] [.tablet_&]:max-w-none min-h-full mx-auto ${nav ? 'pb-[92px] [.tablet_&]:pb-6 [.tablet_&]:pl-[112px]' : 'pb-6'}`}><div className="[.tablet_&]:max-w-[1040px] [.tablet_&]:mx-auto [.tablet_&]:px-4">{body}</div></div>
       {nav && <BottomNav view={view} go={v => (v === 'home' ? (history.current = [], setView('home')) : go(v))} />}
-      {busy && <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/20"><div className="bg-white rounded-2xl px-6 py-4 text-[20px] font-semibold">{T('एक पल…')}</div></div>}
+      {busy && <div className="fixed top-0 right-0 bottom-0 left-0 z-30 flex items-center justify-center bg-black/20"><div className="bg-white rounded-2xl px-6 py-4 text-[20px] font-semibold">{T('एक पल…')}</div></div>}
     </div>
   );
 
