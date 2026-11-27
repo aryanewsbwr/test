@@ -744,17 +744,17 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
           <button
             onClick={handlePrintCurrent}
-            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded flex items-center gap-1 cursor-pointer"
+            className="px-2 py-0.5 text-[11px] bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded flex items-center gap-1 cursor-pointer"
             title="Print Current Bill Only"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print This Bill (1)</span>
+            <span>Print 1</span>
           </button>
 
           <button
             onClick={handleSendCurrentWhatsApp}
             disabled={isSendingWa || isSendingWaAll}
-            className={`px-2.5 py-1 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm ${
+            className={`px-2 py-0.5 text-[11px] text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm ${
               currentBillSent
                 ? 'bg-green-600 hover:bg-green-500 disabled:bg-green-800 ring-2 ring-green-300'
                 : 'bg-slate-600 hover:bg-slate-500 disabled:bg-slate-800'
@@ -768,13 +768,13 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             ) : (
               <Send className="w-3.5 h-3.5" />
             )}
-            <span>{isSendingWa ? 'Sending...' : currentBillSent ? 'Sent - Send Again' : 'WhatsApp Bill'}</span>
+            <span>{isSendingWa ? 'Sending...' : currentBillSent ? 'Sent - Again' : 'WA Bill'}</span>
           </button>
 
           <button
             onClick={handleSendAllWhatsApp}
             disabled={isSendingWa || isSendingWaAll}
-            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+            className="px-2 py-0.5 text-[11px] bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
             title="Send WhatsApp Bills to all customers with valid phone numbers in this region"
           >
             {isSendingWaAll ? (
@@ -785,17 +785,17 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             <span>
               {isSendingWaAll 
                 ? (waProgress ? `Sending (${waProgress.sent}/${waProgress.total})...` : 'Sending All...')
-                : `WhatsApp Bill (All ${bills.filter(b => b.phone && b.phone !== '---').length})${sentBillCount > 0 ? ` · ${sentBillCount} sent` : ''}`}
+                : `WA All (${bills.filter(b => b.phone && b.phone !== '---').length})${sentBillCount > 0 ? ` · ${sentBillCount} sent` : ''}`}
             </span>
           </button>
 
           <button
             onClick={handlePrintAll}
-            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded flex items-center gap-1 cursor-pointer"
+            className="px-2 py-0.5 text-[11px] bg-blue-600 hover:bg-blue-500 text-white font-bold rounded flex items-center gap-1 cursor-pointer"
             title="Print / Save All Bills"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print All Bills ({bills.length})</span>
+            <span>Print All ({bills.length})</span>
           </button>
         </div>
       </div>
