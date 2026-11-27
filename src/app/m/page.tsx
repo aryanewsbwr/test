@@ -701,7 +701,6 @@ function Pay({ c, payment, setPayment, back, next }: { c: Customer; payment: Pay
   };
   const goNext = () => {
     if (!(Number(payment.amount) > 0)) { setError(T('राशि डालें')); return; }
-    if (c.receipt_book && !payment.receiptNo.trim()) { setError(T('रसीद नं. डालें')); return; }
     next();
   };
   return (
@@ -731,9 +730,8 @@ function Pay({ c, payment, setPayment, back, next }: { c: Customer; payment: Pay
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-[16px]" style={{ color: C.grey }}>{T('रसीद नं.')}{c.receipt_book ? ` (${en() ? 'book' : 'बुक'} ${c.receipt_book.book})` : ''}</span>
-            <input value={payment.receiptNo} onChange={e => set({ receiptNo: e.target.value.replace(/\D/g, '').slice(0, 9) })} inputMode="numeric"
-              className="w-full h-[56px] rounded-xl border bg-white px-3 text-[20px]" style={{ borderColor: C.line }} />
+            <span className="text-[16px]" style={{ color: C.grey }}>{T('रसीद नं.')}</span>
+            <div className="w-full h-[56px] rounded-xl border bg-white px-3 text-[18px] flex items-center" style={{ borderColor: C.line, color: C.grey }}>{en() ? 'Automatic (65001…)' : 'अपने-आप (65001…)'}</div>
           </label>
           <label className="block">
             <span className="text-[16px]" style={{ color: C.grey }}>{T('तारीख')}</span>
@@ -763,7 +761,7 @@ function Confirm({ c, payment, back, save, message }: { c: Customer; payment: Pa
     [T('ग्राहक'), `${nm(c)} · #${c.customer_id}`],
     [T('राशि'), <span key="a" className="text-[32px] font-extrabold" style={{ color: C.green }}>{rupees(amount)}</span>],
     [T('तरीका'), payment.mode === 'cash' ? T('नकद') : T('UPI / बैंक')],
-    [T('रसीद नं.'), payment.receiptNo || '—'],
+    [T('रसीद नं.'), en() ? 'Automatic' : 'अपने-आप'],
     [T('तारीख'), today()]
   ];
   return (
