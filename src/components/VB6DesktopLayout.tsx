@@ -119,7 +119,8 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
   useEffect(() => { loadCompany(); }, []);
   // Desktop 2 is the modern white look; each computer remembers its own choice
   // layout.tsx already turned the look on before the first paint, so it starts from there without a flash
-  const [desktop2, setDesktop2] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('desktop2'));
+  // The classic look was retired: every computer, tablet and phone uses the modern white look
+  const desktop2 = true;
   useEffect(() => {
     document.documentElement.classList.toggle('desktop2', desktop2);
     return () => document.documentElement.classList.remove('desktop2');
@@ -175,11 +176,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
       document.querySelectorAll<HTMLElement>('.d2-window').forEach(w => { w.style.zoom = ''; w.style.maxHeight = ''; });
     };
   }, [desktop2]);
-  const switchLook = () => {
-    const on = !desktop2;
-    setDesktop2(on);
-    try { localStorage.setItem('desktopLook', on ? '2' : '1'); } catch {}
-  };
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   // Core Static Lists
@@ -736,13 +732,6 @@ export default function VB6DesktopLayout({ user, onLogout }: VB6DesktopLayoutPro
               <span className="text-[10px] text-slate-500 font-normal">({user.role})</span>
             </div>
           )}
-          <button
-            onClick={switchLook}
-            title={desktop2 ? 'Back to the classic look' : 'Try the modern white look'}
-            className="px-2 py-0.5 bg-white text-[#000080] hover:bg-[#BCE5FF] border border-[#808080] text-xs font-bold hidden md:flex items-center gap-1 shadow-xs cursor-pointer"
-          >
-            <span>🖥️ {desktop2 ? 'Desktop 1' : 'Desktop 2'}</span>
-          </button>
           {onLogout && (
             <button 
               onClick={onLogout}
