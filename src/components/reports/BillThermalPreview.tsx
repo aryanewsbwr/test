@@ -229,7 +229,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
   const handleSendAllWhatsApp = async () => {
     // Filter bills that have phone numbers
-    const eligibleBills = bills.filter(b => b.phone && b.phone.trim() !== '' && b.phone.trim() !== '---');
+    // Bills with nothing to pay (advance covers them) are printed but not sent on WhatsApp
+    const eligibleBills = bills.filter(b => b.phone && b.phone.trim() !== '' && b.phone.trim() !== '---' && b.net_payable > 0);
     
     if (eligibleBills.length === 0) {
       setWaStatus({ type: 'error', message: 'No customers in this region have a valid mobile number.' });
@@ -785,7 +786,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             <span>
               {isSendingWaAll 
                 ? (waProgress ? `Sending (${waProgress.sent}/${waProgress.total})...` : 'Sending All...')
-                : `WA All (${bills.filter(b => b.phone && b.phone !== '---').length})${sentBillCount > 0 ? ` · ${sentBillCount} sent` : ''}`}
+                : `WA All (${bills.filter(b => b.phone && b.phone !== '---' && b.net_payable > 0).length})${sentBillCount > 0 ? ` · ${sentBillCount} sent` : ''}`}
             </span>
           </button>
 

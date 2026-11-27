@@ -1219,12 +1219,10 @@ export async function GET(request: NextRequest) {
       });
 
       // Filter to only printable bills (customers with billed items)
-      // A customer whose advance covers the bill has nothing to pay, so the region run leaves
-      // them out of printing and WhatsApp. Looking one customer up still shows their bill.
-      const skipSettled = reportType === 'bill_print_region' && !trimmedSearch;
+      // Every billed customer is printed, also one whose advance covers the bill (zero or minus);
+      // WhatsApp sending leaves those out on its own.
       const printableBills = bills
-        .filter(b => b.items.length > 0 || b.current_bill > 0 || b.net_payable > 0)
-        .filter(b => !skipSettled || b.net_payable > 0);
+        .filter(b => b.items.length > 0 || b.current_bill > 0 || b.net_payable > 0);
 
       // Sort by Route Priority ASC
       printableBills.sort((a, b) => {
