@@ -278,7 +278,7 @@ function BigButton({ children, onClick, color = C.green, outline = false, disabl
 function Keypad({ onKey, extra }: { onKey: (k: string) => void; extra: string }) {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'मिटाएँ', '0', extra];
   return (
-    <div className="grid grid-cols-3 gap-3 md:max-w-[440px] md:mx-auto">
+    <div className="grid grid-cols-3 gap-3 min-[600px]:max-w-[440px] min-[600px]:mx-auto">
       {keys.map(k => (
         <button key={k} onClick={() => onKey(k)}
           className={`min-h-[60px] rounded-2xl text-[28px] font-semibold ${k === 'मिटाएँ' ? 'text-[20px] text-[#5f6670]' : 'bg-white border'}`}
@@ -293,7 +293,7 @@ function Keypad({ onKey, extra }: { onKey: (k: string) => void; extra: string })
 function BottomNav({ view, go }: { view: View; go: (v: View) => void }) {
   const items: [View, string, string][] = [['home', 'home', T('होम')], ['search', 'search', T('खोजें')], ['voice', 'mic', T('बोलें')], ['dues', 'list', T('बकाया')]];
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t grid grid-cols-4 h-[72px] z-20 md:top-0 md:right-auto md:w-[112px] md:h-auto md:grid-cols-1 md:auto-rows-[104px] md:content-center md:border-t-0 md:border-r md:shadow-sm" style={{ borderColor: C.line }}>
+    <nav className="fixed bottom-0 inset-x-0 bg-white border-t grid grid-cols-4 h-[72px] z-20 min-[600px]:top-0 min-[600px]:right-auto min-[600px]:w-[112px] min-[600px]:h-auto min-[600px]:grid-cols-1 min-[600px]:auto-rows-[104px] min-[600px]:content-center min-[600px]:border-t-0 min-[600px]:border-r min-[600px]:shadow-sm" style={{ borderColor: C.line }}>
       {items.map(([v, icon, label]) => (
         <button key={v} onClick={() => go(v)} className="flex flex-col items-center justify-center gap-0.5" style={{ color: view === v ? C.navy : C.grey }}>
           <Icon name={icon} size={26} />
@@ -366,7 +366,7 @@ export default function MobileApp() {
 
   const shell = (body: React.ReactNode, nav = false) => (
     <div className="fixed inset-0 overflow-y-auto" style={{ background: C.cream, color: C.ink, fontFamily: "'Mukta', 'Noto Sans Devanagari', sans-serif", userSelect: 'text' }}>
-      <div className={`max-w-[520px] md:max-w-none min-h-full mx-auto ${nav ? 'pb-[92px] md:pb-6 md:pl-[112px]' : 'pb-6'}`}><div className="md:max-w-[1040px] md:mx-auto md:px-4">{body}</div></div>
+      <div className={`max-w-[520px] min-[600px]:max-w-none min-h-full mx-auto ${nav ? 'pb-[92px] min-[600px]:pb-6 min-[600px]:pl-[112px]' : 'pb-6'}`}><div className="min-[600px]:max-w-[1040px] min-[600px]:mx-auto min-[600px]:px-4">{body}</div></div>
       {nav && <BottomNav view={view} go={v => (v === 'home' ? (history.current = [], setView('home')) : go(v))} />}
       {busy && <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/20"><div className="bg-white rounded-2xl px-6 py-4 text-[20px] font-semibold">{T('एक पल…')}</div></div>}
     </div>
@@ -512,7 +512,7 @@ function Login({ onDone }: { onDone: () => void }) {
         ))}
       </div>
       {error && <div className="mb-4"><Notice text={error} error /></div>}
-      <div className="grid grid-cols-3 gap-3 md:max-w-[440px] md:mx-auto">
+      <div className="grid grid-cols-3 gap-3 min-[600px]:max-w-[440px] min-[600px]:mx-auto">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'मिटाएँ', '0', 'खोलें'].map(k => (
           <button key={k} disabled={busy}
             onClick={() => { setError(''); if (k === 'मिटाएँ') setPin(p => p.slice(0, -1)); else if (k === 'खोलें') submit(); else setPin(p => (p.length < 4 ? p + k : p)); }}
@@ -566,7 +566,7 @@ function Home({ me, go, logout, refresh, pick, lang, setLang }: { me: Me; go: (v
           <button onClick={() => go('voice')} aria-label={T('बोलें')} className="w-[64px] h-[64px] rounded-full flex items-center justify-center" style={{ background: C.orange }}><Icon name="mic" color="#fff" /></button>
         </div>
         <p className="text-[16px] mt-2" style={{ color: C.grey }}>{T('बोलकर भी कर सकते हैं: “राम जी 350 जमा”')}</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
           {tiles.filter(t => t.show).map(t => (
             <button key={t.title} onClick={t.open} className="rounded-2xl bg-white border p-4 text-left min-h-[150px]" style={{ borderColor: C.line }}>
               <span className="w-[56px] h-[56px] rounded-xl flex items-center justify-center" style={{ background: t.color }}><Icon name={t.icon} size={30} color="#fff" /></span>
@@ -610,7 +610,7 @@ function Search({ onPick, initial = '' }: { onPick: (c: Card) => void; initial?:
         <button onClick={speak} aria-label={T('बोलकर खोजें')} className="w-[64px] h-[64px] rounded-full flex items-center justify-center shrink-0" style={{ background: listening ? C.red : C.orange }}><Icon name="mic" color="#fff" /></button>
       </div>
       {listening && <p className="mt-2 text-[18px] font-semibold" style={{ color: C.orange }}>{T('सुन रहे हैं…')}</p>}
-      <div className="mt-4 space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 [&>p]:md:col-span-2">
+      <div className="mt-4 space-y-3 min-[600px]:space-y-0 min-[600px]:grid min-[600px]:grid-cols-2 min-[600px]:gap-3 [&>p]:min-[600px]:col-span-2">
         {state === 'busy' && <p className="text-[18px]" style={{ color: C.grey }}>{T('ढूँढ रहे हैं…')}</p>}
         {state === 'done' && list.length === 0 && <p className="text-[19px]" style={{ color: C.grey }}>{T('कोई ग्राहक नहीं मिला')}</p>}
         {list.map(c => (
@@ -641,8 +641,8 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
   return (
     <>
       <Header title={T('ग्राहक')} onBack={back} />
-      <div className="p-4 space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5 md:items-start">
-        <div className="rounded-2xl bg-white border p-5 md:col-start-1 md:row-start-1" style={{ borderColor: C.line }}>
+      <div className="p-4 space-y-4 min-[600px]:space-y-0 min-[600px]:grid min-[600px]:grid-cols-2 min-[600px]:gap-5 min-[600px]:items-start">
+        <div className="rounded-2xl bg-white border p-5 min-[600px]:col-start-1 min-[600px]:row-start-1" style={{ borderColor: C.line }}>
           <p className="text-[16px]" style={{ color: C.grey }}>{en() ? 'Customer no.' : 'ग्राहक नं.'} {c.customer_id}{c.region ? ` · ${en() ? 'Line' : 'लाइन'} ${c.region}` : ''}</p>
           <h2 className="text-[30px] font-extrabold leading-tight mt-1" style={{ color: C.navy }}>{nm(c)}</h2>
           {c.name_eng && c.name_eng !== c.name && <p className="text-[18px]" style={{ color: C.grey }}>{en() ? c.name : c.name_eng}</p>}
@@ -654,8 +654,8 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
             </div>
           )}
         </div>
-        <div className="md:col-start-2 md:row-start-1"><BalanceBox balance={c.balance} /></div>
-        <div className="rounded-2xl bg-white border px-5 py-4 md:col-start-1 md:row-start-2" style={{ borderColor: C.line }}>
+        <div className="min-[600px]:col-start-2 min-[600px]:row-start-1"><BalanceBox balance={c.balance} /></div>
+        <div className="rounded-2xl bg-white border px-5 py-4 min-[600px]:col-start-1 min-[600px]:row-start-2" style={{ borderColor: C.line }}>
           <p className="text-[20px] font-bold pb-2 border-b" style={{ borderColor: C.line }}>{T('चालू अखबार')}</p>
           {c.papers.length === 0 && <p className="py-3 text-[18px]" style={{ color: C.grey }}>{T('कोई अखबार चालू नहीं')}</p>}
           {c.papers.map(p => (
@@ -665,7 +665,7 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
             </div>
           ))}
         </div>
-        <div className="space-y-4 md:col-start-2 md:row-start-2">
+        <div className="space-y-4 min-[600px]:col-start-2 min-[600px]:row-start-2">
         {c.last_payment && <p className="text-[17px]" style={{ color: C.grey }}>{en() ? 'Last payment' : 'आखिरी जमा'}: {c.last_payment.date} · {rupees(c.last_payment.amount)}{c.last_payment.receipt_no ? ` · ${en() ? 'Receipt' : 'रसीद'} ${c.last_payment.receipt_no}` : ''}</p>}
         {c.can_collect && <BigButton onClick={() => go('pay')}><Icon name="rupee" /> {T('पैसे जमा करें')}</BigButton>}
         {canStop && (
@@ -1045,7 +1045,7 @@ function StartForm({ kind, c, initial, back, next }: { kind: 'start' | 'extra'; 
             <p className="text-[20px] font-bold mb-2">{T('कौन सा अखबार?')}</p>
             <input autoFocus value={q} onChange={e => { setQ(e.target.value); setError(''); }} placeholder={T('नाम लिखें (हिंदी या English)')}
               className="w-full h-[60px] rounded-2xl border-2 bg-white px-4 text-[20px]" style={{ borderColor: C.navy }} />
-            <div className="mt-3 space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-2 [&>p]:md:col-span-2">
+            <div className="mt-3 space-y-2 min-[600px]:space-y-0 min-[600px]:grid min-[600px]:grid-cols-2 min-[600px]:gap-2 [&>p]:min-[600px]:col-span-2">
               {needle && shown.length === 0 && <p className="text-[18px]" style={{ color: C.grey }}>{papers.length ? T('कोई अखबार नहीं मिला') : T('सूची आ रही है…')}</p>}
               {shown.map(p => (
                 <button key={p.publica_id} onClick={() => { setPicked(p); setError(''); }} className="w-full min-h-[60px] rounded-2xl bg-white border px-4 text-left" style={{ borderColor: C.line }}>
