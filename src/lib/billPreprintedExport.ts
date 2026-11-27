@@ -196,7 +196,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: Arial, 'Nirmala UI', Mangal, sans-serif; }
-  .page { position: relative; width: 210mm; height: 296.5mm; overflow: hidden; page-break-after: always; break-after: page; }
+  .page { position: relative; width: 210mm; height: 296.5mm; overflow: hidden; page-break-after: always; break-after: page; transform: scale(var(--s, 1)); transform-origin: 50% 50%; }
   .page:last-child { page-break-after: auto; break-after: auto; }
   .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); transform: rotate(calc(var(--r, 0deg) + ${SHEET_TILT}deg)); transform-origin: 50% 50%; }
   .v { position: absolute; font-size: 8pt; font-weight: bold; white-space: nowrap; line-height: 1.5; }
@@ -248,22 +248,24 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   Move print (mm). Minus = up / left.<br>
   Up/Down <input id="oy" type="number" step="0.5"> Left/Right <input id="ox" type="number" step="0.5"><br>
   Tilt <input id="or" type="number" step="0.1"> &deg; <small>(+ turns clockwise)</small><br>
+  Size <input id="os" type="number" step="0.1"> % <small>(a computer that prints too big: smaller number)</small><br>
   <small>Printer settings: Margins <b>None</b>, Scale <b>100%</b>.</small><br>
   <button onclick="window.print()">Print</button>
 </div>
 <div class="sheet" id="sheet">${pages.join('')}</div>
 <script>
-  var key = ${JSON.stringify(OFFSET_KEY)}, off = { x: 0, y: 0, r: 0 };
+  var key = ${JSON.stringify(OFFSET_KEY)}, off = { x: 0, y: 0, r: 0, s: 100 };
   try { off = Object.assign(off, JSON.parse(localStorage.getItem(key) || '{}')); } catch (e) {}
-  var ox = document.getElementById('ox'), oy = document.getElementById('oy'), orr = document.getElementById('or'), sheet = document.documentElement;
+  var ox = document.getElementById('ox'), oy = document.getElementById('oy'), orr = document.getElementById('or'), os = document.getElementById('os'), sheet = document.documentElement;
   function apply() {
     sheet.style.setProperty('--x', (Number(off.x) || 0) + 'mm');
     sheet.style.setProperty('--y', (Number(off.y) || 0) + 'mm');
     sheet.style.setProperty('--r', (Number(off.r) || 0) + 'deg');
+    sheet.style.setProperty('--s', String((Number(off.s) || 100) / 100));
   }
-  ox.value = off.x; oy.value = off.y; orr.value = off.r || 0; if (!document.querySelector('.with-sheet')) apply();
-  function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0, r: Number(orr.value) || 0 }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
-  ox.oninput = save; oy.oninput = save; orr.oninput = save;
+  ox.value = off.x; oy.value = off.y; orr.value = off.r || 0; os.value = off.s || 100; if (!document.querySelector('.with-sheet')) apply();
+  function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0, r: Number(orr.value) || 0, s: Number(os.value) || 100 }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
+  ox.oninput = save; oy.oninput = save; orr.oninput = save; os.oninput = save;
   var tl = document.getElementById('tl');
   if (tl) tl.onchange = function () { document.body.classList.toggle('guides', tl.checked); };
   if (document.querySelector('.with-sheet')) document.querySelector('.tools').innerHTML = '<button onclick="window.print()">Print</button> <small>Margins None, Scale 100%</small>';
