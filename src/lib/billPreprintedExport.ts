@@ -124,6 +124,9 @@ const NUDGE = [
   { head: 1.0, body: 0.4, sum: 1.05 }
 ];
 const ROW_GAP = 0.25;
+// The shop's sheets sit about 0.25° turned anticlockwise against the print (same scan): each bill
+// is turned the same way, so its lines run along the boxes. The Tilt box adds to this.
+const SHEET_TILT = -0.25;
 
 const PLACES = [
   { ys: 29.7, yr: 34.6, yh: 54.2, yt: 104.0, pitch: 6.23, xs: 32.7, xb: 82.9, l: 9.5, q: 56.1, r: 67.3, a: 80.2, e: 101.0, dy: 4.3, dx: 4.0 },
@@ -189,7 +192,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: Arial, 'Nirmala UI', Mangal, sans-serif; }
   .page { position: relative; width: 210mm; height: 296.5mm; overflow: hidden; page-break-after: always; break-after: page; }
   .page:last-child { page-break-after: auto; break-after: auto; }
-  .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); transform: rotate(var(--r, 0deg)); transform-origin: 50% 50%; }
+  .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); transform: rotate(calc(var(--r, 0deg) + ${SHEET_TILT}deg)); transform-origin: 50% 50%; }
   .v { position: absolute; font-size: 8pt; font-weight: bold; white-space: nowrap; line-height: 1.5; }
   .name-h { position: absolute; text-align: center; font-size: 10.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.7; }
   .name-e { position: absolute; text-align: center; font-size: 7.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.4; }
@@ -199,7 +202,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .amt { text-align: right; }
   .grand { font-size: 8.6pt; }
   .dev { position: absolute; font-size: 7.5pt; line-height: 1.2; font-weight: 900; letter-spacing: 0.15px; white-space: nowrap; background: #000; color: #fff; padding: 0.15mm 1.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .with-sheet .bill { margin: 0; }
+  .with-sheet .bill { margin: 0; transform: none; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
   .cut-h { position: absolute; top: 148.5mm; left: 0; width: 210mm; border-top: 1px dashed #999; }
   .s-logo { position: absolute; left: 6mm; top: 5mm; width: 10mm; height: 17mm; object-fit: contain; }
