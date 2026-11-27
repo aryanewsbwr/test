@@ -175,7 +175,7 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
     <!-- Bottom-left corner, under the notes. The lower two bills sit a little higher than before, so the
          printer's bottom edge does not cut the line off -->
-    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (sheet ? 34.5 : 37.5), 1.38)}">${DEVELOPER}</div>
+    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (sheet ? 34.5 : slot === 2 ? 38.5 : 37.5), 1.38)}">${DEVELOPER}</div>
   </div>`;
 }
 
