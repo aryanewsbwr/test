@@ -31,7 +31,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
         {/* Turns the Desktop 2 look on before the first paint, so the loading screen already has it.
             Phones always get it: the classic look does not fit a phone. */}
-        <script dangerouslySetInnerHTML={{ __html: "var p=location.pathname;if(p!=='/m'&&p.indexOf('/m/')!==0)document.documentElement.classList.add('desktop2')" }} />
+        <script dangerouslySetInnerHTML={{ __html: "var p=location.pathname.split('/')[1];if(p!=='m'&&p!=='t')document.documentElement.classList.add('desktop2')" }} />
       </head>
       <body className="antialiased min-h-screen bg-[#3A6EA5] flex flex-col justify-between">
         {children}
