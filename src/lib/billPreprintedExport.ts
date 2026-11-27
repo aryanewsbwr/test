@@ -158,7 +158,11 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt" style="right:${amtRight};top:${sumY(1)}">${delivery ? money(delivery) : ''}</div>
     <div class="v amt" style="right:${amtRight};top:${sumY(2)}">${previous ? money(previous) : ''}</div>
     <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
-    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (slot < 2 || sheet ? 34.5 : 38.5), 1.38)}">${DEVELOPER}</div>
+    ${sheet
+      ? `<div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + 34.5, 1.38)}">${DEVELOPER}</div>`
+      // On the shop's sheet the line goes in the empty top-right corner above the firm's name: near the
+      // bottom edge printers cut it off, and a small feed shift put it on the notes
+      : `<div class="dev" style="right:${amtRight};top:${Y(g.ys - 21, 0)}">${DEVELOPER}</div>`}
   </div>`;
 }
 
