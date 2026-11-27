@@ -114,13 +114,16 @@ function billLines(b: BillRecord, mode: BillPrintMode): { lines: Line[]; total: 
 // scan): they are not equal quarters. dy/dx are how far this printer moves the print there.
 // ys/yr: S. No./Region line, yh: under the PARTICULARS heading, yt: Total row, pitch: box rows,
 // xs/xb: end of the S. No./Bill No. label, l/q/r/a/e: table left, QTY, RATE, AMOUNT and right lines.
-// head: S. No., Region, Bill No., Month and the name; body: paper lines; sum: the four totals
+// Corrections measured on the flat scan of 29 Nov 2026 (mm, + moves down), each part of each bill
+// against its own box. head: S. No., Region, Bill No., Month and the name; body: paper lines;
+// sum: the four totals. The total rows also print a little closer than the boxes (ROW_GAP).
 const NUDGE = [
-  { head: 4.5, body: 4.5, sum: 2.7 },
-  { head: 4.5, body: 4.4, sum: 2.6 },
-  { head: 1.0, body: 0, sum: -1.5 },
-  { head: 0.7, body: 0, sum: -2.0 }
+  { head: 0.9, body: 1.5, sum: 1.7 },
+  { head: 0.65, body: 0.7, sum: 0.9 },
+  { head: 1.4, body: 1.5, sum: 1.7 },
+  { head: 1.0, body: 0.4, sum: 1.05 }
 ];
+const ROW_GAP = 0.25;
 
 const PLACES = [
   { ys: 29.7, yr: 34.6, yh: 54.2, yt: 104.0, pitch: 6.23, xs: 32.7, xb: 82.9, l: 9.5, q: 56.1, r: 67.3, a: 80.2, e: 101.0, dy: 4.3, dx: 4.0 },
@@ -148,7 +151,7 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
   const mm = (v: number) => `${v.toFixed(1)}mm`;
   const amtRight = mm(105 - (X(g.e) - 2));
   const rowY = (i: number) => Y(g.yh + 3.2 + n.body + i * 3.9);
-  const sumY = (k: number, half = 2.12) => Y(g.yt - 0.8 + n.sum + k * g.pitch, half);
+  const sumY = (k: number, half = 2.12) => Y(g.yt - 0.8 + n.sum + k * (g.pitch + (sheet ? 0 : ROW_GAP)), half);
 
   return `
   <div class="bill" style="left:${left}mm;top:${top}mm">${sheet ? SHEET : ''}
@@ -169,7 +172,7 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
     <!-- Bottom-left corner, under the notes. The lower two bills sit a little higher than before, so the
          printer's bottom edge does not cut the line off -->
-    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (sheet ? 34.5 : slot < 2 ? 37.5 : 33.5), 1.38)}">${DEVELOPER}</div>
+    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (sheet ? 34.5 : 37.5), 1.38)}">${DEVELOPER}</div>
   </div>`;
 }
 
@@ -186,7 +189,7 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: Arial, 'Nirmala UI', Mangal, sans-serif; }
   .page { position: relative; width: 210mm; height: 296.5mm; overflow: hidden; page-break-after: always; break-after: page; }
   .page:last-child { page-break-after: auto; break-after: auto; }
-  .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); }
+  .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); transform: rotate(var(--r, 0deg)); transform-origin: 50% 50%; }
   .v { position: absolute; font-size: 8pt; font-weight: bold; white-space: nowrap; line-height: 1.5; }
   .name-h { position: absolute; text-align: center; font-size: 10.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.7; }
   .name-e { position: absolute; text-align: center; font-size: 7.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.4; }
@@ -230,21 +233,23 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   <b>Pre-printed sheet</b>
   Move print (mm). Minus = up / left.<br>
   Up/Down <input id="oy" type="number" step="0.5"> Left/Right <input id="ox" type="number" step="0.5"><br>
+  Tilt <input id="or" type="number" step="0.1"> &deg; <small>(+ turns clockwise)</small><br>
   <small>Printer settings: Margins <b>None</b>, Scale <b>100%</b>.</small><br>
   <button onclick="window.print()">Print</button>
 </div>
 <div class="sheet" id="sheet">${pages.join('')}</div>
 <script>
-  var key = ${JSON.stringify(OFFSET_KEY)}, off = { x: 0, y: 0 };
+  var key = ${JSON.stringify(OFFSET_KEY)}, off = { x: 0, y: 0, r: 0 };
   try { off = Object.assign(off, JSON.parse(localStorage.getItem(key) || '{}')); } catch (e) {}
-  var ox = document.getElementById('ox'), oy = document.getElementById('oy'), sheet = document.documentElement;
+  var ox = document.getElementById('ox'), oy = document.getElementById('oy'), orr = document.getElementById('or'), sheet = document.documentElement;
   function apply() {
     sheet.style.setProperty('--x', (Number(off.x) || 0) + 'mm');
     sheet.style.setProperty('--y', (Number(off.y) || 0) + 'mm');
+    sheet.style.setProperty('--r', (Number(off.r) || 0) + 'deg');
   }
-  ox.value = off.x; oy.value = off.y; if (!document.querySelector('.with-sheet')) apply();
-  function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0 }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
-  ox.oninput = save; oy.oninput = save;
+  ox.value = off.x; oy.value = off.y; orr.value = off.r || 0; if (!document.querySelector('.with-sheet')) apply();
+  function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0, r: Number(orr.value) || 0 }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
+  ox.oninput = save; oy.oninput = save; orr.oninput = save;
   if (document.querySelector('.with-sheet')) document.querySelector('.tools').innerHTML = '<button onclick="window.print()">Print</button> <small>Margins None, Scale 100%</small>';
 </script>
 </body></html>`;
