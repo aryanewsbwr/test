@@ -415,6 +415,11 @@ export async function GET(request: NextRequest) {
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
     } else {
       targetCusts = await dropHiddenRegions(targetCusts);
+      const pickedParam = searchParams.get('region_ids');
+      if (pickedParam) {
+        const picked = new Set(pickedParam.split(',').map(Number).filter(Boolean));
+        targetCusts = targetCusts.filter(c => picked.has(Number(c.region_id || c.Region_id)));
+      }
     }
 
     // Filter by search text
@@ -565,6 +570,12 @@ export async function POST(request: NextRequest) {
         targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
       } else {
         targetCusts = await dropHiddenRegions(targetCusts);
+        // All Regions with some regions unticked: only the ticked ones are billed
+        if (Array.isArray(body.region_ids)) {
+          const picked = new Set(body.region_ids.map(Number));
+          if (picked.size === 0) return NextResponse.json({ error: 'Tick at least one region to bill.' }, { status: 400 });
+          targetCusts = targetCusts.filter(c => picked.has(Number(c.region_id || c.Region_id)));
+        }
       }
     }
 

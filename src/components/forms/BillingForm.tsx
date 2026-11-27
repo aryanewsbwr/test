@@ -77,6 +77,10 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
 
   const [commitToDatabase, setCommitToDatabase] = useState(true);
   const [regions, setRegions] = useState<any[]>([]);
+  // All Regions: the regions left out of the run (these start unticked)
+  const [skippedRegions, setSkippedRegions] = useState<Set<number>>(new Set());
+  const regionIdOf = (r: any) => Number(r.region_id || r.id);
+  const pickedRegionIds = regions.map(regionIdOf).filter(id => !skippedRegions.has(id));
   
   // Processing States
   const [isProcessing, setIsProcessing] = useState(false);
@@ -109,11 +113,12 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
       .then(r => r.json())
       .then(d => {
         const regionName = (r: any) => String(r.name || r.region_name || '');
-        setRegions(
-          (d.regions || [])
-            .filter((r: any) => !/^\s*z/i.test(regionName(r)))
-            .sort((a: any, b: any) => regionName(a).localeCompare(regionName(b), undefined, { numeric: true, sensitivity: 'base' }))
-        );
+        const list = (d.regions || [])
+          .filter((r: any) => !/^\s*z/i.test(regionName(r)))
+          .sort((a: any, b: any) => regionName(a).localeCompare(regionName(b), undefined, { numeric: true, sensitivity: 'base' }));
+        setRegions(list);
+        const OFF_BY_DEFAULT = ['court', 'munnabhai', 'temp', 'ug', 'nagar'];
+        setSkippedRegions(new Set(list.filter((r: any) => OFF_BY_DEFAULT.includes(regionName(r).trim().toLowerCase())).map((r: any) => Number(r.region_id || r.id))));
       })
       .catch(() => {});
   }, []);
@@ -156,6 +161,10 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
   // Execute Bill Processing (Matching VB6 BillProcessing screenshot_14.jpg)
   const handleProcess = async () => {
     const startedAt = Date.now();
+    if (selectedRegion === 'all' && !singleId && pickedRegionIds.length === 0) {
+      setProcessError('Tick at least one region to bill.');
+      return;
+    }
     setIsProcessing(true);
     setProcessDone(false);
     setProcessError('');
@@ -175,6 +184,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
           month,
           year: selectedYear,
           region_id: selectedRegion,
+          region_ids: selectedRegion === 'all' && !singleId ? pickedRegionIds : undefined,
           customer_id: singleId,
           commitToDb: commitToDatabase
         })
@@ -194,7 +204,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
 
       const pageSize = selectedRegion === 'all' ? 200 : 1000;
       // 2. Load bills for preview (full list for single region, paginated for all regions)
-      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=${pageSize}`);
+      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}${selectedRegion === 'all' ? `&region_ids=${pickedRegionIds.join(',')}` : ''}&page=1&limit=${pageSize}`);
       const gridData = await gridRes.json();
 
       setProgress(100);
@@ -214,7 +224,7 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
       // After a failed save, tell staff how many bills of this month are really saved now
       if (commitToDatabase && !singleId) {
         try {
-          const check = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=1`);
+          const check = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}${selectedRegion === 'all' ? `&region_ids=${pickedRegionIds.join(',')}` : ''}&page=1&limit=1`);
           const saved = await check.json();
           if (check.ok && saved.total_customers !== undefined) message += ` Saved ${month} bills right now: ${saved.total_customers}.`;
         } catch {}
@@ -444,6 +454,31 @@ export default function BillingForm({ onClose, periodMonth, periodStartYear, onP
                 <span className="font-mono shrink-0">#{cust.customer_id}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* All Regions: tick the regions to bill */}
+        {selectedRegion === 'all' && !singleMode && regions.length > 0 && (
+          <div className="border border-[#808080] bg-white p-2 text-xs">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-[#000080]">Regions to bill ({pickedRegionIds.length} of {regions.length})</span>
+              <span className="flex gap-2">
+                <button type="button" onClick={() => setSkippedRegions(new Set())} className="px-2 py-0.5 border border-[#808080] bg-[#ECE9D8] font-bold cursor-pointer">Tick all</button>
+                <button type="button" onClick={() => setSkippedRegions(new Set(regions.map(regionIdOf)))} className="px-2 py-0.5 border border-[#808080] bg-[#ECE9D8] font-bold cursor-pointer">Untick all</button>
+              </span>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-0.5 max-h-[140px] overflow-y-auto">
+              {regions.map(r => {
+                const id = regionIdOf(r);
+                return (
+                  <label key={id} className="flex items-center gap-1 cursor-pointer font-bold text-slate-800 select-none">
+                    <input type="checkbox" checked={!skippedRegions.has(id)}
+                      onChange={e => { const next = new Set(skippedRegions); if (e.target.checked) next.delete(id); else next.add(id); setSkippedRegions(next); setProcessDone(false); }} />
+                    <span className="truncate">{r.name || r.region_name}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
         )}
 
