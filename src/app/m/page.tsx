@@ -566,11 +566,11 @@ function Home({ me, go, logout, refresh, pick, lang, setLang }: { me: Me; go: (v
           <button onClick={() => go('voice')} aria-label={T('बोलें')} className="w-[64px] h-[64px] rounded-full flex items-center justify-center" style={{ background: C.orange }}><Icon name="mic" color="#fff" /></button>
         </div>
         <p className="text-[16px] mt-2" style={{ color: C.grey }}>{T('बोलकर भी कर सकते हैं: “राम जी 350 जमा”')}</p>
-        <div className="grid grid-cols-2 [.tablet_&]:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 [.tablet_&]:grid-cols-3 landscape:[.tablet_&]:grid-cols-6 gap-3 mt-4">
           {tiles.filter(t => t.show).map(t => (
-            <button key={t.title} onClick={t.open} className="rounded-2xl bg-white border p-4 text-left min-h-[150px]" style={{ borderColor: C.line }}>
+            <button key={t.title} onClick={t.open} className="rounded-2xl bg-white border p-4 text-left min-h-[150px] landscape:[.tablet_&]:min-h-[124px] landscape:[.tablet_&]:p-3" style={{ borderColor: C.line }}>
               <span className="w-[56px] h-[56px] rounded-xl flex items-center justify-center" style={{ background: t.color }}><Icon name={t.icon} size={30} color="#fff" /></span>
-              <span className="block text-[23px] font-bold mt-3 leading-tight">{t.title}</span>
+              <span className="block text-[23px] landscape:[.tablet_&]:text-[19px] font-bold mt-3 leading-tight">{t.title}</span>
               <span className="block text-[17px]" style={{ color: C.grey }}>{t.sub}</span>
             </button>
           ))}
