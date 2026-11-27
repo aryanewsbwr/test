@@ -1220,10 +1220,9 @@ export async function GET(request: NextRequest) {
       });
 
       // Filter to only printable bills (customers with billed items)
-      // Every billed customer is printed, also one whose advance covers the bill (zero or minus);
-      // WhatsApp sending leaves those out on its own.
-      const printableBills = bills
-        .filter(b => b.items.length > 0 || b.current_bill > 0 || b.net_payable > 0);
+      // Every saved bill is printed, as the old software prints them: also one with no paper lines
+      // (paper stopped all month) and one the advance covers. WhatsApp sending leaves those out.
+      const printableBills = bills;
 
       // Sort by Route Priority ASC
       printableBills.sort((a, b) => {

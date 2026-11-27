@@ -1136,9 +1136,15 @@ export function calculateBilling({
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
     const totalPayable = roundToFoxProRule(customerPreviousBalance + rawCurrentCharges - paidThisMonth);
 
-    // In FoxPro monthly delivery billing, bills are generated strictly for customers with active paper deliveries / sales (paperTotal > 0).
-    // Customers with 0 newspaper deliveries in the current month do NOT receive a monthly newspaper bill.
-    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0) {
+    // As the old software does, a customer with a paper open during the month gets a bill even when
+    // no copy was delivered (stopped for the whole month): no paper lines, total = previous due.
+    // Only a customer with no open paper and nothing sold this month gets no bill.
+    const hasOpenPaper = custSubs.some((cd: any) => {
+      const sIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
+      const cIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
+      return sIso <= monthEndIso && (!cIso || cIso >= monthStartIso);
+    });
+    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0 && !hasOpenPaper) {
       continue;
     }
 
