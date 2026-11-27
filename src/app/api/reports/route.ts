@@ -871,7 +871,8 @@ export async function GET(request: NextRequest) {
       // Month match: standard full name or prefix (e.g. 'September' or 'Sept', 'August' or 'Aug')
       query = query.or(`month.ilike.${standardMonth},month.ilike.${monthPrefix}%`);
 
-      if (regionId && regionId !== 'all') {
+      // A typed customer search finds the bill in any region, not only the region still selected
+      if (regionId && regionId !== 'all' && !(search || '').trim()) {
         const rNum = parseInt(regionId, 10);
         query = query.eq('region_id', rNum);
       }
