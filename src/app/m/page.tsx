@@ -293,7 +293,7 @@ function Keypad({ onKey, extra }: { onKey: (k: string) => void; extra: string })
 function BottomNav({ view, go }: { view: View; go: (v: View) => void }) {
   const items: [View, string, string][] = [['home', 'home', T('होम')], ['search', 'search', T('खोजें')], ['voice', 'mic', T('बोलें')], ['dues', 'list', T('बकाया')]];
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t grid grid-cols-4 h-[72px] z-20 md:px-[calc((100vw-880px)/2)]" style={{ borderColor: C.line }}>
+    <nav className="fixed bottom-0 inset-x-0 bg-white border-t grid grid-cols-4 h-[72px] z-20 md:top-0 md:right-auto md:w-[112px] md:h-auto md:grid-cols-1 md:auto-rows-[104px] md:content-center md:border-t-0 md:border-r md:shadow-sm" style={{ borderColor: C.line }}>
       {items.map(([v, icon, label]) => (
         <button key={v} onClick={() => go(v)} className="flex flex-col items-center justify-center gap-0.5" style={{ color: view === v ? C.navy : C.grey }}>
           <Icon name={icon} size={26} />
@@ -366,7 +366,7 @@ export default function MobileApp() {
 
   const shell = (body: React.ReactNode, nav = false) => (
     <div className="fixed inset-0 overflow-y-auto" style={{ background: C.cream, color: C.ink, fontFamily: "'Mukta', 'Noto Sans Devanagari', sans-serif", userSelect: 'text' }}>
-      <div className={`max-w-[520px] md:max-w-[880px] mx-auto min-h-full ${nav ? 'pb-[92px]' : 'pb-6'}`}>{body}</div>
+      <div className={`max-w-[520px] md:max-w-none min-h-full mx-auto ${nav ? 'pb-[92px] md:pb-6 md:pl-[112px]' : 'pb-6'}`}><div className="md:max-w-[1040px] md:mx-auto md:px-4">{body}</div></div>
       {nav && <BottomNav view={view} go={v => (v === 'home' ? (history.current = [], setView('home')) : go(v))} />}
       {busy && <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/20"><div className="bg-white rounded-2xl px-6 py-4 text-[20px] font-semibold">{T('एक पल…')}</div></div>}
     </div>
@@ -566,7 +566,7 @@ function Home({ me, go, logout, refresh, pick, lang, setLang }: { me: Me; go: (v
           <button onClick={() => go('voice')} aria-label={T('बोलें')} className="w-[64px] h-[64px] rounded-full flex items-center justify-center" style={{ background: C.orange }}><Icon name="mic" color="#fff" /></button>
         </div>
         <p className="text-[16px] mt-2" style={{ color: C.grey }}>{T('बोलकर भी कर सकते हैं: “राम जी 350 जमा”')}</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
           {tiles.filter(t => t.show).map(t => (
             <button key={t.title} onClick={t.open} className="rounded-2xl bg-white border p-4 text-left min-h-[150px]" style={{ borderColor: C.line }}>
               <span className="w-[56px] h-[56px] rounded-xl flex items-center justify-center" style={{ background: t.color }}><Icon name={t.icon} size={30} color="#fff" /></span>
@@ -641,8 +641,8 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
   return (
     <>
       <Header title={T('ग्राहक')} onBack={back} />
-      <div className="p-4 space-y-4">
-        <div className="rounded-2xl bg-white border p-5" style={{ borderColor: C.line }}>
+      <div className="p-4 space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5 md:items-start">
+        <div className="rounded-2xl bg-white border p-5 md:col-start-1 md:row-start-1" style={{ borderColor: C.line }}>
           <p className="text-[16px]" style={{ color: C.grey }}>{en() ? 'Customer no.' : 'ग्राहक नं.'} {c.customer_id}{c.region ? ` · ${en() ? 'Line' : 'लाइन'} ${c.region}` : ''}</p>
           <h2 className="text-[30px] font-extrabold leading-tight mt-1" style={{ color: C.navy }}>{nm(c)}</h2>
           {c.name_eng && c.name_eng !== c.name && <p className="text-[18px]" style={{ color: C.grey }}>{en() ? c.name : c.name_eng}</p>}
@@ -654,8 +654,8 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
             </div>
           )}
         </div>
-        <BalanceBox balance={c.balance} />
-        <div className="rounded-2xl bg-white border px-5 py-4" style={{ borderColor: C.line }}>
+        <div className="md:col-start-2 md:row-start-1"><BalanceBox balance={c.balance} /></div>
+        <div className="rounded-2xl bg-white border px-5 py-4 md:col-start-1 md:row-start-2" style={{ borderColor: C.line }}>
           <p className="text-[20px] font-bold pb-2 border-b" style={{ borderColor: C.line }}>{T('चालू अखबार')}</p>
           {c.papers.length === 0 && <p className="py-3 text-[18px]" style={{ color: C.grey }}>{T('कोई अखबार चालू नहीं')}</p>}
           {c.papers.map(p => (
@@ -665,6 +665,7 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
             </div>
           ))}
         </div>
+        <div className="space-y-4 md:col-start-2 md:row-start-2">
         {c.last_payment && <p className="text-[17px]" style={{ color: C.grey }}>{en() ? 'Last payment' : 'आखिरी जमा'}: {c.last_payment.date} · {rupees(c.last_payment.amount)}{c.last_payment.receipt_no ? ` · ${en() ? 'Receipt' : 'रसीद'} ${c.last_payment.receipt_no}` : ''}</p>}
         {c.can_collect && <BigButton onClick={() => go('pay')}><Icon name="rupee" /> {T('पैसे जमा करें')}</BigButton>}
         {canStop && (
@@ -678,6 +679,7 @@ function CustomerPage({ c, canStop, back, go }: { c: Customer; canStop: boolean;
           {phone
             ? <a href={wa(phone, billText)} className="w-full min-h-[64px] rounded-2xl text-[22px] font-bold flex items-center justify-center border-2 bg-white" style={{ borderColor: C.navy, color: C.navy }}>{T('बिल भेजें')}</a>
             : <BigButton outline color={C.navy} disabled>{T('बिल भेजें')}</BigButton>}
+        </div>
         </div>
       </div>
     </>
