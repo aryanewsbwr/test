@@ -114,6 +114,14 @@ function billLines(b: BillRecord, mode: BillPrintMode): { lines: Line[]; total: 
 // scan): they are not equal quarters. dy/dx are how far this printer moves the print there.
 // ys/yr: S. No./Region line, yh: under the PARTICULARS heading, yt: Total row, pitch: box rows,
 // xs/xb: end of the S. No./Bill No. label, l/q/r/a/e: table left, QTY, RATE, AMOUNT and right lines.
+// head: S. No., Region, Bill No., Month and the name; body: paper lines; sum: the four totals
+const NUDGE = [
+  { head: 4.5, body: 4.5, sum: 2.7 },
+  { head: 4.5, body: 4.4, sum: 2.6 },
+  { head: 1.0, body: 0, sum: -1.5 },
+  { head: 0.7, body: 0, sum: -2.0 }
+];
+
 const PLACES = [
   { ys: 29.7, yr: 34.6, yh: 54.2, yt: 104.0, pitch: 6.23, xs: 32.7, xb: 82.9, l: 9.5, q: 56.1, r: 67.3, a: 80.2, e: 101.0, dy: 4.3, dx: 4.0 },
   { ys: 29.0, yr: 34.0, yh: 53.8, yt: 103.5, pitch: 6.23, xs: 136.3, xb: 186.8, l: 113.3, q: 160.1, r: 171.2, a: 183.8, e: 204.6, dy: 5.3, dx: 1.0 },
@@ -134,21 +142,22 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
   const shown = lines.slice(0, 11);
   // Plain A4 draws all four bills the same way; the shop's sheet has each bill at its own place
   const g = sheet ? PLACES[0] : PLACES[slot];
+  const n = sheet ? { head: 0, body: 0, sum: 0 } : NUDGE[slot];
   const Y = (v: number, half = 2.12) => `${(v - (sheet ? 0 : top) - g.dy - half).toFixed(1)}mm`;
   const X = (v: number) => (v - (sheet ? 0 : left) - g.dx);
   const mm = (v: number) => `${v.toFixed(1)}mm`;
   const amtRight = mm(105 - (X(g.e) - 2));
-  const rowY = (i: number) => Y(g.yh + 3.2 + i * 3.9);
-  const sumY = (k: number, half = 2.12) => Y(g.yt - 0.8 + k * g.pitch, half);
+  const rowY = (i: number) => Y(g.yh + 3.2 + n.body + i * 3.9);
+  const sumY = (k: number, half = 2.12) => Y(g.yt - 0.8 + n.sum + k * g.pitch, half);
 
   return `
   <div class="bill" style="left:${left}mm;top:${top}mm">${sheet ? SHEET : ''}
-    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.ys - 0.9)}">${esc(b.priority || serial)}</div>
-    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(g.yr - 0.9)}">${esc(b.region_name || b.region_id)}</div>
-    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.ys - 1.7)}">${esc(b.bill_no || '')}</div>
-    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(g.yr - 1.3)}">${esc(monthText(b))}</div>
-    <div class="name-h" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 5.5, 3.15)}">${esc(hindi)}</div>
-    <div class="name-e" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yr + 10, 1.85)}">${esc(b.customer_name)}</div>
+    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(n.head + g.ys - 0.9)}">${esc(b.priority || serial)}</div>
+    <div class="v" style="left:${mm(X(g.xs) + 3.5)};top:${Y(n.head + g.yr - 0.9)}">${esc(b.region_name || b.region_id)}</div>
+    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(n.head + g.ys - 1.7)}">${esc(b.bill_no || '')}</div>
+    <div class="v" style="left:${mm(X(g.xb) + 1.5)};top:${Y(n.head + g.yr - 1.3)}">${esc(monthText(b))}</div>
+    <div class="name-h" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(n.head + g.yr + 5.5, 3.15)}">${esc(hindi)}</div>
+    <div class="name-e" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(n.head + g.yr + 10, 1.85)}">${esc(b.customer_name)}</div>
     ${shown.map((l, i) => `
     <div class="v paper" style="left:${mm(X(g.l) + 2)};width:${mm(g.q - g.l - 3)};top:${rowY(i)}">${esc(l.name)}</div>
     <div class="v qty" style="left:${mm(X(g.q))};width:${mm(g.r - g.q)};top:${rowY(i)}">${esc(l.qty)}</div>
@@ -160,7 +169,7 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <div class="v amt grand" style="right:${amtRight};top:${sumY(3, 2.28)}">${money(grand)}</div>
     <!-- Bottom-left corner, under the notes. The lower two bills sit a little higher than before, so the
          printer's bottom edge does not cut the line off -->
-    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (slot < 2 || sheet ? 34.5 : 36.5), 1.38)}">${DEVELOPER}</div>
+    <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (sheet ? 34.5 : slot < 2 ? 37.5 : 33.5), 1.38)}">${DEVELOPER}</div>
   </div>`;
 }
 
