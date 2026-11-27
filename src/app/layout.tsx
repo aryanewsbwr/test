@@ -6,6 +6,10 @@ import './desktop2.css';
 export const metadata: Metadata = {
   title: 'Aryan News Agency Management System',
   description: 'Full Newspaper & Publication Management System (Mobile, Tablet & Desktop)',
+  // The office website installs as its own app ("Aryan Office"); the staff app /m has its own
+  manifest: '/app.webmanifest',
+  appleWebApp: { capable: true, title: 'Aryan Office', statusBarStyle: 'default' },
+  icons: { apple: '/app-icon-192.png' },
 };
 
 export const viewport: Viewport = {
