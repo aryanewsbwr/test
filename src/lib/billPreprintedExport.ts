@@ -200,9 +200,9 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .page:last-child { page-break-after: auto; break-after: auto; }
   .bill { position: absolute; width: 105mm; height: 148.5mm; margin: var(--y, 0mm) 0 0 var(--x, 0mm); transform: rotate(calc(var(--r, 0deg) + ${SHEET_TILT}deg)); transform-origin: 50% 50%; }
   .v { position: absolute; font-size: 8pt; font-weight: bold; white-space: nowrap; line-height: 1.5; }
-  .name-h { position: absolute; text-align: center; font-size: 10.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.7; }
+  .name-h { position: absolute; text-align: center; font-size: 10.5pt; font-weight: 500; font-family: 'Nirmala UI', Mangal, 'Noto Sans Devanagari', Arial, sans-serif; white-space: nowrap; overflow: hidden; line-height: 1.7; }
   .name-e { position: absolute; text-align: center; font-size: 7.5pt; font-weight: bold; white-space: nowrap; overflow: hidden; line-height: 1.4; }
-  .paper { overflow: hidden; font-size: 8pt; }
+  .paper { overflow: hidden; font-size: 8pt; font-weight: 500; font-family: 'Nirmala UI', Mangal, 'Noto Sans Devanagari', Arial, sans-serif; }
   .qty { text-align: center; }
   .rate { text-align: center; font-size: 7.5pt; }
   .amt { text-align: right; }
