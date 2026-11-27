@@ -176,6 +176,12 @@ function oneBill(b: BillRecord, slot: number, serial: number, mode: BillPrintMod
     <!-- Bottom-left corner, under the notes. The lower two bills sit a little higher than before, so the
          printer's bottom edge does not cut the line off -->
     <div class="dev" style="left:${mm(X(g.l))};top:${Y(g.yt + (sheet ? 34.5 : slot === 2 ? 38.5 : 37.5), 1.38)}">${DEVELOPER}</div>
+    ${sheet ? '' : `
+    <!-- Test lines: where this print expects the sheet's box lines; shown only for the alignment test -->
+    <div class="guide" style="left:${mm(X(g.l))};width:${mm(g.e - g.l)};top:${Y(g.yh + n.body, 0)};height:0.25mm"></div>
+    <div class="guide" style="left:${mm(X(g.q))};width:${mm(g.e - g.q)};top:${Y(g.yt - 0.8 + n.sum - g.pitch / 2, 0)};height:0.25mm"></div>
+    <div class="guide" style="left:${mm(X(g.q))};width:${mm(g.e - g.q)};top:${Y(g.yt - 0.8 + n.sum + 3.5 * (g.pitch + ROW_GAP), 0)};height:0.25mm"></div>
+    ${[g.q, g.r, g.a].map(x => `<div class="guide" style="left:${mm(X(x))};width:0.25mm;top:${Y(g.yh + n.body, 0)};height:${mm(g.yt - g.pitch / 2 - g.yh)}"></div>`).join('')}`}
   </div>`;
 }
 
@@ -201,6 +207,9 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   .rate { text-align: center; font-size: 7.5pt; }
   .amt { text-align: right; }
   .grand { font-size: 8.6pt; }
+  .guide { display: none; position: absolute; background: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body.guides .guide { display: block; }
+  body.guides .v, body.guides .name-h, body.guides .name-e, body.guides .dev { display: none; }
   .dev { position: absolute; font-size: 7.5pt; line-height: 1.2; font-weight: 900; letter-spacing: 0.15px; white-space: nowrap; background: #000; color: #fff; padding: 0.15mm 1.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .with-sheet .bill { margin: 0; transform: none; }
   .cut-v { position: absolute; left: 105mm; top: 0; height: 297mm; border-left: 1px dashed #999; }
@@ -234,6 +243,8 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
 </style></head><body class="${opts.preview ? 'preview' : ''}">
 <div class="tools">
   <b>Pre-printed sheet</b>
+  <label><input id="tl" type="checkbox"> Alignment test (lines only)</label><br>
+  <small>Print it on one sheet: the black lines must sit on the blue box lines. If they run at an angle, change Tilt; if they are above or below, change Up/Down.</small><br>
   Move print (mm). Minus = up / left.<br>
   Up/Down <input id="oy" type="number" step="0.5"> Left/Right <input id="ox" type="number" step="0.5"><br>
   Tilt <input id="or" type="number" step="0.1"> &deg; <small>(+ turns clockwise)</small><br>
@@ -253,6 +264,8 @@ export function preprintedBillsHtml(bills: BillRecord[], title: string, mode: Bi
   ox.value = off.x; oy.value = off.y; orr.value = off.r || 0; if (!document.querySelector('.with-sheet')) apply();
   function save() { off = { x: Number(ox.value) || 0, y: Number(oy.value) || 0, r: Number(orr.value) || 0 }; apply(); try { localStorage.setItem(key, JSON.stringify(off)); } catch (e) {} }
   ox.oninput = save; oy.oninput = save; orr.oninput = save;
+  var tl = document.getElementById('tl');
+  if (tl) tl.onchange = function () { document.body.classList.toggle('guides', tl.checked); };
   if (document.querySelector('.with-sheet')) document.querySelector('.tools').innerHTML = '<button onclick="window.print()">Print</button> <small>Margins None, Scale 100%</small>';
 </script>
 </body></html>`;
