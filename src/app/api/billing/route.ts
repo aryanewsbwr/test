@@ -368,6 +368,7 @@ export async function GET(request: NextRequest) {
         getSupplements(month, year)
       ]);
 
+      const openingDues0 = await newCustomerDues(targetCusts, liveCustBillHeaders, fySuffix);
       const singleResult = calculateBilling({
         monthName: month,
         year: year,
@@ -386,6 +387,7 @@ export async function GET(request: NextRequest) {
         regions: regions,
         retailSales: liveRetail,
         supplements: liveSupps,
+        openingDues: openingDues0,
         startBillId: maxBillId + 1
       });
 
@@ -456,6 +458,7 @@ export async function GET(request: NextRequest) {
       getSupplements(month, year)
     ]);
 
+    const openingDues1 = await newCustomerDues(paginatedCusts, liveCustBillHeaders, fySuffix);
     const result = calculateBilling({
       monthName: month,
       year: year,
@@ -474,6 +477,7 @@ export async function GET(request: NextRequest) {
       regions: regions,
       retailSales: dbBatchRetail,
       supplements: liveSupps,
+      openingDues: openingDues1,
       startBillId: maxBillId + 1 + (page - 1) * limit
     });
 
@@ -508,6 +512,34 @@ export async function GET(request: NextRequest) {
     console.error('Bill route failed:', error);
     return NextResponse.json({ error: error?.message || 'Bill generation failed.' }, { status: 500 });
   }
+}
+
+// A customer added after the year's opening Dues were made has no Dues row, so a due typed as
+// "Due Amount" on the customer becomes their opening Dues. Only a new customer counts: no Dues
+// row, no bill last year, and in 2026-27 no bill before November (when this rule started), as
+// old customers still carry stale Due Amounts from years ago.
+const BEFORE_RULE = new Set(['apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct']);
+async function newCustomerDues(custs: any[], headers: any[], fySuffix: string): Promise<Map<number, number>> {
+  const dues = new Map<number, number>();
+  const old = new Set<number>();
+  for (const h of headers || []) {
+    const m = String(h.month || h.Month || '').trim().toLowerCase();
+    if (m === 'dues' || (fySuffix === '20262027' && BEFORE_RULE.has(m.slice(0, 3)))) old.add(Number(h.customer_id || h.Customer_id));
+  }
+  const candidates = custs
+    .map(c => ({ id: Number(c.customer_id || c.Customer_id), due: Number(c.dueamount ?? c.DueAmount ?? 0) }))
+    .filter(c => c.id && c.due && !old.has(c.id));
+  if (candidates.length === 0) return dues;
+  const start = parseInt(fySuffix.slice(0, 4), 10);
+  const lastYear = `billno${start - 1}${start}`;
+  for (let i = 0; i < candidates.length; i += 100) {
+    const ids = candidates.slice(i, i + 100).map(c => c.id);
+    const { data, error } = await supabaseAdmin.from(lastYear).select('customer_id').in('customer_id', ids).limit(1000);
+    if (error) throw new Error(`Could not read last year's bills: ${error.message}`);
+    (data || []).forEach((r: any) => old.add(Number(r.customer_id)));
+  }
+  candidates.filter(c => !old.has(c.id)).forEach(c => dues.set(c.id, c.due));
+  return dues;
 }
 
 export async function POST(request: NextRequest) {
@@ -577,6 +609,7 @@ export async function POST(request: NextRequest) {
       getSupplements(month, year)
     ]);
 
+    const openingDues2 = await newCustomerDues(targetCusts, liveCustBillHeaders, fySuffix);
     const result = calculateBilling({
       monthName: month,
       year: year,
@@ -595,6 +628,7 @@ export async function POST(request: NextRequest) {
       regions: regions,
       retailSales: dbBatchRetail,
       supplements: liveSupps,
+      openingDues: openingDues2,
       startBillId: maxBillId + 1
     });
 

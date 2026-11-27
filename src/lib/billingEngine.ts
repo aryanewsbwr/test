@@ -144,7 +144,8 @@ export function calculateBilling({
   retailSales = [],
   supplements = [],
   startBillId,
-  priorMonthBalances
+  priorMonthBalances,
+  openingDues
 }: {
   monthName: string;
   year: number | string;
@@ -165,6 +166,9 @@ export function calculateBilling({
   supplements?: any[];
   startBillId?: number;
   priorMonthBalances?: Map<number, number> | Record<number, number>;
+  // A new customer's Due Amount from the customer record, used as their opening Dues
+  // when they have no Dues row (the caller decides who is new)
+  openingDues?: Map<number, number>;
 }) {
   let monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase() || m.toLowerCase().startsWith(monthName.toLowerCase().slice(0, 3)));
   if (monthIdx === -1) monthIdx = 7; // August default
@@ -1084,6 +1088,7 @@ export function calculateBilling({
     // Calculate cumulative prior bills (Dues + Apr..Sep). A new customer has none, so an
     // advance paid before their first bill comes through here as a minus Previous Due.
     let priorBillsTotal = 0;
+    let hasDuesRow = false;
     for (const h of allHeaders) {
       const hCid = Number(h.customer_id || h.Customer_id);
       if (hCid !== Number(custId)) continue;
@@ -1096,6 +1101,7 @@ export function calculateBilling({
       const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
 
       if (hMonth === 'dues') {
+        hasDuesRow = true;
         priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
       } else {
         let paperAmt = 0;
@@ -1112,6 +1118,10 @@ export function calculateBilling({
         }
         priorBillsTotal += (paperAmt + delAmt - disAmt);
       }
+    }
+
+    if (!hasDuesRow && openingDues?.has(Number(custId))) {
+      priorBillsTotal += Number(openingDues.get(Number(custId)) || 0);
     }
 
     // A receipt in the bill's own month clears older dues first, but it can never
