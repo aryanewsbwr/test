@@ -632,6 +632,58 @@ export async function POST(request: NextRequest) {
     let savedBillnoCount = 0;
     let savedBillItemsCount = 0;
 
+    // Compare mode: work the month out WITHOUT saving and list every difference from the bills already
+    // saved for it (after a restore these are the old software's own bills). Goal: 0 differences, so a
+    // month generated here is the same as the old software's, bill for bill and line for line.
+    if (body.compare) {
+      const code = monthCode(month);
+      const num = (v: any) => (v === null || v === undefined || v === '' ? null : Math.round(Number(v) * 100) / 100);
+      const pick = (row: any, ...keys: string[]) => { for (const k of keys) if (row && row[k] !== undefined) return row[k]; return undefined; };
+      const lineKey = (l: any) => [
+        num(pick(l, 'publica_id', 'Publica_id')), num(pick(l, 'qty', 'Qty')), num(pick(l, 'rate', 'Rate')),
+        num(pick(l, 'total_amt', 'TotalAmt', 'totalamt')), num(pick(l, 'sno'))
+      ].join('|');
+      const savedHeaders = new Map<number, any>();
+      for (const h of liveCustBillHeaders || []) if (monthCode(pick(h, 'month', 'Month')) === code) savedHeaders.set(Number(pick(h, 'customer_id', 'Customer_id')), h);
+      const savedLines = new Map<number, string[]>();
+      for (const h of Array.from(savedHeaders.values())) {
+        const cid = Number(pick(h, 'customer_id', 'Customer_id')), bid = Number(pick(h, 'bill_id', 'Bill_id'));
+        savedLines.set(cid, (liveCustBills || []).filter((l: any) => Number(pick(l, 'bill_id', 'Bill_id')) === bid && Number(pick(l, 'customer_id', 'Customer_id')) === cid).map(lineKey).sort());
+      }
+      const made = new Map<number, any>(result.bills.map((b: any) => [Number(b.customer_id), b]));
+      const out: Record<string, { count: number; examples: any[] }> = {};
+      const note = (kind: string, example: any) => {
+        const o = (out[kind] ||= { count: 0, examples: [] });
+        o.count++;
+        if (o.examples.length < 15) o.examples.push(example);
+      };
+      for (const [cid, h] of Array.from(savedHeaders)) {
+        const b = made.get(cid);
+        if (!b) { note('saved bill, not made now', { customer_id: cid, bill_id: pick(h, 'bill_id', 'Bill_id'), balance: num(pick(h, 'balance', 'Balance')) }); continue; }
+        const g = b.db_billno_item || {};
+        for (const [field, a, c] of [
+          ['Balance', num(pick(h, 'balance', 'Balance')) ?? 0, num(g.Balance) ?? 0],
+          ['Del_Amt', num(pick(h, 'del_amt', 'Del_Amt')), num(g.Del_Amt)],
+          ['Dis_Amt', num(pick(h, 'dis_amt', 'Dis_Amt')), num(g.Dis_Amt)],
+          ['Due_Amt', num(pick(h, 'due_amt', 'Due_Amt')), num(g.Due_Amt)],
+          ['Region_id', num(pick(h, 'region_id', 'Region_id')), num(g.Region_id)]
+        ] as [string, any, any][]) {
+          if (a !== c) note(`${field} differs`, { customer_id: cid, saved: a, now: c });
+        }
+        const now = (b.db_bill_items || []).map(lineKey).sort();
+        const was = savedLines.get(cid) || [];
+        if (now.join(';') !== was.join(';')) {
+          const amount = (rows: string[]) => Math.round(rows.reduce((s, r) => s + Number(r.split('|')[3] || 0), 0) * 100) / 100;
+          note(amount(now) === amount(was) ? 'lines differ, same total' : 'lines differ, different total',
+            { customer_id: cid, saved: was, now, saved_total: amount(was), now_total: amount(now) });
+        }
+      }
+      for (const [cid, b] of Array.from(made)) {
+        if (!savedHeaders.has(cid)) note('made now, no saved bill', { customer_id: cid, lines: (b.db_bill_items || []).length, balance: num(b.db_billno_item?.Balance) });
+      }
+      return NextResponse.json({ month, region_id, saved_bills: savedHeaders.size, made_bills: made.size, differences: out });
+    }
+
     if (commitToDb && supabaseAdmin) {
       // Bills are written the old software's way, so a later restore or export finds them unchanged:
       // a customer who already has a bill for this month keeps its bill number and month text, a new
