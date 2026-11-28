@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { BackupTable, findBackupTable } from '@/lib/backupTables';
 import { closeSubscriptions } from '@/lib/subscriptionStops';
+import { billPairFilters } from '@/lib/billCommit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -25,13 +26,14 @@ async function checked(table: string, query: PromiseLike<{ error: any }>) {
   if (error) throw new Error(`${table}: ${error.message}`);
 }
 
-// Takes out many bills at once: their lines, then their headers (each pair of bill number and customer)
+// Takes out many bills at once: their lines, then their headers. Only the exact pairs of bill number
+// and customer go (billPairFilters), never every combination of the two lists.
 async function removeBillsBulk(billnoTable: string, fixes: any[]) {
   const lines = `bill${billnoTable.replace('billno', '')}`;
-  const ids = Array.from(new Set(fixes.map(f => Number(f.bill_id))));
-  const customers = Array.from(new Set(fixes.map(f => Number(f.customer_id))));
-  await checked(lines, supabaseAdmin.from(lines).delete().in('bill_id', ids).in('customer_id', customers));
-  await checked(billnoTable, supabaseAdmin.from(billnoTable).delete().in('bill_id', ids).in('customer_id', customers));
+  for (const filter of billPairFilters(fixes)) {
+    await checked(lines, supabaseAdmin.from(lines).delete().or(filter));
+    await checked(billnoTable, supabaseAdmin.from(billnoTable).delete().or(filter));
+  }
 }
 
 // Puts many of the old software's bills in at once, exactly as the file has them

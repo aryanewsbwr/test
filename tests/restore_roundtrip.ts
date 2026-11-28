@@ -2,6 +2,7 @@
 // in the file — same Bill_id, month text ('Oct', 'Nov', 'Sept'), sno, rate (0 for free papers) and
 // balance — whatever bills the website had before. Run: npx tsx tests/restore_roundtrip.ts
 import { billCorrections } from '../src/lib/backupClient';
+import { billPairFilters } from '../src/lib/billCommit';
 
 type Row = Record<string, any>;
 let failed = 0;
@@ -57,6 +58,23 @@ check(!headers.some(h => /^(October|November)$/.test(h.month)), 'no website mont
 // A second restore of the same backup changes nothing
 const again = billCorrections(fileHeaders, fileLines, headers, lines);
 check(again.length === 0, 'restoring the same backup again changes nothing');
+
+// Bulk removal must hit exactly the pairs asked for. The website does not keep Bill_id unique, so a bill
+// that stays (42504 of 1383) can share its number with one that goes (42504 of 9999).
+{
+  const rows = [
+    { bill_id: 43803, customer_id: 1383 }, // goes
+    { bill_id: 42504, customer_id: 9999 }, // goes
+    { bill_id: 42504, customer_id: 1383 }, // stays: same number, other customer
+    { bill_id: 43803, customer_id: 9999 }  // stays
+  ];
+  const gone = rows.slice(0, 2);
+  const matches = (filter: string, r: Row) => Array.from(filter.matchAll(/and\(customer_id\.eq\.(\d+),bill_id\.in\.\(([\d,]+)\)\)/g))
+    .some(m => Number(m[1]) === r.customer_id && m[2].split(',').map(Number).includes(r.bill_id));
+  const filters = billPairFilters(gone, 1);
+  const hit = rows.filter(r => filters.some(f => matches(f, r)));
+  check(hit.length === 2 && gone.every(g => hit.includes(g)), 'bulk removal deletes only the exact bill + customer pairs');
+}
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }
 console.log('restore round trip: all checks passed');

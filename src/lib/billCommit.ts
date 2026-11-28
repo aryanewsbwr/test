@@ -21,6 +21,20 @@ function chunks<T>(list: T[], size: number): T[][] {
   return out;
 }
 
+// Filters that match EXACTLY the given (bill_id, customer_id) pairs, for .or() in a delete.
+// Never use .in('bill_id', ids).in('customer_id', customers) for this: that matches every
+// combination, so it can also delete a bill that should stay (the website does not keep Bill_id unique).
+export function billPairFilters(pairs: { bill_id: any; customer_id: any }[], customersPerCall = 50): string[] {
+  const byCustomer = new Map<number, Set<number>>();
+  for (const p of pairs) {
+    const c = Number(p.customer_id);
+    if (!byCustomer.has(c)) byCustomer.set(c, new Set());
+    byCustomer.get(c)!.add(Number(p.bill_id));
+  }
+  const parts = Array.from(byCustomer, ([c, ids]) => `and(customer_id.eq.${c},bill_id.in.(${Array.from(ids).join(',')}))`);
+  return chunks(parts, customersPerCall).map(group => group.join(','));
+}
+
 async function run(query: any): Promise<any[]> {
   const { data, error } = await query;
   if (error) throw error;
