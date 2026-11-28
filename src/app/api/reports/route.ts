@@ -6,6 +6,7 @@ import { fySuffix } from '@/lib/financialYear';
 import { monthCode } from '@/lib/backupTables';
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
 import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
+import { billPrintTotals } from '@/lib/billLedger';
 import { cleanOrTransliterateHindi, getReliableHindiName, storedHindiName } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
@@ -1149,32 +1150,18 @@ export async function GET(request: NextRequest) {
         const paperAmount = roundToFoxProRule(paperTotal);
         const currentBill = roundToFoxProRule(rawCurrent);
         const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
-        // The saved balance already has the Paid amount taken off. Only trust that gap for
-        // customers with a receipt in this month, so other bills keep their usual total.
+        // The old software's meaning, which the website's bills now use too: Balance = -previous due,
+        // without this month. Bill amount = previous due + this month; receipts of this bill's month
+        // are "Paid after the bill"; only the printed total is rounded (.25 and above goes up).
+        // A bill the website saved earlier with Due_Amt filled keeps that Due_Amt as its previous due.
         const monthReceipts = isGovtSupply ? 0 : (monthReceiptsByCust.get(cid) || 0);
-        // The engine saves due_amt whenever there is a real Previous Due, so with none saved, a
-        // total lower than this bill by exactly the month's receipts is a payment. Older bills
-        // whose gap has another cause keep the Previous Due below.
-        const paidOffThisBill = monthReceipts > 0
-          && (h.due_amt === null || h.due_amt === undefined || h.due_amt === '')
-          && Math.abs(rawCurrent + Number(h.balance || 0) - monthReceipts) < 1;
-        let prevDue = 0;
-        if (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '') {
-          prevDue = Number(h.due_amt);
-        } else if (h.balance !== null && h.balance !== undefined && Number(h.balance) !== 0) {
-          // In FoxPro, balance is the net closing balance. If due_amt is not populated,
-          // Previous Due = Total Payable - Current Bill.
-          const totalFromBalance = Math.abs(Number(h.balance));
-          if (!paidOffThisBill && Math.abs(totalFromBalance - currentBill) > 0.01) {
-            prevDue = roundToFoxProRule(totalFromBalance - currentBill);
-          }
-        }
-
+        let prevDue = (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '')
+          ? Number(h.due_amt)
+          : -Number(h.balance || 0);
+        if (Math.abs(prevDue) < 0.005) prevDue = 0;
         if (isGovtSupply) prevDue = 0;
-        const paidAmount = paidOffThisBill ? monthReceipts : monthReceipts > 0
-          ? Math.min(monthReceipts, Math.max(0, rawCurrent + prevDue + Number(h.balance || 0)))
-          : 0;
-        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(rawCurrent + prevDue - paidAmount);
+        const paidAmount = monthReceipts;
+        const netPayable = isGovtSupply ? currentBill : billPrintTotals({ previousDue: prevDue, lines: rawCurrent, paidAfter: paidAmount }).nowPayable;
 
         // Extract phone number from c.phone, c.hindi_add, c.add1, or c.add2 if present
         let rawPhone = c.phone || '';

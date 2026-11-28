@@ -22,6 +22,17 @@ it back without changing a single bill. These rules exist because this broke mor
 - A customer with a paper open during the month gets a bill even with no copies delivered (no lines,
   total = previous due), as VB6 does.
 
+## Bill amounts and Balance (VB6 ledger, confirmed by Himanshu 28 Nov 2026)
+- Previous due of month M = Dues.Due_Amt + earlier months' (lines + Del_Amt - Dis_Amt) - receipts whose Month
+  is EARLIER than M (MalRecpAmt + LessAmt). Receipts with Month = M are NOT in it: they print as "Paid after the bill".
+- Billno.Balance = -previous due, unrounded; Due_Amt NULL in monthly rows; Customer.Cbal = that Balance.
+- Bill amount = -Balance + this month's lines + Del_Amt - Dis_Amt; now payable = bill amount - paid after the bill.
+- Round ONLY printed / WhatsApp totals (roundToFoxProRule, >= .25 up). Never round values written to the database.
+- Customer.DueAmount is not a due; an opening due only comes from a Dues row.
+- Retail sales and supplements are bill lines (retail: Qty = Copies, Rate = Amt per copy, sno = Retail_id;
+  supplements: sno NULL). A receipt whose Month is not a month name is reported, never silently counted or skipped.
+- Code: src/lib/billLedger.ts (used by printing), billing engine; test: npm run test:ledger.
+
 ## Pre-printed bill print (`src/lib/billPreprintedExport.ts`)
 - Positions were calibrated on real prints (PLACES, NUDGE, ROW_GAP, SHEET_TILT, DEFAULT_SIZE 98.6).
   Do not change them without a new flat scan of a test print.

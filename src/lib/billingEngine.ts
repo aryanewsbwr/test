@@ -144,8 +144,7 @@ export function calculateBilling({
   retailSales = [],
   supplements = [],
   startBillId,
-  priorMonthBalances,
-  openingDues
+  priorMonthBalances
 }: {
   monthName: string;
   year: number | string;
@@ -166,9 +165,6 @@ export function calculateBilling({
   supplements?: any[];
   startBillId?: number;
   priorMonthBalances?: Map<number, number> | Record<number, number>;
-  // A new customer's Due Amount from the customer record, used as their opening Dues
-  // when they have no Dues row (the caller decides who is new)
-  openingDues?: Map<number, number>;
 }) {
   let monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase() || m.toLowerCase().startsWith(monthName.toLowerCase().slice(0, 3)));
   if (monthIdx === -1) monthIdx = 7; // August default
@@ -889,13 +885,14 @@ export function calculateBilling({
         let lineAmt = 0;
         let effectiveRate = 0;
 
-        if (copies > 1 && givenRate > 0 && Math.abs(rawAmt - givenRate) < 0.01) {
+        // The old software: Amt is the price of one copy; the line is Copies x Amt, its sno the Retail_id
+        if (rawAmt > 0) {
+          effectiveRate = rawAmt;
+          lineAmt = Math.round(copies * rawAmt * 100) / 100;
+        } else if (copies > 1 && givenRate > 0 && Math.abs(rawAmt - givenRate) < 0.01) {
           // Operator entered single-copy rate in both rate and amt fields for multiple copies
           effectiveRate = givenRate;
           lineAmt = Math.round(copies * effectiveRate * 100) / 100;
-        } else if (rawAmt > 0) {
-          lineAmt = rawAmt;
-          effectiveRate = copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt;
         } else if (givenRate > 0) {
           effectiveRate = givenRate;
           lineAmt = Math.round(copies * effectiveRate * 100) / 100;
@@ -926,7 +923,7 @@ export function calculateBilling({
           amount: lineAmt
         });
 
-        // Add to db_bill_items with sno: null (matching historical legacy billYYYYYYYY pattern)
+        // A retail sale is a bill line with its Retail_id as sno, as the old software writes it
         dbBillItems.push({
           Bill_id: assignedBillId,
           Customer_id: custId,
@@ -938,7 +935,7 @@ export function calculateBilling({
           TotalAmt: lineAmt,
           Month: standardMonthName,
           year: String(startYear),
-          sno: null
+          sno: rs.retail_id ?? rs.Retail_id ?? null
         });
       }
     }
@@ -1120,17 +1117,15 @@ export function calculateBilling({
       }
     }
 
-    if (!hasDuesRow && openingDues?.has(Number(custId))) {
-      priorBillsTotal += Number(openingDues.get(Number(custId)) || 0);
-    }
-
-    // A receipt in the bill's own month clears older dues first, but it can never
-    // turn this month's charges into a negative Previous Due.
+    // The old software's ledger (as VB6 does it): previous due = Dues + every earlier month's bill
+    // (lines + Del_Amt - Dis_Amt) - receipts whose Month is EARLIER than this bill's month
+    // (MalRecpAmt + LessAmt). Receipts of this bill's own month are not in it: they are shown on the
+    // bill as "Paid after the bill". Nothing here is rounded; only printed totals are.
     const priorDue = priorBillsTotal - priorReceiptsTotal;
-    customerPreviousBalance = priorDue > 0 ? Math.max(0, priorDue - targetMonthReceiptsTotal) : priorDue;
-    paidThisMonth = Math.max(0, targetMonthReceiptsTotal - Math.max(0, priorDue));
+    customerPreviousBalance = priorDue;
+    paidThisMonth = targetMonthReceiptsTotal;
 
-    const previousDue = Math.abs(customerPreviousBalance) < 0.01 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
+    const previousDue = Math.abs(customerPreviousBalance) < 0.005 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
 
     const openingBalanceThisBill = previousDue;
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
@@ -1232,12 +1227,13 @@ export function calculateBilling({
       Bill_id: assignedBillId,
       Customer_id: custId,
       Region_id: custRegionId,
-      Due_Amt: openingBalanceThisBill !== 0 ? openingBalanceThisBill : null,
+      // As the old software: Due_Amt is only in the Dues row; Balance = -previous due, unrounded
+      Due_Amt: null,
       Del_Amt: customerDeliveryTotal > 0 ? customerDeliveryTotal : null,
       Dis_Amt: customerDiscountTotal > 0 ? customerDiscountTotal : null,
       Month: standardMonthName,
       year: String(startYear),
-      Balance: totalPayable !== 0 ? -totalPayable : 0
+      Balance: previousDue !== 0 ? -previousDue : 0
     };
 
     const reg = regMap.get(custRegionId);

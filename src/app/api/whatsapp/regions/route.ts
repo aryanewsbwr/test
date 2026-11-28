@@ -20,6 +20,19 @@ function fySuffixFor(year: string): string {
 // Same month text BillThermalPreview sends as bill_month
 const billMonthKey = (month: string, year: string) => `${month} ${year}`;
 
+// Each bill's paper lines added up, for the bill amount
+async function loadLineTotals(month: string, year: string): Promise<Map<string, number>> {
+  const table = `bill${fySuffixFor(year)}`;
+  const monthFilter = `month.ilike.${month},month.ilike.${month.slice(0, 3)}%`;
+  const totals = new Map<string, number>();
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabaseAdmin.from(table).select('bill_id, customer_id, total_amt').or(monthFilter).order('id', { ascending: true }).range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    for (const l of data || []) totals.set(`${l.bill_id}|${l.customer_id}`, (totals.get(`${l.bill_id}|${l.customer_id}`) || 0) + Number(l.total_amt || 0));
+    if (!data || data.length < PAGE_SIZE) return totals;
+  }
+}
+
 async function loadMonthBills(month: string, year: string) {
   const table = `billno${fySuffixFor(year)}`;
   const monthFilter = `month.ilike.${month},month.ilike.${month.slice(0, 3)}%`;
@@ -36,12 +49,12 @@ async function loadMonthBills(month: string, year: string) {
       const from = page * PAGE_SIZE;
       const { data, error } = await supabaseAdmin
         .from(table)
-        .select('bill_id, customer_id, region_id, balance')
+        .select('bill_id, customer_id, region_id, balance, del_amt, dis_amt')
         .or(monthFilter)
         .order('bill_id', { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
       if (error) throw error;
-      return (data || []) as { bill_id: number; customer_id: number; region_id: number; balance: number | null }[];
+      return (data || []) as { bill_id: number; customer_id: number; region_id: number; balance: number | null; del_amt: number | null; dis_amt: number | null }[];
     })
   );
   return pages.flat();
@@ -77,14 +90,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'month and year are required' }, { status: 400 });
     }
 
-    const [bills, sentRows] = await Promise.all([loadMonthBills(month, year), loadSentRows(billMonthKey(month, year))]);
+    const [bills, sentRows, lineTotals] = await Promise.all([loadMonthBills(month, year), loadSentRows(billMonthKey(month, year)), loadLineTotals(month, year)]);
     const sentCustomers = new Map(sentRows.map(r => [r.customer_id, r.phone]));
 
     const regions: Record<string, { total: number; sent: number; manual: number }> = {};
     for (const b of bills) {
       // Settled bills are never sent, so they must not hold a region back from "all sent".
-      // Minus balance means the customer owes.
-      if (Number(b.balance || 0) >= 0) continue;
+      // Balance is minus the previous due (old software); the bill adds this month's lines and delivery
+      const billAmount = -Number(b.balance || 0) + (lineTotals.get(`${b.bill_id}|${b.customer_id}`) || 0) + Number(b.del_amt || 0) - Number(b.dis_amt || 0);
+      if (billAmount <= 0) continue;
       const entry = (regions[b.region_id] = regions[b.region_id] || { total: 0, sent: 0, manual: 0 });
       entry.total++;
       const phone = sentCustomers.get(String(b.customer_id));
