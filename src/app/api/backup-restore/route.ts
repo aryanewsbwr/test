@@ -25,6 +25,23 @@ async function checked(table: string, query: PromiseLike<{ error: any }>) {
   if (error) throw new Error(`${table}: ${error.message}`);
 }
 
+// Takes out many bills at once: their lines, then their headers (each pair of bill number and customer)
+async function removeBillsBulk(billnoTable: string, fixes: any[]) {
+  const lines = `bill${billnoTable.replace('billno', '')}`;
+  const ids = Array.from(new Set(fixes.map(f => Number(f.bill_id))));
+  const customers = Array.from(new Set(fixes.map(f => Number(f.customer_id))));
+  await checked(lines, supabaseAdmin.from(lines).delete().in('bill_id', ids).in('customer_id', customers));
+  await checked(billnoTable, supabaseAdmin.from(billnoTable).delete().in('bill_id', ids).in('customer_id', customers));
+}
+
+// Puts many of the old software's bills in at once, exactly as the file has them
+async function addBillsBulk(billnoTable: string, fixes: any[]) {
+  const lines = `bill${billnoTable.replace('billno', '')}`;
+  await checked(billnoTable, supabaseAdmin.from(billnoTable).insert(fixes.map(f => f.newHeader)));
+  const allLines = fixes.flatMap(f => f.lines || []);
+  if (allLines.length > 0) await checked(lines, supabaseAdmin.from(lines).insert(allLines));
+}
+
 // Makes one customer's bill for a month match the old software: its lines, then its header
 async function replaceBill(billnoTable: string, fix: any) {
   const suffix = billnoTable.replace('billno', '');
@@ -114,7 +131,14 @@ export async function POST(req: NextRequest) {
 
     await inParallel<any>(closeStops, stop => closeSubscriptions(Number(stop.customer_id), Number(stop.publica_id) || 0, stop.temp_from));
 
-    await inParallel<any>(fixBills, fix => replaceBill(table.name, fix));
+    // A restore from the old software sends whole passes of bills to take out, then to put in: these go
+    // in a few large calls instead of three calls per bill. Anything else is done bill by bill.
+    const bulkRemoves = fixBills.filter((f: any) => f.remove && f.keep_billdel);
+    const bulkAdds = fixBills.filter((f: any) => !f.remove && f.newHeader);
+    const oneByOne = fixBills.filter((f: any) => !bulkRemoves.includes(f) && !bulkAdds.includes(f));
+    if (bulkRemoves.length > 0) await removeBillsBulk(table.name, bulkRemoves);
+    if (bulkAdds.length > 0) await addBillsBulk(table.name, bulkAdds);
+    await inParallel<any>(oneByOne, fix => replaceBill(table.name, fix));
 
     await inParallel<any>(setBalances, async ({ customer_id, cbal }) => {
       const { error } = await supabaseAdmin.from('customer').update({ cbal, due_amount: -cbal }).eq('customer_id', customer_id);

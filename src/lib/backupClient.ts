@@ -3,7 +3,7 @@ import { fySuffix } from './financialYear';
 import { oldSoftwareTables, readSqlFile, rowsOf } from './oldSoftwareFile';
 import { indexOldSections, isClosedYear, OLD_FOOTER, oldHeader, OldFileCount, OldRows, oldRowsOf, oldSoftwarePart, oldSoftwareSourceTables, oldSoftwareYears } from './oldSoftwareExport';
 
-const BILL_FIX_BATCH = 50;
+const BILL_FIX_BATCH = 500;
 const FILE_FORMAT = 'aryan-news-backup';
 const MOBILE_TABLE = 'customer_mobile';
 const PAGE_SIZE = 1000;
