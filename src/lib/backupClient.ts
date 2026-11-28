@@ -429,7 +429,7 @@ export function withoutOutdatedHindi(changes: any[], liveCustomers: any[]) {
 
 const FY_MONTHS = ['apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'jan', 'feb', 'mar'];
 
-const billsByMonth = (headers: any[], lines: any[]) => {
+const billsByMonth = (headers: any[], lines: any[], withDues = false) => {
   const linesOf = new Map<string, any[]>();
   for (const line of lines) {
     const key = `${line.bill_id}|${line.customer_id}`;
@@ -437,7 +437,7 @@ const billsByMonth = (headers: any[], lines: any[]) => {
   }
   const bills = new Map<string, { header: any; lines: any[]; amount: number }>();
   for (const header of headers) {
-    if (monthCode(header.month) === 'due') continue;
+    if (monthCode(header.month) === 'due' && !withDues) continue;
     const billLines = linesOf.get(`${header.bill_id}|${header.customer_id}`) || [];
     const amount = billLines.reduce((sum, line) => sum + Number(line.total_amt || 0), 0) + Number(header.del_amt || 0) - Number(header.dis_amt || 0);
     bills.set(`${header.customer_id}|${monthCode(header.month)}`, { header, lines: billLines, amount });
@@ -449,7 +449,50 @@ const billsByMonth = (headers: any[], lines: any[]) => {
 // so bills made here for a month the file has not reached yet are left alone.
 // With mirror (a restore from the old software) a bill made here for a month the file has no bills for
 // goes too, so the website's bills are exactly the old software's.
+
+const HEADER_FIELDS = ['bill_id', 'month', 'year', 'region_id', 'due_amt', 'del_amt', 'dis_amt', 'balance'];
+const LINE_FIELDS = ['bill_id', 'publica_id', 'region_id', 'qty', 'rate', 'd_charges', 'total_amt', 'month', 'year', 'sno'];
+const sameField = (a: any, b: any) => {
+  const blankA = a === null || a === undefined || String(a).trim() === '';
+  const blankB = b === null || b === undefined || String(b).trim() === '';
+  if (blankA || blankB) return blankA === blankB || (blankA ? Number(b) === 0 : Number(a) === 0);
+  const na = Number(a), nb = Number(b);
+  if (!Number.isNaN(na) && !Number.isNaN(nb)) return Math.abs(na - nb) < 0.005;
+  return String(a).trim() === String(b).trim();
+};
+const sameBill = (file: { header: any; lines: any[] }, here: { header: any; lines: any[] }) => {
+  if (!HEADER_FIELDS.every(f => sameField(file.header[f], here.header[f]))) return false;
+  if (file.lines.length !== here.lines.length) return false;
+  const order = (rows: any[]) => [...rows].sort((a, b) => Number(a.sno) - Number(b.sno) || Number(a.publica_id) - Number(b.publica_id));
+  const a = order(file.lines), b = order(here.lines);
+  return a.every((line, i) => LINE_FIELDS.every(f => sameField(line[f], b[i][f])));
+};
+
+function exactBills(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[]) {
+  const fromFile = billsByMonth(fileHeaders, fileLines, true);
+  const live = billsByMonth(liveHeaders, liveLines, true);
+  const removes: any[] = [];
+  const adds: any[] = [];
+  for (const key of Array.from(new Set([...Array.from(fromFile.keys()), ...Array.from(live.keys())]))) {
+    const file = fromFile.get(key);
+    const here = live.get(key);
+    if (file && here && sameBill(file, here)) continue;
+    // The delivery rows (billdel) are restored as their own table, so a removal leaves them alone
+    if (here) removes.push({ customer_id: Number(here.header.customer_id), month: here.header.month, bill_id: here.header.bill_id, remove: true, keep_billdel: true, lines: [] });
+    if (file) {
+      const { id: _id, ...header } = file.header;
+      adds.push({ customer_id: Number(file.header.customer_id), month: file.header.month, bill_id: Number(file.header.bill_id), newHeader: header, lines: file.lines.map(({ id: _lineId, ...line }: any) => line) });
+    }
+  }
+  // Removals first: a file bill often carries a number a website bill still has
+  return [...removes, ...adds];
+}
+
 export function billCorrections(fileHeaders: any[], fileLines: any[], liveHeaders: any[], liveLines: any[], receipts: any[] = [], mirror = false) {
+  // From the old software (the master copy) every bill comes in exactly as the file has it, every month:
+  // its own bill number, month name, lines (sno, rate, free papers) and balance. A website bill that is
+  // not the same in every one of these goes, and the file's bill goes in; nothing is worked out again.
+  if (mirror) return exactBills(fileHeaders, fileLines, liveHeaders, liveLines);
   const fromFile = billsByMonth(fileHeaders, fileLines);
   const live = billsByMonth(liveHeaders, liveLines);
   const fileMonths = new Set(fileHeaders.map(header => monthCode(header.month)));
@@ -753,8 +796,10 @@ export async function applyRestore(plan: RestorePlan, onProgress: Progress) {
 
   const billFixes = plan.billFixes || [];
   const billnoName = plan.items.find(i => i.table.name.startsWith('billno'))?.table.name;
-  for (let i = 0; billnoName && i < billFixes.length; i += BILL_FIX_BATCH) {
-    await writeBatches(billnoName, 'fixBills', billFixes.slice(i, i + BILL_FIX_BATCH), () => {});
+  for (const pass of [billFixes.filter(f => f.remove), billFixes.filter(f => !f.remove)]) {
+    for (let i = 0; billnoName && i < pass.length; i += BILL_FIX_BATCH) {
+      await writeBatches(billnoName, 'fixBills', pass.slice(i, i + BILL_FIX_BATCH), () => {});
+    }
   }
 
   // Customer balances (Cbal) are not worked out again here: they come in as the old software has them

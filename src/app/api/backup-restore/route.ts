@@ -33,7 +33,7 @@ async function replaceBill(billnoTable: string, fix: any) {
 
   await checked(lines, supabaseAdmin.from(lines).delete().eq('bill_id', bill_id).eq('customer_id', customer_id));
   if (fix.remove) {
-    await checked(`billdel${suffix}`, supabaseAdmin.from(`billdel${suffix}`).delete().eq('customer_id', customer_id).eq('month', fix.month));
+    if (!fix.keep_billdel) await checked(`billdel${suffix}`, supabaseAdmin.from(`billdel${suffix}`).delete().eq('customer_id', customer_id).eq('month', fix.month));
     await checked(billnoTable, supabaseAdmin.from(billnoTable).delete().eq('bill_id', bill_id).eq('customer_id', customer_id));
     return;
   }

@@ -55,7 +55,7 @@ function yearlyTables(suffix: string): BackupTable[] {
     { name: `billno${suffix}`, key: ['bill_id'], money: true },
     { name: `bill${suffix}`, key: ['id'], oldKey: ['bill_id', 'publica_id', 'sno'], money: true },
     // The line number (sno) is each software's own count of the customer's papers, so it is not compared
-    { name: `billdel${suffix}`, key: ['id'], oldKey: ['customer_id', 'publica_id', 'month'], money: true, oldIgnore: ['id', 'sno'] },
+    { name: `billdel${suffix}`, key: ['id'], oldKey: ['customer_id', 'publica_id', 'month'], money: true, oldIgnore: ['id'] },
     {
       name: `receipt${suffix}`,
       key: ['id'],
@@ -161,7 +161,7 @@ export function compareRows(fileRows: any[], liveRows: any[], key: string[], opt
 
   const empty = (value: any) => blank(value) || Number(value) === 0;
   const alike = (column: string, value: any, current: any) => {
-    if (column === 'month') return monthCode(value) === monthCode(current);
+    if (column === 'month') return options.mirror ? String(value ?? '').trim() === String(current ?? '').trim() : monthCode(value) === monthCode(current);
     const values = options.same?.[column];
     const lower = (v: any) => String(v ?? '').trim().toLowerCase();
     return !!values && values.includes(lower(value)) && values.includes(lower(current));
