@@ -15,6 +15,7 @@
  * 12. 100% schema alignment with billYYYYYYYY and billnoYYYYYYYY tables
  */
 
+import { ledgerPreviousDue } from './billLedger';
 import { cleanOrTransliterateHindi, getReliableHindiName, storedHindiName } from './transliteration';
 
 export interface BillingLineItem {
@@ -1054,9 +1055,12 @@ export function calculateBilling({
     const rawCurrentCharges = customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal;
     const currentMonthCharges = roundToFoxProRule(rawCurrentCharges);
 
-    // Deduct each unique receipt once
-    const seenRecpKeys = new Set<string>();
-    let priorReceiptsTotal = 0;
+    // The customer's ledger in the shape ledgerPreviousDue() takes (billLedger.ts, the one implementation
+    // of the old software's rule, shared with printing and covered by tests/bill_ledger.ts).
+    // Each receipt counts once: keyed on its own row id (unique), never on the receipt number, which the
+    // old software repeats for different receipts.
+    const seenReceipts = new Set<string>();
+    const ledgerReceipts: { month: number; amount: number }[] = [];
     let targetMonthReceiptsTotal = 0;
     for (const r of receipts) {
       const rCid = Number(r.customer_id || r.Customer_id);
@@ -1064,68 +1068,56 @@ export function calculateBilling({
       const rMonth = (r.month || r.Month || '').toLowerCase().trim();
       const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
       const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-
-      const key = r.recp_no && Number(r.recp_no) !== 0
-        ? String(r.recp_no)
-        : `${rCid}_${rMonth}_${recpAmt}`;
-      if (seenRecpKeys.has(key)) continue;
-      seenRecpKeys.add(key);
-
-      const rMIdx = FY_MONTH_ORDER[rMonth];
-      if (rMIdx === targetFyIndex) {
-        targetMonthReceiptsTotal += recpAmt + lessAmt;
-      } else if (rMIdx === undefined || rMIdx < targetFyIndex) {
-        priorReceiptsTotal += recpAmt + lessAmt;
+      const rowId = r.id ?? r.receipt_id ?? r.Receipt_id;
+      if (rowId !== undefined && rowId !== null) {
+        if (seenReceipts.has(String(rowId))) continue;
+        seenReceipts.add(String(rowId));
       }
+      const rMIdx = FY_MONTH_ORDER[rMonth];
+      // A receipt whose Month is not a month name is reported by the bill run; it still counts as paid
+      const month = rMIdx === undefined ? -2 : rMIdx;
+      if (month === targetFyIndex) targetMonthReceiptsTotal += recpAmt + lessAmt;
+      ledgerReceipts.push({ month, amount: recpAmt + lessAmt });
     }
 
-    // Part of a same-month receipt left after clearing older dues: shown as Paid on this bill
-    let paidThisMonth = targetMonthReceiptsTotal;
-
-    // Calculate cumulative prior bills (Dues + Apr..Sep). A new customer has none, so an
-    // advance paid before their first bill comes through here as a minus Previous Due.
-    let priorBillsTotal = 0;
+    let duesTotal = 0;
     let hasDuesRow = false;
+    const ledgerBills: { month: number; amount: number }[] = [];
     for (const h of allHeaders) {
       const hCid = Number(h.customer_id || h.Customer_id);
       if (hCid !== Number(custId)) continue;
       const hMonth = (h.month || h.Month || '').toLowerCase().trim();
       const mIdx = FY_MONTH_ORDER[hMonth];
-      if (mIdx === undefined || mIdx >= targetFyIndex) continue;
-
+      if (mIdx === undefined) continue;
+      if (hMonth === 'dues') {
+        hasDuesRow = true;
+        duesTotal += Number(h.due_amt || h.Due_Amt || 0);
+        continue;
+      }
       const hBid = Number(h.bill_id || h.Bill_id);
       const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
       const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
-
-      if (hMonth === 'dues') {
-        hasDuesRow = true;
-        priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
-      } else {
-        let paperAmt = 0;
-        if (hasLineItems) {
-          for (const it of bills) {
-            // A reused bill number can leave another customer's lines under the same bill_id
-            if (Number(it.bill_id || it.Bill_id) === hBid && Number(it.customer_id || it.Customer_id) === hCid) {
-              const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
-              if (val !== undefined) paperAmt += Number(val);
-            }
+      let paperAmt = 0;
+      if (hasLineItems) {
+        for (const it of bills) {
+          // A reused bill number can leave another customer's lines under the same bill_id
+          if (Number(it.bill_id || it.Bill_id) === hBid && Number(it.customer_id || it.Customer_id) === hCid) {
+            const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
+            if (val !== undefined) paperAmt += Number(val);
           }
-        } else {
-          paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
         }
-        priorBillsTotal += (paperAmt + delAmt - disAmt);
+      } else {
+        paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
       }
+      ledgerBills.push({ month: mIdx, amount: paperAmt + delAmt - disAmt });
     }
 
-    // The old software's ledger (as VB6 does it): previous due = Dues + every earlier month's bill
-    // (lines + Del_Amt - Dis_Amt) - receipts whose Month is EARLIER than this bill's month
-    // (MalRecpAmt + LessAmt). Receipts of this bill's own month are not in it: they are shown on the
-    // bill as "Paid after the bill". Nothing here is rounded; only printed totals are.
-    const priorDue = priorBillsTotal - priorReceiptsTotal;
-    customerPreviousBalance = priorDue;
-    paidThisMonth = targetMonthReceiptsTotal;
+    // The old software's ledger: previous due = Dues + earlier months' bills - receipts of earlier months.
+    // This month's receipts are "Paid after the bill". Nothing saved is rounded; only printed totals are.
+    customerPreviousBalance = ledgerPreviousDue(duesTotal, ledgerBills, ledgerReceipts, targetFyIndex);
+    const paidThisMonth = targetMonthReceiptsTotal;
 
-    const previousDue = Math.abs(customerPreviousBalance) < 0.005 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
+    const previousDue = customerPreviousBalance;
 
     const openingBalanceThisBill = previousDue;
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);

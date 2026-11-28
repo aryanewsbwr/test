@@ -31,7 +31,9 @@ it back without changing a single bill. These rules exist because this broke mor
 - Customer.DueAmount is not a due; an opening due only comes from a Dues row.
 - Retail sales and supplements are bill lines (retail: Qty = Copies, Rate = Amt per copy, sno = Retail_id;
   supplements: sno NULL). A receipt whose Month is not a month name is reported, never silently counted or skipped.
-- Code: src/lib/billLedger.ts (used by printing), billing engine; test: npm run test:ledger.
+- One implementation: src/lib/billLedger.ts (ledgerPreviousDue, billPrintTotals), used by the billing engine and
+  printing. Receipts are counted once by their row id, never by receipt number (VB6 repeats ReceiptNo).
+  Tests: npm run test:ledger (tests/bill_ledger.ts + tests/bill_engine.ts: 1383 Nov Balance -305, Due_Amt NULL).
 
 ## Pre-printed bill print (`src/lib/billPreprintedExport.ts`)
 - Positions were calibrated on real prints (PLACES, NUDGE, ROW_GAP, SHEET_TILT, DEFAULT_SIZE 98.6).
