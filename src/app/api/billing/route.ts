@@ -98,10 +98,7 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
   for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
     const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
     const [cdRes, billRes] = await Promise.all([
-      supabaseAdmin
-        .from('customer_detail')
-        .select('customer_id, s_date, c_date')
-        .in('customer_id', chunk),
+      readAllFor('customer_detail', 'customer_id, s_date, c_date, sno', chunk, ['sno']).then(data => ({ data, error: null as any })),
       supabaseAdmin
         .from(`billno${fySuffix}`)
         .select('customer_id, balance')
@@ -194,12 +191,8 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     try {
-      const { data: cdSubs, error } = await supabaseAdmin
-        .from('customer_detail')
-        .select('*')
-        .in('customer_id', chunk)
-        .limit(1000);
-      if (error) throw error;
+      // Every page: one customer alone can have dozens of subscription rows over the years
+      const cdSubs = await readAllFor('customer_detail', '*', chunk, ['sno']);
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
       }
@@ -214,17 +207,38 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 // Reads the whole table however large it grows. Sorted so pages never overlap, and a failed
 // page throws because a missing receipt would silently inflate Previous Due.
-async function fetchEveryRow(table: string, columns: string, orderBy: string): Promise<any[]> {
+async function fetchEveryRow(table: string, columns: string, orderBy: string | string[]): Promise<any[]> {
   const { count, error } = await supabaseAdmin.from(table).select('*', { count: 'exact', head: true });
   if (error) throw error;
   const ranges: number[] = [];
   for (let from = 0; from < (count || 0); from += 1000) ranges.push(from);
+  const orderCols = Array.isArray(orderBy) ? orderBy : [orderBy];
   const results = await Promise.all(
-    ranges.map(from => supabaseAdmin.from(table).select(columns).order(orderBy, { ascending: true }).range(from, from + 999))
+    ranges.map(from => {
+      let q: any = supabaseAdmin.from(table).select(columns);
+      for (const col of orderCols) q = q.order(col, { ascending: true });
+      return q.range(from, from + 999);
+    })
   );
   const failed = results.find(r => r.error);
   if (failed) throw failed.error;
   return results.flatMap(r => r.data || []);
+}
+
+async function readAllFor(table: string, columns: string, customerIds: number[], orderCols: string[]): Promise<any[]> {
+  const rows: any[] = [];
+  for (let i = 0; i < customerIds.length; i += 40) {
+    const chunk = customerIds.slice(i, i + 40);
+    for (let from = 0; ; from += 1000) {
+      let q: any = supabaseAdmin.from(table).select(columns).in('customer_id', chunk);
+      for (const col of orderCols) q = q.order(col, { ascending: true });
+      const { data, error } = await q.range(from, from + 999);
+      if (error) throw new Error(`Could not read ${table}: ${error.message}`);
+      rows.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return rows;
 }
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
@@ -234,9 +248,9 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length > 500) {
     try {
       const [receipts, bills, billHeaders] = await Promise.all([
-        fetchEveryRow(`receipt${fySuffix}`, 'customer_id, month, mal_recp_amt, less_amt, recp_no, recp_date', 'id'),
-        fetchEveryRow(`bill${fySuffix}`, 'bill_id, customer_id, publica_id, qty, rate, total_amt, month', 'id'),
-        fetchEveryRow(`billno${fySuffix}`, 'bill_id, customer_id, due_amt, del_amt, dis_amt, month, balance', 'bill_id')
+        fetchEveryRow(`receipt${fySuffix}`, 'id, customer_id, month, mal_recp_amt, less_amt, recp_no, recp_date', 'id'),
+        fetchEveryRow(`bill${fySuffix}`, 'id, bill_id, customer_id, publica_id, region_id, qty, rate, d_charges, total_amt, month, year, sno', 'id'),
+        fetchEveryRow(`billno${fySuffix}`, 'bill_id, customer_id, region_id, due_amt, del_amt, dis_amt, month, year, balance', ['bill_id', 'customer_id', 'month'])
       ]);
 
       return { receipts, bills, billHeaders };
@@ -245,26 +259,13 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
     }
   }
 
-  // Safe chunk size (40 customers) ensures that line items never exceed Supabase's hard 1,000 max_rows limit
-  const CHUNK_SIZE = 40;
-  const allBills: any[] = [];
-  const allBillHeaders: any[] = [];
-  const allReceipts: any[] = [];
-
-  for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-    const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-    const [headerRes, itemsRes, receiptRes] = await Promise.all([
-      supabaseAdmin.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
-      supabaseAdmin.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
-      supabaseAdmin.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(1000)
-    ]);
-    const failed = headerRes.error || itemsRes.error || receiptRes.error;
-    if (failed) throw new Error(`Could not read bills and receipts: ${failed.message}`);
-    allBillHeaders.push(...(headerRes.data || []));
-    allBills.push(...(itemsRes.data || []));
-    allReceipts.push(...(receiptRes.data || []));
-  }
-  return { bills: allBills, billHeaders: allBillHeaders, receipts: allReceipts };
+  // Every page of each table for these customers (a year of lines can pass 1,000 rows per 40 customers)
+  const [billHeaders, bills, receipts] = await Promise.all([
+    readAllFor(`billno${fySuffix}`, '*', customerIds, ['bill_id', 'customer_id', 'month']),
+    readAllFor(`bill${fySuffix}`, '*', customerIds, ['id']),
+    readAllFor(`receipt${fySuffix}`, '*', customerIds, ['id'])
+  ]);
+  return { bills, billHeaders, receipts };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
@@ -275,12 +276,7 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
   const CHUNK_SIZE = 40;
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-    const { data: tblData, error } = await supabaseAdmin
-      .from(`retailsale${fySuffix}`)
-      .select('*')
-      .in('customer_id', chunk)
-      .limit(1000);
-    if (error) throw new Error(`Could not read retail sales: ${error.message}`);
+    const tblData = await readAllFor(`retailsale${fySuffix}`, '*', chunk, ['retail_id']);
 
     matchingDb.push(...(tblData || []).map((r: any) => ({
       Retail_id: r.retail_id || r.Retail_id || r.sale_id,
