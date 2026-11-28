@@ -674,7 +674,8 @@ export async function POST(request: NextRequest) {
       for (const b of result.bills) {
         const old = kept.get(Number(b.customer_id));
         const id = old ? old.id : nextId++;
-        const text = old ? old.month : (OLD_MONTH[code] || month);
+        // Always the old software's month text, even if an earlier website run wrote 'November'
+        const text = OLD_MONTH[code] || (old ? old.month : month);
         const setRow = (row: any) => {
           if (!row) return;
           for (const k of ['bill_id', 'Bill_id']) if (k in row) row[k] = id;

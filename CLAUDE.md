@@ -16,7 +16,7 @@ it back without changing a single bill. These rules exist because this broke mor
 
 ## Bill generation on the website
 - Generating a month again must not renumber: a customer who already has a bill for that month keeps its
-  Bill_id and Month text; only a customer with no bill that month gets the next number (MAX+1).
+  Bill_id (its Month text is rewritten the old software's way); only a customer with no bill that month gets the next number (MAX+1).
 - Month text is written the old software's way (`OLD_MONTH` in `src/lib/oldSoftwareExport.ts`:
   Dues, April, May, June, July, Aug, Sept, Oct, Nov, Dec, Jan, Feb, March).
 - A customer with a paper open during the month gets a bill even with no copies delivered (no lines,

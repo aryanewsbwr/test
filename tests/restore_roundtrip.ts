@@ -31,7 +31,7 @@ const liveLines: Row[] = [
   { id: 2, bill_id: 54118, customer_id: 1383, publica_id: 4, region_id: 38, qty: 30, rate: 5, d_charges: 0, total_amt: 150, month: 'November', year: '2026', sno: 3 }
 ];
 
-const fixes = billCorrections(fileHeaders, fileLines, liveHeaders, liveLines, [], true);
+const fixes = billCorrections(fileHeaders, fileLines, liveHeaders, liveLines);
 
 // Apply the fixes the way the restore route does: removals first, then the file's bills
 let headers = liveHeaders.map(h => ({ ...h }));
@@ -55,7 +55,7 @@ check(norm(lines, L) === norm(fileLines, L), 'bill lines after restore equal the
 check(!headers.some(h => /^(October|November)$/.test(h.month)), 'no website month names left');
 
 // A second restore of the same backup changes nothing
-const again = billCorrections(fileHeaders, fileLines, headers, lines, [], true);
+const again = billCorrections(fileHeaders, fileLines, headers, lines);
 check(again.length === 0, 'restoring the same backup again changes nothing');
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }
