@@ -40,19 +40,28 @@ function splitRows(values: string): (string | null)[][] {
 
 async function readBackup() {
   const want = new Set(Object.values(TABLES));
-  const columns: Record<string, string[]> = {};
   const data: Record<string, Record<string, any>[]> = {};
-  let current = '';
+  // INSERT INTO `table` (`Col`,...) VALUES then one row per line, the last ending with ';'.
+  // Older dumps put everything on the INSERT line; both are read.
+  let table = '', cols: string[] = [];
+  const take = (text: string) => {
+    for (const r of splitRows(text)) (data[table] ||= []).push(Object.fromEntries(cols.map((c, i) => [c, r[i]])));
+  };
   const lines = createInterface({ input: createReadStream(file, { encoding: 'latin1' }), crlfDelay: Infinity });
   for await (const line of lines) {
-    const create = line.match(/^CREATE TABLE `(\w+)`/);
-    if (create) { current = want.has(create[1]) ? create[1] : ''; if (current) columns[current] = []; continue; }
-    if (current && /^\s+`/.test(line)) { columns[current].push(line.split('`')[1].toLowerCase()); continue; }
-    if (line.startsWith(')')) current = '';
-    const insert = line.match(/^INSERT INTO `(\w+)` VALUES (.*);\s*$/);
-    if (insert && want.has(insert[1])) {
-      const cols = columns[insert[1]];
-      for (const r of splitRows(insert[2])) (data[insert[1]] ||= []).push(Object.fromEntries(cols.map((c, i) => [c, r[i]])));
+    const insert = line.match(/^INSERT INTO `(\w+)`\s*(?:\(([^)]*)\))?\s*VALUES\s*(.*)$/);
+    if (insert) {
+      table = want.has(insert[1]) ? insert[1] : '';
+      if (table) {
+        cols = (insert[2] || '').split(',').map(c => c.replace(/`/g, '').trim().toLowerCase());
+        if (insert[3]) take(insert[3]);
+        if (/;\s*$/.test(insert[3] || '')) table = '';
+      }
+      continue;
+    }
+    if (table) {
+      take(line);
+      if (/;\s*$/.test(line)) table = '';
     }
   }
   return data;
@@ -97,7 +106,7 @@ function byMonth(headers: any[], lines: any[]) {
   console.log('Reading the live website ...');
   const [liveHeaders, liveLines, liveReceipts] = await Promise.all([
     readLive(TABLES.billno, 'bill_id,month,balance'),
-    readLive(TABLES.bill, 'bill_id,month,total_amt'),
+    readLive(TABLES.bill, 'bill_id,month,total_amt', 'id'),
     readLive(TABLES.receipt, 'month,mal_recp_amt', 'id')
   ]);
 
