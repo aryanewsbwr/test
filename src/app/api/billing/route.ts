@@ -98,7 +98,7 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
   for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
     const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
     const [cdRes, billRes] = await Promise.all([
-      readAllFor('customer_detail', 'customer_id, s_date, c_date, sno', chunk, ['sno']).then(data => ({ data, error: null as any })),
+      readAllFor('customer_detail', 'customer_id, s_date, c_date, sno, publica_id', chunk, ['customer_id', 'sno', 'publica_id']).then(data => ({ data, error: null as any })),
       supabaseAdmin
         .from(`billno${fySuffix}`)
         .select('customer_id, balance')
@@ -192,7 +192,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     try {
       // Every page: one customer alone can have dozens of subscription rows over the years
-      const cdSubs = await readAllFor('customer_detail', '*', chunk, ['sno']);
+      const cdSubs = await readAllFor('customer_detail', '*', chunk, ['customer_id', 'sno', 'publica_id']);
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
       }
