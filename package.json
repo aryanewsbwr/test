@@ -7,7 +7,9 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:restore": "npx tsx tests/restore_roundtrip.ts",
+    "verify:restore": "npx tsx scripts/verify_restore.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",

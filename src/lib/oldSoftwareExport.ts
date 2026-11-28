@@ -39,7 +39,7 @@ function pick(row: any, name: string) {
 const first = (...values: any[]) => values.find(v => v !== undefined && v !== null && v !== '');
 
 // The old software spells bill months its own way; bills made here say "August", "September"
-const OLD_MONTH: Record<string, string> = {
+export const OLD_MONTH: Record<string, string> = {
   due: 'Dues', apr: 'April', may: 'May', jun: 'June', jul: 'July', aug: 'Aug', sep: 'Sept', oct: 'Oct',
   nov: 'Nov', dec: 'Dec', jan: 'Jan', feb: 'Feb', mar: 'March'
 };

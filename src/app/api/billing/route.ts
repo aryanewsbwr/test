@@ -5,6 +5,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { refuseWithout } from '@/lib/auth';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
 import { getReliableHindiName, storedHindiName } from '@/lib/transliteration';
+import { OLD_MONTH } from '@/lib/oldSoftwareExport';
+import { monthCode } from '@/lib/backupTables';
 
 export const dynamic = 'force-dynamic';
 // All Regions bills every customer in one run, which needs more than the default time
@@ -659,6 +661,31 @@ export async function POST(request: NextRequest) {
     let savedBillItemsCount = 0;
 
     if (commitToDb && supabaseAdmin) {
+      // Bills are written the old software's way, so a later restore or export finds them unchanged:
+      // a customer who already has a bill for this month keeps its bill number and month text, a new
+      // bill takes the next number, and the month is the old software's name (Nov, Oct, Sept).
+      const code = monthCode(month);
+      const kept = new Map<number, { id: number; month: string }>();
+      for (const h of liveCustBillHeaders || []) {
+        if (monthCode(h.month ?? h.Month) !== code) continue;
+        kept.set(Number(h.customer_id ?? h.Customer_id), { id: Number(h.bill_id ?? h.Bill_id), month: String(h.month ?? h.Month) });
+      }
+      let nextId = maxBillId + 1;
+      for (const b of result.bills) {
+        const old = kept.get(Number(b.customer_id));
+        const id = old ? old.id : nextId++;
+        const text = old ? old.month : (OLD_MONTH[code] || month);
+        const setRow = (row: any) => {
+          if (!row) return;
+          for (const k of ['bill_id', 'Bill_id']) if (k in row) row[k] = id;
+          for (const k of ['month', 'Month']) if (k in row) row[k] = text;
+        };
+        setRow(b.db_billno_item);
+        (b.db_bill_items || []).forEach(setRow);
+        (b.db_billdel_items || []).forEach(setRow);
+        (b as any).bill_no = id;
+      }
+
       const billnoTable = `billno${fySuffix}`;
       const billTable = `bill${fySuffix}`;
       const billdelTable = `billdel${fySuffix}`;
