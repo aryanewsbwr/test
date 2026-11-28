@@ -792,10 +792,29 @@ export function calculateBilling({
         }
       }
 
+      // Line-item discount from the subscription (Dis). The old software writes a free paper (Dis 100)
+      // as a line with Rate 0 and TotalAmt 0 and no Dis_Amt. Partial discounts are left as they were and
+      // reported, since the old software's handling of them could not be checked.
+      const subDisRaw = cd.dis !== undefined && cd.dis !== null ? cd.dis : (cd.discount_percent !== undefined ? cd.discount_percent : cd.Dis);
+      const applicableDisPercent = Number(subDisRaw || 0);
+      const freePaper = applicableDisPercent >= 100;
+      const hadDays = rateDaysMap.size > 0;
+      if (hadDays && applicableDisPercent > 0 && !freePaper) {
+        missingRateWarnings.push({
+          publica_id: pubId,
+          date: monthStartIso,
+          day_of_week: 0,
+          message: `Customer #${custId} has a ${applicableDisPercent}% discount on paper ${pubId}; check this bill against the old software.`
+        });
+      }
+      // The line number is the customer's subscription number in the old software (customer_detail.line_no)
+      const lineNo = cd.line_no ?? cd.Line_no ?? null;
+
       // Add line items for each rate
       let snoCounter = 1;
       let subPaperTotal = 0;
-      Array.from(rateDaysMap.entries()).forEach(([rate, daysOrCopies]) => {
+      Array.from(rateDaysMap.entries()).forEach(([fullRate, daysOrCopies]) => {
+        const rate = freePaper ? 0 : fullRate;
         const lineAmt = Math.round(rate * qty * daysOrCopies * 100) / 100;
         subPaperTotal += lineAmt;
         customerPaperTotal += lineAmt;
@@ -823,25 +842,20 @@ export function calculateBilling({
           TotalAmt: lineAmt,
           Month: standardMonthName,
           year: String(startYear),
-          sno: snoCounter++
+          sno: lineNo ?? snoCounter++
         });
       });
 
-      if (subPaperTotal > 0) billedCopiesByPub.set(Number(pubId), qty);
+      if (hadDays) billedCopiesByPub.set(Number(pubId), qty);
 
-      // Line-item discount: Subscriptions specify discount percentage in `dis` / `discount_percent` / `Dis`
-      // Customer master table does not have a global discount column
-      const subDisRaw = cd.dis !== undefined && cd.dis !== null ? cd.dis : (cd.discount_percent !== undefined ? cd.discount_percent : cd.Dis);
-      const applicableDisPercent = Number(subDisRaw || 0);
-
-      if (applicableDisPercent > 0 && subPaperTotal > 0) {
+      if (applicableDisPercent > 0 && !freePaper && subPaperTotal > 0) {
         const subDisAmt = Math.round((subPaperTotal * (applicableDisPercent / 100)) * 100) / 100;
         customerDiscountTotal += subDisAmt;
       }
 
       // Delivery Charges per Subscription: only if subscription had active paper deliveries during the month
       const dely = Number(cd.delivery_charge !== undefined ? cd.delivery_charge : (cd.dely || cd.Dely || 0));
-      if (dely > 0 && subPaperTotal > 0) {
+      if (dely > 0 && hadDays) {
         customerDeliveryTotal += dely;
         custBreakup.push({
           customer_id: custId,
@@ -1129,7 +1143,8 @@ export function calculateBilling({
     const hasOpenPaper = custSubs.some((cd: any) => {
       const sIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
       const cIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
-      return sIso <= monthEndIso && (!cIso || cIso >= monthStartIso);
+      // S_Date inclusive, C_Date exclusive (no paper on C_Date): open for at least one day of the month
+      return sIso <= monthEndIso && (!cIso || cIso > monthStartIso);
     });
     if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0 && !hasOpenPaper) {
       continue;

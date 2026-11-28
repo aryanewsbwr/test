@@ -227,10 +227,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'customer_id, publica_id, hawker_id and s_date are required' }, { status: 400 });
     }
 
-    // sno is omitted so Supabase generates it (same as the backup-restore import)
+    // sno is omitted so Supabase generates it. line_no is the customer's next subscription number, as
+    // the old software numbers them (1, 2, 3... per customer); bill lines carry it.
+    const { data: numbers, error: numberError } = await supabase
+      .from('customer_detail')
+      .select('line_no')
+      .eq('customer_id', Number(customer_id))
+      .order('line_no', { ascending: false, nullsFirst: false })
+      .limit(1);
+    if (numberError) throw numberError;
+    const lineNo = (Number(numbers?.[0]?.line_no) || 0) + 1;
     const { data, error } = await supabase
       .from('customer_detail')
       .insert([{
+        line_no: lineNo,
         customer_id: Number(customer_id),
         publica_id: Number(publica_id),
         hawker_id: Number(body.hawker_id),

@@ -111,7 +111,8 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
 
     for (const s of cdRes.data || []) {
       const cDateIso = parseLegacyDateToIso(s.c_date);
-      if (!cDateIso || cDateIso >= mStartIso) {
+      // C_Date is exclusive: a paper stopped on the 1st was last supplied the day before
+      if (!cDateIso || cDateIso > mStartIso) {
         activeCustSet.add(Number(s.customer_id));
       }
     }

@@ -26,7 +26,8 @@ const MASTER_TABLES: BackupTable[] = [
   // Cbal is the old software's own figure (the last bill's balance) and comes in as it has it
   { name: 'customer', key: ['customer_id'], oldIgnore: ['paid', 'delivery', 'discount'] },
   // A paper is the same subscription by its start date; a hawker or circulation changed there is a change to it
-  { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'publica_id', 's_date'], oldSame: { from_day: ['', '1-7'] } },
+  // From the old software a subscription row is matched on its own number there (line_no), customer and paper
+  { name: 'customer_detail', key: ['customer_id', 'sno'], oldKey: ['customer_id', 'line_no', 'publica_id'], oldSame: { from_day: ['', '1-7'] } },
   { name: 'hawker', key: ['hawker_id'] },
   { name: 'publication', key: ['publica_id'], oldSame: { circulation: ['', 'morning'] } },
   { name: 'publisher', key: ['publish_id'] },

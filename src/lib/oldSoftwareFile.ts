@@ -232,7 +232,8 @@ export function oldSoftwareTables(): OldTable[] {
     // is_inactive and the hawker's region_id are kept here since old_software_marks.sql added them
     plain('customer', { fonttype: 'font_type', govtsupply: 'govt_supply' }),
     // The database numbers subscriptions itself, so the old sno is not kept
-    { source: 'customer_detail', target: 'customer_detail', map: datesOf(['s_date', 'c_date'], renamed({ sno: '' })) },
+    // The old software's subscription number (1, 2, 3... per customer) is kept as line_no: bill lines carry it
+    { source: 'customer_detail', target: 'customer_detail', map: datesOf(['s_date', 'c_date'], renamed({ sno: 'line_no' })) },
     plain('hawker'),
     plain('publication', { typep: 'type_p', magzineday: 'magzine_day', magzinemonth: 'magzine_month', chrdel: 'chr_del' }),
     plain('publisher'),

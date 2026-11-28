@@ -532,8 +532,11 @@ function numberSubscriptions(details: any[], startYear: number, old?: OldRows) {
     const theirs = before.get(customer) || [];
     // The old software repeats a number for a customer's different papers, so each of its rows is taken once
     const taken = new Set<(typeof theirs)[number]>();
-    let next = Math.max(0, ...theirs.map(t => t.sno || 0));
+    // A row restored from the old software or made here carries its number there (line_no)
+    let next = Math.max(0, ...theirs.map(t => t.sno || 0), ...rows.map(row => Number(pick(row, 'line_no')) || 0));
     const numbers = rows.map(row => {
+      const own = Number(pick(row, 'line_no'));
+      if (own) return own;
       if (!theirs.length) return 0;
       const start = sameMeaning(pick(row, 's_date'));
       const score = (t: (typeof theirs)[number]) =>
@@ -544,7 +547,7 @@ function numberSubscriptions(details: any[], startYear: number, old?: OldRows) {
       return best.sno;
     });
     rows.forEach((row, i) => {
-      const sno = theirs.length ? numbers[i] || ++next : i + 1;
+      const sno = numbers[i] || (theirs.length ? ++next : Math.max(next, 0) + 1 + i);
       numbered.push({ row, sno });
       const key = `${customer}|${pick(row, 'publica_id')}`;
       lookup.set(key, [...(lookup.get(key) || []), { sno, start: isoDate(pick(row, 's_date')) || '0000-00-00', end: isoDate(pick(row, 'c_date')), hawker: pick(row, 'hawker_id') }]);
