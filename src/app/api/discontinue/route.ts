@@ -119,14 +119,40 @@ export async function POST(request: NextRequest) {
     const isPerm = temp_perma.startsWith('P') || temp_perma.toUpperCase() === 'PERMANENT';
     const toIso = isPerm ? fromIso : (parseDateToIso(temp_to) || fromIso);
 
-    const { count, error: countError } = await supabase
-      .from('discontinue')
-      .select('*', { count: 'exact', head: true })
-      .eq('customer_id', cid);
-    if (countError) throw new Error(countError.message);
+    // In the old software a stop's SNo is the stopped subscription's own number (customer_detail.sno, kept
+    // here as line_no), so an export stops the right line. The subscription is the one named (body.sno), or
+    // the paper's subscription running on the stop date (S_Date inclusive, C_Date exclusive), latest first.
+    let stopNo: number | null = null;
+    if (pubId) {
+      const { data: subs, error: subError } = await supabase
+        .from('customer_detail')
+        .select('sno, line_no, s_date, c_date')
+        .eq('customer_id', cid)
+        .eq('publica_id', pubId);
+      if (subError) throw new Error(subError.message);
+      const named = body.sno ? (subs || []).find((s: any) => Number(s.sno) === Number(body.sno)) : null;
+      const running = (subs || [])
+        .filter((s: any) => {
+          const start = parseDateToIso(s.s_date) || '0000-00-00';
+          const end = parseDateToIso(s.c_date);
+          return start <= fromIso && (!end || end > fromIso);
+        })
+        .sort((a: any, b: any) => String(parseDateToIso(b.s_date)).localeCompare(String(parseDateToIso(a.s_date))));
+      const sub = named || running[0] || null;
+      stopNo = sub && sub.line_no ? Number(sub.line_no) : null;
+    }
+    if (stopNo === null) {
+      // No numbered subscription (all papers, or a row not yet restored): the old count + 1
+      const { count, error: countError } = await supabase
+        .from('discontinue')
+        .select('*', { count: 'exact', head: true })
+        .eq('customer_id', cid);
+      if (countError) throw new Error(countError.message);
+      stopNo = (count || 0) + 1;
+    }
 
     const record: any = {
-      sno: (count || 0) + 1,
+      sno: stopNo,
       entry_date,
       customer_id: cid,
       publica_id: pubId,
