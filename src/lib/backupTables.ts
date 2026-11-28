@@ -68,11 +68,11 @@ function yearlyTables(suffix: string): BackupTable[] {
     {
       name: `retailsale${suffix}`,
       key: ['retail_id'],
-      oldKey: ['customer_id', 'vr_date', 'publica_id', 'copies', 'amt'],
+      // The old software's own Retail_id is kept: a bill's retail line carries it as its sno
+      oldKey: ['retail_id'],
       money: true,
-      assignId: true,
       idColumn: 'retail_id',
-      oldIgnore: ['retail_id', 'rate', 'narr']
+      oldIgnore: ['rate', 'narr']
     },
     {
       name: `receiptissue${suffix}`,

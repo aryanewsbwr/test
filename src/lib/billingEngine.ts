@@ -222,12 +222,12 @@ export function calculateBilling({
     const pType = String(pubObj?.type_p || pubObj?.TypeP || '').toLowerCase();
     const isMag = pType.includes('mag') || pType.includes('periodical');
 
-    if (isMag && !magFrequencyFromRates.has(rPub)) {
+    const rRate = Number(r.Rate !== undefined ? r.Rate : r.rate);
+    if (isMag && !magFrequencyFromRates.has(rPub) && rRate > 0) {
+      // The old software: 1 = weekly on MagzineDay, 2 = 1st and 16th, any other code = one issue on the 1st
       if (rDow === 1) magFrequencyFromRates.set(rPub, 'weekly');
       else if (rDow === 2) magFrequencyFromRates.set(rPub, 'fortnightly');
-      else if (rDow === 3) magFrequencyFromRates.set(rPub, 'monthly');
-      else if (rDow === 4) magFrequencyFromRates.set(rPub, 'quarterly');
-      else if (rDow === 6) magFrequencyFromRates.set(rPub, 'special');
+      else magFrequencyFromRates.set(rPub, 'monthly');
     }
   }
 
@@ -765,13 +765,8 @@ export function calculateBilling({
       }
       // CASE D: Monthly + Quarterly Magazines (1st of month)
       else {
-        // If subscription has no delivery days scheduled and circulation is As Per Norm, skip
-        const deliveryDays = cd.delivery_days || cd.from_day || cd.From_Day;
-        const circ = String(cd.circulation || cd.Circulation || '').toLowerCase();
-        if ((deliveryDays === '' || deliveryDays === null || deliveryDays === undefined) && (circ.includes('norm') || circ === '')) {
-          continue;
-        }
-
+        // The old software bills a magazine row that is open on the 1st, even "As Per Norm" with no
+        // delivery days (e.g. paper 526 "Delivery Charges")
         const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
         const isQuarterlyAllowed = !isQuarterly || [1, 4, 7, 10].includes(monthNum);
 

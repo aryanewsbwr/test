@@ -632,22 +632,6 @@ export async function POST(request: NextRequest) {
     // Compare mode: work the month out WITHOUT saving and list every difference from the bills already
     // saved for it (after a restore these are the old software's own bills). Goal: 0 differences, so a
     // month generated here is the same as the old software's, bill for bill and line for line.
-    // Diagnostic (read-only): what the bill calculation receives for one customer
-    if (body.compare && body.debug_customer) {
-      const dc = Number(body.debug_customer);
-      const subs = (targetSubs || []).filter((x: any) => Number(x.customer_id) === dc);
-      const pubs = new Set(subs.map((x: any) => Number(x.publica_id)));
-      return NextResponse.json({
-        subscriptions: subs,
-        stops: (discontinues || []).filter((d: any) => Number(d.customer_id ?? d.Customer_id) === dc),
-        paper_stops: (pubDis || []).filter((d: any) => pubs.has(Number(d.publica_id ?? d.Publica_id)) || !Number(d.publica_id ?? d.Publica_id)).slice(0, 50),
-        holidays: (liveHolidays || []).filter((h: any) => pubs.has(Number(h.publica_id ?? h.Publica_id)) && /11\/2026|2026-11/.test(String(h.oc_date ?? h.dated ?? ''))),
-        publications: (pubs ? (await fetchPublications()).filter((p: any) => pubs.has(Number(p.publica_id))) : []),
-        rates: (rates || []).filter((r: any) => pubs.has(Number(r.publica_id))),
-        ratechanges: (ratechanges || []).filter((r: any) => pubs.has(Number(r.publica_id))),
-        made: result.bills.filter((b: any) => Number(b.customer_id) === dc).map((b: any) => b.db_bill_items)
-      });
-    }
     if (body.compare) {
       const code = monthCode(month);
       const num = (v: any) => (v === null || v === undefined || v === '' ? null : Math.round(Number(v) * 100) / 100);
